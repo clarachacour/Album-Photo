@@ -1,0 +1,120 @@
+{
+  "theme": "light",
+  "typography": {
+    "primary_heading_font": "Cormorant Garamond, serif",
+    "secondary_ui_font": "Manrope, sans-serif",
+    "font_weights": {
+      "light": 300,
+      "regular": 400,
+      "medium": 500,
+      "bold": 700
+    },
+    "hierarchy": {
+      "h1": "text-5xl md:text-6xl tracking-tight font-light font-serif text-ink",
+      "h2": "text-3xl md:text-4xl tracking-tight font-serif text-ink",
+      "h3": "text-xl md:text-2xl font-serif text-ink",
+      "subtitle": "text-sm tracking-[0.2em] uppercase font-sans text-ink/70",
+      "body": "text-base leading-relaxed font-sans text-ink/80",
+      "ui_label": "text-xs font-semibold tracking-wider uppercase font-sans"
+    }
+  },
+  "colors": {
+    "background": {
+      "paper": "#F9F8F6",
+      "editor_canvas": "#EAE9E4",
+      "teal_cover": "#0F5A67",
+      "white": "#FFFFFF"
+    },
+    "text": {
+      "ink": "#1A1A17",
+      "muted": "#73716A",
+      "coral": "#E56B55",
+      "teal": "#0F5A67"
+    },
+    "accents": {
+      "coral": "#E56B55",
+      "sand": "#D5C9B3",
+      "forest": "#2C402E",
+      "navy": "#1C2D42",
+      "blush": "#E8D5D1"
+    },
+    "semantic": {
+      "border": "#E2DFD8",
+      "hover": "rgba(26, 26, 23, 0.05)"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "book_page": "shadow-[0_4px_24px_rgba(0,0,0,0.08)]",
+      "book_cover": "shadow-[20px_0_40px_rgba(0,0,0,0.15)]",
+      "floating_toolbar": "shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
+    },
+    "surfaces": {
+      "glass_toolbar": "backdrop-blur-xl bg-white/80 border border-white/40",
+      "book_texture": "before:content-[''] before:absolute before:inset-0 before:bg-[url('/noise.png')] before:opacity-20 before:mix-blend-overlay before:pointer-events-none"
+    },
+    "borders": "1px solid border-border",
+    "radius": {
+      "ui": "rounded-none md:rounded-sm",
+      "book": "rounded-r-md"
+    }
+  },
+  "layouts": {
+    "marketing_page": {
+      "strategy": "Editorial Tetris Grid. Heavy asymmetry. Large hero images with overlapping text blocks. Extreme whitespace.",
+      "spacing": "py-24 md:py-32 px-6 md:px-12 gap-8 md:gap-16"
+    },
+    "editor_workspace": {
+      "strategy": "Fixed glassmorphism top nav, fixed left sidebar for templates/photos, absolute positioned floating right toolbar for text/photo editing. Center canvas is scrollable/pannable with the 3D book centered.",
+      "canvas": "bg-[#EAE9E4] min-h-screen pt-24 pb-12 px-8 flex items-center justify-center overflow-auto"
+    }
+  },
+  "motion": {
+    "page_flip": "Realistic CSS 3D rotation with transform-origin on the spine (left for right page, right for left page). Use react-pageflip library.",
+    "hover_states": "Subtle -translate-y-1 and opacity shifts. No bouncy animations. Sophisticated and calm.",
+    "ai_processing": "Elegant smooth fade-ins, gentle skeleton loaders, and a high-end typography-based loading screen (e.g., 'Curating your moments...')."
+  },
+  "accessibility": {
+    "contrast": "Ensure all text on colored book covers meets APCA / WCAG standards. The teal cover with coral/white text must have sufficient contrast.",
+    "focus": "focus-visible:ring-1 focus-visible:ring-ink focus-visible:outline-none",
+    "testing": "All interactive elements MUST have data-testid attributes."
+  },
+  "media": {
+    "image_urls": {
+      "mockup_blank_book": "https://images.pexels.com/photos/12024889/pexels-photo-12024889.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "minimalist_fashion_1": "https://images.pexels.com/photos/25194063/pexels-photo-25194063.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "western_australia_landscape": "https://images.pexels.com/photos/4846090/pexels-photo-4846090.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "coral_illustration": "https://images.pexels.com/photos/9653849/pexels-photo-9653849.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  },
+  "libraries": {
+    "drag_and_drop": "@dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities",
+    "3d_flipbook": "react-pageflip",
+    "icons": "lucide-react",
+    "pdf_export": "@react-pdf/renderer or html2canvas + jspdf"
+  },
+  "instructions_to_main_agent": [
+    "Use .js and .jsx extensions exclusively. Do NOT use .tsx or .ts files.",
+    "Implement the landing page with an editorial, asymmetrical aesthetic. Use 'Cormorant Garamond' for large, impactful headings. Avoid centered, generic SaaS layouts.",
+    "Build the 6 Cover Templates feature: Allow the user to select from 6 strict color/layout themes (e.g., Teal + Coral, Sand + Forest, Navy + Gold). Each template must have a predefined typography set and layout (title on front, location map/country on back, title + date on spine).",
+    "For the photo upload: Include a bulk drag-and-drop zone. Show a highly polished 'AI analyzing and sorting photos' loading screen instead of standard spinners.",
+    "Implement the Page Editor: The book must be previewed as a 3D flipbook using 'react-pageflip' or robust CSS 3D transforms showing two pages side-by-side.",
+    "The Editor must allow dragging photos onto pages, resizing them, and adding/editing text (font family, color, size). Pages must have varied, dynamic grid layouts (not just 1 image per page).",
+    "Do NOT use standard Shadcn cards with thick borders and drop shadows for the core UI. Use flat, un-bordered elements or 1px subtle lines. The UI must feel like an invisible tool around the physical book.",
+    "Use 'data-testid' on all interactive elements (buttons, inputs, dropzones, canvas elements) to ensure robust testability.",
+    "Ensure the PDF export feature grabs the high-res DOM representation of the book for print."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "NEVER use generic purple gradients or the 'Inter' font for headings.",
+    "Create depth through layered design elements with z-index hierarchy, NOT by adding generic drop shadows to everything.",
+    "DO NOT use complete `transparent` background in header, overlays, any surface that has content under it. Example: Dropdown with transparent background. Use proper solid colors or backdrop blur with an opacity overlay.",
+    "You MUST NOT apply universal transition (e.g., transition: all). Always add transitions for specific interactive elements excluding transforms.",
+    "You MUST NOT center align the app container in CSS. It disrupts natural reading flow.",
+    "NEVER use AI assistant Emoji characters like robot, brain, lightbulb for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Prioritize using pre-existing components from src/components/ui when applicable, but heavily customize them to remove the generic SaaS look.",
+    "Use 'sonner' for toast notifications."
+  ]
+}
