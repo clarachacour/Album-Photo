@@ -107,9 +107,10 @@ export default function AlbumEditor() {
 
   const addTextToCurrentPage = () => {
     if (!album || !album.pages || album.pages.length === 0) return;
-    // Add to currently visible content page. pageIndex from flipbook is a spread number * 2 (with cover)
-    // Simpler: pick the last content page as target if pageIndex points to a cover
-    const targetIdx = Math.min(Math.max(pageIndex - 1, 0), album.pages.length - 1);
+    // pageIndex is the current spread number.
+    // Spread 0 = cover front + blank. Spread 1 = content pages [0]+[1]. Target the right page (content page 2*spread-1).
+    let targetIdx = pageIndex >= 1 ? pageIndex * 2 - 1 : 0;
+    targetIdx = Math.min(Math.max(targetIdx, 0), album.pages.length - 1);
     const newItem = {
       id: cryptoRandom(),
       type: "text",
@@ -192,7 +193,7 @@ export default function AlbumEditor() {
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="eyebrow">Page {pageIndex + 1}</span>
+            <span className="eyebrow">Double-page {pageIndex + 1}</span>
             <button
               data-testid={TID.editorNext}
               onClick={() => bookRef.current?.pageFlip()?.flipNext()}
@@ -269,52 +270,29 @@ export default function AlbumEditor() {
 
 // ---------- Book Renderer ----------
 function BookRenderer({ album, template, orientation, bookRef, onSelect, selectedId, onFlip }) {
-  const pageW = orientation === "landscape" ? 520 : 380;
-  const pageH = orientation === "landscape" ? 380 : 540;
-  const wrapCls = "w-full h-full";
-
-  return (
-    <Flipbook orientation={orientation} bookRef={bookRef} onFlip={onFlip}>
-      {/* Cover front */}
-      <PageWrapper>
-        <CoverFrontPage template={template} title={album.title} orientation={orientation} />
-      </PageWrapper>
-      {/* Blank inner page */}
-      <PageWrapper>
-        <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
-      </PageWrapper>
-      {/* Content */}
-      {(album.pages || []).map((page, i) => (
-        <PageWrapper key={page.id || i}>
-          <AlbumPage
-            page={page}
-            template={template}
-            orientation={orientation}
-            pageIndex={i}
-            editable
-            selectedItemId={selectedId}
-            onSelectItem={(item) => onSelect(i, item)}
-          />
-        </PageWrapper>
-      ))}
-      {/* Blank inner back */}
-      <PageWrapper>
-        <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
-      </PageWrapper>
-      {/* Cover back */}
-      <PageWrapper>
-        <CoverBackPage template={template} country={album.country} year={album.year} orientation={orientation} />
-      </PageWrapper>
-    </Flipbook>
+  const blank = (
+    <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
   );
+  const pages = [
+    <CoverFrontPage key="cover-front" template={template} title={album.title} orientation={orientation} />,
+    <React.Fragment key="blank-inner-front">{blank}</React.Fragment>,
+    ...(album.pages || []).map((page, i) => (
+      <AlbumPage
+        key={page.id || i}
+        page={page}
+        template={template}
+        orientation={orientation}
+        pageIndex={i}
+        editable
+        selectedItemId={selectedId}
+        onSelectItem={(item) => onSelect(i, item)}
+      />
+    )),
+    <React.Fragment key="blank-inner-back">{blank}</React.Fragment>,
+    <CoverBackPage key="cover-back" template={template} country={album.country} year={album.year} orientation={orientation} />,
+  ];
+  return <Flipbook ref={bookRef} pages={pages} orientation={orientation} onFlip={onFlip} />;
 }
-
-// Individual page wrapper - required for react-pageflip
-const PageWrapper = React.forwardRef(({ children }, ref) => (
-  <div ref={ref} className="bg-[color:var(--paper)]" data-density="hard">
-    {children}
-  </div>
-));
 
 // ---------- Text Editor ----------
 function TextEditor({ item, onChange, onRemove }) {
