@@ -187,6 +187,7 @@ class AlbumUpdate(BaseModel):
     orientation: Optional[str] = None
     pages: Optional[List[Dict[str, Any]]] = None
     status: Optional[str] = None
+    cover_image_path: Optional[str] = None
 
 # ---------- Startup ----------
 @app.on_event("startup")
@@ -248,6 +249,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "orientation": data.orientation,
         "status": "draft",
         "pages": [],
+        "cover_image_path": None,
         "created_at": now,
         "updated_at": now,
     }
@@ -356,6 +358,65 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
         raise HTTPException(status_code=404, detail="Photo introuvable")
     data, ctype = get_object(photo["storage_path"])
     return Response(content=data, media_type=photo.get("content_type") or ctype)
+
+# ---------- Cover image upload ----------
+@api_router.post("/albums/{album_id}/cover-image")
+async def upload_cover_image(
+    album_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    content_type = file.content_type or "image/jpeg"
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail="Format d'image non supporté")
+    data = await file.read()
+    if len(data) == 0:
+        raise HTTPException(status_code=400, detail="Fichier vide")
+    ext = (file.filename or "cover.jpg").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-{uuid.uuid4()}.{ext}"
+    result = put_object(path, data, content_type)
+    await db.albums.update_one(
+        {"id": album_id},
+        {"$set": {
+            "cover_image_path": result["path"],
+            "cover_image_content_type": content_type,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {"cover_image_path": result["path"]}
+
+@api_router.delete("/albums/{album_id}/cover-image")
+async def remove_cover_image(album_id: str, user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    await db.albums.update_one(
+        {"id": album_id},
+        {"$set": {"cover_image_path": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"ok": True}
+
+@api_router.get("/albums/{album_id}/cover-image")
+async def get_cover_image(album_id: str, auth: str = Query(None), authorization: str = Header(None)):
+    token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1]
+    elif auth:
+        token = auth
+    user_id = decode_token(token) if token else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    album = await db.albums.find_one({"id": album_id, "user_id": user_id})
+    if not album or not album.get("cover_image_path"):
+        raise HTTPException(status_code=404, detail="Aucune couverture personnalisée")
+    data, ctype = get_object(album["cover_image_path"])
+    return Response(content=data, media_type=album.get("cover_image_content_type") or ctype)
+
 
 # ---------- AI Processing ----------
 def deterministic_layout(photos: List[dict], orientation: str) -> List[dict]:
@@ -658,9 +719,37 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     line_h = min(pw, ph) * 0.095
     for i, line in enumerate(lines):
         c.drawString(pw * 0.08, y_start - i * line_h, line)
-    # Accent circle
-    c.setFillColor(hex_to_rl_color(tpl["accent"]))
-    c.circle(pw * 0.5, ph * 0.42, min(pw, ph) * 0.18, fill=1, stroke=0)
+
+    cover_image_path = album.get("cover_image_path")
+    if cover_image_path:
+        # Draw the custom image as a large centered block below the title
+        try:
+            data, _ = get_object(cover_image_path)
+            img = ImageReader(BytesIO(data))
+            cx, cy = pw * 0.5, ph * 0.35
+            box_w, box_h = pw * 0.7, ph * 0.5
+            c.saveState()
+            p = c.beginPath()
+            p.rect(cx - box_w / 2, cy - box_h / 2, box_w, box_h)
+            c.clipPath(p, stroke=0, fill=0)
+            # Determine cover fit
+            iw, ih = img.getSize()
+            slot_ratio = box_w / box_h
+            img_ratio = iw / ih
+            if img_ratio > slot_ratio:
+                draw_h = box_h
+                draw_w = draw_h * img_ratio
+            else:
+                draw_w = box_w
+                draw_h = draw_w / img_ratio
+            c.drawImage(img, cx - draw_w / 2, cy - draw_h / 2, width=draw_w, height=draw_h, mask='auto')
+            c.restoreState()
+        except Exception as e:
+            logger.error(f"Cover image draw failed: {e}")
+    else:
+        # Accent circle fallback
+        c.setFillColor(hex_to_rl_color(tpl["accent"]))
+        c.circle(pw * 0.5, ph * 0.42, min(pw, ph) * 0.18, fill=1, stroke=0)
     c.showPage()
 
     # ---- CONTENT PAGES ----
@@ -680,10 +769,38 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
                     x = item["x"] * pw
                     # ReportLab y-origin is bottom-left; our items use top-left origin
                     y_top = (1 - item["y"]) * ph
-                    w = item["w"] * pw
-                    h = item["h"] * ph
-                    y = y_top - h
-                    c.drawImage(img, x, y, width=w, height=h, preserveAspectRatio=True, mask='auto')
+                    slot_w = item["w"] * pw
+                    slot_h = item["h"] * ph
+                    y_bottom = y_top - slot_h
+                    scale = float(item.get("scale", 1.0))
+                    focal_x = float(item.get("focal_x", 0.5))
+                    focal_y = float(item.get("focal_y", 0.5))
+                    iw, ih = img.getSize()
+                    slot_ratio = slot_w / slot_h if slot_h else 1
+                    img_ratio = iw / ih if ih else 1
+                    # cover fit
+                    if img_ratio > slot_ratio:
+                        draw_h = slot_h
+                        draw_w = draw_h * img_ratio
+                    else:
+                        draw_w = slot_w
+                        draw_h = draw_w / img_ratio
+                    # apply zoom
+                    draw_w *= scale
+                    draw_h *= scale
+                    # focal offset (0..1). 0.5 = centered
+                    overflow_x = draw_w - slot_w
+                    overflow_y = draw_h - slot_h
+                    img_x = x - overflow_x * focal_x
+                    img_y_top = y_top + overflow_y * focal_y
+                    img_y_bottom = img_y_top - draw_h
+                    # clip
+                    c.saveState()
+                    p = c.beginPath()
+                    p.rect(x, y_bottom, slot_w, slot_h)
+                    c.clipPath(p, stroke=0, fill=0)
+                    c.drawImage(img, img_x, img_y_bottom, width=draw_w, height=draw_h, mask='auto')
+                    c.restoreState()
                 except Exception as e:
                     logger.error(f"PDF image draw failed: {e}")
             elif item.get("type") == "text":

@@ -259,6 +259,182 @@ class TestAlbumFlow:
         assert r2.status_code == 404
 
 
+# ---------- cover image & photo scale/focal & PDF regressions ----------
+class TestCoverImageAndPhotoEditing:
+    """New iteration 3 features: cover image, scale/focal on photo items, PDF regressions."""
+    album_id = None
+    other_album_id = None
+
+    def test_setup_album(self, session, auth_headers, auth):
+        # Create album
+        r = session.post(f"{API}/albums", json={
+            "title": "TEST Cover Album",
+            "country": "Japon",
+            "year": 2026,
+            "cover_template_id": "teal-coral",
+            "size": "A4",
+            "orientation": "portrait",
+        }, headers=auth_headers, timeout=15)
+        assert r.status_code == 200
+        TestCoverImageAndPhotoEditing.album_id = r.json()["id"]
+
+        # Upload 2 photos + run AI so we have pages with photo items
+        headers = {"Authorization": f"Bearer {auth['token']}"}
+        files = [
+            ("files", ("a.jpg", make_test_image((30, 90, 160), (400, 300), "A"), "image/jpeg")),
+            ("files", ("b.jpg", make_test_image((180, 60, 40), (300, 400), "B"), "image/jpeg")),
+        ]
+        r2 = session.post(f"{API}/albums/{TestCoverImageAndPhotoEditing.album_id}/photos",
+                          files=files, headers=headers, timeout=60)
+        assert r2.status_code == 200
+        assert r2.json()["uploaded"] == 2
+
+        r3 = session.post(f"{API}/albums/{TestCoverImageAndPhotoEditing.album_id}/process",
+                          headers=auth_headers, timeout=30)
+        assert r3.status_code == 200
+
+        # Poll until ready
+        deadline = time.time() + 180
+        final = None
+        while time.time() < deadline:
+            time.sleep(4)
+            try:
+                rs = session.get(f"{API}/albums/{TestCoverImageAndPhotoEditing.album_id}/status",
+                                 headers=auth_headers, timeout=30)
+            except requests.exceptions.RequestException:
+                continue
+            st = rs.json().get("status")
+            if st in ("ready", "error"):
+                final = st
+                break
+        assert final == "ready"
+
+    def test_upload_cover_image_success(self, session, auth_headers, auth):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        img_bytes = make_test_image((50, 120, 200), (600, 400), "Cover")
+        files = {"file": ("cover.jpg", img_bytes, "image/jpeg")}
+        headers = {"Authorization": f"Bearer {auth['token']}"}
+        r = session.post(f"{API}/albums/{aid}/cover-image", files=files, headers=headers, timeout=60)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert "cover_image_path" in data
+        assert data["cover_image_path"]
+
+        # verify persistence via GET /api/albums/{id}
+        r2 = session.get(f"{API}/albums/{aid}", headers=auth_headers, timeout=15)
+        assert r2.status_code == 200
+        assert r2.json().get("cover_image_path") == data["cover_image_path"]
+
+    def test_upload_cover_image_invalid_content_type(self, session, auth):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        files = {"file": ("bad.txt", b"not an image", "text/plain")}
+        headers = {"Authorization": f"Bearer {auth['token']}"}
+        r = session.post(f"{API}/albums/{aid}/cover-image", files=files, headers=headers, timeout=30)
+        assert r.status_code == 400, f"expected 400, got {r.status_code} {r.text}"
+
+    def test_upload_cover_image_someone_elses_album_returns_404(self, session, auth):
+        # Create another user
+        other_creds = {
+            "name": "Other User",
+            "email": f"TEST_other_{uuid.uuid4().hex[:8]}@fable.studio",
+            "password": "Test1234!",
+        }
+        r = session.post(f"{API}/auth/signup", json=other_creds, timeout=30)
+        assert r.status_code == 200
+        other_token = r.json()["token"]
+        # Try to upload cover to the FIRST user's album with the OTHER user's token
+        aid = TestCoverImageAndPhotoEditing.album_id
+        files = {"file": ("cover.jpg", make_test_image(), "image/jpeg")}
+        headers = {"Authorization": f"Bearer {other_token}"}
+        r2 = session.post(f"{API}/albums/{aid}/cover-image", files=files, headers=headers, timeout=30)
+        assert r2.status_code == 404
+
+    def test_get_cover_image_with_query_auth(self, session, auth):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.get(f"{API}/albums/{aid}/cover-image", params={"auth": auth["token"]}, timeout=30)
+        assert r.status_code == 200
+        assert r.headers.get("Content-Type", "").startswith("image/")
+        assert len(r.content) > 100
+
+    def test_get_cover_image_without_auth_returns_401(self, session):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.get(f"{API}/albums/{aid}/cover-image", timeout=15)
+        assert r.status_code == 401
+
+    def test_pdf_export_with_cover_image(self, session, auth):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.get(f"{API}/albums/{aid}/export", params={"auth": auth["token"]}, timeout=60)
+        assert r.status_code == 200
+        assert r.headers.get("Content-Type", "").startswith("application/pdf")
+        assert r.content.startswith(b"%PDF")
+        assert len(r.content) > 1000
+
+    def test_patch_photo_items_scale_and_focal(self, session, auth_headers):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.get(f"{API}/albums/{aid}", headers=auth_headers, timeout=15)
+        assert r.status_code == 200
+        alb = r.json()
+        pages = alb.get("pages") or []
+        assert len(pages) >= 1
+        # find first photo item and inject scale + focal
+        photo_updated_id = None
+        for pg in pages:
+            for it in pg.get("items", []):
+                if it.get("type") == "photo":
+                    it["scale"] = 1.5
+                    it["focal_x"] = 0.2
+                    it["focal_y"] = 0.3
+                    photo_updated_id = it["id"]
+                    break
+            if photo_updated_id:
+                break
+        assert photo_updated_id is not None
+
+        r2 = session.patch(f"{API}/albums/{aid}", json={"pages": pages}, headers=auth_headers, timeout=15)
+        assert r2.status_code == 200
+        # verify persistence
+        r3 = session.get(f"{API}/albums/{aid}", headers=auth_headers, timeout=15)
+        pages2 = r3.json().get("pages") or []
+        found = None
+        for pg in pages2:
+            for it in pg.get("items", []):
+                if it.get("id") == photo_updated_id:
+                    found = it
+                    break
+        assert found is not None, "photo item not found after PATCH"
+        assert found.get("scale") == 1.5
+        assert found.get("focal_x") == 0.2
+        assert found.get("focal_y") == 0.3
+
+    def test_pdf_export_after_scale_focal_update(self, session, auth):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.get(f"{API}/albums/{aid}/export", params={"auth": auth["token"]}, timeout=60)
+        assert r.status_code == 200
+        assert r.headers.get("Content-Type", "").startswith("application/pdf")
+        assert r.content.startswith(b"%PDF")
+        assert len(r.content) > 1000
+
+    def test_delete_cover_image(self, session, auth_headers):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.delete(f"{API}/albums/{aid}/cover-image", headers=auth_headers, timeout=15)
+        assert r.status_code == 200
+        data = r.json()
+        assert data.get("ok") is True
+
+        # verify cover_image_path is None
+        r2 = session.get(f"{API}/albums/{aid}", headers=auth_headers, timeout=15)
+        assert r2.json().get("cover_image_path") is None
+
+    def test_get_cover_image_after_delete_returns_404(self, session, auth):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        r = session.get(f"{API}/albums/{aid}/cover-image", params={"auth": auth["token"]}, timeout=15)
+        assert r.status_code == 404
+
+    def test_cleanup(self, session, auth_headers):
+        aid = TestCoverImageAndPhotoEditing.album_id
+        session.delete(f"{API}/albums/{aid}", headers=auth_headers, timeout=15)
+
+
 # ---------- non-image file skipping ----------
 class TestNonImageSkipped:
     def test_upload_skips_non_image(self, session, auth_headers, auth):

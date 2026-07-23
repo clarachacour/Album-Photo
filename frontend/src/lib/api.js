@@ -37,3 +37,8 @@ export function pdfExportUrl(albumId) {
   const t = getToken();
   return `${API}/albums/${albumId}/export?auth=${encodeURIComponent(t || "")}`;
 }
+
+export function coverImageUrl(albumId, version = 0) {
+  const t = getToken();
+  return `${API}/albums/${albumId}/cover-image?auth=${encodeURIComponent(t || "")}&v=${version}`;
+}

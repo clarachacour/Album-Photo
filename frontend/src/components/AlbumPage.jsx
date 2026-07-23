@@ -22,6 +22,9 @@ export function AlbumPage({ page, template, orientation = "portrait", pageIndex 
         const isSel = selectedItemId === item.id;
         const ring = editable && isSel ? "outline outline-2 outline-[color:var(--coral)]" : "";
         if (item.type === "photo") {
+          const scale = item.scale || 1;
+          const focalX = item.focal_x ?? 0.5;
+          const focalY = item.focal_y ?? 0.5;
           return (
             <div
               key={item.id}
@@ -38,6 +41,11 @@ export function AlbumPage({ page, template, orientation = "portrait", pageIndex 
                 src={photoImageUrl(item.photo_id)}
                 alt=""
                 className="w-full h-full object-cover"
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
+                  objectPosition: `${focalX * 100}% ${focalY * 100}%`,
+                }}
                 draggable={false}
               />
             </div>
@@ -81,7 +89,7 @@ export function AlbumPage({ page, template, orientation = "portrait", pageIndex 
 /**
  * Cover Page (front) rendered as a "page" in the book flow.
  */
-export function CoverFrontPage({ template, title, orientation }) {
+export function CoverFrontPage({ template, title, orientation, coverImageUrl }) {
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const { bg, accent, text, illustration } = template;
   const SVGShape = getShape(illustration, accent);
@@ -89,14 +97,20 @@ export function CoverFrontPage({ template, title, orientation }) {
     <div className={`relative w-full ${aspect} overflow-hidden flex flex-col justify-between p-6 md:p-10`} style={{ background: bg }}>
       <div className="absolute inset-0 grain pointer-events-none" />
       <h1
-        className="font-serif-display leading-[0.95] tracking-tight"
+        className="font-serif-display leading-[0.95] tracking-tight relative z-10"
         style={{ color: text, fontSize: "clamp(28px, 6vw, 64px)", fontWeight: 600 }}
       >
         {title.split(" ").map((w, i) => (
           <span key={i} className="block uppercase">{w}</span>
         ))}
       </h1>
-      <div className="self-center">{SVGShape}</div>
+      {coverImageUrl ? (
+        <div className="self-center w-[70%] aspect-[4/3] overflow-hidden">
+          <img src={coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className="self-center">{SVGShape}</div>
+      )}
       <div />
     </div>
   );
