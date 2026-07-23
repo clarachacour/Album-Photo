@@ -53,7 +53,9 @@ export function AlbumPage({ page, template, orientation = "portrait", pageIndex 
                 color: item.color || "#1A1A17",
                 fontFamily: item.font || "Cormorant Garamond, serif",
                 fontSize: `${item.font_size || 16}px`,
-                lineHeight: 1.2,
+                lineHeight: 1.15,
+                overflow: "hidden",
+                wordBreak: "break-word",
               }}
               onClick={(e) => {
                 if (!editable) return;
