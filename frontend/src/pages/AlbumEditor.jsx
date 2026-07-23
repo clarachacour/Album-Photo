@@ -7,7 +7,7 @@ import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage
 import Flipbook from "@/components/Flipbook";
 import PhotoTray from "@/components/PhotoTray";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Palette, Square, Circle as CircleIcon, ClipboardPaste } from "lucide-react";
 
 const FONT_OPTIONS = [
   { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
@@ -33,6 +33,8 @@ export default function AlbumEditor() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverVersion, setCoverVersion] = useState(0);
   const [processing, setProcessing] = useState(params.get("processing") === "1");
+  // Cover-related selection: {mode: "cover" | "title" | "item", itemId?}
+  const [coverSel, setCoverSel] = useState(null);
 
   // Load album
   const loadAlbum = useCallback(async () => {
@@ -50,6 +52,24 @@ export default function AlbumEditor() {
   useEffect(() => {
     loadAlbum();
   }, [loadAlbum]);
+
+  // Handle paste event: if a cover selection is active, paste text as a new cover text element
+  useEffect(() => {
+    const onPaste = (e) => {
+      if (!coverSel) return;
+      // Skip if focus is in an input/textarea
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      const text = e.clipboardData?.getData("text/plain");
+      if (text && text.trim()) {
+        e.preventDefault();
+        addCoverText(text.trim().slice(0, 500));
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverSel]);
 
   // Poll while processing
   useEffect(() => {
@@ -77,7 +97,7 @@ export default function AlbumEditor() {
     if (!album) return;
     setSaving(true);
     try {
-      await api.patch(`/albums/${id}`, { pages: album.pages });
+      await api.patch(`/albums/${id}`, { pages: album.pages, cover: album.cover || {} });
       toast.success("Enregistré");
     } catch {
       toast.error("Enregistrement impossible");
@@ -107,6 +127,89 @@ export default function AlbumEditor() {
     };
     setAlbum({ ...album, pages: newPages });
     setSelected({ pageIdx, item: { ...item, ...patch } });
+  };
+
+  // Update any item on a page by id (used by drag/resize handlers)
+  const updateItemById = (pageIdx, itemId, patch) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = {
+        ...newPages[pageIdx],
+        items: newPages[pageIdx].items.map((it) => (it.id === itemId ? { ...it, ...patch } : it)),
+      };
+      return { ...prev, pages: newPages };
+    });
+    setSelected((prev) => (prev && prev.item?.id === itemId ? { ...prev, item: { ...prev.item, ...patch } } : prev));
+  };
+
+  // Cover editing helpers
+  const updateCover = (patch) => {
+    setAlbum((prev) => ({ ...prev, cover: { ...(prev.cover || {}), ...patch } }));
+  };
+
+  const updateCoverItem = (itemId, patch) => {
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      const items = (cover.extra_items || []).map((it) => (it.id === itemId ? { ...it, ...patch } : it));
+      return { ...prev, cover: { ...cover, extra_items: items } };
+    });
+    setCoverSel((prev) => (prev && prev.mode === "item" && prev.itemId === itemId ? { ...prev } : prev));
+  };
+
+  const addCoverText = (content = "Nouveau texte") => {
+    const newItem = {
+      id: cryptoRandom(),
+      type: "text",
+      content,
+      x: 0.1,
+      y: 0.5,
+      w: 0.5,
+      h: 0.08,
+      font: "'Manrope', sans-serif",
+      color: album?.cover?.text_color || "#F9F8F6",
+      font_size: 22,
+      font_weight: "normal",
+    };
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      return { ...prev, cover: { ...cover, extra_items: [...(cover.extra_items || []), newItem] } };
+    });
+    setCoverSel({ mode: "item", itemId: newItem.id });
+    toast.success("Texte ajouté à la couverture");
+  };
+
+  const addCoverShape = (shape_type = "rect") => {
+    const newItem = {
+      id: cryptoRandom(),
+      type: "shape",
+      shape_type,
+      x: 0.3,
+      y: 0.6,
+      w: 0.15,
+      h: 0.15,
+      fill_color: album?.cover?.accent_color || "#E56B55",
+    };
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      return { ...prev, cover: { ...cover, extra_items: [...(cover.extra_items || []), newItem] } };
+    });
+    setCoverSel({ mode: "item", itemId: newItem.id });
+    toast.success("Forme ajoutée");
+  };
+
+  const removeCoverItem = (itemId) => {
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      return {
+        ...prev,
+        cover: {
+          ...cover,
+          extra_items: (cover.extra_items || []).filter((it) => it.id !== itemId),
+        },
+      };
+    });
+    setCoverSel(null);
   };
 
   const addTextToCurrentPage = () => {
@@ -244,10 +347,24 @@ export default function AlbumEditor() {
             template={template}
             orientation={orientation}
             bookRef={bookRef}
-            onSelect={(pageIdx, item) => setSelected({ pageIdx, item })}
+            onSelectItem={(pageIdx, item) => {
+              setSelected({ pageIdx, item });
+              setCoverSel(null);
+            }}
+            onUpdateItem={updateItemById}
             selectedId={selected?.item?.id}
-            onFlip={(p) => setPageIndex(p)}
+            onFlip={(p) => {
+              setPageIndex(p);
+              // Auto-clear cover selection when leaving cover spread
+              if (p !== 0) setCoverSel(null);
+            }}
             coverImageUrl={album.cover_image_path ? coverImageUrl(id, coverVersion) : null}
+            coverSel={coverSel}
+            onSelectCover={() => { setSelected(null); setCoverSel({ mode: "cover" }); }}
+            onSelectCoverTitle={() => { setSelected(null); setCoverSel({ mode: "title" }); }}
+            onSelectCoverItem={(item) => { setSelected(null); setCoverSel({ mode: "item", itemId: item.id }); }}
+            onUpdateCoverTitle={(patch) => updateCover(patch)}
+            onUpdateCoverItem={updateCoverItem}
           />
 
           <div className="flex items-center gap-4 mt-8">
@@ -364,7 +481,18 @@ export default function AlbumEditor() {
 
           <div className="border-t border-[color:var(--border-soft)] pt-6">
             <div className="eyebrow mb-4">Édition</div>
-            {selected ? (
+            {coverSel ? (
+              <CoverEditorPanel
+                album={album}
+                coverSel={coverSel}
+                updateCover={updateCover}
+                updateCoverItem={updateCoverItem}
+                addCoverText={addCoverText}
+                addCoverShape={addCoverShape}
+                removeCoverItem={removeCoverItem}
+                onDismiss={() => setCoverSel(null)}
+              />
+            ) : selected ? (
               selected.item.type === "text" ? (
                 <TextEditor item={selected.item} onChange={updateSelectedItem} onRemove={removeSelected} />
               ) : (
@@ -372,8 +500,8 @@ export default function AlbumEditor() {
               )
             ) : (
               <p className="text-xs text-[color:var(--muted)] leading-relaxed">
-                Cliquez sur un texte ou une photo pour l'éditer.<br /><br />
-                Astuce : le bouton <em>Ajouter texte</em> place une légende sur la page visible.
+                Cliquez sur un élément pour l'éditer. Sur la couverture, cliquez sur le fond, le titre ou un élément ajouté pour ouvrir ses réglages.<br /><br />
+                <em>Astuce</em> : déplacez et redimensionnez chaque élément à la souris directement dans le livre.
               </p>
             )}
           </div>
@@ -393,27 +521,65 @@ export default function AlbumEditor() {
 }
 
 // ---------- Book Renderer ----------
-function BookRenderer({ album, template, orientation, bookRef, onSelect, selectedId, onFlip, coverImageUrl }) {
+function BookRenderer({
+  album,
+  template,
+  orientation,
+  bookRef,
+  onSelectItem,
+  onUpdateItem,
+  selectedId,
+  onFlip,
+  coverImageUrl,
+  coverSel,
+  onSelectCover,
+  onSelectCoverTitle,
+  onSelectCoverItem,
+  onUpdateCoverTitle,
+  onUpdateCoverItem,
+}) {
   const blank = (
     <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
   );
   const pages = [
-    <CoverFrontPage key="cover-front" template={template} title={album.title} orientation={orientation} coverImageUrl={coverImageUrl} />,
+    <CoverFrontPage
+      key="cover-front"
+      template={template}
+      title={album.title}
+      orientation={orientation}
+      coverImageUrl={coverImageUrl}
+      cover={album.cover || {}}
+      editable
+      onSelectCover={onSelectCover}
+      onSelectTitle={onSelectCoverTitle}
+      onSelectItem={onSelectCoverItem}
+      onUpdateTitle={onUpdateCoverTitle}
+      onUpdateItem={onUpdateCoverItem}
+      titleSelected={coverSel?.mode === "title"}
+      selectedItemId={coverSel?.mode === "item" ? coverSel.itemId : null}
+    />,
     <React.Fragment key="blank-inner-front">{blank}</React.Fragment>,
     ...(album.pages || []).map((page, i) => (
       <AlbumPage
         key={page.id || i}
         page={page}
-        template={template}
         orientation={orientation}
         pageIndex={i}
         editable
         selectedItemId={selectedId}
-        onSelectItem={(item) => onSelect(i, item)}
+        onSelectItem={(item) => onSelectItem(i, item)}
+        onUpdateItem={(itemId, patch) => onUpdateItem(i, itemId, patch)}
       />
     )),
     <React.Fragment key="blank-inner-back">{blank}</React.Fragment>,
-    <CoverBackPage key="cover-back" template={template} country={album.country} year={album.year} orientation={orientation} />,
+    <CoverBackPage
+      key="cover-back"
+      template={template}
+      country={album.country}
+      year={album.year}
+      orientation={orientation}
+      cover={album.cover || {}}
+    />,
   ];
   return <Flipbook ref={bookRef} pages={pages} orientation={orientation} onFlip={onFlip} />;
 }
@@ -465,6 +631,35 @@ function TextEditor({ item, onChange, onRemove }) {
             onChange={(e) => onChange({ color: e.target.value })}
             className="w-6 h-6 cursor-pointer bg-transparent border-0 p-0"
           />
+        </div>
+      </div>
+      <div>
+        <label className="eyebrow block mb-2">Style</label>
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="editor-text-bold"
+            onClick={() => onChange({ font_weight: (item.font_weight === "bold" || item.font_weight === "700") ? "normal" : "bold" })}
+            className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
+              item.font_weight === "bold" || item.font_weight === "700"
+                ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
+                : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+            }`}
+            title="Gras"
+          >
+            <Bold size={14} />
+          </button>
+          <button
+            data-testid="editor-text-italic"
+            onClick={() => onChange({ font_style: item.font_style === "italic" ? "normal" : "italic" })}
+            className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
+              item.font_style === "italic"
+                ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
+                : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+            }`}
+            title="Italique"
+          >
+            <Italic size={14} />
+          </button>
         </div>
       </div>
       <div>
@@ -571,6 +766,227 @@ function PhotoEditor({ item, onChange, onRemove }) {
         <Trash2 size={14} />
         <span className="text-xs font-semibold tracking-widest uppercase">Retirer de la page</span>
       </button>
+    </div>
+  );
+}
+
+// ---------- Cover Editor Panel ----------
+function CoverEditorPanel({ album, coverSel, updateCover, updateCoverItem, addCoverText, addCoverShape, removeCoverItem, onDismiss }) {
+  const cover = album.cover || {};
+  const extras = cover.extra_items || [];
+  const selectedItem = coverSel.mode === "item" ? extras.find((it) => it.id === coverSel.itemId) : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="eyebrow text-[color:var(--coral)]">Couverture</div>
+        <button
+          onClick={onDismiss}
+          className="text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+          data-testid="cover-editor-dismiss"
+          aria-label="Fermer"
+        >
+          <XIcon size={14} />
+        </button>
+      </div>
+
+      {/* Global cover colors — always visible */}
+      <div className="space-y-3">
+        <ColorField
+          label="Couleur de fond"
+          value={cover.bg_color || ""}
+          onChange={(v) => updateCover({ bg_color: v || null })}
+          tid="cover-bg-color"
+          onReset={() => updateCover({ bg_color: null })}
+        />
+        <ColorField
+          label="Couleur d'accent"
+          value={cover.accent_color || ""}
+          onChange={(v) => updateCover({ accent_color: v || null })}
+          tid="cover-accent-color"
+          onReset={() => updateCover({ accent_color: null })}
+        />
+        <ColorField
+          label="Couleur du texte"
+          value={cover.text_color || ""}
+          onChange={(v) => updateCover({ text_color: v || null })}
+          tid="cover-text-color"
+          onReset={() => updateCover({ text_color: null })}
+        />
+      </div>
+
+      {/* Title-specific controls */}
+      {coverSel.mode === "title" && (
+        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
+          <div className="eyebrow">Titre</div>
+          <div>
+            <label className="eyebrow block mb-2">Police</label>
+            <select
+              data-testid="cover-title-font"
+              value={cover.title_font || "'Cormorant Garamond', serif"}
+              onChange={(e) => updateCover({ title_font: e.target.value })}
+              className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white"
+            >
+              <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
+              <option value="'Manrope', sans-serif">Manrope (sans)</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+              <option value="'Courier New', monospace">Courier</option>
+            </select>
+          </div>
+          <div>
+            <label className="eyebrow block mb-2">Taille du titre</label>
+            <input
+              type="range"
+              min={20}
+              max={120}
+              value={cover.title_font_size || 48}
+              onChange={(e) => updateCover({ title_font_size: Number(e.target.value) })}
+              className="w-full"
+              data-testid="cover-title-size"
+            />
+          </div>
+          <button
+            data-testid="cover-title-bold"
+            onClick={() => updateCover({ title_font_weight: (cover.title_font_weight === "bold" || cover.title_font_weight === "700") ? "400" : "bold" })}
+            className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
+              cover.title_font_weight === "bold" || cover.title_font_weight === "700" || cover.title_font_weight === "600"
+                ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
+                : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+            }`}
+            title="Gras"
+          >
+            <Bold size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Individual extra-item controls */}
+      {selectedItem && (
+        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
+          <div className="eyebrow">Élément sélectionné</div>
+          {selectedItem.type === "text" && (
+            <>
+              <textarea
+                data-testid="cover-item-content"
+                value={selectedItem.content || ""}
+                onChange={(e) => updateCoverItem(selectedItem.id, { content: e.target.value })}
+                rows={2}
+                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  data-testid="cover-item-bold"
+                  onClick={() => updateCoverItem(selectedItem.id, { font_weight: selectedItem.font_weight === "bold" ? "normal" : "bold" })}
+                  className={`inline-flex items-center justify-center w-9 h-9 border ${
+                    selectedItem.font_weight === "bold" ? "bg-[color:var(--ink)] text-[color:var(--paper)]" : "border-[color:var(--ink)]/30"
+                  }`}
+                >
+                  <Bold size={14} />
+                </button>
+                <input
+                  type="range"
+                  min={10}
+                  max={72}
+                  value={selectedItem.font_size || 22}
+                  onChange={(e) => updateCoverItem(selectedItem.id, { font_size: Number(e.target.value) })}
+                  className="flex-1"
+                  data-testid="cover-item-size"
+                />
+                <span className="text-xs w-8 text-right">{selectedItem.font_size || 22}px</span>
+              </div>
+              <input
+                type="color"
+                data-testid="cover-item-color"
+                value={selectedItem.color || "#F9F8F6"}
+                onChange={(e) => updateCoverItem(selectedItem.id, { color: e.target.value })}
+                className="w-full h-9 border border-[color:var(--ink)]/20 cursor-pointer"
+              />
+            </>
+          )}
+          {selectedItem.type === "shape" && (
+            <input
+              type="color"
+              data-testid="cover-item-fill"
+              value={selectedItem.fill_color || "#E56B55"}
+              onChange={(e) => updateCoverItem(selectedItem.id, { fill_color: e.target.value })}
+              className="w-full h-9 border border-[color:var(--ink)]/20 cursor-pointer"
+            />
+          )}
+          <button
+            onClick={() => removeCoverItem(selectedItem.id)}
+            className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
+            data-testid="cover-item-remove"
+          >
+            <Trash2 size={14} />
+            <span className="text-xs font-semibold tracking-widest uppercase">Retirer</span>
+          </button>
+        </div>
+      )}
+
+      {/* Add elements */}
+      <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-2">
+        <div className="eyebrow">Ajouter</div>
+        <button
+          data-testid="cover-add-text"
+          onClick={() => addCoverText()}
+          className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
+        >
+          <Type size={14} />
+          <span className="text-xs font-semibold tracking-widest uppercase">Texte</span>
+        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            data-testid="cover-add-rect"
+            onClick={() => addCoverShape("rect")}
+            className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
+          >
+            <Square size={14} />
+            <span className="text-xs font-semibold tracking-widest uppercase">Rect</span>
+          </button>
+          <button
+            data-testid="cover-add-circle"
+            onClick={() => addCoverShape("circle")}
+            className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
+          >
+            <CircleIcon size={14} />
+            <span className="text-xs font-semibold tracking-widest uppercase">Cercle</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-[color:var(--muted)] pt-1">
+          <ClipboardPaste size={12} />
+          <span>Ctrl+V pour coller du texte comme élément</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ColorField({ label, value, onChange, tid, onReset }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className="eyebrow">{label}</label>
+        <button onClick={onReset} className="text-[10px] text-[color:var(--muted)] hover:text-[color:var(--ink)] underline">
+          template
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          data-testid={tid}
+          type="color"
+          value={value || "#000000"}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-9 h-9 border border-[color:var(--ink)]/20 cursor-pointer p-0"
+        />
+        <input
+          type="text"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="par défaut"
+          className="flex-1 border border-[color:var(--ink)]/20 px-2 py-1 text-xs font-mono"
+        />
+      </div>
     </div>
   );
 }

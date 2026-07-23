@@ -188,6 +188,7 @@ class AlbumUpdate(BaseModel):
     pages: Optional[List[Dict[str, Any]]] = None
     status: Optional[str] = None
     cover_image_path: Optional[str] = None
+    cover: Optional[Dict[str, Any]] = None
 
 # ---------- Startup ----------
 @app.on_event("startup")
@@ -250,6 +251,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "status": "draft",
         "pages": [],
         "cover_image_path": None,
+        "cover": {},
         "created_at": now,
         "updated_at": now,
     }
@@ -694,18 +696,51 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         "charcoal-rose": {"bg": "#2A2A28", "accent": "#D89A9E", "text": "#F9F8F6"},
     }
     tpl = templates.get(album.get("cover_template_id", "teal-coral"), templates["teal-coral"])
+    cover = album.get("cover") or {}
+    bg_color = cover.get("bg_color") or tpl["bg"]
+    accent_color = cover.get("accent_color") or tpl["accent"]
+    text_color = cover.get("text_color") or tpl["text"]
+
+    def draw_text_item(item, page_w, page_h, default_color="#1A1A17"):
+        """Draw a text item using its font_weight/font_style. Uses Helvetica family."""
+        weight = str(item.get("font_weight", "normal")).lower()
+        style = str(item.get("font_style", "normal")).lower()
+        is_bold = weight in ("bold", "600", "700", "800", "900") or weight.isdigit() and int(weight) >= 600
+        is_italic = style == "italic"
+        if is_bold and is_italic:
+            font_name = "Helvetica-BoldOblique"
+        elif is_bold:
+            font_name = "Helvetica-Bold"
+        elif is_italic:
+            font_name = "Helvetica-Oblique"
+        else:
+            font_name = "Helvetica"
+        font_size = float(item.get("font_size", 16))
+        c.setFillColor(hex_to_rl_color(item.get("color", default_color)))
+        c.setFont(font_name, font_size)
+        x = item["x"] * page_w
+        y_top = (1 - item["y"]) * page_h
+        # multi-line wrap on newlines
+        for i, line in enumerate((item.get("content", "") or "").split("\n")):
+            c.drawString(x, y_top - font_size * (i + 1), line)
 
     # ---- FRONT COVER PAGE ----
-    c.setFillColor(hex_to_rl_color(tpl["bg"]))
+    c.setFillColor(hex_to_rl_color(bg_color))
     c.rect(0, 0, pw, ph, fill=1, stroke=0)
-    c.setFillColor(hex_to_rl_color(tpl["text"]))
-    c.setFont("Helvetica-Bold", min(pw, ph) * 0.09)
+    c.setFillColor(hex_to_rl_color(text_color))
+    # Title position from cover.title_x / title_y (normalized top-left)
+    title_x_norm = float(cover.get("title_x", 0.08))
+    title_y_norm = float(cover.get("title_y", 0.08))
+    title_font_weight = str(cover.get("title_font_weight", "600"))
+    title_is_bold = title_font_weight in ("bold", "600", "700", "800", "900") or (title_font_weight.isdigit() and int(title_font_weight) >= 600)
+    title_font_name = "Helvetica-Bold" if title_is_bold else "Helvetica"
+    title_font_size = float(cover.get("title_font_size") or (min(pw, ph) * 0.09))
+    c.setFont(title_font_name, title_font_size)
     title = album.get("title", "Album")
-    # word-wrap simple
     words = title.upper().split()
     lines = []
     cur = ""
-    max_chars = int(pw / (min(pw, ph) * 0.045))
+    max_chars = max(1, int(pw / (title_font_size * 0.55)))
     for w in words:
         if len(cur) + len(w) + 1 <= max_chars:
             cur = (cur + " " + w).strip()
@@ -715,24 +750,22 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
             cur = w
     if cur:
         lines.append(cur)
-    y_start = ph * 0.82
-    line_h = min(pw, ph) * 0.095
+    line_h = title_font_size * 1.05
+    title_top = (1 - title_y_norm) * ph
     for i, line in enumerate(lines):
-        c.drawString(pw * 0.08, y_start - i * line_h, line)
+        c.drawString(title_x_norm * pw, title_top - line_h * (i + 1), line)
 
     cover_image_path = album.get("cover_image_path")
     if cover_image_path:
-        # Draw the custom image as a large centered block below the title
         try:
             data, _ = get_object(cover_image_path)
             img = ImageReader(BytesIO(data))
             cx, cy = pw * 0.5, ph * 0.35
-            box_w, box_h = pw * 0.7, ph * 0.5
+            box_w, box_h = pw * 0.8, ph * 0.45
             c.saveState()
             p = c.beginPath()
             p.rect(cx - box_w / 2, cy - box_h / 2, box_w, box_h)
             c.clipPath(p, stroke=0, fill=0)
-            # Determine cover fit
             iw, ih = img.getSize()
             slot_ratio = box_w / box_h
             img_ratio = iw / ih
@@ -746,10 +779,26 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
             c.restoreState()
         except Exception as e:
             logger.error(f"Cover image draw failed: {e}")
-    else:
-        # Accent circle fallback
-        c.setFillColor(hex_to_rl_color(tpl["accent"]))
+    elif not cover.get("hide_illustration"):
+        c.setFillColor(hex_to_rl_color(accent_color))
         c.circle(pw * 0.5, ph * 0.42, min(pw, ph) * 0.18, fill=1, stroke=0)
+
+    # Extra items on cover (text / shape)
+    for item in cover.get("extra_items", []) or []:
+        it_type = item.get("type")
+        if it_type == "text":
+            draw_text_item(item, pw, ph, default_color=text_color)
+        elif it_type == "shape":
+            x = item["x"] * pw
+            y_top = (1 - item["y"]) * ph
+            slot_w = item["w"] * pw
+            slot_h = item["h"] * ph
+            y_bottom = y_top - slot_h
+            c.setFillColor(hex_to_rl_color(item.get("fill_color", accent_color)))
+            if item.get("shape_type") == "circle":
+                c.ellipse(x, y_bottom, x + slot_w, y_bottom + slot_h, fill=1, stroke=0)
+            else:
+                c.rect(x, y_bottom, slot_w, slot_h, fill=1, stroke=0)
     c.showPage()
 
     # ---- CONTENT PAGES ----
@@ -804,18 +853,13 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
                 except Exception as e:
                     logger.error(f"PDF image draw failed: {e}")
             elif item.get("type") == "text":
-                c.setFillColor(hex_to_rl_color(item.get("color", "#1A1A17")))
-                font_size = float(item.get("font_size", 16))
-                c.setFont("Helvetica", font_size)
-                x = item["x"] * pw
-                y_top = (1 - item["y"]) * ph
-                c.drawString(x, y_top - font_size, item.get("content", ""))
+                draw_text_item(item, pw, ph)
         c.showPage()
 
     # ---- BACK COVER ----
-    c.setFillColor(hex_to_rl_color(tpl["bg"]))
+    c.setFillColor(hex_to_rl_color(bg_color))
     c.rect(0, 0, pw, ph, fill=1, stroke=0)
-    c.setFillColor(hex_to_rl_color(tpl["text"]))
+    c.setFillColor(hex_to_rl_color(text_color))
     c.setFont("Helvetica", min(pw, ph) * 0.04)
     country_text = album.get("country", "") or ""
     if country_text:
