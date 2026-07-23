@@ -1,0 +1,62 @@
+{
+  "summary": "First iteration test. Backend: 19/19 pytest tests passed including auth, album CRUD, photo upload, AI processing (Gemini 3 Flash), photo image serving, PDF export and delete. Frontend: Landing/Auth/Dashboard/Wizard flows work. CRITICAL: /editor/:id renders BLANK PAGE — react-pageflip@2.0.3 is incompatible with React 19 and throws 'Failed to execute insertBefore on Node' which crashes the whole editor tree, so editor-save/editor-add-text/editor-prev-page/editor-next-page/editor-export-pdf never mount. Cannot verify editor UI features end-to-end from UI, but the underlying PATCH /albums/{id} (save) and GET /albums/{id}/export (PDF) endpoints work via direct API.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AlbumEditor / Flipbook (react-pageflip)",
+        "issue": "React 19 + react-pageflip 2.0.3 incompatibility. Console throws 'Failed to execute insertBefore on Node: The node before which the new node is to be inserted is not a child of this node' twice, and the entire /editor/:id route renders as a blank page (no sidebar, no flipbook, no controls). All editor data-testids (editor-save, editor-add-text, editor-prev-page, editor-next-page, editor-export-pdf, editor-font-select, editor-color-input, editor-size-input) are therefore non-existent in the DOM.",
+        "selector": "/editor/:id (Flipbook.jsx uses HTMLFlipBook)",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "CreateAlbum wizard",
+        "issue": "photo-input is a visually hidden <input type='file'> (class 'hidden'). Playwright's wait_for_selector for visible fails; set_input_files still works. Minor: consider using visibility:hidden with pointer-events (not display:none) or expose a testable trigger. Not a functional bug.",
+        "selector": "[data-testid='photo-input']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Album editor end-to-end (post AI processing)",
+        "issue": "Frontend editor completely unusable due to Flipbook crash. Users cannot flip pages, add text, save edits, or export PDF from UI. Direct backend export via ?auth= works.",
+        "affected_selectors": ["editor-save", "editor-export-pdf", "editor-add-text", "editor-prev-page", "editor-next-page", "editor-font-select", "editor-color-input", "editor-size-input"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix /app/frontend/src/components/Flipbook.jsx: react-pageflip@2.0.3 is not compatible with React 19. Options: (a) downgrade React to 18.3.x, (b) replace react-pageflip with a React-19-compatible flipbook (e.g. maintained fork or custom CSS 3D flip), (c) lazy-load HTMLFlipBook and wrap it in an error boundary + fallback grid view so the editor sidebar still renders and Save/Export PDF/Add Text continue to work even if the 3D book fails to mount.",
+    "At minimum, wrap <Flipbook> in a React error boundary so a crash there does not blank the entire editor and controls stay usable.",
+    "After fix, re-run frontend flow: signup → wizard (sand-forest / A5 / landscape) → upload 3 photos → wait for processing → verify flipbook renders + prev/next flip pages + editor-add-text opens font/color/size panel + editor-save returns 200 + editor-export-pdf opens a valid PDF."
+  ],
+  "critical_code_review_comments": [
+    "Flipbook.jsx unconditionally renders HTMLFlipBook with no error boundary — any exception from a 3rd-party lib takes down the whole editor route.",
+    "server.py uses global mutable `storage_key` cached across all requests; on 403 it re-inits, but concurrent requests could race. Not blocking, low priority.",
+    "server.py `create_album` returns the album dict which was mutated with _id popped after insert — this is fine but risks accidental Mongo _id leak in future changes; prefer re-reading with projection {_id:0} for consistency (as done in patch/get).",
+    "PATCH /albums accepts arbitrary `pages` list without schema validation — clients can post malformed items. Consider Pydantic sub-model.",
+    "Photo upload silently skips non-image files but does not report skipped filenames back to the client; UX could be improved.",
+    "hard-coded JWT_SECRET fallback ('dev-secret') is present; env is set so OK for now but flag for prod.",
+    "AI batch analyze catches all exceptions and returns default 0.7 score — good fallback, but there is no user-visible signal that AI actually failed vs. succeeded."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19)",
+    "frontend": "60% (landing/auth/dashboard/wizard work; editor route is blank due to react-pageflip crash)"
+  },
+  "test_credentials": "Signup creates fresh users each run (TEST_<uuid>@fable.studio / Test1234!). See /app/memory/test_credentials.md.",
+  "seed_data_creation": "Backend test creates its own user + album + 3 photos and cleans up (delete album). Frontend test also created a signup user (TEST_ui_<uuid>@fable.studio) plus one album that remains.",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Backend is solid — re-running backend_test.py should still pass. For frontend: the fix must ensure /editor/:id at least renders the sidebar controls even if HTMLFlipBook fails. Test images live at /tmp/testimgs/*.jpg (created via PIL). Wizard photo-input is hidden — use page.set_input_files without waiting for visibility. After processing, editor may take 5-15s to become interactive; poll for [data-testid='editor-save'] presence.",
+  "rca of the issue": "Root cause: react-pageflip 2.0.3 relies on legacy React lifecycle behavior and direct DOM manipulation (insertBefore on children) that is incompatible with React 19's stricter reconciliation. Repro: signup → wizard → upload 3 photos → click 'Lancer l'IA' → land on /editor/:id?processing=1 → after processing completes, screen goes blank and DevTools shows 2× 'Failed to execute insertBefore on Node' pageerrors. Because AlbumEditor has no error boundary around <Flipbook>, the entire editor route unmounts. Mitigation: (1) wrap Flipbook in an ErrorBoundary with a static-grid fallback so controls survive; (2) upgrade to a React-19-compatible flipbook lib or downgrade React to 18.3.x in package.json."
+}
