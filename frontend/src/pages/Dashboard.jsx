@@ -18,7 +18,7 @@ export default function Dashboard() {
       const { data } = await api.get("/albums");
       setAlbums(data);
     } catch {
-      toast.error("Impossible de charger vos albums");
+      toast.error("Failed to load your albums");
     } finally {
       setLoading(false);
     }
@@ -29,13 +29,13 @@ export default function Dashboard() {
   }, []);
 
   const remove = async (id, title) => {
-    if (!window.confirm(`Supprimer "${title}" ?`)) return;
+    if (!window.confirm(`Delete "${title}"?`)) return;
     try {
       await api.delete(`/albums/${id}`);
-      toast.success("Album supprimé");
+      toast.success("Album deleted");
       load();
     } catch {
-      toast.error("Suppression impossible");
+      toast.error("Deletion failed");
     }
   };
 
@@ -44,8 +44,8 @@ export default function Dashboard() {
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
           <div>
-            <div className="eyebrow mb-3">Bibliothèque</div>
-            <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">Vos éditions</h1>
+            <div className="eyebrow mb-3">Library</div>
+            <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">Your editions</h1>
           </div>
           <button
             data-testid={TID.dashCreate}
@@ -53,7 +53,7 @@ export default function Dashboard() {
             className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors self-start"
           >
             <Plus size={16} />
-            <span className="text-sm font-semibold tracking-widest uppercase">Nouvel album</span>
+            <span className="text-sm font-semibold tracking-widest uppercase">New album</span>
           </button>
         </div>
 
@@ -65,13 +65,13 @@ export default function Dashboard() {
           </div>
         ) : albums.length === 0 ? (
           <div className="border border-dashed border-[color:var(--ink)]/20 py-24 px-8 text-center">
-            <p className="font-serif-display text-3xl mb-4">Aucun album pour l'instant.</p>
-            <p className="text-[color:var(--ink)]/70 mb-8">Créez votre première édition en quelques minutes.</p>
+            <p className="font-serif-display text-3xl mb-4">No albums yet.</p>
+            <p className="text-[color:var(--ink)]/70 mb-8">Create your first edition in a few minutes.</p>
             <button
               onClick={() => nav("/create")}
               className="bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 text-sm font-semibold tracking-widest uppercase hover:bg-[color:var(--coral)] transition-colors"
             >
-              Commencer
+              Get started
             </button>
           </div>
         ) : (
@@ -81,7 +81,7 @@ export default function Dashboard() {
               return (
                 <div key={a.id} className="group animate-fade-up" data-testid={TID.albumCard}>
                   <Link to={`/editor/${a.id}`} className="block relative">
-                    <CoverFront template={tpl} title={a.title || "Sans titre"} small />
+                    <CoverFront template={tpl} title={a.title || "Untitled"} small />
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/30 flex items-center justify-center transition-opacity">
                       <ArrowUpRight className="text-white" size={32} />
                     </div>
@@ -90,7 +90,7 @@ export default function Dashboard() {
                     <div>
                       <div className="font-serif-display text-xl leading-tight">{a.title}</div>
                       <div className="eyebrow mt-1 text-[color:var(--muted)]">
-                        {a.country || "—"} · {a.year} · {a.size} {a.orientation === "landscape" ? "paysage" : "portrait"}
+                        {a.country || "—"} · {a.year} · {a.size} {a.orientation === "landscape" ? "landscape" : "portrait"}
                       </div>
                       <div className="text-xs mt-2 uppercase tracking-widest text-[color:var(--coral)]">
                         {statusLabel(a.status)}
@@ -100,7 +100,7 @@ export default function Dashboard() {
                       onClick={() => remove(a.id, a.title)}
                       className="text-[color:var(--muted)] hover:text-red-600 transition-colors"
                       data-testid={`album-delete-${a.id}`}
-                      aria-label="Supprimer"
+                      aria-label="Delete"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -118,13 +118,13 @@ export default function Dashboard() {
 function statusLabel(s) {
   switch (s) {
     case "draft":
-      return "Brouillon";
+      return "Draft";
     case "processing":
-      return "IA en cours";
+      return "AI processing";
     case "ready":
-      return "Prêt";
+      return "Ready";
     case "error":
-      return "Erreur";
+      return "Error";
     default:
       return s || "—";
   }

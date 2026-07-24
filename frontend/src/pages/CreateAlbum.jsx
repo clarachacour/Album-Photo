@@ -7,7 +7,7 @@ import { CoverMockup } from "@/components/CoverPreview";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, ArrowLeft, Upload, Loader2, Sparkles, X } from "lucide-react";
 
-const STEPS = ["Couverture", "Format", "Détails", "Photos"];
+const STEPS = ["Cover", "Format", "Details", "Pictures"];
 
 export default function CreateAlbum() {
   const [step, setStep] = useState(0);
@@ -48,7 +48,7 @@ export default function CreateAlbum() {
     try {
       // 1. Create album
       const { data: album } = await api.post("/albums", {
-        title: title.trim() || "Sans titre",
+        title: title.trim() || "Untitled",
         country: country.trim(),
         year: Number(year) || new Date().getFullYear(),
         cover_template_id: templateId,
@@ -57,7 +57,7 @@ export default function CreateAlbum() {
       });
       setAlbumId(album.id);
 
-      // 2. Upload photos in chunks of 10
+      // 2. Upload photos in chunks
       const chunkSize = 8;
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
@@ -70,10 +70,10 @@ export default function CreateAlbum() {
 
       // 3. Start AI processing (background)
       await api.post(`/albums/${album.id}/process`);
-      toast.success("L'IA compose votre album…");
+      toast.success("AI is composing your album...");
       nav(`/editor/${album.id}?processing=1`);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Erreur lors de la création");
+      toast.error(err?.response?.data?.detail || "Error during creation");
       setBusy(false);
     }
   };
@@ -126,7 +126,7 @@ export default function CreateAlbum() {
             onClick={step === 0 ? () => nav("/dashboard") : prev}
             className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
           >
-            <ArrowLeft size={16} /> {step === 0 ? "Annuler" : "Retour"}
+            <ArrowLeft size={16} /> {step === 0 ? "Cancel" : "Back"}
           </button>
           {step < STEPS.length - 1 ? (
             <button
@@ -135,7 +135,7 @@ export default function CreateAlbum() {
               disabled={!canProceed()}
               className="inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-40"
             >
-              <span className="text-sm font-semibold tracking-widest uppercase">Continuer</span>
+              <span className="text-sm font-semibold tracking-widest uppercase">Continue</span>
               <ArrowRight size={16} />
             </button>
           ) : (
@@ -146,7 +146,7 @@ export default function CreateAlbum() {
               className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Lancer l'IA</span>
+              <span className="text-sm font-semibold tracking-widest uppercase">Start AI</span>
             </button>
           )}
         </div>
@@ -160,9 +160,9 @@ function StepCover({ templateId, setTemplateId }) {
   return (
     <section className="animate-fade-up">
       <div className="mb-10 max-w-2xl">
-        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Choisissez votre couverture.</h2>
+        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Choose your cover.</h2>
         <p className="text-[color:var(--ink)]/70">
-          Six esthétiques inspirées des livres coffee-table. Vous pourrez personnaliser le titre et le pays juste après.
+          Six aesthetics inspired by coffee-table books. You can customize the title and country right after.
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
@@ -195,20 +195,34 @@ function sampleTitle(id) {
     "teal-coral": "Western Australia",
     "sand-forest": "Marrakech",
     "navy-blush": "Tokyo Neon",
-    "terracotta-cream": "Sahara Sud",
+    "terracotta-cream": "Sahara South",
     "forest-gold": "Nordic Trails",
     "charcoal-rose": "Paris Nocturne",
   }[id] || "Album";
 }
 
 function StepFormat({ size, setSize, orientation, setOrientation, template }) {
+  const getAspectClass = () => {
+    if (orientation === "landscape") {
+      return "aspect-[1.414/1]";
+    } else {
+      return "aspect-[1/1.414]";
+    }
+  };
+
+  const sizeContainerStyle = {
+    maxWidth: orientation === "landscape" 
+      ? (size === "A4" ? "560px" : "440px")
+      : (size === "A4" ? "400px" : "320px"),
+  };
+
   return (
     <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
       <div>
         <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Format & orientation.</h2>
-        <p className="text-[color:var(--ink)]/70 mb-10">Le rendu final imprimable.</p>
+        <p className="text-[color:var(--ink)]/70 mb-10">The final printable output.</p>
         <div className="mb-10">
-          <div className="eyebrow mb-4">Taille</div>
+          <div className="eyebrow mb-4">Size</div>
           <div className="flex gap-3">
             {["A4", "A5"].map((s) => (
               <button
@@ -232,7 +246,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, template }) {
           <div className="flex gap-3">
             {[
               { v: "portrait", l: "Portrait" },
-              { v: "landscape", l: "Paysage" },
+              { v: "landscape", l: "Landscape" },
             ].map((o) => (
               <button
                 key={o.v}
@@ -253,15 +267,16 @@ function StepFormat({ size, setSize, orientation, setOrientation, template }) {
       </div>
       <div className="flex items-center justify-center">
         <div
-          className={`bg-[color:var(--editor-canvas)] p-8 ${
-            orientation === "landscape" ? "w-full max-w-[520px]" : "w-full max-w-[380px]"
-          }`}
+          className="bg-[color:var(--editor-canvas)] p-8 transition-all duration-300 flex items-center justify-center w-full"
         >
-          <div className={`${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-white relative`} style={{ background: template.bg }}>
+          <div 
+            className={`${getAspectClass()} bg-white relative transition-all duration-300 shadow-sm`} 
+            style={{ background: template.bg, width: "100%", ...sizeContainerStyle }}
+          >
             <div className="absolute inset-0 grain" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-serif-display text-2xl" style={{ color: template.text }}>
-                {size} · {orientation === "landscape" ? "paysage" : "portrait"}
+              <span className="font-serif-display text-xl md:text-2xl" style={{ color: template.text }}>
+                {size} · {orientation === "landscape" ? "landscape" : "portrait"}
               </span>
             </div>
           </div>
@@ -275,31 +290,31 @@ function StepDetails({ title, setTitle, country, setCountry, year, setYear, temp
   return (
     <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
       <div>
-        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Le titre & le lieu.</h2>
-        <p className="text-[color:var(--ink)]/70 mb-10">Ils apparaîtront sur la couverture, la reliure et l'arrière du livre.</p>
+        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Title & location.</h2>
+        <p className="text-[color:var(--ink)]/70 mb-10">They will appear on the cover, spine, and back of the book.</p>
         <div className="space-y-8 max-w-md">
           <div>
-            <label className="eyebrow block mb-2">Titre</label>
+            <label className="eyebrow block mb-2">Title</label>
             <input
               data-testid={TID.wizardTitleInput}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="ex. Western Australia"
+              placeholder="e.g. Western Australia"
               className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 font-serif-display text-2xl"
             />
           </div>
           <div>
-            <label className="eyebrow block mb-2">Pays / lieu</label>
+            <label className="eyebrow block mb-2">Country / location</label>
             <input
               data-testid={TID.wizardCountryInput}
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              placeholder="ex. Australia"
+              placeholder="e.g. Australia"
               className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 font-serif-display text-2xl"
             />
           </div>
           <div>
-            <label className="eyebrow block mb-2">Année</label>
+            <label className="eyebrow block mb-2">Year</label>
             <input
               data-testid={TID.wizardYearInput}
               type="number"
@@ -311,7 +326,7 @@ function StepDetails({ title, setTitle, country, setCountry, year, setYear, temp
         </div>
       </div>
       <div>
-        <CoverMockup template={template} title={title || "Votre titre"} country={country || "Pays"} year={year} showLabels />
+        <CoverMockup template={template} title={title || "Your title"} country={country || "Country"} year={year} showLabels />
       </div>
     </section>
   );
@@ -321,9 +336,9 @@ function StepPhotos({ files, handleFiles, removeFile, fileInput }) {
   const [drag, setDrag] = useState(false);
   return (
     <section className="animate-fade-up">
-      <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Déposez vos photos.</h2>
+      <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Drop your photos.</h2>
       <p className="text-[color:var(--ink)]/70 mb-10">
-        Toutes vos photos, dans le désordre. L'IA se chargera du reste : tri, doublons, mise en page.
+        All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.
       </p>
 
       <div
@@ -344,8 +359,8 @@ function StepPhotos({ files, handleFiles, removeFile, fileInput }) {
         }`}
       >
         <Upload size={32} className="mx-auto mb-4 text-[color:var(--muted)]" />
-        <p className="font-serif-display text-2xl mb-2">Glissez vos images ici</p>
-        <p className="text-[color:var(--muted)] text-sm">ou cliquez pour parcourir · JPG, PNG, WEBP</p>
+        <p className="font-serif-display text-2xl mb-2">Drag your images here</p>
+        <p className="text-[color:var(--muted)] text-sm">or click to browse · JPG, PNG, WEBP</p>
         <input
           ref={fileInput}
           data-testid={TID.photoInput}
@@ -359,7 +374,7 @@ function StepPhotos({ files, handleFiles, removeFile, fileInput }) {
 
       {files.length > 0 && (
         <div className="mt-10">
-          <div className="eyebrow mb-4">{files.length} photo{files.length > 1 ? "s" : ""} · l'IA choisira les meilleures</div>
+          <div className="eyebrow mb-4">{files.length} photo{files.length > 1 ? "s" : ""} · AI will choose the best ones</div>
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2">
             {files.map((f, i) => (
               <div key={i} className="relative aspect-square bg-[color:var(--editor-canvas)] overflow-hidden group">
@@ -370,7 +385,7 @@ function StepPhotos({ files, handleFiles, removeFile, fileInput }) {
                     removeFile(i);
                   }}
                   className="absolute top-1 right-1 bg-[color:var(--ink)] text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Retirer"
+                  aria-label="Remove"
                 >
                   <X size={12} />
                 </button>

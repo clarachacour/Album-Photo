@@ -12,19 +12,16 @@ export default function Landing() {
       <section className="pt-32 md:pt-40 pb-24 md:pb-32 px-6 md:px-12">
         <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 items-end">
           <div className="md:col-span-7 animate-fade-up">
-            <div className="eyebrow mb-6">
-              Album Studio · Édition n° 001
-            </div>
             <h1
               className="font-serif-display leading-[0.92] tracking-tight text-[color:var(--ink)]"
               style={{ fontSize: "clamp(48px, 8vw, 128px)", fontWeight: 500 }}
             >
-              Un livre photo
+              A photo book
               <br />
-              <span className="italic text-[color:var(--coral)]">signé</span> par vos souvenirs.
+              <span className="italic text-[color:var(--coral)]">signed</span> by your memories.
             </h1>
             <p className="mt-8 text-lg md:text-xl text-[color:var(--ink)]/70 max-w-xl leading-relaxed font-sans">
-              Déposez vos photos en vrac. Notre IA les trie, écarte les doublons et compose un album coffee-table élégant, prêt à imprimer.
+              Upload your photos, and we'll turn them into a refined printed album, crafted to feel timeless and made to be kept
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
@@ -32,11 +29,11 @@ export default function Landing() {
                 data-testid={TID.landingCta}
                 className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors duration-300"
               >
-                <span className="text-sm font-semibold tracking-widest uppercase">Créer mon album</span>
+                <span className="text-sm font-semibold tracking-widest uppercase">Create my album</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <a href="#templates" data-testid={TID.landingSecondaryCta} className="text-sm font-semibold tracking-widest uppercase text-[color:var(--ink)]/60 hover:text-[color:var(--ink)] px-2 py-2 border-b border-[color:var(--ink)]/40 transition-colors">
-                Voir les couvertures
+                View covers
               </a>
             </div>
           </div>
@@ -61,20 +58,20 @@ export default function Landing() {
           {[
             {
               icon: <Wand2 size={22} />,
-              title: "Vous déposez",
-              body: "Toutes vos photos, dans le désordre — doublons, ratés, HDR. On accepte tout.",
+              title: "You upload",
+              body: "All your photos, unorganized — duplicates, blurry shots, HDR. We accept everything.",
               n: "01",
             },
             {
               icon: <Sparkles size={22} />,
-              title: "L'IA trie",
-              body: "Gemini analyse chaque cliché : composition, doublons, regroupement par scène.",
+              title: "AI sorts",
+              body: "Gemini analyzes each shot: composition, duplicates, and grouping by scene.",
               n: "02",
             },
             {
               icon: <BookOpen size={22} />,
-              title: "Vous feuilletez",
-              body: "Un flipbook 3D, une mise en page variée, un export PDF haute résolution.",
+              title: "You flip",
+              body: "A 3D flipbook, varied layouts, and a high-resolution PDF export.",
               n: "03",
             },
           ].map((s, i) => (
@@ -96,10 +93,10 @@ export default function Landing() {
       <section id="templates" className="py-24 md:py-32 px-6 md:px-12">
         <div className="max-w-[1400px] mx-auto">
           <div className="mb-16 md:mb-24 max-w-2xl">
-            <div className="eyebrow mb-4">Bibliothèque</div>
+            <div className="eyebrow mb-4">Library</div>
             <h2 className="font-serif-display text-4xl md:text-6xl tracking-tight leading-[1]">
-              Six couvertures.<br />
-              <em className="not-italic text-[color:var(--muted)]">Une infinité d'histoires.</em>
+              Six covers.<br />
+              <em className="not-italic text-[color:var(--muted)]">Endless stories.</em>
             </h2>
           </div>
 
@@ -126,14 +123,14 @@ export default function Landing() {
       <section className="py-24 md:py-32 px-6 md:px-12 bg-[color:var(--ink)] text-[color:var(--paper)]">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-end justify-between gap-8">
           <h2 className="font-serif-display text-5xl md:text-7xl leading-[0.95] max-w-2xl">
-            Prêt à composer<br />votre édition ?
+            Ready to design<br />your edition?
           </h2>
           <Link
             to="/auth"
             className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)] transition-colors duration-300"
             data-testid="footer-cta"
           >
-            <span className="text-sm font-semibold tracking-widest uppercase">Ouvrir Fable Studio</span>
+            <span className="text-sm font-semibold tracking-widest uppercase">Create my photo album</span>
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -147,7 +144,7 @@ function sampleTitle(id) {
     "teal-coral": "Western Australia",
     "sand-forest": "Marrakech",
     "navy-blush": "Tokyo Neon",
-    "terracotta-cream": "Sahara Sud",
+    "terracotta-cream": "Sahara South",
     "forest-gold": "Nordic Trails",
     "charcoal-rose": "Paris Nocturne",
   }[id] || "Album";
@@ -155,10 +152,10 @@ function sampleTitle(id) {
 function sampleCountry(id) {
   return {
     "teal-coral": "Australia",
-    "sand-forest": "Maroc",
-    "navy-blush": "Japon",
-    "terracotta-cream": "Algérie",
-    "forest-gold": "Norvège",
+    "sand-forest": "Morocco",
+    "navy-blush": "Japan",
+    "terracotta-cream": "Algeria",
+    "forest-gold": "Norway",
     "charcoal-rose": "France",
   }[id] || "";
 }

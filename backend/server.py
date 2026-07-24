@@ -70,15 +70,21 @@ def init_storage() -> Optional[str]:
     return "local_storage_active"
 
 # Exemple de correction dans la fonction de sauvegarde locale (put_object ou équivalent)
-def put_object(path: str, data: bytes):
+def put_object(path, data, content_type=None):
+    """Sauvegarde locale sécurisée du fichier et retourne un dictionnaire avec le chemin et la taille."""
     file_path = LOCAL_STORAGE_DIR / path
     
-    # 1. Créer tous les dossiers parents s'ils n'existent pas (parents=True, exist_ok=True)
+    # S'assure uniquement que les dossiers parents existent sans perturber la racine 'uploads'
     file_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # 2. Écrire le fichier en toute sécurité
+    # Écriture propre des octets de l'image
     file_path.write_bytes(data)
     
+    return {
+        "path": path,
+        "size": len(data)
+    }
+
 def get_object(path: str) -> tuple:
     """Lit le fichier directement depuis le dossier uploads du PC."""
     try:
@@ -587,13 +593,29 @@ async def run_ai_processing(album_id: str, user_id: str):
             await db.albums.update_one({"id": album_id}, {"$set": {"status": "ready", "pages": []}})
             return
 
+        # Préparation des données pour l'IA (en allant chercher les bytes de chaque image)
+        photos_with_bytes = []
+        for p in photos:
+            try:
+                # Récupération des octets via le chemin de stockage local
+                img_data, ctype = get_object(p["storage_path"])
+                photos_with_bytes.append({
+                    "id": p["id"],
+                    "bytes": img_data,
+                    "mime_type": p.get("content_type") or ctype
+                })
+            except Exception as e:
+                logger.error(f"Impossible de lire les bytes pour la photo {p['id']}: {e}")
+
         # Analyze in batches of 5
         BATCH = 5
         all_results = {}
-        for i in range(0, len(photos), BATCH):
-            batch = photos[i:i + BATCH]
+        for i in range(0, len(photos_with_bytes), BATCH):
+            batch = photos_with_bytes[i:i + BATCH]
             results = await analyze_photo_batch(batch)
-            all_results.update(results)
+            # analyze_photo_batch retourne une liste de dictionnaires avec "photo_id"
+            for res in results:
+                all_results[res.get("photo_id")] = res
 
         # Update photos with AI data
         for p in photos:
@@ -619,7 +641,7 @@ async def run_ai_processing(album_id: str, user_id: str):
         selected = []
         for g, items in by_group.items():
             items.sort(key=lambda x: -(x.get("ai_score") or 0))
-            # Keep top 60% per group, min 1
+            # Keep top 75% per group, min 1
             keep_count = max(1, int(len(items) * 0.75))
             keep = items[:keep_count]
             drop = items[keep_count:]

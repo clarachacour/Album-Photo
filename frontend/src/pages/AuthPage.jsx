@@ -23,14 +23,14 @@ export default function AuthPage() {
     try {
       if (mode === "signup") {
         await signup(name.trim(), email.trim().toLowerCase(), password);
-        toast.success("Bienvenue !");
+        toast.success("Welcome!");
       } else {
         await login(email.trim().toLowerCase(), password);
-        toast.success("Ravi de vous revoir");
+        toast.success("Welcome back!");
       }
       nav("/dashboard");
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Une erreur est survenue");
+      toast.error(err?.response?.data?.detail || "An error occurred");
     } finally {
       setBusy(false);
     }
@@ -42,21 +42,21 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8 md:p-16 bg-[color:var(--paper)]">
         <div className="w-full max-w-md">
           <Link to="/" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
-            ← Retour
+            ← Back
           </Link>
           <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight mb-3">
-            {mode === "login" ? "Bienvenue." : "Créons votre édition."}
+            {mode === "login" ? "Welcome back !" : "Create your first edition."}
           </h1>
           <p className="text-[color:var(--ink)]/70 mb-10">
             {mode === "login"
-              ? "Connectez-vous pour retrouver vos albums."
-              : "Un compte pour composer, sauvegarder, exporter."}
+              ? "Sign in to access your albums."
+              : "One account to create, save, and export."}
           </p>
 
           <form onSubmit={submit} className="space-y-5">
             {mode === "signup" && (
               <div>
-                <label className="eyebrow block mb-2">Nom</label>
+                <label className="eyebrow block mb-2">Name</label>
                 <input
                   data-testid={TID.authNameInput}
                   value={name}
@@ -78,7 +78,7 @@ export default function AuthPage() {
               />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Mot de passe</label>
+              <label className="eyebrow block mb-2">Password</label>
               <input
                 data-testid={TID.authPasswordInput}
                 type="password"
@@ -97,7 +97,7 @@ export default function AuthPage() {
             >
               {busy && <Loader2 size={16} className="animate-spin" />}
               <span className="text-sm font-semibold tracking-widest uppercase">
-                {mode === "login" ? "Se connecter" : "Créer mon compte"}
+                {mode === "login" ? "Sign in" : "Create account"}
               </span>
             </button>
           </form>
@@ -107,7 +107,7 @@ export default function AuthPage() {
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
             className="mt-8 text-sm text-[color:var(--muted)] hover:text-[color:var(--ink)] underline underline-offset-4 transition-colors"
           >
-            {mode === "login" ? "Pas encore de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
+            {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>
         </div>
       </div>
