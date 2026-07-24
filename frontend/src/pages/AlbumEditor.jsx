@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { api, pdfExportUrl, coverImageUrl } from "@/lib/api";
+import { api, pdfExportUrl, coverImageUrl, coverAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { getTemplate, COVER_TEMPLATES } from "@/lib/coverTemplates";
+import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
+import { CoverEditorPanel } from "@/components/CoverEditorPanel";
+import { CoverSpine } from "@/components/CoverSpine";
+import { makeCoverEditingActions } from "@/lib/coverEditing";
 import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import Flipbook from "@/components/Flipbook";
 import PhotoTray from "@/components/PhotoTray";
@@ -27,7 +30,7 @@ export default function AlbumEditor() {
   const isCreating = !id || id === "new";
 
   // --- États du Formulaire de Création ---
-  const [templateId, setTemplateId] = useState(COVER_TEMPLATES?.[0]?.id || "minimal");
+  const [templateId, setTemplateId] = useState(COVER_COLOR_PRESETS?.[0]?.id || "default");
   const [size, setSize] = useState("A4");
   const [orientation, setOrientation] = useState("portrait");
   const [title, setTitle] = useState("");
@@ -82,6 +85,7 @@ export default function AlbumEditor() {
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coverSel, isCreating]);
 
   useEffect(() => {
@@ -102,9 +106,9 @@ export default function AlbumEditor() {
     return () => clearInterval(interval);
   }, [processing, id, loadAlbum, isCreating]);
 
-  const template = isCreating 
-    ? COVER_TEMPLATES.find((t) => t.id === templateId) 
-    : (album ? getTemplate(album.cover_template_id) : null);
+  const template = isCreating
+    ? getTemplate()
+    : (album ? getTemplate() : null);
 
   const handleFiles = (list) => {
     const arr = Array.from(list).filter((f) => f.type.startsWith("image/"));
@@ -131,7 +135,6 @@ export default function AlbumEditor() {
         title: title.trim(),
         country: country.trim(),
         year: Number(year) || new Date().getFullYear(),
-        cover_template_id: templateId,
         size,
         orientation,
       });
@@ -159,7 +162,7 @@ export default function AlbumEditor() {
     if (!album) return;
     setSaving(true);
     try {
-      await api.patch(`/albums/${id}`, { pages: album.pages, cover: album.cover || {} });
+      await api.patch(`/albums/${id}`, { title: album.title, pages: album.pages, cover: album.cover || {} });
       toast.success("Enregistré");
     } catch {
       toast.error("Enregistrement impossible");
@@ -203,73 +206,8 @@ export default function AlbumEditor() {
     setSelected((prev) => (prev && prev.item?.id === itemId ? { ...prev, item: { ...prev.item, ...patch } } : prev));
   };
 
-  const updateCover = (patch) => {
-    setAlbum((prev) => ({ ...prev, cover: { ...(prev.cover || {}), ...patch } }));
-  };
-
-  const updateCoverItem = (itemId, patch) => {
-    setAlbum((prev) => {
-      const cover = prev.cover || {};
-      const items = (cover.extra_items || []).map((it) => (it.id === itemId ? { ...it, ...patch } : it));
-      return { ...prev, cover: { ...cover, extra_items: items } };
-    });
-    setCoverSel((prev) => (prev && prev.mode === "item" && prev.itemId === itemId ? { ...prev } : prev));
-  };
-
-  const addCoverText = (content = "Nouveau texte") => {
-    const newItem = {
-      id: cryptoRandom(),
-      type: "text",
-      content,
-      x: 0.1,
-      y: 0.5,
-      w: 0.5,
-      h: 0.08,
-      font: "'Manrope', sans-serif",
-      color: album?.cover?.text_color || "#F9F8F6",
-      font_size: 22,
-      font_weight: "normal",
-    };
-    setAlbum((prev) => {
-      const cover = prev.cover || {};
-      return { ...prev, cover: { ...cover, extra_items: [...(cover.extra_items || []), newItem] } };
-    });
-    setCoverSel({ mode: "item", itemId: newItem.id });
-    toast.success("Texte ajouté à la couverture");
-  };
-
-  const addCoverShape = (shape_type = "rect") => {
-    const newItem = {
-      id: cryptoRandom(),
-      type: "shape",
-      shape_type,
-      x: 0.3,
-      y: 0.6,
-      w: 0.15,
-      h: 0.15,
-      fill_color: album?.cover?.accent_color || "#E56B55",
-    };
-    setAlbum((prev) => {
-      const cover = prev.cover || {};
-      return { ...prev, cover: { ...cover, extra_items: [...(cover.extra_items || []), newItem] } };
-    });
-    setCoverSel({ mode: "item", itemId: newItem.id });
-    toast.success("Forme ajoutée");
-  };
-
-  const removeCoverItem = (itemId) => {
-    setAlbum((prev) => {
-      const cover = prev.cover || {};
-      return {
-        ...prev,
-        cover: {
-          ...cover,
-          extra_items: (cover.extra_items || []).filter((it) => it.id !== itemId),
-        },
-      };
-    });
-    setCoverSel(null);
-  };
+  const { updateCover, updateAlbumTitle, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
+    makeCoverEditingActions({ setAlbum, albumId: id, coverSel, setCoverSel });
 
   const addTextToCurrentPage = () => {
     if (!album || !album.pages || album.pages.length === 0) return;
@@ -460,7 +398,7 @@ export default function AlbumEditor() {
               <div>
                 <label className="eyebrow block mb-2">Style de couverture</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {COVER_TEMPLATES.map((t) => (
+                  {COVER_COLOR_PRESETS.map((t) => (
                     <div
                       key={t.id}
                       onClick={() => setTemplateId(t.id)}
@@ -570,7 +508,7 @@ export default function AlbumEditor() {
   // RENDU : ÉDITEUR D'ALBUM PRINCIPAL
   // ==========================================
   const albumOrientation = album?.orientation || "portrait";
-  const albumTemplate = getTemplate(album.cover_template_id);
+  const albumTemplate = getTemplate();
 
   return (
     <main className="min-h-screen bg-[color:var(--editor-canvas)] pt-20 pb-24 relative">
@@ -601,9 +539,9 @@ export default function AlbumEditor() {
             }}
             coverImageUrl={album.cover_image_path ? coverImageUrl(id, coverVersion) : null}
             coverSel={coverSel}
-            onSelectCover={() => { setSelected(null); setCoverSel({ mode: "cover" }); }}
-            onSelectCoverTitle={() => { setSelected(null); setCoverSel({ mode: "title" }); }}
-            onSelectCoverItem={(item) => { setSelected(null); setCoverSel({ mode: "item", itemId: item.id }); }}
+            onSelectCover={(side = "front") => { setSelected(null); setCoverSel({ mode: "cover", side }); }}
+            onSelectCoverTitle={() => { setSelected(null); setCoverSel({ mode: "title", side: "front" }); }}
+            onSelectCoverItem={(item, side = "front") => { setSelected(null); setCoverSel({ mode: "item", side, itemId: item.id }); }}
             onUpdateCoverTitle={(patch) => updateCover(patch)}
             onUpdateCoverItem={updateCoverItem}
           />
@@ -728,7 +666,9 @@ export default function AlbumEditor() {
                 updateCoverItem={updateCoverItem}
                 addCoverText={addCoverText}
                 addCoverShape={addCoverShape}
+                addCoverImage={addCoverImage}
                 removeCoverItem={removeCoverItem}
+                updateAlbumTitle={updateAlbumTitle}
                 onDismiss={() => setCoverSel(null)}
               />
             ) : selected ? (
@@ -792,13 +732,13 @@ function BookRenderer({
       coverImageUrl={coverImageUrl}
       cover={album.cover || {}}
       editable
-      onSelectCover={onSelectCover}
+      onSelectCover={() => onSelectCover("front")}
       onSelectTitle={onSelectCoverTitle}
-      onSelectItem={onSelectCoverItem}
+      onSelectItem={(item) => onSelectCoverItem(item, "front")}
       onUpdateTitle={onUpdateCoverTitle}
-      onUpdateItem={onUpdateCoverItem}
+      onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "front")}
       titleSelected={coverSel?.mode === "title"}
-      selectedItemId={coverSel?.mode === "item" ? coverSel.itemId : null}
+      selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
     />,
     <React.Fragment key="blank-inner-front">{blank}</React.Fragment>,
     ...(album.pages || []).map((page, i) => (
@@ -821,6 +761,11 @@ function BookRenderer({
       year={album.year}
       orientation={orientation}
       cover={album.cover || {}}
+      editable
+      onSelectCover={() => onSelectCover("back")}
+      onSelectItem={(item) => onSelectCoverItem(item, "back")}
+      onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "back")}
+      selectedItemId={coverSel?.mode === "item" && coverSel?.side === "back" ? coverSel.itemId : null}
     />,
   ];
   return <Flipbook ref={bookRef} pages={pages} orientation={orientation} onFlip={onFlip} />;
@@ -983,222 +928,6 @@ function PhotoEditor({ item, onChange, onRemove }) {
         <Trash2 size={14} />
         <span className="text-xs font-semibold tracking-widest uppercase">Retirer de la page</span>
       </button>
-    </div>
-  );
-}
-
-function CoverEditorPanel({ album, coverSel, updateCover, updateCoverItem, addCoverText, addCoverShape, removeCoverItem, onDismiss }) {
-  const cover = album.cover || {};
-  const extras = cover.extra_items || [];
-  const selectedItem = coverSel.mode === "item" ? extras.find((it) => it.id === coverSel.itemId) : null;
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="eyebrow text-[color:var(--coral)]">Couverture</div>
-        <button
-          onClick={onDismiss}
-          className="text-[color:var(--muted)] hover:text-[color:var(--ink)]"
-          data-testid="cover-editor-dismiss"
-          aria-label="Fermer"
-        >
-          <XIcon size={14} />
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        <ColorField
-          label="Couleur de fond"
-          value={cover.bg_color || ""}
-          onChange={(v) => updateCover({ bg_color: v || null })}
-          tid="cover-bg-color"
-          onReset={() => updateCover({ bg_color: null })}
-        />
-        <ColorField
-          label="Couleur d'accent"
-          value={cover.accent_color || ""}
-          onChange={(v) => updateCover({ accent_color: v || null })}
-          tid="cover-accent-color"
-          onReset={() => updateCover({ accent_color: null })}
-        />
-        <ColorField
-          label="Couleur du texte"
-          value={cover.text_color || ""}
-          onChange={(v) => updateCover({ text_color: v || null })}
-          tid="cover-text-color"
-          onReset={() => updateCover({ text_color: null })}
-        />
-      </div>
-
-      {coverSel.mode === "title" && (
-        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
-          <div className="eyebrow">Titre</div>
-          <div>
-            <label className="eyebrow block mb-2">Police</label>
-            <select
-              data-testid="cover-title-font"
-              value={cover.title_font || "'Cormorant Garamond', serif"}
-              onChange={(e) => updateCover({ title_font: e.target.value })}
-              className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white"
-            >
-              <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
-              <option value="'Manrope', sans-serif">Manrope (sans)</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Helvetica, Arial, sans-serif">Helvetica</option>
-              <option value="'Courier New', monospace">Courier</option>
-            </select>
-          </div>
-          <div>
-            <label className="eyebrow block mb-2">Taille du titre</label>
-            <input
-              type="range"
-              min={20}
-              max={120}
-              value={cover.title_font_size || 48}
-              onChange={(e) => updateCover({ title_font_size: Number(e.target.value) })}
-              className="w-full"
-              data-testid="cover-title-size"
-            />
-          </div>
-          <button
-            data-testid="cover-title-bold"
-            onClick={() => updateCover({ title_font_weight: (cover.title_font_weight === "bold" || cover.title_font_weight === "700") ? "400" : "bold" })}
-            className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
-              cover.title_font_weight === "bold" || cover.title_font_weight === "700" || cover.title_font_weight === "600"
-                ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
-                : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
-            }`}
-            title="Gras"
-          >
-            <Bold size={14} />
-          </button>
-        </div>
-      )}
-
-      {selectedItem && (
-        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
-          <div className="eyebrow">Élément sélectionné</div>
-          {selectedItem.type === "text" && (
-            <>
-              <textarea
-                data-testid="cover-item-content"
-                value={selectedItem.content || ""}
-                onChange={(e) => updateCoverItem(selectedItem.id, { content: e.target.value })}
-                rows={2}
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm"
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  data-testid="cover-item-bold"
-                  onClick={() => updateCoverItem(selectedItem.id, { font_weight: selectedItem.font_weight === "bold" ? "normal" : "bold" })}
-                  className={`inline-flex items-center justify-center w-9 h-9 border ${
-                    selectedItem.font_weight === "bold" ? "bg-[color:var(--ink)] text-[color:var(--paper)]" : "border-[color:var(--ink)]/30"
-                  }`}
-                >
-                  <Bold size={14} />
-                </button>
-                <input
-                  type="range"
-                  min={10}
-                  max={72}
-                  value={selectedItem.font_size || 22}
-                  onChange={(e) => updateCoverItem(selectedItem.id, { font_size: Number(e.target.value) })}
-                  className="flex-1"
-                  data-testid="cover-item-size"
-                />
-                <span className="text-xs w-8 text-right">{selectedItem.font_size || 22}px</span>
-              </div>
-              <input
-                type="color"
-                data-testid="cover-item-color"
-                value={selectedItem.color || "#F9F8F6"}
-                onChange={(e) => updateCoverItem(selectedItem.id, { color: e.target.value })}
-                className="w-full h-9 border border-[color:var(--ink)]/20 cursor-pointer"
-              />
-            </>
-          )}
-          {selectedItem.type === "shape" && (
-            <input
-              type="color"
-              data-testid="cover-item-fill"
-              value={selectedItem.fill_color || "#E56B55"}
-              onChange={(e) => updateCoverItem(selectedItem.id, { fill_color: e.target.value })}
-              className="w-full h-9 border border-[color:var(--ink)]/20 cursor-pointer"
-            />
-          )}
-          <button
-            onClick={() => removeCoverItem(selectedItem.id)}
-            className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
-            data-testid="cover-item-remove"
-          >
-            <Trash2 size={14} />
-            <span className="text-xs font-semibold tracking-widest uppercase">Retirer</span>
-          </button>
-        </div>
-      )}
-
-      <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-2">
-        <div className="eyebrow">Ajouter</div>
-        <button
-          data-testid="cover-add-text"
-          onClick={() => addCoverText()}
-          className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
-        >
-          <Type size={14} />
-          <span className="text-xs font-semibold tracking-widest uppercase">Texte</span>
-        </button>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            data-testid="cover-add-rect"
-            onClick={() => addCoverShape("rect")}
-            className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
-          >
-            <Square size={14} />
-            <span className="text-xs font-semibold tracking-widest uppercase">Rect</span>
-          </button>
-          <button
-            data-testid="cover-add-circle"
-            onClick={() => addCoverShape("circle")}
-            className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
-          >
-            <CircleIcon size={14} />
-            <span className="text-xs font-semibold tracking-widest uppercase">Cercle</span>
-          </button>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-[color:var(--muted)] pt-1">
-          <ClipboardPaste size={12} />
-          <span>Ctrl+V pour coller du texte comme élément</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ColorField({ label, value, onChange, tid, onReset }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <label className="eyebrow">{label}</label>
-        <button onClick={onReset} className="text-[10px] text-[color:var(--muted)] hover:text-[color:var(--ink)] underline">
-          template
-        </button>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          data-testid={tid}
-          type="color"
-          value={value || "#000000"}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-9 h-9 border border-[color:var(--ink)]/20 cursor-pointer p-0"
-        />
-        <input
-          type="text"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="par défaut"
-          className="flex-1 border border-[color:var(--ink)]/20 px-2 py-1 text-xs font-mono"
-        />
-      </div>
     </div>
   );
 }

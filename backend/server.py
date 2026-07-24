@@ -65,6 +65,14 @@ LOCAL_STORAGE_DIR = Path("uploads")
 if not LOCAL_STORAGE_DIR.exists():
     LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
+# Images packagées avec l'application (ex: logo corail par défaut sur la couverture)
+# Embarquées en base64 (voir cover_assets.py) pour ne jamais dépendre d'un fichier
+# présent sur le disque — évite les soucis de fichier oublié lors d'un déploiement.
+from cover_assets import CORAL_LOGO_BYTES
+BUNDLED_ASSETS_BYTES = {
+    "coral": CORAL_LOGO_BYTES,
+}
+
 def init_storage() -> Optional[str]:
     """Ne fait rien d'externe, indique juste que le stockage local est prêt."""
     return "local_storage_active"
@@ -163,10 +171,11 @@ class AuthResponse(BaseModel):
     user: UserOut
 
 class AlbumCreate(BaseModel):
-    title: str
+    title: str = "Untitled"
     country: str = ""
     year: int = Field(default_factory=lambda: datetime.now().year)
-    cover_template_id: str = "teal-coral"
+    cover_template_id: str = "default"
+    cover: Optional[Dict[str, Any]] = None
     size: str = "A4"  # A4 or A5
     orientation: str = "portrait"  # portrait or landscape
 
@@ -243,7 +252,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "status": "draft",
         "pages": [],
         "cover_image_path": None,
-        "cover": {},
+        "cover": data.cover or {},
         "created_at": now,
         "updated_at": now,
     }
@@ -410,6 +419,42 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
         raise HTTPException(status_code=404, detail="Aucune couverture personnalisée")
     data, ctype = get_object(album["cover_image_path"])
     return Response(content=data, media_type=album.get("cover_image_content_type") or ctype)
+
+# ---------- Cover element assets (logo / added images on the cover) ----------
+@api_router.post("/albums/{album_id}/cover-assets")
+async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    content_type = file.content_type or "image/png"
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail="Format d'image non supporté")
+    data = await file.read()
+    if len(data) == 0:
+        raise HTTPException(status_code=400, detail="Fichier vide")
+    ext = (file.filename or "asset.png").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "png"
+    asset_id = str(uuid.uuid4())
+    path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
+    result = put_object(path, data, content_type)
+    return {"storage_path": result["path"]}
+
+@api_router.get("/cover-assets/image")
+async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None), authorization: str = Header(None)):
+    token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1]
+    elif auth:
+        token = auth
+    user_id = decode_token(token) if token else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    # Safety: only serve assets that belong to the requesting user
+    if f"/users/{user_id}/" not in path:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    data, ctype = get_object(path)
+    return Response(content=data, media_type=ctype)
 
 
 # ---------- AI Processing ----------
@@ -723,20 +768,14 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=page_size)
 
-    # Cover template lookup (backend mirror of frontend palette)
-    templates = {
-        "teal-coral": {"bg": "#0F5A67", "accent": "#E56B55", "text": "#F9F8F6"},
-        "sand-forest": {"bg": "#D5C9B3", "accent": "#2C402E", "text": "#1A1A17"},
-        "navy-blush": {"bg": "#1C2D42", "accent": "#E8D5D1", "text": "#F9F8F6"},
-        "terracotta-cream": {"bg": "#C05B3F", "accent": "#F5EBDC", "text": "#F9F8F6"},
-        "forest-gold": {"bg": "#2C402E", "accent": "#C9A959", "text": "#F9F8F6"},
-        "charcoal-rose": {"bg": "#2A2A28", "accent": "#D89A9E", "text": "#F9F8F6"},
-    }
-    tpl = templates.get(album.get("cover_template_id", "teal-coral"), templates["teal-coral"])
+    # Default cover palette (used when the user hasn't customized colors yet)
+    DEFAULT_BG = "#009BB5"
+    DEFAULT_ACCENT = "#F53769"
+    DEFAULT_TEXT = "#63DDE0"
     cover = album.get("cover") or {}
-    bg_color = cover.get("bg_color") or tpl["bg"]
-    accent_color = cover.get("accent_color") or tpl["accent"]
-    text_color = cover.get("text_color") or tpl["text"]
+    bg_color = cover.get("bg_color") or DEFAULT_BG
+    accent_color = cover.get("accent_color") or DEFAULT_ACCENT
+    text_color = cover.get("text_color") or DEFAULT_TEXT
 
     def draw_text_item(item, page_w, page_h, default_color="#1A1A17"):
         """Draw a text item using its font_weight/font_style. Uses Helvetica family."""
@@ -816,26 +855,52 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
             c.restoreState()
         except Exception as e:
             logger.error(f"Cover image draw failed: {e}")
-    elif not cover.get("hide_illustration"):
+    elif not cover.get("hide_illustration") and not any((it.get("type") == "image") for it in (cover.get("extra_items") or [])):
         c.setFillColor(hex_to_rl_color(accent_color))
         c.circle(pw * 0.5, ph * 0.42, min(pw, ph) * 0.18, fill=1, stroke=0)
 
-    # Extra items on cover (text / shape)
-    for item in cover.get("extra_items", []) or []:
-        it_type = item.get("type")
-        if it_type == "text":
-            draw_text_item(item, pw, ph, default_color=text_color)
-        elif it_type == "shape":
-            x = item["x"] * pw
-            y_top = (1 - item["y"]) * ph
-            slot_w = item["w"] * pw
-            slot_h = item["h"] * ph
-            y_bottom = y_top - slot_h
-            c.setFillColor(hex_to_rl_color(item.get("fill_color", accent_color)))
-            if item.get("shape_type") == "circle":
-                c.ellipse(x, y_bottom, x + slot_w, y_bottom + slot_h, fill=1, stroke=0)
-            else:
-                c.rect(x, y_bottom, slot_w, slot_h, fill=1, stroke=0)
+    def draw_extra_items(items, default_accent):
+        """Draw text / shape / image extra items (used by both front and back cover)."""
+        for item in items or []:
+            it_type = item.get("type")
+            if it_type == "text":
+                draw_text_item(item, pw, ph, default_color=text_color)
+            elif it_type == "shape":
+                x = item["x"] * pw
+                y_top = (1 - item["y"]) * ph
+                slot_w = item["w"] * pw
+                slot_h = item["h"] * ph
+                y_bottom = y_top - slot_h
+                c.setFillColor(hex_to_rl_color(item.get("fill_color", default_accent)))
+                if item.get("shape_type") == "circle":
+                    c.ellipse(x, y_bottom, x + slot_w, y_bottom + slot_h, fill=1, stroke=0)
+                else:
+                    c.rect(x, y_bottom, slot_w, slot_h, fill=1, stroke=0)
+            elif it_type == "image":
+                try:
+                    data = None
+                    if item.get("storage_path"):
+                        data, _ = get_object(item["storage_path"])
+                    elif item.get("asset") in BUNDLED_ASSETS_BYTES:
+                        data = BUNDLED_ASSETS_BYTES[item["asset"]]
+                    if data:
+                        img = ImageReader(BytesIO(data))
+                        x = item["x"] * pw
+                        y_top = (1 - item["y"]) * ph
+                        slot_w = item["w"] * pw
+                        slot_h = item["h"] * ph
+                        # "contain" fit (preserve aspect ratio, no crop) — this is a logo/graphic, not a photo
+                        iw, ih = img.getSize()
+                        ratio = min(slot_w / iw, slot_h / ih) if iw and ih else 1
+                        draw_w, draw_h = iw * ratio, ih * ratio
+                        cx = x + slot_w / 2
+                        cy_top = y_top - slot_h / 2
+                        c.drawImage(img, cx - draw_w / 2, cy_top - draw_h / 2, width=draw_w, height=draw_h, mask='auto')
+                except Exception as e:
+                    logger.error(f"Cover extra image draw failed: {e}")
+
+    # Extra items on front cover (text / shape / image)
+    draw_extra_items(cover.get("extra_items", []), accent_color)
     c.showPage()
 
     # ---- CONTENT PAGES ----
@@ -897,12 +962,17 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     c.setFillColor(hex_to_rl_color(bg_color))
     c.rect(0, 0, pw, ph, fill=1, stroke=0)
     c.setFillColor(hex_to_rl_color(text_color))
-    c.setFont("Helvetica", min(pw, ph) * 0.04)
-    country_text = album.get("country", "") or ""
-    if country_text:
-        c.drawCentredString(pw / 2, ph * 0.5, country_text.upper())
-    c.setFont("Helvetica", min(pw, ph) * 0.025)
-    c.drawCentredString(pw / 2, ph * 0.1, str(album.get("year", "")))
+    back_items = cover.get("back_extra_items", []) or []
+    # Legacy fallback: older albums without back_extra_items still get the
+    # fixed country/year text. New albums seed real (editable) text items instead.
+    if not back_items:
+        c.setFont("Helvetica", min(pw, ph) * 0.04)
+        country_text = album.get("country", "") or ""
+        if country_text and not cover.get("hide_back_text"):
+            c.drawCentredString(pw / 2, ph * 0.5, country_text.upper())
+        c.setFont("Helvetica", min(pw, ph) * 0.025)
+        c.drawCentredString(pw / 2, ph * 0.1, str(album.get("year", "")))
+    draw_extra_items(back_items, accent_color)
     c.showPage()
 
     c.save()
@@ -918,12 +988,7 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
 @api_router.get("/cover-templates")
 async def list_cover_templates():
     return [
-        {"id": "teal-coral", "name": "Océan Corail", "bg": "#0F5A67", "accent": "#E56B55", "text": "#F9F8F6", "illustration": "coral"},
-        {"id": "sand-forest", "name": "Sable & Forêt", "bg": "#D5C9B3", "accent": "#2C402E", "text": "#1A1A17", "illustration": "leaf"},
-        {"id": "navy-blush", "name": "Marine & Blush", "bg": "#1C2D42", "accent": "#E8D5D1", "text": "#F9F8F6", "illustration": "wave"},
-        {"id": "terracotta-cream", "name": "Terracotta", "bg": "#C05B3F", "accent": "#F5EBDC", "text": "#F9F8F6", "illustration": "sun"},
-        {"id": "forest-gold", "name": "Forêt & Or", "bg": "#2C402E", "accent": "#C9A959", "text": "#F9F8F6", "illustration": "mountain"},
-        {"id": "charcoal-rose", "name": "Charbon & Rose", "bg": "#2A2A28", "accent": "#D89A9E", "text": "#F9F8F6", "illustration": "bird"},
+        {"id": "default", "name": "Classic", "bg": "#0F5A67", "accent": "#E56B55", "text": "#F9F8F6"},
     ]
 
 # ---------- Health ----------

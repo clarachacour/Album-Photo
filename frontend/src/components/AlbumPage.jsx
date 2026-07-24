@@ -224,14 +224,15 @@ export function CoverFrontPage({
   const bg = cover.bg_color || template.bg;
   const accent = cover.accent_color || template.accent;
   const text = cover.text_color || template.text;
-  const titleFont = cover.title_font || "'Cormorant Garamond', serif";
-  const titleWeight = cover.title_font_weight || "600";
+  const titleFont = cover.title_font || "'Baloo 2', sans-serif";
+  const titleWeight = cover.title_font_weight || "800";
   const titleX = cover.title_x ?? 0.08;
   const titleY = cover.title_y ?? 0.08;
   const titleW = cover.title_w ?? 0.84;
   const titleFontSize = cover.title_font_size || null;
   const SVGShape = getShape(template.illustration, accent);
   const extras = cover.extra_items || [];
+  const hasImageExtra = extras.some((it) => it.type === "image");
 
   return (
     <div
@@ -258,7 +259,7 @@ export function CoverFrontPage({
           draggable={false}
         />
       )}
-      {!coverImageUrl && (
+      {!coverImageUrl && !hasImageExtra && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="opacity-100">{SVGShape}</div>
         </div>
@@ -359,28 +360,149 @@ export function CoverFrontPage({
             </DraggableItem>
           );
         }
+        if (item.type === "image") {
+          return (
+            <DraggableItem
+              key={item.id}
+              item={item}
+              onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              selected={isSel}
+              containerRef={containerRef}
+              editable={editable}
+              tid={`cover-image-${item.id}`}
+            >
+              <img
+                src={item.image_url}
+                alt=""
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+            </DraggableItem>
+          );
+        }
         return null;
       })}
     </div>
   );
 }
 
-export function CoverBackPage({ template, country, year, orientation, cover = {} }) {
+export function CoverBackPage({
+  template,
+  country,
+  year,
+  orientation,
+  cover = {},
+  editable = false,
+  onSelectItem,
+  onUpdateItem,
+  onSelectCover,
+  selectedItemId,
+}) {
+  const containerRef = useRef(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const bg = cover.bg_color || template.bg;
   const text = cover.text_color || template.text;
+  const accent = cover.accent_color || template.accent;
+  const extras = cover.back_extra_items || [];
   return (
-    <div className={`relative w-full ${aspect} overflow-hidden flex flex-col items-center justify-between p-8`} style={{ background: bg }}>
+    <div
+      ref={containerRef}
+      className={`relative w-full ${aspect} overflow-hidden flex flex-col items-center justify-between p-8`}
+      style={{ background: bg }}
+      onClick={(e) => {
+        if (!editable) return;
+        if (e.target === e.currentTarget) onSelectCover && onSelectCover();
+      }}
+      data-testid="cover-back"
+    >
       <div className="absolute inset-0 grain pointer-events-none" />
       <div />
-      <div className="text-center">
-        <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "clamp(12px, 1.6vw, 18px)" }}>
-          {country || ""}
+      {!cover.hide_back_text && (
+        <div className="text-center">
+          <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "clamp(12px, 1.6vw, 18px)" }}>
+            {country || ""}
+          </div>
         </div>
-      </div>
+      )}
       <div className="font-sans text-xs tracking-widest" style={{ color: text }}>
         {year || ""}
       </div>
+
+      {/* Extra items on back cover (e.g. the country-outline graphic — same draggable system as the front) */}
+      {extras.map((item) => {
+        const isSel = selectedItemId === item.id;
+        if (item.type === "text") {
+          return (
+            <DraggableItem
+              key={item.id}
+              item={item}
+              onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              selected={isSel}
+              containerRef={containerRef}
+              editable={editable}
+              tid={`cover-back-text-${item.id}`}
+              extraStyle={{
+                color: item.color || text,
+                fontFamily: item.font || "'Manrope', sans-serif",
+                fontSize: `${item.font_size || 16}px`,
+                fontWeight: item.font_weight || "normal",
+                fontStyle: item.font_style || "normal",
+                lineHeight: 1.15,
+                overflow: "hidden",
+                wordBreak: "break-word",
+              }}
+            >
+              <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">
+                {item.content}
+              </span>
+            </DraggableItem>
+          );
+        }
+        if (item.type === "shape") {
+          return (
+            <DraggableItem
+              key={item.id}
+              item={item}
+              onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              selected={isSel}
+              containerRef={containerRef}
+              editable={editable}
+              tid={`cover-back-shape-${item.id}`}
+              extraStyle={{
+                background: item.fill_color || accent,
+                borderRadius: item.shape_type === "circle" ? "9999px" : "0",
+              }}
+            >
+              <div className="w-full h-full pointer-events-none" />
+            </DraggableItem>
+          );
+        }
+        if (item.type === "image") {
+          return (
+            <DraggableItem
+              key={item.id}
+              item={item}
+              onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              selected={isSel}
+              containerRef={containerRef}
+              editable={editable}
+              tid={`cover-back-image-${item.id}`}
+            >
+              <img
+                src={item.image_url}
+                alt=""
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+            </DraggableItem>
+          );
+        }
+        return null;
+      })}
     </div>
   );
 }
@@ -388,6 +510,8 @@ export function CoverBackPage({ template, country, year, orientation, cover = {}
 function getShape(illustration, color) {
   const size = 200;
   switch (illustration) {
+    case "circle":
+      return (<svg viewBox="0 0 100 100" width={size} height={size}><circle cx="50" cy="50" r="32" fill={color} /></svg>);
     case "coral":
       return (
         <svg viewBox="0 0 100 100" width={size} height={size}>

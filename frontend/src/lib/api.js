@@ -42,3 +42,8 @@ export function coverImageUrl(albumId, version = 0) {
   const t = getToken();
   return `${API}/albums/${albumId}/cover-image?auth=${encodeURIComponent(t || "")}&v=${version}`;
 }
+
+export function coverAssetUrl(storagePath) {
+  const t = getToken();
+  return `${API}/cover-assets/image?path=${encodeURIComponent(storagePath)}&auth=${encodeURIComponent(t || "")}`;
+}

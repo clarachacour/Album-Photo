@@ -2,62 +2,110 @@ import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { COVER_TEMPLATES } from "@/lib/coverTemplates";
-import { CoverMockup } from "@/components/CoverPreview";
+import { DEFAULT_COVER, defaultLogoItem, getTemplate } from "@/lib/coverTemplates";
+import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
+import { CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
+import { CoverSpine } from "@/components/CoverSpine";
+import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, ArrowLeft, Upload, Loader2, Sparkles, X } from "lucide-react";
 
-const STEPS = ["Cover", "Format", "Details", "Pictures"];
+const STEPS = ["Format", "Edit", "Pictures"];
+
+function defaultCoverPayload() {
+  const year = new Date().getFullYear();
+  return {
+    bg_color: DEFAULT_COVER.bg_color,
+    accent_color: DEFAULT_COVER.accent_color,
+    text_color: DEFAULT_COVER.text_color,
+    title_font: DEFAULT_COVER.title_font,
+    title_font_weight: DEFAULT_COVER.title_font_weight,
+    extra_items: [defaultLogoItem()],
+    back_extra_items: [
+      {
+        id: cryptoRandom(),
+        type: "text",
+        content: String(year),
+        x: 0.4,
+        y: 0.86,
+        w: 0.2,
+        h: 0.06,
+        font: "'Manrope', sans-serif",
+        font_size: 11,
+        color: DEFAULT_COVER.text_color,
+      },
+    ],
+  };
+}
 
 export default function CreateAlbum() {
   const [step, setStep] = useState(0);
-  const [templateId, setTemplateId] = useState(COVER_TEMPLATES[0].id);
   const [size, setSize] = useState("A4");
   const [orientation, setOrientation] = useState("portrait");
-  const [title, setTitle] = useState("");
-  const [country, setCountry] = useState("");
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [album, setAlbum] = useState(null); // created once we leave the Format step
+  const [coverSel, setCoverSel] = useState(null);
   const [files, setFiles] = useState([]);
-  const [albumId, setAlbumId] = useState(null);
   const [busy, setBusy] = useState(false);
   const fileInput = useRef();
   const nav = useNavigate();
 
-  const template = COVER_TEMPLATES.find((t) => t.id === templateId);
-
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  const prev = () => setStep((s) => Math.max(s - 1, 0));
-
-  const canProceed = () => {
-    if (step === 2) return title.trim().length > 0;
-    if (step === 3) return files.length > 0;
-    return true;
-  };
+  const template = getTemplate();
+  const { updateCover, updateAlbumTitle, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
+    makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
   const handleFiles = (list) => {
     const arr = Array.from(list).filter((f) => f.type.startsWith("image/"));
     setFiles((prev) => [...prev, ...arr]);
   };
+  const removeFile = (idx) => setFiles((prev) => prev.filter((_, i) => i !== idx));
 
-  const removeFile = (idx) => {
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  // Format -> Edit: create the album the first time, or persist size/orientation if we're revisiting.
+  const goToEdit = async () => {
+    setBusy(true);
+    try {
+      if (!album) {
+        const { data } = await api.post("/albums", { size, orientation, cover: defaultCoverPayload() });
+        setAlbum(data);
+      } else {
+        await api.patch(`/albums/${album.id}`, { size, orientation });
+      }
+      setStep(1);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Erreur lors de la création de l'album");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Edit -> Pictures: persist title/cover customization.
+  const goToPictures = async () => {
+    if (!album) return;
+    setBusy(true);
+    try {
+      await api.patch(`/albums/${album.id}`, { title: album.title, cover: album.cover || {} });
+      setStep(2);
+    } catch {
+      toast.error("Enregistrement impossible");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const next = () => {
+    if (step === 0) return goToEdit();
+    if (step === 1) return goToPictures();
+  };
+  const prev = () => setStep((s) => Math.max(s - 1, 0));
+
+  const canProceed = () => {
+    if (step === 2) return files.length > 0;
+    return true;
   };
 
   const createAndProcess = async () => {
+    if (!album) return;
     setBusy(true);
     try {
-      // 1. Create album
-      const { data: album } = await api.post("/albums", {
-        title: title.trim() || "Untitled",
-        country: country.trim(),
-        year: Number(year) || new Date().getFullYear(),
-        cover_template_id: templateId,
-        size,
-        orientation,
-      });
-      setAlbumId(album.id);
-
-      // 2. Upload photos in chunks
       const chunkSize = 8;
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
@@ -67,8 +115,6 @@ export default function CreateAlbum() {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
-
-      // 3. Start AI processing (background)
       await api.post(`/albums/${album.id}/process`);
       toast.success("AI is composing your album...");
       nav(`/editor/${album.id}?processing=1`);
@@ -98,24 +144,26 @@ export default function CreateAlbum() {
           ))}
         </div>
 
-        {step === 0 && (
-          <StepCover templateId={templateId} setTemplateId={setTemplateId} />
-        )}
-        {step === 1 && (
-          <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} template={template} />
-        )}
-        {step === 2 && (
-          <StepDetails
-            title={title}
-            setTitle={setTitle}
-            country={country}
-            setCountry={setCountry}
-            year={year}
-            setYear={setYear}
+        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} template={template} />}
+
+        {step === 1 && album && (
+          <StepEdit
+            album={album}
+            orientation={orientation}
             template={template}
+            coverSel={coverSel}
+            setCoverSel={setCoverSel}
+            updateCover={updateCover}
+            updateAlbumTitle={updateAlbumTitle}
+            updateCoverItem={updateCoverItem}
+            addCoverText={addCoverText}
+            addCoverShape={addCoverShape}
+            addCoverImage={addCoverImage}
+            removeCoverItem={removeCoverItem}
           />
         )}
-        {step === 3 && (
+
+        {step === 2 && (
           <StepPhotos files={files} handleFiles={handleFiles} removeFile={removeFile} fileInput={fileInput} />
         )}
 
@@ -132,11 +180,11 @@ export default function CreateAlbum() {
             <button
               data-testid={TID.wizardNext}
               onClick={next}
-              disabled={!canProceed()}
+              disabled={!canProceed() || busy}
               className="inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-40"
             >
-              <span className="text-sm font-semibold tracking-widest uppercase">Continue</span>
-              <ArrowRight size={16} />
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <span className="text-sm font-semibold tracking-widest uppercase">Continue</span>}
+              {!busy && <ArrowRight size={16} />}
             </button>
           ) : (
             <button
@@ -156,71 +204,18 @@ export default function CreateAlbum() {
 }
 
 // -------------------- STEP COMPONENTS --------------------
-function StepCover({ templateId, setTemplateId }) {
-  return (
-    <section className="animate-fade-up">
-      <div className="mb-10 max-w-2xl">
-        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Choose your cover.</h2>
-        <p className="text-[color:var(--ink)]/70">
-          Six aesthetics inspired by coffee-table books. You can customize the title and country right after.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
-        {COVER_TEMPLATES.map((tpl) => (
-          <button
-            key={tpl.id}
-            data-testid={TID.templateCard}
-            data-template-id={tpl.id}
-            onClick={() => setTemplateId(tpl.id)}
-            className={`text-left transition-all ${
-              templateId === tpl.id ? "opacity-100" : "opacity-70 hover:opacity-100"
-            }`}
-          >
-            <div className={`${templateId === tpl.id ? "ring-2 ring-[color:var(--coral)] ring-offset-4 ring-offset-[color:var(--paper)]" : ""}`}>
-              <CoverMockup template={tpl} title={sampleTitle(tpl.id)} year={2026} />
-            </div>
-            <div className="mt-4">
-              <div className="eyebrow">{tpl.name}</div>
-              <div className="text-sm text-[color:var(--muted)] mt-1">{tpl.mood}</div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function sampleTitle(id) {
-  return {
-    "teal-coral": "Western Australia",
-    "sand-forest": "Marrakech",
-    "navy-blush": "Tokyo Neon",
-    "terracotta-cream": "Sahara South",
-    "forest-gold": "Nordic Trails",
-    "charcoal-rose": "Paris Nocturne",
-  }[id] || "Album";
-}
 
 function StepFormat({ size, setSize, orientation, setOrientation, template }) {
-  const getAspectClass = () => {
-    if (orientation === "landscape") {
-      return "aspect-[1.414/1]";
-    } else {
-      return "aspect-[1/1.414]";
-    }
-  };
-
+  const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
   const sizeContainerStyle = {
-    maxWidth: orientation === "landscape" 
-      ? (size === "A4" ? "560px" : "440px")
-      : (size === "A4" ? "400px" : "320px"),
+    maxWidth: orientation === "landscape" ? (size === "A4" ? "560px" : "440px") : (size === "A4" ? "400px" : "320px"),
   };
 
   return (
     <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
       <div>
         <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Format & orientation.</h2>
-        <p className="text-[color:var(--ink)]/70 mb-10">The final printable output.</p>
+        <p className="text-[color:var(--ink)]/70 mb-10">The final printable output. You'll design your cover right after.</p>
         <div className="mb-10">
           <div className="eyebrow mb-4">Size</div>
           <div className="flex gap-3">
@@ -266,11 +261,9 @@ function StepFormat({ size, setSize, orientation, setOrientation, template }) {
         </div>
       </div>
       <div className="flex items-center justify-center">
-        <div
-          className="bg-[color:var(--editor-canvas)] p-8 transition-all duration-300 flex items-center justify-center w-full"
-        >
-          <div 
-            className={`${getAspectClass()} bg-white relative transition-all duration-300 shadow-sm`} 
+        <div className="bg-[color:var(--editor-canvas)] p-8 transition-all duration-300 flex items-center justify-center w-full">
+          <div
+            className={`${getAspectClass()} bg-white relative transition-all duration-300 shadow-sm`}
             style={{ background: template.bg, width: "100%", ...sizeContainerStyle }}
           >
             <div className="absolute inset-0 grain" />
@@ -286,47 +279,92 @@ function StepFormat({ size, setSize, orientation, setOrientation, template }) {
   );
 }
 
-function StepDetails({ title, setTitle, country, setCountry, year, setYear, template }) {
+function StepEdit({
+  album,
+  orientation,
+  template,
+  coverSel,
+  setCoverSel,
+  updateCover,
+  updateAlbumTitle,
+  updateCoverItem,
+  addCoverText,
+  addCoverShape,
+  addCoverImage,
+  removeCoverItem,
+}) {
+  const cover = album.cover || {};
+
   return (
-    <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
+    <section className="animate-fade-up grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
       <div>
-        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Title & location.</h2>
-        <p className="text-[color:var(--ink)]/70 mb-10">They will appear on the cover, spine, and back of the book.</p>
-        <div className="space-y-8 max-w-md">
-          <div>
-            <label className="eyebrow block mb-2">Title</label>
-            <input
-              data-testid={TID.wizardTitleInput}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Western Australia"
-              className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 font-serif-display text-2xl"
-            />
-          </div>
-          <div>
-            <label className="eyebrow block mb-2">Country / location</label>
-            <input
-              data-testid={TID.wizardCountryInput}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="e.g. Australia"
-              className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 font-serif-display text-2xl"
-            />
-          </div>
-          <div>
-            <label className="eyebrow block mb-2">Year</label>
-            <input
-              data-testid={TID.wizardYearInput}
-              type="number"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 font-serif-display text-2xl"
-            />
-          </div>
+        <div className="mb-8 max-w-2xl">
+          <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Make it yours.</h2>
+          <p className="text-[color:var(--ink)]/70">
+            Click the title, the logo, or the text on the back to edit them directly. Drag to move or resize. Add your own
+            image or text anywhere on the cover.
+          </p>
+        </div>
+        <div className="grid grid-cols-[1fr_32px_1fr] gap-0 rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto">
+          <CoverBackPage
+            template={template}
+            country={album.country}
+            year={album.year}
+            orientation={orientation}
+            cover={cover}
+            editable
+            onSelectCover={() => setCoverSel({ mode: "cover", side: "back" })}
+            onSelectItem={(item) => setCoverSel({ mode: "item", side: "back", itemId: item.id })}
+            onUpdateItem={(itemId, patch) => updateCoverItem(itemId, patch, "back")}
+            selectedItemId={coverSel?.mode === "item" && coverSel?.side === "back" ? coverSel.itemId : null}
+          />
+          <CoverSpine
+            title={album.title}
+            year={album.year}
+            template={template}
+            cover={cover}
+            editable
+            selectedZone={coverSel?.mode}
+            onSelectTitle={() => setCoverSel({ mode: "spine-title" })}
+            onSelectYear={() => setCoverSel({ mode: "spine-year" })}
+            onUpdateCover={updateCover}
+          />
+          <CoverFrontPage
+            template={template}
+            title={album.title}
+            orientation={orientation}
+            coverImageUrl={null}
+            cover={cover}
+            editable
+            onSelectCover={() => setCoverSel({ mode: "cover", side: "front" })}
+            onSelectTitle={() => setCoverSel({ mode: "title", side: "front" })}
+            onSelectItem={(item) => setCoverSel({ mode: "item", side: "front", itemId: item.id })}
+            onUpdateTitle={(patch) => updateCover(patch)}
+            onUpdateItem={(itemId, patch) => updateCoverItem(itemId, patch, "front")}
+            titleSelected={coverSel?.mode === "title"}
+            selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
+          />
         </div>
       </div>
       <div>
-        <CoverMockup template={template} title={title || "Your title"} country={country || "Country"} year={year} showLabels />
+        {coverSel ? (
+          <CoverEditorPanel
+            album={album}
+            coverSel={coverSel}
+            updateCover={updateCover}
+            updateCoverItem={updateCoverItem}
+            addCoverText={addCoverText}
+            addCoverShape={addCoverShape}
+            addCoverImage={addCoverImage}
+            removeCoverItem={removeCoverItem}
+            updateAlbumTitle={updateAlbumTitle}
+            onDismiss={() => setCoverSel(null)}
+          />
+        ) : (
+          <div className="text-sm text-[color:var(--muted)] border border-dashed border-[color:var(--border-soft)] p-6">
+            Click any element on the cover — the title, the logo, the text on the back — to edit, move, or remove it.
+          </div>
+        )}
       </div>
     </section>
   );

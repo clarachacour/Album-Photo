@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
 import { CoverMockup } from "@/components/CoverPreview";
-import { COVER_TEMPLATES } from "@/lib/coverTemplates";
+import { DEFAULT_COVER, defaultLogoItem } from "@/lib/coverTemplates";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
@@ -116,7 +116,7 @@ export default function AuthPage() {
       <div className="hidden md:flex bg-[color:var(--editor-canvas)] items-center justify-center p-16 relative overflow-hidden">
         <div className="absolute inset-0 grain" />
         <div className="relative max-w-md w-full">
-          <CoverMockup template={COVER_TEMPLATES[0]} title="Western Australia" year={2026} country="Australia" />
+          <CoverMockup cover={{ ...DEFAULT_COVER, extra_items: [defaultLogoItem()] }} title="Western Australia" year={2026} country="Australia" />
         </div>
       </div>
     </main>
