@@ -27,8 +27,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 # LLM
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
-
+# LLM (Google Gemini officiel)
+from google import genai
+from google.genai import types
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -56,64 +57,49 @@ security = HTTPBearer(auto_error=False)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ---------- Storage helpers ----------
+# --------- Storage helpers (Sauvegarde locale sur PC) ----------
+from pathlib import Path
+
+# Dossier où seront stockées les images sur ton PC
+LOCAL_STORAGE_DIR = Path("uploads")
+if not LOCAL_STORAGE_DIR.exists():
+    LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
 def init_storage() -> Optional[str]:
-    global storage_key
-    if storage_key:
-        return storage_key
-    if not EMERGENT_LLM_KEY:
-        logger.error("EMERGENT_LLM_KEY not set")
-        return None
-    try:
-        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
-        resp.raise_for_status()
-        storage_key = resp.json()["storage_key"]
-        logger.info("Storage initialized")
-        return storage_key
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
-        return None
+    """Ne fait rien d'externe, indique juste que le stockage local est prêt."""
+    return "local_storage_active"
 
-def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    if not key:
-        raise HTTPException(status_code=500, detail="Storage not available")
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120
-    )
-    if resp.status_code == 403:
-        # Re-init and retry once
-        global storage_key
-        storage_key = None
-        key = init_storage()
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data, timeout=120
-        )
-    resp.raise_for_status()
-    return resp.json()
-
+# Exemple de correction dans la fonction de sauvegarde locale (put_object ou équivalent)
+def put_object(path: str, data: bytes):
+    file_path = LOCAL_STORAGE_DIR / path
+    
+    # 1. Créer tous les dossiers parents s'ils n'existent pas (parents=True, exist_ok=True)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # 2. Écrire le fichier en toute sécurité
+    file_path.write_bytes(data)
+    
 def get_object(path: str) -> tuple:
-    key = init_storage()
-    if not key:
-        raise HTTPException(status_code=500, detail="Storage not available")
-    resp = requests.get(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60
-    )
-    if resp.status_code == 403:
-        global storage_key
-        storage_key = None
-        key = init_storage()
-        resp = requests.get(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key}, timeout=60
-        )
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+    """Lit le fichier directement depuis le dossier uploads du PC."""
+    try:
+        file_path = LOCAL_STORAGE_DIR / path
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Image non trouvée")
+            
+        with open(file_path, "rb") as f:
+            content = f.read()
+            
+        # Détermination simple du type MIME
+        content_type = "image/jpeg"
+        if path.lower().endswith(".png"):
+            content_type = "image/png"
+        elif path.lower().endswith(".webp"):
+            content_type = "image/webp"
+            
+        return content, content_type
+    except Exception as e:
+        logger.error(f"Erreur de lecture locale pour {path}: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur de lecture locale: {e}")
 
 # ---------- Auth ----------
 def hash_password(password: str) -> str:
@@ -497,71 +483,100 @@ def deterministic_layout(photos: List[dict], orientation: str) -> List[dict]:
     return pages
 
 
-async def analyze_photo_batch(photos: List[dict]) -> Dict[str, dict]:
-    """Analyze a batch of photos using Gemini 3 Flash to get description and quality score.
-    Returns {photo_id: {description, quality_score, group}}.
-    Uses at most 6 photos per call for speed.
+async def analyze_photo_batch(photos_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    if not EMERGENT_LLM_KEY or not photos:
-        return {p["id"]: {"description": "", "quality_score": 0.7, "group": "misc"} for p in photos}
-    try:
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"album-ai-{uuid.uuid4()}",
-            system_message=(
-                "You are a photo curator for a coffee-table photo book. For each image, return a JSON object with: "
-                "description (short caption 3-6 words), quality_score (float 0-1, higher = better composition/exposure), "
-                "group (short semantic tag like 'landscape', 'portrait', 'food', 'architecture', 'wildlife', 'sunset'). "
-                "Respond ONLY with a JSON array in the same order as the images, no prose."
-            ),
-        ).with_model("gemini", "gemini-3-flash-preview")
+    Analyse un lot d'images avec l'API Google Gemini officielle.
+    
+    Chaque élément de `photos_data` doit être un dictionnaire contenant :
+      - "id": identifiant unique de la photo
+      - "bytes": contenu binaire de l'image (bytes)
+      - "mime_type": type de l'image (ex: 'image/jpeg', 'image/png')
+    """
+    # Récupération de la clé API depuis l'environnement
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        logger.error("Aucune clé GEMINI_API_KEY trouvée dans les variables d'environnement.")
+        raise ValueError("Clé API Gemini manquante. Ajoutez GEMINI_API_KEY dans votre fichier .env")
 
-        # Build image contents
-        image_contents = []
-        for p in photos:
-            try:
-                data, _ = get_object(p["storage_path"])
-                import base64
-                b64 = base64.b64encode(data).decode('utf-8')
-                image_contents.append(ImageContent(image_base64=b64))
-            except Exception as e:
-                logger.error(f"Fetching image for AI failed: {e}")
-                image_contents.append(None)
+    # Initialisation du client officiel Google GenAI
+    client = genai.Client(api_key=api_key)
 
-        # Filter Nones
-        valid_photos = [(p, ic) for p, ic in zip(photos, image_contents) if ic is not None]
-        if not valid_photos:
-            return {p["id"]: {"description": "", "quality_score": 0.7, "group": "misc"} for p in photos}
+    # Consignes claires pour l'IA
+    prompt_text = """
+    Vous êtes un éditeur photo professionnel pour un livre d'art / album photo "Coffee Table Book".
+    Analysez chaque image du lot fourni et renvoyez STRICTEMENT un tableau JSON (Array d'objets).
+    
+    Pour CHAQUE image, générez un objet respectant exactement cette structure :
+    [
+      {
+        "photo_id": "ID_DE_LA_PHOTO",
+        "description": "Courte description poétique et précise en français",
+        "quality_score": 8.5,  # Note de 1.0 à 10.0 (basée sur netteté, lumière, cadrage)
+        "group": "Catégorie ou thème (ex: 'Paysages', 'Portraits', 'Gastronomie', 'Architecture')",
+        "is_duplicate_or_burst": false, # true si c'est une photo floue, ratée ou doublon d'une rafale
+        "focal_x": 0.5, # Centre d'intérêt horizontal (entre 0.0 et 1.0)
+        "focal_y": 0.5  # Centre d'intérêt vertical (entre 0.0 et 1.0)
+      }
+    ]
+    """
 
-        msg = UserMessage(
-            text=f"Analyze these {len(valid_photos)} photos and return the JSON array.",
-            file_contents=[ic for _, ic in valid_photos],
+    contents = [prompt_text]
+    processed_ids = []
+
+    # Préparation des images au format attendu par le SDK Google GenAI
+    for idx, item in enumerate(photos_data):
+        photo_id = item.get("id") or f"photo_{idx}"
+        img_bytes = item.get("bytes")
+        mime_type = item.get("mime_type", "image/jpeg")
+
+        if not img_bytes:
+            continue
+
+        processed_ids.append(photo_id)
+
+        # Ajout du repère d'ID et de l'image sous forme de Part
+        contents.append(f"Photo ID: {photo_id}")
+        contents.append(
+            types.Part.from_bytes(
+                data=img_bytes,
+                mime_type=mime_type
+            )
         )
-        response_text = await chat.send_message(msg)
-        # Parse JSON
-        text = response_text.strip()
-        if text.startswith("```"):
-            text = text.split("```", 2)[1]
-            if text.startswith("json"):
-                text = text[4:]
-            text = text.strip()
-        parsed = json.loads(text)
-        results = {}
-        for (p, _), item in zip(valid_photos, parsed):
-            results[p["id"]] = {
-                "description": item.get("description", ""),
-                "quality_score": float(item.get("quality_score", 0.7)),
-                "group": item.get("group", "misc"),
-            }
-        # Fill missing
-        for p in photos:
-            if p["id"] not in results:
-                results[p["id"]] = {"description": "", "quality_score": 0.7, "group": "misc"}
-        return results
-    except Exception as e:
-        logger.error(f"AI batch analyze failed: {e}")
-        return {p["id"]: {"description": "", "quality_score": 0.7, "group": "misc"} for p in photos}
 
+    if not processed_ids:
+        return []
+
+    try:
+        # Appel à Gemini (Gemini 2.5 Flash / 1.5 Flash)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2,
+            )
+        )
+
+        # Lecture du résultat JSON renvoyé par l'IA
+        analysis_result = json.loads(response.text)
+        return analysis_result
+
+    except Exception as e:
+        logger.error(f"Erreur lors de l'analyse Gemini : {e}")
+        
+        # Secours (Fallback) en cas d'erreur de l'IA pour ne pas bloquer l'utilisateur
+        fallback_results = []
+        for pid in processed_ids:
+            fallback_results.append({
+                "photo_id": pid,
+                "description": "Photo importée",
+                "quality_score": 7.5,
+                "group": "Souvenirs",
+                "is_duplicate_or_burst": False,
+                "focal_x": 0.5,
+                "focal_y": 0.5
+            })
+        return fallback_results
 
 async def run_ai_processing(album_id: str, user_id: str):
     """Background task: analyze photos, mark duplicates, generate layout."""
