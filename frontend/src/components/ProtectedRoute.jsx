@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[color:var(--paper)]">
-        <p className="eyebrow animate-slow-pulse">Chargement…</p>
+        <p className="eyebrow animate-slow-pulse">Loading...</p>
       </div>
     );
   }

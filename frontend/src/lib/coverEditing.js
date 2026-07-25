@@ -28,7 +28,20 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setAlbum((prev) => {
       const cover = prev.cover || {};
       const items = (cover[key] || []).map((it) => (it.id === itemId ? { ...it, ...patch } : it));
-      return { ...prev, cover: { ...cover, [key]: items } };
+      const next = { ...prev, cover: { ...cover, [key]: items } };
+      // Keep album.country / album.year in sync when the user edits the
+      // dedicated country/year text elements, so the dashboard listing and
+      // the spine (which mirrors album.year) stay consistent with the back cover.
+      if (patch.content !== undefined) {
+        const updated = items.find((it) => it.id === itemId);
+        if (updated?.role === "country") {
+          next.country = patch.content;
+        } else if (updated?.role === "year") {
+          const y = parseInt(patch.content, 10);
+          if (!Number.isNaN(y)) next.year = y;
+        }
+      }
+      return next;
     });
     setCoverSel((prev) => (prev && prev.mode === "item" && prev.itemId === itemId ? { ...prev } : prev));
   };

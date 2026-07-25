@@ -30,7 +30,7 @@ export const DEFAULT_COVER_TEMPLATE = {
   bg: DEFAULT_COVER.bg_color,
   accent: DEFAULT_COVER.accent_color,
   text: DEFAULT_COVER.text_color,
-  illustration: "circle",
+  illustration: null,
 };
 
 // The default logo/illustration shown on the front cover. It's a normal

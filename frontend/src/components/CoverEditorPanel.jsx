@@ -25,15 +25,15 @@ export function CoverEditorPanel({
   const replaceImageInput = useRef();
 
   const zoneLabel = {
-    front: "devant",
-    back: "dos",
+    front: "front",
+    back: "back",
   }[side];
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
-          {coverSel.mode === "spine-title" || coverSel.mode === "spine-year" ? "Couverture — reliure" : `Couverture — ${zoneLabel}`}
+          {coverSel.mode === "spine-title" || coverSel.mode === "spine-year" ? "Cover — spine" : `Cover — ${zoneLabel}`}
         </div>
         <button
           onClick={onDismiss}
@@ -47,21 +47,21 @@ export function CoverEditorPanel({
 
       <div className="space-y-3">
         <ColorField
-          label="Couleur de fond"
+          label="Background color"
           value={cover.bg_color || ""}
           onChange={(v) => updateCover({ bg_color: v || null })}
           tid="cover-bg-color"
           onReset={() => updateCover({ bg_color: null })}
         />
         <ColorField
-          label="Couleur d'accent"
+          label="Accent color"
           value={cover.accent_color || ""}
           onChange={(v) => updateCover({ accent_color: v || null })}
           tid="cover-accent-color"
           onReset={() => updateCover({ accent_color: null })}
         />
         <ColorField
-          label="Couleur du texte"
+          label="Text color"
           value={cover.text_color || ""}
           onChange={(v) => updateCover({ text_color: v || null })}
           tid="cover-text-color"
@@ -71,17 +71,17 @@ export function CoverEditorPanel({
 
       {coverSel.mode === "title" && (
         <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
-          <div className="eyebrow">Titre</div>
+          <div className="eyebrow">Title</div>
           <textarea
             data-testid="cover-title-content"
             value={album.title || ""}
             onChange={(e) => updateAlbumTitle && updateAlbumTitle(e.target.value)}
             rows={2}
             className="w-full border border-[color:var(--ink)]/20 p-2 text-sm"
-            placeholder="Titre de l'album"
+            placeholder="Title of the album"
           />
           <div>
-            <label className="eyebrow block mb-2">Police</label>
+            <label className="eyebrow block mb-2">Font</label>
             <select
               data-testid="cover-title-font"
               value={cover.title_font || "'Baloo 2', sans-serif"}
@@ -97,7 +97,7 @@ export function CoverEditorPanel({
             </select>
           </div>
           <div>
-            <label className="eyebrow block mb-2">Taille du titre</label>
+            <label className="eyebrow block mb-2">Title Size</label>
             <input
               type="range"
               min={20}
@@ -125,12 +125,12 @@ export function CoverEditorPanel({
 
       {(coverSel.mode === "spine-title" || coverSel.mode === "spine-year") && (
         <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
-          <div className="eyebrow">{coverSel.mode === "spine-title" ? "Titre sur la reliure" : "Année sur la reliure"}</div>
+          <div className="eyebrow">{coverSel.mode === "spine-title" ? "Spine title" : "Spine year"}</div>
           <p className="text-xs text-[color:var(--muted)]">
-            Reprend automatiquement {coverSel.mode === "spine-title" ? "le titre" : "l'année"} du livre. Glisse-le sur la reliure pour le repositionner ou le redimensionner.
+            Takes automatically {coverSel.mode === "spine-title" ? "the title" : "the year"} of the book. Drag it onto the spine to reposition or resize it.
           </p>
           <div>
-            <label className="eyebrow block mb-2">Police</label>
+            <label className="eyebrow block mb-2">Font</label>
             <select
               data-testid={coverSel.mode === "spine-title" ? "spine-title-font" : "spine-year-font"}
               value={(coverSel.mode === "spine-title" ? cover.spine_title_font : cover.spine_year_font) || "'Manrope', sans-serif"}
@@ -146,7 +146,7 @@ export function CoverEditorPanel({
             </select>
           </div>
           <div>
-            <label className="eyebrow block mb-2">Taille</label>
+            <label className="eyebrow block mb-2">Size</label>
             <input
               type="range"
               min={6}
@@ -171,7 +171,7 @@ export function CoverEditorPanel({
           >
             {(coverSel.mode === "spine-title" ? cover.spine_title_hidden : cover.spine_year_hidden) ? <Eye size={14} /> : <EyeOff size={14} />}
             <span className="text-xs font-semibold tracking-widest uppercase">
-              {(coverSel.mode === "spine-title" ? cover.spine_title_hidden : cover.spine_year_hidden) ? "Afficher" : "Masquer"}
+              {(coverSel.mode === "spine-title" ? cover.spine_title_hidden : cover.spine_year_hidden) ? "Show" : "Hide"}
             </span>
           </button>
         </div>
@@ -179,7 +179,7 @@ export function CoverEditorPanel({
 
       {selectedItem && (
         <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
-          <div className="eyebrow">Élément sélectionné</div>
+          <div className="eyebrow">Selected Item</div>
           {selectedItem.type === "text" && (
             <>
               <textarea
@@ -254,7 +254,7 @@ export function CoverEditorPanel({
                 className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
               >
                 <ImageIcon size={14} />
-                <span className="text-xs font-semibold tracking-widest uppercase">Remplacer l'image</span>
+                <span className="text-xs font-semibold tracking-widest uppercase">Replace image</span>
               </button>
               <input
                 ref={replaceImageInput}
@@ -275,20 +275,20 @@ export function CoverEditorPanel({
             data-testid="cover-item-remove"
           >
             <Trash2 size={14} />
-            <span className="text-xs font-semibold tracking-widest uppercase">Retirer</span>
+            <span className="text-xs font-semibold tracking-widest uppercase">Delete</span>
           </button>
         </div>
       )}
 
       <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-2">
-        <div className="eyebrow">Ajouter — {zoneLabel}</div>
+        <div className="eyebrow">Add — {zoneLabel}</div>
         <button
           data-testid="cover-add-text"
           onClick={() => addCoverText(undefined, side)}
           className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)]"
         >
           <Type size={14} />
-          <span className="text-xs font-semibold tracking-widest uppercase">Texte</span>
+          <span className="text-xs font-semibold tracking-widest uppercase">Text</span>
         </button>
         <button
           data-testid="cover-add-image"
@@ -310,8 +310,6 @@ export function CoverEditorPanel({
           }}
         />
         <div className="flex items-center gap-2 text-xs text-[color:var(--muted)] pt-1">
-          <ClipboardPaste size={12} />
-          <span>Ctrl+V pour coller du texte comme élément</span>
         </div>
       </div>
     </div>
@@ -324,7 +322,7 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
       <div className="flex items-center justify-between mb-1">
         <label className="eyebrow">{label}</label>
         <button onClick={onReset} className="text-[10px] text-[color:var(--muted)] hover:text-[color:var(--ink)] underline">
-          défaut
+          default
         </button>
       </div>
       <div className="flex items-center gap-2">
@@ -339,7 +337,7 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="par défaut"
+          placeholder="default "
           className="flex-1 border border-[color:var(--ink)]/20 px-2 py-1 text-xs font-mono"
         />
       </div>

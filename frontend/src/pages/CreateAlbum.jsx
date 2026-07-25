@@ -25,6 +25,21 @@ function defaultCoverPayload() {
       {
         id: cryptoRandom(),
         type: "text",
+        role: "country",
+        content: "",
+        x: 0.1,
+        y: 0.46,
+        w: 0.8,
+        h: 0.08,
+        font: "'Manrope', sans-serif",
+        font_weight: "600",
+        font_size: 16,
+        color: DEFAULT_COVER.text_color,
+      },
+      {
+        id: cryptoRandom(),
+        type: "text",
+        role: "year",
         content: String(year),
         x: 0.4,
         y: 0.86,
@@ -82,7 +97,7 @@ export default function CreateAlbum() {
     if (!album) return;
     setBusy(true);
     try {
-      await api.patch(`/albums/${album.id}`, { title: album.title, cover: album.cover || {} });
+      await api.patch(`/albums/${album.id}`, { title: album.title, country: album.country, year: album.year, cover: album.cover || {} });
       setStep(2);
     } catch {
       toast.error("Enregistrement impossible");
@@ -194,7 +209,7 @@ export default function CreateAlbum() {
               className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Start AI</span>
+              <span className="text-sm font-semibold tracking-widest uppercase">Create Album</span>
             </button>
           )}
         </div>

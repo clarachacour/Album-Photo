@@ -462,40 +462,40 @@ def deterministic_layout(photos: List[dict], orientation: str) -> List[dict]:
     """Distribute photos across pages with varied layouts.
     Returns a list of pages (each with items containing photo refs and positions in normalized 0-1 coordinates).
     """
-    # Layout templates (photos per page + item boxes in normalized coords)
-    # x, y, w, h in 0-1 (page space with small margin)
-    M = 0.05
+    M = 0.05  # Marge globale de 5%
+    usable = 1.0 - (2 * M)  # Espace utile de 0.9 (90% de la page)
+
     layouts = {
         "single_full": [
-            {"x": M, "y": M, "w": 1 - 2*M, "h": 1 - 2*M}
+            {"x": M, "y": M, "w": usable, "h": usable}
         ],
         "single_centered": [
             {"x": 0.15, "y": 0.15, "w": 0.7, "h": 0.7}
         ],
         "dual_horizontal": [
-            {"x": M, "y": M, "w": 1 - 2*M, "h": 0.48 - M},
-            {"x": M, "y": 0.52, "w": 1 - 2*M, "h": 0.48 - M},
+            {"x": M, "y": M, "w": usable, "h": (usable - 0.04) / 2},
+            {"x": M, "y": M + (usable - 0.04) / 2 + 0.04, "w": usable, "h": (usable - 0.04) / 2},
         ],
         "dual_vertical": [
-            {"x": M, "y": M, "w": 0.48 - M, "h": 1 - 2*M},
-            {"x": 0.52, "y": M, "w": 0.48 - M, "h": 1 - 2*M},
+            {"x": M, "y": M, "w": (usable - 0.04) / 2, "h": usable},
+            {"x": M + (usable - 0.04) / 2 + 0.04, "y": M, "w": (usable - 0.04) / 2, "h": usable},
         ],
         "triptych": [
-            {"x": M, "y": M, "w": 0.6, "h": 1 - 2*M},
-            {"x": 0.68, "y": M, "w": 0.27, "h": 0.48 - M},
-            {"x": 0.68, "y": 0.52, "w": 0.27, "h": 0.48 - M},
+            {"x": M, "y": M, "w": usable * 0.58, "h": usable},
+            {"x": M + usable * 0.58 + 0.03, "y": M, "w": usable * 0.39, "h": (usable - 0.03) / 2},
+            {"x": M + usable * 0.58 + 0.03, "y": M + (usable - 0.03) / 2 + 0.03, "w": usable * 0.39, "h": (usable - 0.03) / 2},
         ],
         "quad_grid": [
-            {"x": M, "y": M, "w": 0.44, "h": 0.44},
-            {"x": 0.52, "y": M, "w": 0.43, "h": 0.44},
-            {"x": M, "y": 0.52, "w": 0.44, "h": 0.43},
-            {"x": 0.52, "y": 0.52, "w": 0.43, "h": 0.43},
+            {"x": M, "y": M, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
+            {"x": M + (usable - 0.03) / 2 + 0.03, "y": M, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
+            {"x": M, "y": M + (usable - 0.03) / 2 + 0.03, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
+            {"x": M + (usable - 0.03) / 2 + 0.03, "y": M + (usable - 0.03) / 2 + 0.03, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
         ],
         "hero_strip": [
-            {"x": M, "y": M, "w": 1 - 2*M, "h": 0.62},
-            {"x": M, "y": 0.68, "w": 0.29, "h": 0.27},
-            {"x": 0.355, "y": 0.68, "w": 0.29, "h": 0.27},
-            {"x": 0.71, "y": 0.68, "w": 0.24, "h": 0.27},
+            {"x": M, "y": M, "w": usable, "h": usable * 0.62},
+            {"x": M, "y": M + usable * 0.62 + 0.03, "w": (usable - 0.06) / 3, "h": usable * 0.35},
+            {"x": M + (usable - 0.06) / 3 + 0.03, "y": M + usable * 0.62 + 0.03, "w": (usable - 0.06) / 3, "h": usable * 0.35},
+            {"x": M + 2 * ((usable - 0.06) / 3 + 0.03), "y": M + usable * 0.62 + 0.03, "w": (usable - 0.06) / 3, "h": usable * 0.35},
         ],
     }
 
@@ -507,7 +507,6 @@ def deterministic_layout(photos: List[dict], orientation: str) -> List[dict]:
     while i < len(photos):
         layout_name = pattern[p_idx % len(pattern)]
         slots = layouts[layout_name]
-        # Take up to len(slots) photos
         available = photos[i:i + len(slots)]
         if not available:
             break
@@ -532,7 +531,6 @@ def deterministic_layout(photos: List[dict], orientation: str) -> List[dict]:
         i += len(items)
         p_idx += 1
     return pages
-
 
 async def analyze_photo_batch(photos_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """

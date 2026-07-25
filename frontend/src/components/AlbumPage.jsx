@@ -7,12 +7,12 @@ import { photoImageUrl } from "@/lib/api";
  * page element (so we can compute pointer position relative to it).
  *
  * Props:
- *   item        - {id, x, y, w, h, ...}
- *   onChange    - (patch) => void
- *   onSelect    - () => void
- *   selected    - bool
- *   containerRef- React ref for the page container
- *   editable    - bool
+ *   item         - {id, x, y, w, h, ...}
+ *   onChange     - (patch) => void
+ *   onSelect     - () => void
+ *   selected     - bool
+ *   containerRef - React ref for the page container
+ *   editable     - bool
  */
 export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03 }) {
   const dragState = useRef(null);
@@ -192,9 +192,6 @@ export function AlbumPage({
         }
         return null;
       })}
-      <div className="absolute bottom-3 right-4 text-[10px] tracking-widest text-[color:var(--muted)] uppercase font-sans pointer-events-none">
-        {pageIndex + 1}
-      </div>
     </div>
   );
 }
@@ -418,18 +415,19 @@ export function CoverBackPage({
     >
       <div className="absolute inset-0 grain pointer-events-none" />
       <div />
-      {!cover.hide_back_text && (
+      {extras.length === 0 && !cover.hide_back_text && (
         <div className="text-center">
           <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "clamp(12px, 1.6vw, 18px)" }}>
             {country || ""}
           </div>
         </div>
       )}
-      <div className="font-sans text-xs tracking-widest" style={{ color: text }}>
-        {year || ""}
-      </div>
+      {extras.length === 0 && (
+        <div className="font-sans text-xs tracking-widest" style={{ color: text }}>
+          {year || ""}
+        </div>
+      )}
 
-      {/* Extra items on back cover (e.g. the country-outline graphic — same draggable system as the front) */}
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
         if (item.type === "text") {

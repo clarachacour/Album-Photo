@@ -162,7 +162,7 @@ export default function AlbumEditor() {
     if (!album) return;
     setSaving(true);
     try {
-      await api.patch(`/albums/${id}`, { title: album.title, pages: album.pages, cover: album.cover || {} });
+      await api.patch(`/albums/${id}`, { title: album.title, country: album.country, year: album.year, pages: album.pages, cover: album.cover || {} });
       toast.success("Enregistré");
     } catch {
       toast.error("Enregistrement impossible");
@@ -440,8 +440,8 @@ export default function AlbumEditor() {
                   }}
                 />
                 <ImageIcon size={32} className="mx-auto text-[color:var(--muted)] mb-3" />
-                <p className="text-sm font-semibold mb-1">Cliquez ou glissez vos photos ici</p>
-                <p className="text-xs text-[color:var(--muted)]">JPEG, PNG, WEBP acceptés</p>
+                <p className="text-sm font-semibold mb-1">Click or drag your photos here</p>
+                <p className="text-xs text-[color:var(--muted)]">JPEG, PNG, WEBP accepted</p>
               </div>
 
               {files.length > 0 && (
@@ -495,7 +495,7 @@ export default function AlbumEditor() {
   if (!album) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[color:var(--editor-canvas)]">
-        <p className="eyebrow animate-slow-pulse">Chargement de l'album…</p>
+        <p className="eyebrow animate-slow-pulse">Loading memories...</p>
       </div>
     );
   }
@@ -939,10 +939,10 @@ function ProcessingScreen({ title }) {
     return () => clearInterval(t);
   }, []);
   const stages = [
-    "Analyse des images…",
-    "Détection des doublons…",
-    "Regroupement par scène…",
-    "Composition des pages…",
+    "Analysing images…",
+    "Detecting duplicates…",
+    "Grouping by scene…",
+    "Composing pages…",
   ];
   const [stage, setStage] = useState(0);
   useEffect(() => {
@@ -954,7 +954,7 @@ function ProcessingScreen({ title }) {
       <div className="absolute inset-0 grain pointer-events-none" />
       <div className="text-center max-w-lg px-6 relative">
         <Sparkles size={32} className="mx-auto text-[color:var(--coral)] mb-8 animate-slow-pulse" />
-        <div className="eyebrow mb-4">L'IA compose votre édition</div>
+        <div className="eyebrow mb-4">The AI is composing your edit</div>
         <h1 className="font-serif-display text-5xl md:text-6xl leading-[1] tracking-tight mb-8">
           {title}
         </h1>
