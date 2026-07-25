@@ -6,14 +6,6 @@ export function cryptoRandom() {
   return `id-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/**
- * All the cover-editing actions (colors, title text, extra items on the
- * front/back, logo upload/replace) in one place, so the creation wizard's
- * "Edit" step and the post-creation book editor behave identically.
- *
- * `albumId` is required for image uploads (they need a real album to attach
- * the file to) — pass the freshly created album's id.
- */
 export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverSel }) {
   const updateCover = (patch) => {
     setAlbum((prev) => ({ ...prev, cover: { ...(prev.cover || {}), ...patch } }));
@@ -25,13 +17,51 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
 
   const updateCoverItem = (itemId, patch, side = coverSel?.side || "front") => {
     const key = side === "back" ? "back_extra_items" : "extra_items";
+
     setAlbum((prev) => {
       const cover = prev.cover || {};
-      const items = (cover[key] || []).map((it) => (it.id === itemId ? { ...it, ...patch } : it));
+      const items = (cover[key] || []).map((it) => {
+        if (it.id !== itemId) return it;
+
+        let updatedPatch = { ...patch };
+
+        // ----------------------------------------------------
+        // LOGIQUE DE MAGNÉTISME ET CENTRAGE (SNAP TO CENTER)
+        // ----------------------------------------------------
+        const SNAP_THRESHOLD = 0.02; // Marge de magnétisme (2%)
+
+        const currentW = updatedPatch.w ?? it.w ?? 0;
+        const currentH = updatedPatch.h ?? it.h ?? 0;
+
+        // Si on déplace X
+        if (updatedPatch.x !== undefined) {
+          const centerX = updatedPatch.x + currentW / 2;
+          // Si le centre de l'objet est à moins de 2% du centre de la page (0.5)
+          if (Math.abs(centerX - 0.5) < SNAP_THRESHOLD) {
+            updatedPatch.x = 0.5 - currentW / 2; // Calage parfait au centre
+            updatedPatch.isCenteredX = true;     // Flag pour afficher la ligne verticale
+          } else {
+            updatedPatch.isCenteredX = false;
+          }
+        }
+
+        // Si on déplace Y
+        if (updatedPatch.y !== undefined) {
+          const centerY = updatedPatch.y + currentH / 2;
+          // Si le centre de l'objet est à moins de 2% du centre de la page (0.5)
+          if (Math.abs(centerY - 0.5) < SNAP_THRESHOLD) {
+            updatedPatch.y = 0.5 - currentH / 2; // Calage parfait au centre
+            updatedPatch.isCenteredY = true;     // Flag pour afficher la ligne horizontale
+          } else {
+            updatedPatch.isCenteredY = false;
+          }
+        }
+
+        return { ...it, ...updatedPatch };
+      });
+
       const next = { ...prev, cover: { ...cover, [key]: items } };
-      // Keep album.country / album.year in sync when the user edits the
-      // dedicated country/year text elements, so the dashboard listing and
-      // the spine (which mirrors album.year) stay consistent with the back cover.
+
       if (patch.content !== undefined) {
         const updated = items.find((it) => it.id === itemId);
         if (updated?.role === "country") {
@@ -43,6 +73,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       }
       return next;
     });
+
     setCoverSel((prev) => (prev && prev.mode === "item" && prev.itemId === itemId ? { ...prev } : prev));
   };
 

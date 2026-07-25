@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { TID } from "@/constants/testIds";
-import { getTemplate } from "@/lib/coverTemplates";
+import { getCover } from "@/lib/coverTemplates";
+import { coverImageUrl } from "@/lib/api";
 import { CoverFront } from "@/components/CoverPreview";
 import { Plus, Trash2, ArrowUpRight } from "lucide-react";
 
@@ -77,11 +78,12 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
             {albums.map((a) => {
-              const tpl = getTemplate(a.cover_template_id);
+              const cover = getCover(a.cover);
+              if (a.cover_image_path) cover.image = coverImageUrl(a.id);
               return (
                 <div key={a.id} className="group animate-fade-up" data-testid={TID.albumCard}>
                   <Link to={`/editor/${a.id}`} className="block relative">
-                    <CoverFront template={tpl} title={a.title || "Untitled"} small />
+                    <CoverFront cover={cover} title={a.title || "Untitled"} />
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/30 flex items-center justify-center transition-opacity">
                       <ArrowUpRight className="text-white" size={32} />
                     </div>

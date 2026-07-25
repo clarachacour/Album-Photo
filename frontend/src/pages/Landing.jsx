@@ -1,11 +1,28 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { DEFAULT_COVER, defaultLogoItem } from "@/lib/coverTemplates";
 import { CoverMockup } from "@/components/CoverPreview";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, Sparkles, BookOpen, Wand2 } from "lucide-react";
 
 export default function Landing() {
+  const navigate = useNavigate();
+
+  const handleCreateAlbumClick = () => {
+    // On vérifie la présence de 'album_token' ou 'album_user'
+    const isAuthenticated = 
+      localStorage.getItem("album_token") || 
+      localStorage.getItem("album_user");
+
+    if (isAuthenticated) {
+      // Redirection vers le Dashboard si l'utilisateur est connecté
+      navigate("/dashboard");
+    } else {
+      // Redirection vers la page de connexion sinon
+      navigate("/auth");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[color:var(--paper)]">
       {/* Hero — editorial asymmetry */}
@@ -24,14 +41,14 @@ export default function Landing() {
               Upload your photos, and we'll turn them into a refined printed album, crafted to feel timeless and made to be kept
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Link
-                to="/auth"
+              <button
+                onClick={handleCreateAlbumClick}
                 data-testid={TID.landingCta}
                 className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors duration-300"
               >
                 <span className="text-sm font-semibold tracking-widest uppercase">Create my album</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -118,14 +135,14 @@ export default function Landing() {
           <h2 className="font-serif-display text-5xl md:text-7xl leading-[0.95] max-w-2xl">
             Ready to design<br />your edition?
           </h2>
-          <Link
-            to="/auth"
+          <button
+            onClick={handleCreateAlbumClick}
             className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)] transition-colors duration-300"
             data-testid="footer-cta"
           >
             <span className="text-sm font-semibold tracking-widest uppercase">Create my photo album</span>
             <ArrowRight size={16} />
-          </Link>
+          </button>
         </div>
       </section>
     </main>
