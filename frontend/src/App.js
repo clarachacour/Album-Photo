@@ -12,6 +12,10 @@ import Dashboard from "@/pages/Dashboard";
 import CreateAlbum from "@/pages/CreateAlbum";
 import AlbumEditor from "@/pages/AlbumEditor";
 
+// 🆕 Imports des deux nouvelles pages
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+
 function App() {
   return (
     <div className="App">
@@ -21,6 +25,11 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
+
+            {/* 🆕 Nouvelles routes publiques pour le mot de passe */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
             <Route
               path="/dashboard"
               element={

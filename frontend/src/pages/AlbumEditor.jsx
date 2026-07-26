@@ -1,440 +1,882 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Rnd } from "react-rnd";
-import {
-  Sparkles,
-  Bold,
-  Italic,
-  Trash2,
-  ZoomIn,
-  Move,
-  ChevronLeft,
-  ChevronRight,
-  Type,
-} from "lucide-react";
-
-// --- CONSTANTES & CONFIGURATION ---
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { api, pdfExportUrl, coverImageUrl, coverAssetUrl } from "@/lib/api";
+import { toast } from "sonner";
+import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
+import { CoverEditorPanel } from "@/components/CoverEditorPanel";
+import { CoverSpine } from "@/components/CoverSpine";
+import { makeCoverEditingActions, computeAlignSnap } from "@/lib/coverEditing";
+import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
+import Flipbook from "@/components/Flipbook";
+import PhotoTray from "@/components/PhotoTray";
+import PhotoGallery from "@/components/PhotoGallery";
+import { TID } from "@/constants/testIds";
+import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste } from "lucide-react";
 
 const FONT_OPTIONS = [
-  { value: "sans", label: "Sans-serif (Moderne)" },
-  { value: "serif", label: "Serif (Classique)" },
-  { value: "mono", label: "Monospace (Épuré)" },
+  { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
+  { label: "Manrope (sans)", value: "'Manrope', sans-serif" },
+  { label: "Georgia", value: "Georgia, serif" },
+  { label: "Courier", value: "'Courier New', monospace" },
+  { label: "Helvetica", value: "Helvetica, Arial, sans-serif" },
 ];
 
-const COLOR_SWATCHES = [
-  "#1A1A17", // Ink
-  "#FBF9F5", // Paper
-  "#E07A5F", // Coral
-  "#3D405B", // Navy
-  "#81B29A", // Sage
-  "#F2CC8F", // Sand
-];
+const COLOR_SWATCHES = ["#1A1A17", "#F9F8F6", "#E56B55", "#0F5A67", "#2C402E", "#C9A959", "#1C2D42"];
 
-const TID = {
-  editorFontSelect: "editor-font-select",
-  editorColorInput: "editor-color-input",
-  editorSizeInput: "editor-size-input",
-};
+export default function AlbumEditor() {
+  const { id } = useParams();
+  const [params] = useSearchParams();
+  const nav = useNavigate();
+  
+  const isCreating = !id || id === "new";
 
-const PROCESSING_STAGES = [
-  "Analysing images…",
-  "Detecting duplicates…",
-  "Grouping by scene…",
-  "Composing pages…",
-];
+  // --- États du Formulaire de Création ---
+  const [templateId, setTemplateId] = useState(COVER_COLOR_PRESETS?.[0]?.id || "default");
+  const [size, setSize] = useState("A4");
+  const [orientation, setOrientation] = useState("portrait");
+  const [title, setTitle] = useState("");
+  const [country, setCountry] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [files, setFiles] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef();
 
-// --- UTILITAIRES ---
+  // --- États de l'Éditeur ---
+  const bookRef = useRef();
+  const coverInputRef = useRef();
+  const [album, setAlbum] = useState(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [cropMode, setCropMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverVersion, setCoverVersion] = useState(0);
+  const [processing, setProcessing] = useState(params.get("processing") === "1");
+  const [coverSel, setCoverSel] = useState(null);
 
-function cryptoRandom() {
-  try {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
+  const loadAlbum = useCallback(async () => {
+    if (isCreating) return;
+    try {
+      const { data } = await api.get(`/albums/${id}`);
+      setAlbum(data);
+      if (data.status === "processing") setProcessing(true);
+      else setProcessing(false);
+    } catch {
+      toast.error("Impossible de charger cet album");
+      nav("/dashboard");
     }
-  } catch (e) {
-    // Restitution en cas d'environnement non sécurisé (HTTP)
-  }
-  return `id-${Math.random().toString(36).slice(2, 10)}-${Date.now()}`;
-}
+  }, [id, isCreating, nav]);
 
-// --- COMPOSANT PRINCIPAL ---
-
-export default function AlbumEditor({ album, onSave, onBack }) {
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [selectedItemId, setSelectedItemId] = useState(null);
-  const [pages, setPages] = useState(album?.pages || []);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  // États et Ref pour le centrage et le snap
-  const [snapLines, setSnapLines] = useState({ x: null, y: null });
-  const containerRef = useRef(null);
-
-  const currentPage = pages[currentPageIndex] || { items: [] };
-  const selectedItem = currentPage.items?.find((item) => item.id === selectedItemId);
-
-  // 1. GESTION DE LA TOUCHE SUPPR / BACKSPACE DU CLAVIER
   useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (!selectedItemId) return;
+    if (!isCreating) {
+      loadAlbum();
+    }
+  }, [loadAlbum, isCreating]);
 
-      const activeEl = document.activeElement;
-      const isEditingText =
-        activeEl.tagName === "INPUT" ||
-        activeEl.tagName === "TEXTAREA" ||
-        activeEl.isContentEditable;
-
-      if (isEditingText) return;
-
-      if (event.key === "Delete" || event.key === "Backspace") {
-        event.preventDefault();
-        handleRemoveItem();
+  useEffect(() => {
+    if (isCreating || !coverSel) return;
+    const onPaste = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      const text = e.clipboardData?.getData("text/plain");
+      if (text && text.trim()) {
+        e.preventDefault();
+        addCoverText(text.trim().slice(0, 500));
       }
     };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverSel, isCreating]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedItemId]);
+  useEffect(() => {
+    if (isCreating || !selected) return;
+    const onKeyDown = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        removeSelected();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, isCreating]);
 
-  // 2. DETECTION DU CENTRAGE (SNAP GUIDES)
-  const checkSnapGuides = (x, y, width = 0, height = 0) => {
-    if (!containerRef.current) return;
+  useEffect(() => {
+    if (!processing || isCreating) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await api.get(`/albums/${id}/status`);
+        if (data.status !== "processing") {
+          setProcessing(false);
+          loadAlbum();
+          if (data.status === "ready") toast.success("Album prêt");
+          if (data.status === "error") toast.error("Erreur lors du traitement IA");
+        }
+      } catch {
+        /* noop */
+      }
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [processing, id, loadAlbum, isCreating]);
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+  const template = isCreating
+    ? getTemplate()
+    : (album ? getTemplate() : null);
 
-    const itemCenterX = x + width / 2;
-    const itemCenterY = y + height / 2;
-
-    const THRESHOLD = 6; // Sensibilité en pixels
-
-    setSnapLines({
-      x: Math.abs(itemCenterX - centerX) < THRESHOLD ? centerX : null,
-      y: Math.abs(itemCenterY - centerY) < THRESHOLD ? centerY : null,
-    });
+  const handleFiles = (list) => {
+    const arr = Array.from(list).filter((f) => f.type.startsWith("image/"));
+    setFiles((prev) => [...prev, ...arr]);
   };
 
-  // Mettre à jour un élément spécifique sur la page courante
-  const handleUpdateItem = (updatedProps) => {
-    if (!selectedItemId) return;
+  const removeFile = (idx) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
 
-    setPages((prevPages) => {
-      const newPages = [...prevPages];
-      const pageToUpdate = { ...newPages[currentPageIndex] };
+  const createAndProcess = async () => {
+    if (!title.trim()) {
+      toast.error("Veuillez entrer un titre pour l'album");
+      return;
+    }
+    if (files.length === 0) {
+      toast.error("Veuillez ajouter au moins une photo");
+      return;
+    }
 
-      pageToUpdate.items = pageToUpdate.items.map((item) => {
-        if (item.id === selectedItemId) {
-          return { ...item, ...updatedProps };
-        }
-        return item;
+    setBusy(true);
+    try {
+      const { data: newAlbum } = await api.post("/albums", {
+        title: title.trim(),
+        country: country.trim(),
+        year: Number(year) || new Date().getFullYear(),
+        size,
+        orientation,
       });
 
-      newPages[currentPageIndex] = pageToUpdate;
-      return newPages;
+      const chunkSize = 8;
+      for (let i = 0; i < files.length; i += chunkSize) {
+        const chunk = files.slice(i, i + chunkSize);
+        const form = new FormData();
+        chunk.forEach((f) => form.append("files", f));
+        await api.post(`/albums/${newAlbum.id}/photos`, form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      await api.post(`/albums/${newAlbum.id}/process`);
+      toast.success("L'IA compose votre album...");
+      nav(`/editor/${newAlbum.id}?processing=1`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Erreur lors de la création");
+      setBusy(false);
+    }
+  };
+
+  const save = async () => {
+    if (!album) return;
+    setSaving(true);
+    try {
+      await api.patch(`/albums/${id}`, { title: album.title, country: album.country, year: album.year, pages: album.pages, cover: album.cover || {} });
+      toast.success("Saved");
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      const url = pdfExportUrl(id);
+      window.open(url, "_blank");
+    } finally {
+      setTimeout(() => setExporting(false), 1200);
+    }
+  };
+
+  const updateSelectedItem = (patch) => {
+    if (!selected) return;
+    const { pageIdx, item } = selected;
+    const newPages = [...album.pages];
+    newPages[pageIdx] = {
+      ...newPages[pageIdx],
+      items: newPages[pageIdx].items.map((it) => (it.id === item.id ? { ...it, ...patch } : it)),
+    };
+    setAlbum({ ...album, pages: newPages });
+    setSelected({ pageIdx, item: { ...item, ...patch } });
+  };
+
+  const updateItemById = (pageIdx, itemId, patch) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      const pageItems = newPages[pageIdx].items;
+      const siblings = pageItems.filter((it) => it.id !== itemId);
+      let guideX = null, guideY = null;
+      const items = pageItems.map((it) => {
+        if (it.id !== itemId) return it;
+        const updatedPatch = { ...patch };
+        const currentW = updatedPatch.w ?? it.w ?? 0;
+        const currentH = updatedPatch.h ?? it.h ?? 0;
+        if (updatedPatch.x !== undefined) {
+          const s = computeAlignSnap(updatedPatch.x, currentW, siblings, "x");
+          updatedPatch.x = s.value;
+          guideX = s.guide;
+        }
+        if (updatedPatch.y !== undefined) {
+          const s = computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
+          updatedPatch.y = s.value;
+          guideY = s.guide;
+        }
+        return { ...it, ...updatedPatch };
+      });
+      newPages[pageIdx] = { ...newPages[pageIdx], items, align_guide_x: guideX, align_guide_y: guideY };
+      return { ...prev, pages: newPages };
+    });
+    setSelected((prev) => (prev && prev.item?.id === itemId ? { ...prev, item: { ...prev.item, ...patch } } : prev));
+  };
+
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
+    makeCoverEditingActions({ setAlbum, albumId: id, coverSel, setCoverSel });
+
+  const deleteItemById = (pageIdx, itemId) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = {
+        ...newPages[pageIdx],
+        items: newPages[pageIdx].items.filter((it) => it.id !== itemId),
+      };
+      return { ...prev, pages: newPages };
+    });
+    setSelected((prev) => (prev && prev.item?.id === itemId ? null : prev));
+    setCropMode(false);
+  };
+
+  const swapItemsById = (pageIdx, idA, idB) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      const items = newPages[pageIdx].items;
+      const a = items.find((it) => it.id === idA);
+      const b = items.find((it) => it.id === idB);
+      if (!a || !b) return prev;
+      newPages[pageIdx] = {
+        ...newPages[pageIdx],
+        items: items.map((it) => {
+          if (it.id === idA) return { ...it, photo_id: b.photo_id, focal_x: b.focal_x, focal_y: b.focal_y, scale: b.scale };
+          if (it.id === idB) return { ...it, photo_id: a.photo_id, focal_x: a.focal_x, focal_y: a.focal_y, scale: a.scale };
+          return it;
+        }),
+      };
+      return { ...prev, pages: newPages };
+    });
+    toast.success("Pictures swapped");
+  };
+
+  const replacePhotoInItem = (pageIdx, itemId, photoId) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = {
+        ...newPages[pageIdx],
+        items: newPages[pageIdx].items.map((it) =>
+          it.id === itemId ? { ...it, photo_id: photoId, focal_x: 0.5, focal_y: 0.5, scale: 1 } : it
+        ),
+      };
+      return { ...prev, pages: newPages };
     });
   };
 
-  // Supprimer l'élément sélectionné
-  const handleRemoveItem = () => {
-    if (!selectedItemId) return;
-
-    setPages((prevPages) => {
-      const newPages = [...prevPages];
-      const pageToUpdate = { ...newPages[currentPageIndex] };
-
-      pageToUpdate.items = pageToUpdate.items.filter((item) => item.id !== selectedItemId);
-      newPages[currentPageIndex] = pageToUpdate;
-      return newPages;
+  const addPhotoAt = (pageIdx, photoId, box) => {
+    const newItem = { id: cryptoRandom(), type: "photo", photo_id: photoId, focal_x: 0.5, focal_y: 0.5, scale: 1, ...box };
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = { ...newPages[pageIdx], items: [...newPages[pageIdx].items, newItem] };
+      return { ...prev, pages: newPages };
     });
-
-    setSelectedItemId(null);
+    setSelected({ pageIdx, item: newItem });
+    toast.success("Picture added");
   };
 
-  // Ajouter un bloc de texte
-  const handleAddText = () => {
+  const [placingText, setPlacingText] = useState(false);
+  const [autoEditItemId, setAutoEditItemId] = useState(null);
+
+  const placeTextAt = (pageIdx, box) => {
     const newItem = {
       id: cryptoRandom(),
       type: "text",
-      content: "Nouveau texte",
-      font: FONT_OPTIONS[0].value,
+      content: "Your caption",
+      x: box.x,
+      y: box.y,
+      w: 0.5,
+      h: 0.08,
+      font: "'Cormorant Garamond', serif",
       color: "#1A1A17",
-      font_size: 16,
-      font_weight: "normal",
-      font_style: "normal",
-      x: 20,
-      y: 20,
-      width: 150,
-      height: 50,
+      font_size: 24,
     };
-
-    setPages((prevPages) => {
-      const newPages = [...prevPages];
-      const pageToUpdate = { ...newPages[currentPageIndex] };
-      pageToUpdate.items = [...(pageToUpdate.items || []), newItem];
-      newPages[currentPageIndex] = pageToUpdate;
-      return newPages;
+    setAlbum((prev) => {
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = { ...newPages[pageIdx], items: [...newPages[pageIdx].items, newItem] };
+      return { ...prev, pages: newPages };
     });
-
-    setSelectedItemId(newItem.id);
+    setSelected({ pageIdx, item: newItem });
+    setPlacingText(false);
+    setAutoEditItemId(newItem.id);
   };
 
-  if (isProcessing) {
-    return <ProcessingScreen title={album?.title || "Création de l'album"} />;
+  const removeSelected = () => {
+    if (!selected) return;
+    const { pageIdx, item } = selected;
+    const newPages = [...album.pages];
+    newPages[pageIdx] = {
+      ...newPages[pageIdx],
+      items: newPages[pageIdx].items.filter((it) => it.id !== item.id),
+    };
+    setAlbum({ ...album, pages: newPages });
+    setSelected(null);
+  };
+
+  const uploadCoverImage = async (file) => {
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const { data } = await api.post(`/albums/${id}/cover-image`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setAlbum({ ...album, cover_image_path: data.cover_image_path });
+      setCoverVersion((v) => v + 1);
+      toast.success("Cover image added");
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const removeCoverImage = async () => {
+    setUploadingCover(true);
+    try {
+      await api.delete(`/albums/${id}/cover-image`);
+      setAlbum({ ...album, cover_image_path: null });
+      setCoverVersion((v) => v + 1);
+      toast.success("Cover image removed");
+    } catch {
+      toast.error("Failed to remove cover image");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const reorderPhotoSequence = (newPhotoIdSequence) => {
+    const newPages = [];
+    let idx = 0;
+    for (const p of album.pages) {
+      const newItems = p.items.map((it) => {
+        if (it.type !== "photo") return it;
+        const newPhotoId = newPhotoIdSequence[idx] ?? it.photo_id;
+        idx += 1;
+        return { ...it, photo_id: newPhotoId };
+      });
+      newPages.push({ ...p, items: newItems });
+    }
+    setAlbum({ ...album, pages: newPages });
+  };
+
+  const photoSequence = () => {
+    const seq = [];
+    for (const p of album?.pages || []) {
+      for (const it of p.items || []) {
+        if (it.type === "photo") seq.push(it.photo_id);
+      }
+    }
+    return seq;
+  };
+
+  // ==========================================
+  // RENDU : CRÉATION D'ALBUM (SANS STEPS)
+  // ==========================================
+  if (isCreating) {
+    return (
+      <main className="min-h-screen bg-[color:var(--paper)] pt-12 pb-24 px-6 md:px-12">
+        <div className="max-w-[1000px] mx-auto">
+         
+          <div className="mb-10">
+            <h1 className="font-serif-display text-4xl mb-2">Créer un nouvel album</h1>
+            <p className="text-sm text-[color:var(--muted)]">Remplissez les informations et ajoutez vos photos pour lancer la composition automatique.</p>
+          </div>
+
+          <div className="space-y-10 bg-white p-8 border border-[color:var(--border-soft)]">
+            {/* 1. Informations générales */}
+            <div className="space-y-4">
+              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">Informations</h2>
+              <div>
+                <label className="eyebrow block mb-2">Title *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="ex: Voyage en Italie"
+                  className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="eyebrow block mb-2">Location / Country</label>
+                  <input
+                    type="text"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    placeholder="ex: Toscane"
+                    className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
+                  />
+                </div>
+                <div>
+                  <label className="eyebrow block mb-2">Year</label>
+                  <input
+                    type="number"
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Format et Style de couverture */}
+            <div className="space-y-4">
+              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">Mise en page & Couverture</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="eyebrow block mb-2">Format</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["A4", "A5", "Square"].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSize(s)}
+                        className={`py-3 border text-xs font-semibold uppercase tracking-wider transition-all ${
+                          size === s ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]" : "bg-white border-[color:var(--border-soft)] hover:border-[color:var(--ink)]"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="eyebrow block mb-2">Orientation</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "portrait", label: "Portrait" },
+                      { id: "landscape", label: "Landscape" },
+                    ].map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setOrientation(o.id)}
+                        className={`py-3 border text-xs font-semibold uppercase tracking-wider transition-all ${
+                          orientation === o.id ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]" : "bg-white border-[color:var(--border-soft)] hover:border-[color:var(--ink)]"
+                        }`}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="eyebrow block mb-2">Cover Color</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {COVER_COLOR_PRESETS.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => setTemplateId(t.id)}
+                      className={`cursor-pointer p-4 border transition-all bg-white flex flex-col justify-between ${
+                        templateId === t.id ? "border-[color:var(--coral)] ring-1 ring-[color:var(--coral)]" : "border-[color:var(--border-soft)] hover:border-[color:var(--ink)]/30"
+                      }`}
+                    >
+                      <div>
+                        <h3 className="font-serif-display text-lg mb-1">{t.name}</h3>
+                        <p className="text-xs text-[color:var(--muted)]">{t.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Photos */}
+            <div className="space-y-4">
+              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">Photos</h2>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+                }}
+                className="border-2 border-dashed border-[color:var(--ink)]/30 bg-[color:var(--paper)] p-8 text-center cursor-pointer hover:border-[color:var(--coral)] transition-colors"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <ImageIcon size={32} className="mx-auto text-[color:var(--muted)] mb-3" />
+                <p className="text-sm font-semibold mb-1">Click or drag your photos here</p>
+                <p className="text-xs text-[color:var(--muted)]">JPEG, PNG, WEBP accepted</p>
+              </div>
+
+              {files.length > 0 && (
+                <div>
+                  <div className="eyebrow mb-2">{files.length} photo(s) selected</div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 max-h-48 overflow-y-auto p-2 border border-[color:var(--border-soft)] bg-gray-50">
+                    {files.map((file, idx) => (
+                      <div key={idx} className="relative group aspect-square bg-gray-200 border overflow-hidden">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`upload-${idx}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(idx);
+                          }}
+                          className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XIcon size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bouton de validation final */}
+            <div className="pt-4 border-t border-[color:var(--border-soft)] flex justify-end">
+              <button
+                onClick={createAndProcess}
+                disabled={busy}
+                className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
+              >
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                <span className="text-sm font-semibold tracking-widest uppercase">Begin creation</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
+  // ==========================================
+  // RENDU : ÉCRAN DE CHARGEMENT DE L'IA
+  // ==========================================
+  if (!album) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[color:var(--editor-canvas)]">
+        <p className="eyebrow animate-slow-pulse">Loading album…</p>
+      </div>
+    );
+  }
+
+  if (processing) {
+    return <ProcessingScreen title={album.title} />;
+  }
+
+  // ==========================================
+  // RENDU : ÉDITEUR D'ALBUM PRINCIPAL
+  // ==========================================
+  const albumOrientation = album?.orientation || "portrait";
+  const albumTemplate = getTemplate();
+
   return (
-    <div className="min-h-screen bg-[color:var(--paper)] text-[color:var(--ink)] flex flex-col">
-      {/* Barre d'outils supérieure */}
-      <header className="border-b border-[color:var(--ink)]/10 px-6 py-4 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 text-sm hover:opacity-75 transition-opacity"
-          >
-            <ChevronLeft size={16} />
-            Retour
-          </button>
-          <h1 className="font-serif-display text-xl font-semibold">{album?.title || "Album"}</h1>
-        </div>
+    <main className="min-h-screen bg-[color:var(--editor-canvas)] pt-20 pb-24 relative">
+      <div className="absolute inset-0 grain pointer-events-none" />
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleAddText}
-            className="inline-flex items-center gap-2 border border-[color:var(--ink)]/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors"
-          >
-            <Type size={14} />
-            Ajouter du texte
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave?.(pages)}
-            className="inline-flex items-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity"
-          >
-            Sauvegarder
-          </button>
-        </div>
-      </header>
-
-      {/* Zone de travail principale */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Navigation des pages */}
-        <aside className="w-64 border-r border-[color:var(--ink)]/10 p-4 overflow-y-auto hidden md:block">
-          <h2 className="eyebrow mb-4">Pages ({pages.length})</h2>
-          <div className="space-y-3">
-            {pages.map((page, idx) => (
-              <button
-                key={page.id || idx}
-                type="button"
-                onClick={() => {
-                  setCurrentPageIndex(idx);
-                  setSelectedItemId(null);
-                }}
-                className={`w-full p-3 border text-left transition-all ${
-                  currentPageIndex === idx
-                    ? "border-[color:var(--ink)] bg-white shadow-sm"
-                    : "border-[color:var(--ink)]/10 hover:border-[color:var(--ink)]/30"
-                }`}
-              >
-                <span className="text-xs font-mono block mb-1">Page {idx + 1}</span>
-                <span className="text-xs text-[color:var(--muted)]">
-                  {page.items?.length || 0} élément(s)
-                </span>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        {/* Zone d'édition centrale */}
-        <main
-          className="flex-1 p-8 flex flex-col items-center justify-center overflow-y-auto relative"
-          onClick={() => setSelectedItemId(null)}
-        >
-          <div
-            ref={containerRef}
-            className="relative w-full max-w-2xl aspect-[3/4] bg-white border border-[color:var(--ink)]/10 shadow-lg p-8 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Ligne Guide Verticale (Axe X) */}
-            {snapLines.x !== null && (
-              <div
-                className="absolute top-0 bottom-0 border-l-2 border-dashed border-red-500 z-50 pointer-events-none"
-                style={{ left: `${snapLines.x}px` }}
-              />
-            )}
-
-            {/* Ligne Guide Horizontale (Axe Y) */}
-            {snapLines.y !== null && (
-              <div
-                className="absolute left-0 right-0 border-t-2 border-dashed border-red-500 z-50 pointer-events-none"
-                style={{ top: `${snapLines.y}px` }}
-              />
-            )}
-
-            {/* Rendu dynamique de TOUS les éléments avec React-Rnd */}
-            {currentPage.items?.map((item) => {
-              const isSelected = item.id === selectedItemId;
-
-              return (
-                <Rnd
-                  key={item.id}
-                  size={{
-                    width: item.width || 150,
-                    height: item.height || 50,
-                  }}
-                  position={{
-                    x: item.x || 0,
-                    y: item.y || 0,
-                  }}
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    setSelectedItemId(item.id);
-                  }}
-                  onDrag={(e, d) =>
-                    checkSnapGuides(d.x, d.y, item.width || 150, item.height || 50)
-                  }
-                  onDragStop={(e, d) => {
-                    setSnapLines({ x: null, y: null });
-                    // Mise à jour directe par ID
-                    setPages((prevPages) => {
-                      const newPages = [...prevPages];
-                      const pageToUpdate = { ...newPages[currentPageIndex] };
-                      pageToUpdate.items = pageToUpdate.items.map((it) =>
-                        it.id === item.id ? { ...it, x: d.x, y: d.y } : it
-                      );
-                      newPages[currentPageIndex] = pageToUpdate;
-                      return newPages;
-                    });
-                  }}
-                  onResizeStop={(e, direction, ref, delta, position) => {
-                    setSnapLines({ x: null, y: null });
-                    setPages((prevPages) => {
-                      const newPages = [...prevPages];
-                      const pageToUpdate = { ...newPages[currentPageIndex] };
-                      pageToUpdate.items = pageToUpdate.items.map((it) =>
-                        it.id === item.id
-                          ? {
-                              ...it,
-                              width: parseInt(ref.style.width, 10),
-                              height: parseInt(ref.style.height, 10),
-                              ...position,
-                            }
-                          : it
-                      );
-                      newPages[currentPageIndex] = pageToUpdate;
-                      return newPages;
-                    });
-                  }}
-                  bounds="parent"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setSelectedItemId(item.id);
-                  }}
-                  className={`absolute cursor-move ${
-                    isSelected ? "ring-2 ring-[color:var(--coral,#f53769)]" : ""
-                  }`}
-                >
-                  {item.type === "photo" ? (
-                    <div className="w-full h-full overflow-hidden relative pointer-events-none select-none">
-                      <img
-                        src={item.url || item.src}
-                        alt="Élément d'album"
-                        className="w-full h-full object-cover pointer-events-none"
-                        style={{
-                          transform: `scale(${item.scale || 1})`,
-                          objectPosition: `${(item.focal_x ?? 0.5) * 100}% ${
-                            (item.focal_y ?? 0.5) * 100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        color: item.color || "#1A1A17",
-                        fontSize: `${item.font_size || 16}px`,
-                        fontWeight: item.font_weight || "normal",
-                        fontStyle: item.font_style || "normal",
-                        fontFamily: item.font || "sans-serif",
-                      }}
-                      className="w-full h-full select-none pointer-events-none flex items-center"
-                    >
-                      {item.content || "Texte vide"}
-                    </div>
-                  )}
-                </Rnd>
-              );
-            })}
+      <div className="max-w-[1600px] mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+        {/* Zone du Livre */}
+        <div className="flex flex-col items-center pt-6">
+          <div className="w-full max-w-2xl mb-8 flex items-center justify-between">
+            <h1 className="font-serif-display text-2xl truncate">{album.title}</h1>
+            <div />
           </div>
 
-          {/* Navigation bas de page mobile */}
-          <div className="flex items-center gap-4 mt-6">
+          <BookRenderer
+            album={album}
+            template={albumTemplate}
+            orientation={albumOrientation}
+            bookRef={bookRef}
+            onSelectItem={(pageIdx, item) => {
+              setSelected(item ? { pageIdx, item } : null);
+              setCropMode(false);
+              setCoverSel(null);
+            }}
+            onUpdateItem={updateItemById}
+            onDeleteItem={deleteItemById}
+            onSwapItems={swapItemsById}
+            onAddPhotoAt={addPhotoAt}
+            onReplacePhoto={replacePhotoInItem}
+            selectedId={selected?.item?.id}
+            cropMode={cropMode}
+            onEnterCrop={(itemId) => setCropMode(true)}
+            onExitCrop={() => setCropMode(false)}
+            placingText={placingText}
+            onPlaceText={placeTextAt}
+            autoEditItemId={autoEditItemId}
+            onTextEditHandled={() => setAutoEditItemId(null)}
+            onFlip={(p) => {
+              setPageIndex(p);
+              if (p !== 0) setCoverSel(null);
+            }}
+            coverImageUrl={album.cover_image_path ? coverImageUrl(id, coverVersion) : null}
+            coverSel={coverSel}
+            onSelectCover={(side = "front") => { setSelected(null); setCoverSel({ mode: "cover", side }); }}
+            onSelectCoverTitle={() => { setSelected(null); setCoverSel({ mode: "title", side: "front" }); }}
+            onSelectCoverItem={(item, side = "front") => { setSelected(null); setCoverSel({ mode: "item", side, itemId: item.id }); }}
+            onUpdateCoverTitle={updateCoverTitle}
+            onUpdateCoverItem={updateCoverItem}
+          />
+
+          <div className="flex items-center gap-4 mt-8">
             <button
-              type="button"
-              disabled={currentPageIndex === 0}
-              onClick={() => {
-                setCurrentPageIndex((p) => Math.max(0, p - 1));
-                setSelectedItemId(null);
-              }}
-              className="p-2 border border-[color:var(--ink)]/20 disabled:opacity-30"
+              data-testid={TID.editorPrev}
+              onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
+              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              aria-label="Previous page"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
             </button>
-            <span className="text-xs font-mono">
-              {currentPageIndex + 1} / {pages.length || 1}
-            </span>
+            <span className="eyebrow">Double-page {pageIndex + 1}</span>
             <button
-              type="button"
-              disabled={currentPageIndex >= pages.length - 1}
-              onClick={() => {
-                setCurrentPageIndex((p) => Math.min(pages.length - 1, p + 1));
-                setSelectedItemId(null);
-              }}
-              className="p-2 border border-[color:var(--ink)]/20 disabled:opacity-30"
+              data-testid={TID.editorNext}
+              onClick={() => bookRef.current?.pageFlip()?.flipNext()}
+              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              aria-label="Next page"
             >
-              <ChevronRight size={18} />
+              <ChevronRight size={16} />
             </button>
           </div>
-        </main>
 
-        {/* Panneau d'inspection latéral */}
-        <aside className="w-80 border-l border-[color:var(--ink)]/10 p-6 bg-white/50 backdrop-blur-sm overflow-y-auto">
-          <h2 className="eyebrow mb-6">Propriétés</h2>
-          {selectedItem ? (
-            selectedItem.type === "text" ? (
-              <TextEditor
-                item={selectedItem}
-                onChange={handleUpdateItem}
-                onRemove={handleRemoveItem}
+          {album.pages && album.pages.length > 0 && (
+            <div className="w-full mt-12 max-w-4xl">
+              <div className="eyebrow mb-3 text-center">Rearrange the photos · drag and drop</div>
+              <PhotoTray
+                photoIds={photoSequence()}
+                onReorder={reorderPhotoSequence}
               />
-            ) : (
-              <PhotoEditor
-                item={selectedItem}
-                onChange={handleUpdateItem}
-                onRemove={handleRemoveItem}
-              />
-            )
-          ) : (
-            <p className="text-xs text-[color:var(--muted)] italic">
-              Sélectionnez un élément sur la page pour modifier ses propriétés.
-            </p>
+            </div>
           )}
+
+          {album.photos && album.photos.length > 0 && (
+            <div className="w-full mt-8 max-w-4xl">
+              <div className="eyebrow mb-3 text-center">All your photos · drag and drop</div>
+              <PhotoGallery
+                photos={album.photos}
+                placedPhotoIds={new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo").map((it) => it.photo_id)))}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Barre latérale (Sidebar) */}
+        <aside className="lg:sticky lg:top-24 bg-white p-6 border border-[color:var(--border-soft)]">
+          <div className="eyebrow mb-4">Tools</div>
+
+          <div className="space-y-3 mb-6">
+            <button
+              data-testid={TID.editorSave}
+              onClick={save}
+              disabled={saving}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              <span className="text-sm font-semibold tracking-widest uppercase">Save</span>
+            </button>
+            <button
+              data-testid={TID.editorExportPdf}
+              onClick={exportPdf}
+              disabled={exporting}
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)] py-3 hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors disabled:opacity-60"
+            >
+              {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              <span className="text-sm font-semibold tracking-widest uppercase">Export PDF</span>
+            </button>
+            <button
+              data-testid={TID.editorAddText}
+              onClick={() => setPlacingText((v) => !v)}
+              className={`w-full inline-flex items-center justify-center gap-2 border py-3 transition-colors ${
+                placingText
+                  ? "bg-[color:var(--coral)] text-[color:var(--paper)] border-[color:var(--coral)]"
+                  : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+              }`}
+            >
+              <Type size={14} />
+              <span className="text-sm font-semibold tracking-widest uppercase">
+                {placingText ? "Click on the page…" : "Add Text"}
+              </span>
+            </button>
+          </div>
+
+          <div className="border-t border-[color:var(--border-soft)] pt-6">
+            <div className="eyebrow mb-4">Editing</div>
+            {coverSel ? (
+              <CoverEditorPanel
+                album={album}
+                coverSel={coverSel}
+                updateCover={updateCover}
+                updateCoverItem={updateCoverItem}
+                addCoverText={addCoverText}
+                addCoverShape={addCoverShape}
+                addCoverImage={addCoverImage}
+                removeCoverItem={removeCoverItem}
+                updateAlbumTitle={updateAlbumTitle}
+                updateAlbumYear={updateAlbumYear}
+                onDismiss={() => setCoverSel(null)}
+              />
+            ) : selected ? (
+              <p className="text-xs text-[color:var(--muted)] leading-relaxed">
+                Use the small bar that appears above the selected element to modify, crop, or delete it — directly on the page.
+              </p>
+            ) : (
+              <p className="text-xs text-[color:var(--muted)] leading-relaxed">
+                Click on an element to edit it. On the cover, click on the background, title, or an added element.<br /><br />
+                <em>Tip</em> : Move and resize each element directly in the book.
+              </p>
+            )}
+          </div>
+
+          <div className="border-t border-[color:var(--border-soft)] pt-6 mt-6">
+            <div className="eyebrow mb-3">About</div>
+            <div className="text-sm text-[color:var(--ink)]/70 space-y-1">
+              <div>{album.pages?.length || 0} pages</div>
+              <div>{album.photos?.filter((p) => p.is_selected).length || 0} photos used</div>
+              <div>Format : {album.size} · {albumOrientation}</div>
+            </div>
+          </div>
         </aside>
       </div>
-    </div>
+    </main>
   );
 }
 
-// --- SOUS-COMPOSANTS ---
+// ==========================================
+// SOUS-COMPOSANTS DE L'ÉDITEUR
+// ==========================================
+
+function BookRenderer({
+  album,
+  template,
+  orientation,
+  bookRef,
+  onSelectItem,
+  onUpdateItem,
+  onDeleteItem,
+  onSwapItems,
+  onAddPhotoAt,
+  onReplacePhoto,
+  selectedId,
+  cropMode,
+  onEnterCrop,
+  onExitCrop,
+  placingText,
+  onPlaceText,
+  autoEditItemId,
+  onTextEditHandled,
+  onFlip,
+  coverImageUrl,
+  coverSel,
+  onSelectCover,
+  onSelectCoverTitle,
+  onSelectCoverItem,
+  onUpdateCoverTitle,
+  onUpdateCoverItem,
+}) {
+  const blank = (
+    <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
+  );
+  const pages = [
+    <CoverFrontPage
+      key="cover-front"
+      template={template}
+      title={album.title}
+      orientation={orientation}
+      coverImageUrl={coverImageUrl}
+      cover={album.cover || {}}
+      editable
+      onSelectCover={() => onSelectCover("front")}
+      onSelectTitle={onSelectCoverTitle}
+      onSelectItem={(item) => onSelectCoverItem(item, "front")}
+      onUpdateTitle={onUpdateCoverTitle}
+      onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "front")}
+      titleSelected={coverSel?.mode === "title"}
+      selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
+    />,
+    <React.Fragment key="blank-inner-front">{blank}</React.Fragment>,
+    ...(album.pages || []).map((page, i) => (
+      <AlbumPage
+        key={page.id || i}
+        page={page}
+        orientation={orientation}
+        pageIndex={i}
+        editable
+        selectedItemId={selectedId}
+        onSelectItem={(item) => onSelectItem(i, item)}
+        onUpdateItem={(itemId, patch) => onUpdateItem(i, itemId, patch)}
+        onDeleteItem={(itemId) => onDeleteItem(i, itemId)}
+        onSwapItems={(idA, idB) => onSwapItems(i, idA, idB)}
+        onAddPhotoAt={(photoId, box) => onAddPhotoAt(i, photoId, box)}
+        onReplacePhoto={(itemId, photoId) => onReplacePhoto(i, itemId, photoId)}
+        cropMode={cropMode}
+        onEnterCrop={onEnterCrop}
+        onExitCrop={onExitCrop}
+        placingText={placingText}
+        onPlaceText={(box) => onPlaceText(i, box)}
+        autoEditItemId={autoEditItemId}
+        onTextEditHandled={onTextEditHandled}
+      />
+    )),
+    <React.Fragment key="blank-inner-back">{blank}</React.Fragment>,
+    <CoverBackPage
+      key="cover-back"
+      template={template}
+      country={album.country}
+      year={album.year}
+      orientation={orientation}
+      cover={album.cover || {}}
+      editable
+      onSelectCover={() => onSelectCover("back")}
+      onSelectItem={(item) => onSelectCoverItem(item, "back")}
+      onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "back")}
+      selectedItemId={coverSel?.mode === "item" && coverSel?.side === "back" ? coverSel.itemId : null}
+    />,
+  ];
+  return <Flipbook ref={bookRef} pages={pages} orientation={orientation} onFlip={onFlip} />;
+}
 
 function TextEditor({ item, onChange, onRemove }) {
-  const isBold =
-    item.font_weight === "bold" || item.font_weight === "700" || item.font_weight === 700;
-  const isItalic = item.font_style === "italic";
-
   return (
     <div className="space-y-4">
       <div>
-        <label className="eyebrow block mb-2">Texte</label>
+        <label className="eyebrow block mb-2">Text</label>
         <textarea
           value={item.content || ""}
           onChange={(e) => onChange({ content: e.target.value })}
@@ -442,9 +884,8 @@ function TextEditor({ item, onChange, onRemove }) {
           className="w-full border border-[color:var(--ink)]/20 p-2 text-sm font-sans focus:border-[color:var(--ink)] focus:outline-none"
         />
       </div>
-
       <div>
-        <label className="eyebrow block mb-2">Police</label>
+        <label className="eyebrow block mb-2">Font</label>
         <select
           data-testid={TID.editorFontSelect}
           value={item.font || FONT_OPTIONS[0].value}
@@ -458,20 +899,14 @@ function TextEditor({ item, onChange, onRemove }) {
           ))}
         </select>
       </div>
-
       <div>
-        <label className="eyebrow block mb-2">Couleur</label>
+        <label className="eyebrow block mb-2">Color</label>
         <div className="flex items-center gap-2 flex-wrap">
           {COLOR_SWATCHES.map((c) => (
             <button
               key={c}
-              type="button"
               onClick={() => onChange({ color: c })}
-              className={`w-6 h-6 border ${
-                item.color === c
-                  ? "ring-2 ring-[color:var(--coral)] ring-offset-2"
-                  : "border-[color:var(--ink)]/20"
-              }`}
+              className={`w-6 h-6 border ${item.color === c ? "ring-2 ring-[color:var(--coral)] ring-offset-2" : "border-[color:var(--ink)]/20"}`}
               style={{ background: c }}
               aria-label={c}
             />
@@ -485,16 +920,14 @@ function TextEditor({ item, onChange, onRemove }) {
           />
         </div>
       </div>
-
       <div>
         <label className="eyebrow block mb-2">Style</label>
         <div className="flex items-center gap-2">
           <button
-            type="button"
             data-testid="editor-text-bold"
-            onClick={() => onChange({ font_weight: isBold ? "normal" : "bold" })}
+            onClick={() => onChange({ font_weight: (item.font_weight === "bold" || item.font_weight === "700") ? "normal" : "bold" })}
             className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
-              isBold
+              item.font_weight === "bold" || item.font_weight === "700"
                 ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                 : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
             }`}
@@ -502,13 +935,11 @@ function TextEditor({ item, onChange, onRemove }) {
           >
             <Bold size={14} />
           </button>
-
           <button
-            type="button"
             data-testid="editor-text-italic"
-            onClick={() => onChange({ font_style: isItalic ? "normal" : "italic" })}
+            onClick={() => onChange({ font_style: item.font_style === "italic" ? "normal" : "italic" })}
             className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
-              isItalic
+              item.font_style === "italic"
                 ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                 : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
             }`}
@@ -518,9 +949,8 @@ function TextEditor({ item, onChange, onRemove }) {
           </button>
         </div>
       </div>
-
       <div>
-        <label className="eyebrow block mb-2">Taille · {item.font_size || 16}px</label>
+        <label className="eyebrow block mb-2">Size · {item.font_size || 16}px</label>
         <input
           data-testid={TID.editorSizeInput}
           type="range"
@@ -531,96 +961,73 @@ function TextEditor({ item, onChange, onRemove }) {
           className="w-full"
         />
       </div>
-
       <button
-        type="button"
         onClick={onRemove}
         className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
       >
         <Trash2 size={14} />
-        <span className="text-xs font-semibold tracking-widest uppercase">Supprimer</span>
+        <span className="text-xs font-semibold tracking-widest uppercase">Delete</span>
       </button>
     </div>
   );
 }
 
 function PhotoEditor({ item, onChange, onRemove }) {
-  const scale = Number(item.scale ?? 1);
-  const focalX = Number(item.focal_x ?? 0.5);
-  const focalY = Number(item.focal_y ?? 0.5);
-
   return (
     <div className="space-y-4">
-      <p className="text-xs text-[color:var(--muted)]">
-        Photo sélectionnée. Ajustez le zoom et le cadrage.
-      </p>
-
+      <p className="text-xs text-[color:var(--muted)]">Selected photo. Adjust the zoom and framing.</p>
       <div>
-        <label className="eyebrow block mb-2 flex items-center gap-2">
-          <ZoomIn size={12} /> Zoom · {scale.toFixed(2)}×
-        </label>
+        <label className="eyebrow block mb-2 flex items-center gap-2"><ZoomIn size={12}/> Zoom · {(item.scale || 1).toFixed(2)}×</label>
         <input
           data-testid="editor-photo-scale"
           type="range"
           min={1}
           max={3}
           step={0.05}
-          value={scale}
+          value={item.scale || 1}
           onChange={(e) => onChange({ scale: Number(e.target.value) })}
           className="w-full"
         />
       </div>
-
       <div>
-        <label className="eyebrow block mb-2 flex items-center gap-2">
-          <Move size={12} /> Cadrage horizontal · {Math.round(focalX * 100)}%
-        </label>
+        <label className="eyebrow block mb-2 flex items-center gap-2"><Move size={12}/> Horizontal framing · {Math.round((item.focal_x ?? 0.5) * 100)}%</label>
         <input
           data-testid="editor-photo-focalx"
           type="range"
           min={0}
           max={1}
           step={0.01}
-          value={focalX}
+          value={item.focal_x ?? 0.5}
           onChange={(e) => onChange({ focal_x: Number(e.target.value) })}
           className="w-full"
         />
       </div>
-
       <div>
-        <label className="eyebrow block mb-2 flex items-center gap-2">
-          <Move size={12} /> Cadrage vertical · {Math.round(focalY * 100)}%
-        </label>
+        <label className="eyebrow block mb-2 flex items-center gap-2"><Move size={12}/> Vertical framing · {Math.round((item.focal_y ?? 0.5) * 100)}%</label>
         <input
           data-testid="editor-photo-focaly"
           type="range"
           min={0}
           max={1}
           step={0.01}
-          value={focalY}
+          value={item.focal_y ?? 0.5}
           onChange={(e) => onChange({ focal_y: Number(e.target.value) })}
           className="w-full"
         />
       </div>
-
       <button
-        type="button"
         onClick={() => onChange({ scale: 1, focal_x: 0.5, focal_y: 0.5 })}
         className="w-full text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] underline underline-offset-4"
         data-testid="editor-photo-reset"
       >
-        Réinitialiser le cadrage
+        Reset framing
       </button>
-
       <button
-        type="button"
         onClick={onRemove}
         className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
       >
         <Trash2 size={14} />
-        <span className="text-xs font-semibold tracking-widest uppercase">
-          Retirer de la page
-        </span>
+        <span className="text-xs font-semibold tracking-widest uppercase">Remove from page</span>
       </button>
     </div>
   );
@@ -628,32 +1035,39 @@ function PhotoEditor({ item, onChange, onRemove }) {
 
 function ProcessingScreen({ title }) {
   const [dots, setDots] = useState(0);
-  const [stage, setStage] = useState(0);
-
   useEffect(() => {
     const t = setInterval(() => setDots((d) => (d + 1) % 4), 500);
     return () => clearInterval(t);
   }, []);
-
+  const stages = [
+    "Analyzing images…",
+    "Detecting duplicates…",
+    "Grouping by scene…",
+    "Composing pages…",
+  ];
+  const [stage, setStage] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setStage((s) => (s + 1) % PROCESSING_STAGES.length), 2000);
+    const t = setInterval(() => setStage((s) => (s + 1) % stages.length), 2000);
     return () => clearInterval(t);
   }, []);
-
   return (
     <main className="min-h-screen bg-[color:var(--paper)] flex items-center justify-center pt-20 relative">
       <div className="absolute inset-0 grain pointer-events-none" />
       <div className="text-center max-w-lg px-6 relative">
         <Sparkles size={32} className="mx-auto text-[color:var(--coral)] mb-8 animate-slow-pulse" />
-        <div className="eyebrow mb-4">The AI is composing your edit</div>
+        <div className="eyebrow mb-4">AI is composing your edition</div>
         <h1 className="font-serif-display text-5xl md:text-6xl leading-[1] tracking-tight mb-8">
           {title}
         </h1>
         <p className="font-serif-display text-xl md:text-2xl text-[color:var(--muted)] italic">
-          {PROCESSING_STAGES[stage]}
-          {".".repeat(dots)}
+          {stages[stage]}{".".repeat(dots)}
         </p>
       </div>
     </main>
   );
+}
+
+function cryptoRandom() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `id-${Math.random().toString(36).slice(2, 10)}`;
 }

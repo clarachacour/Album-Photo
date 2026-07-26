@@ -6,13 +6,81 @@ export function cryptoRandom() {
   return `id-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+const SNAP_THRESHOLD = 0.02; // 2% of the page — how close counts as "aligned"
+
+// Finds the best-matching guide line for one axis: checks the item's start,
+// center and end against the page center plus every sibling's start, center
+// and end. Returns the (possibly snapped) position and the guide's location
+// (for drawing the line), or leaves the position untouched if nothing lines up.
+function findSnap(pos, size, siblings, axis) {
+  const sizeKey = axis === "x" ? "w" : "h";
+  const candidates = [0.5];
+  for (const s of siblings) {
+    if (s[axis] == null || s[sizeKey] == null) continue;
+    candidates.push(s[axis], s[axis] + s[sizeKey] / 2, s[axis] + s[sizeKey]);
+  }
+  const points = [
+    { edge: "start", value: pos },
+    { edge: "center", value: pos + size / 2 },
+    { edge: "end", value: pos + size },
+  ];
+  let best = null;
+  for (const c of candidates) {
+    for (const p of points) {
+      const diff = Math.abs(p.value - c);
+      if (diff < SNAP_THRESHOLD && (!best || diff < best.diff)) {
+        const newPos = p.edge === "start" ? c : p.edge === "center" ? c - size / 2 : c - size;
+        best = { diff, guide: c, newPos };
+      }
+    }
+  }
+  if (best) return { value: best.newPos, guide: best.guide };
+  return { value: pos, guide: null };
+}
+
+export function computeAlignSnap(pos, size, siblings, axis) {
+  return findSnap(pos, size, siblings || [], axis);
+}
+
 export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverSel }) {
   const updateCover = (patch) => {
     setAlbum((prev) => ({ ...prev, cover: { ...(prev.cover || {}), ...patch } }));
   };
 
+  // The front-cover title is dragged/resized like any other item (raw {x,y}
+  // or {w,h} patches from DraggableItem), but it's stored under dedicated
+  // title_x/title_y/title_w/title_h fields on `cover` — this maps between
+  // the two and applies the same center-snapping as other elements.
+  const updateCoverTitle = (patch) => {
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      const w = patch.w ?? cover.title_w ?? 0.84;
+      const h = patch.h ?? cover.title_h ?? 0.28;
+      const siblings = cover.extra_items || [];
+      const mapped = {};
+      if (patch.x !== undefined) {
+        const s = computeAlignSnap(patch.x, w, siblings, "x");
+        mapped.title_x = s.value;
+        mapped.align_guide_x = s.guide;
+      }
+      if (patch.y !== undefined) {
+        const s = computeAlignSnap(patch.y, h, siblings, "y");
+        mapped.title_y = s.value;
+        mapped.align_guide_y = s.guide;
+      }
+      if (patch.w !== undefined) mapped.title_w = patch.w;
+      if (patch.h !== undefined) mapped.title_h = patch.h;
+      return { ...prev, cover: { ...cover, ...mapped } };
+    });
+  };
+
   const updateAlbumTitle = (newTitle) => {
     setAlbum((prev) => ({ ...prev, title: newTitle }));
+  };
+
+  const updateAlbumYear = (newYear) => {
+    const y = parseInt(newYear, 10);
+    setAlbum((prev) => ({ ...prev, year: Number.isNaN(y) ? prev.year : y }));
   };
 
   const updateCoverItem = (itemId, patch, side = coverSel?.side || "front") => {
@@ -20,47 +88,33 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
 
     setAlbum((prev) => {
       const cover = prev.cover || {};
+      const siblings = (cover[key] || []).filter((it) => it.id !== itemId);
+      if (side === "front") {
+        siblings.push({ x: cover.title_x ?? 0.08, y: cover.title_y ?? 0.08, w: cover.title_w ?? 0.84, h: cover.title_h ?? 0.28 });
+      }
+      let guideX = null, guideY = null;
       const items = (cover[key] || []).map((it) => {
         if (it.id !== itemId) return it;
 
-        let updatedPatch = { ...patch };
-
-        // ----------------------------------------------------
-        // LOGIQUE DE MAGNÉTISME ET CENTRAGE (SNAP TO CENTER)
-        // ----------------------------------------------------
-        const SNAP_THRESHOLD = 0.02; // Marge de magnétisme (2%)
-
+        const updatedPatch = { ...patch };
         const currentW = updatedPatch.w ?? it.w ?? 0;
         const currentH = updatedPatch.h ?? it.h ?? 0;
 
-        // Si on déplace X
         if (updatedPatch.x !== undefined) {
-          const centerX = updatedPatch.x + currentW / 2;
-          // Si le centre de l'objet est à moins de 2% du centre de la page (0.5)
-          if (Math.abs(centerX - 0.5) < SNAP_THRESHOLD) {
-            updatedPatch.x = 0.5 - currentW / 2; // Calage parfait au centre
-            updatedPatch.isCenteredX = true;     // Flag pour afficher la ligne verticale
-          } else {
-            updatedPatch.isCenteredX = false;
-          }
+          const s = computeAlignSnap(updatedPatch.x, currentW, siblings, "x");
+          updatedPatch.x = s.value;
+          guideX = s.guide;
         }
-
-        // Si on déplace Y
         if (updatedPatch.y !== undefined) {
-          const centerY = updatedPatch.y + currentH / 2;
-          // Si le centre de l'objet est à moins de 2% du centre de la page (0.5)
-          if (Math.abs(centerY - 0.5) < SNAP_THRESHOLD) {
-            updatedPatch.y = 0.5 - currentH / 2; // Calage parfait au centre
-            updatedPatch.isCenteredY = true;     // Flag pour afficher la ligne horizontale
-          } else {
-            updatedPatch.isCenteredY = false;
-          }
+          const s = computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
+          updatedPatch.y = s.value;
+          guideY = s.guide;
         }
 
         return { ...it, ...updatedPatch };
       });
 
-      const next = { ...prev, cover: { ...cover, [key]: items } };
+      const next = { ...prev, cover: { ...cover, [key]: items, align_guide_x: guideX, align_guide_y: guideY } };
 
       if (patch.content !== undefined) {
         const updated = items.find((it) => it.id === itemId);
@@ -168,5 +222,5 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel(null);
   };
 
-  return { updateCover, updateAlbumTitle, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem };
+  return { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem };
 }

@@ -65,7 +65,7 @@ export default function CreateAlbum() {
   const nav = useNavigate();
 
   const template = getTemplate();
-  const { updateCover, updateAlbumTitle, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
   const handleFiles = (list) => {
@@ -169,7 +169,9 @@ export default function CreateAlbum() {
             coverSel={coverSel}
             setCoverSel={setCoverSel}
             updateCover={updateCover}
+            updateCoverTitle={updateCoverTitle}
             updateAlbumTitle={updateAlbumTitle}
+            updateAlbumYear={updateAlbumYear}
             updateCoverItem={updateCoverItem}
             addCoverText={addCoverText}
             addCoverShape={addCoverShape}
@@ -301,7 +303,9 @@ function StepEdit({
   coverSel,
   setCoverSel,
   updateCover,
+  updateCoverTitle,
   updateAlbumTitle,
+  updateAlbumYear,
   updateCoverItem,
   addCoverText,
   addCoverShape,
@@ -354,7 +358,7 @@ function StepEdit({
             onSelectCover={() => setCoverSel({ mode: "cover", side: "front" })}
             onSelectTitle={() => setCoverSel({ mode: "title", side: "front" })}
             onSelectItem={(item) => setCoverSel({ mode: "item", side: "front", itemId: item.id })}
-            onUpdateTitle={(patch) => updateCover(patch)}
+            onUpdateTitle={updateCoverTitle}
             onUpdateItem={(itemId, patch) => updateCoverItem(itemId, patch, "front")}
             titleSelected={coverSel?.mode === "title"}
             selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
@@ -373,6 +377,7 @@ function StepEdit({
             addCoverImage={addCoverImage}
             removeCoverItem={removeCoverItem}
             updateAlbumTitle={updateAlbumTitle}
+            updateAlbumYear={updateAlbumYear}
             onDismiss={() => setCoverSel(null)}
           />
         ) : (
