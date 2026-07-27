@@ -15,6 +15,7 @@ import AlbumEditor from "@/pages/AlbumEditor";
 // 🆕 Imports des deux nouvelles pages
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import MobileUpload from "@/pages/MobileUpload";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             {/* 🆕 Nouvelles routes publiques pour le mot de passe */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/mobile-upload/:token" element={<MobileUpload />} />
 
             <Route
               path="/dashboard"

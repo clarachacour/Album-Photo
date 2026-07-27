@@ -52,8 +52,34 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const loginWithGoogle = async (credential) => {
+    const { data } = await api.post("/auth/google", { credential });
+    localStorage.setItem("album_token", data.token);
+    localStorage.setItem("album_user", JSON.stringify(data.user));
+    setUser(data.user);
+    return data.user;
+  };
+
+  const loginWithApple = async (idToken, name) => {
+    const { data } = await api.post("/auth/apple", { id_token: idToken, name });
+    localStorage.setItem("album_token", data.token);
+    localStorage.setItem("album_user", JSON.stringify(data.user));
+    setUser(data.user);
+    return data.user;
+  };
+
+  const forgotPassword = async (email) => {
+    const { data } = await api.post("/auth/forgot-password", { email });
+    return data;
+  };
+
+  const resetPassword = async (token, newPassword) => {
+    const { data } = await api.post("/auth/reset-password", { token, new_password: newPassword });
+    return data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle, loginWithApple, forgotPassword, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

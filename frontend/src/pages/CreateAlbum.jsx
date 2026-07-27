@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_COVER, defaultLogoItem, getTemplate } from "@/lib/coverTemplates";
@@ -7,8 +7,9 @@ import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
 import { CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
+import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ArrowRight, ArrowLeft, Upload, Loader2, Sparkles, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
 const STEPS = ["Format", "Edit", "Pictures"];
 
@@ -54,25 +55,42 @@ function defaultCoverPayload() {
 }
 
 export default function CreateAlbum() {
+  const [params] = useSearchParams();
+  const resumeAlbumId = params.get("albumId");
   const [step, setStep] = useState(0);
   const [size, setSize] = useState("A4");
   const [orientation, setOrientation] = useState("portrait");
   const [album, setAlbum] = useState(null); // created once we leave the Format step
   const [coverSel, setCoverSel] = useState(null);
-  const [files, setFiles] = useState([]);
+  const [serverPhotos, setServerPhotos] = useState([]);
   const [busy, setBusy] = useState(false);
-  const fileInput = useRef();
+  const [resuming, setResuming] = useState(!!resumeAlbumId);
   const nav = useNavigate();
+
+  useEffect(() => {
+    if (!resumeAlbumId) return;
+    (async () => {
+      try {
+        const { data } = await api.get(`/albums/${resumeAlbumId}`);
+        setAlbum(data);
+        setServerPhotos(data.photos || []);
+        setSize(data.size || "A4");
+        setOrientation(data.orientation || "portrait");
+        setStep(2); // straight to Pictures — cover/format were already set
+      } catch {
+        toast.error("Could not load this album");
+        nav("/dashboard");
+      } finally {
+        setResuming(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeAlbumId]);
 
   const template = getTemplate();
   const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
-  const handleFiles = (list) => {
-    const arr = Array.from(list).filter((f) => f.type.startsWith("image/"));
-    setFiles((prev) => [...prev, ...arr]);
-  };
-  const removeFile = (idx) => setFiles((prev) => prev.filter((_, i) => i !== idx));
 
   // Format -> Edit: create the album the first time, or persist size/orientation if we're revisiting.
   const goToEdit = async () => {
@@ -113,7 +131,7 @@ export default function CreateAlbum() {
   const prev = () => setStep((s) => Math.max(s - 1, 0));
 
   const canProceed = () => {
-    if (step === 2) return files.length > 0;
+    if (step === 2) return serverPhotos.length > 0;
     return true;
   };
 
@@ -121,15 +139,6 @@ export default function CreateAlbum() {
     if (!album) return;
     setBusy(true);
     try {
-      const chunkSize = 8;
-      for (let i = 0; i < files.length; i += chunkSize) {
-        const chunk = files.slice(i, i + chunkSize);
-        const form = new FormData();
-        chunk.forEach((f) => form.append("files", f));
-        await api.post(`/albums/${album.id}/photos`, form, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
       await api.post(`/albums/${album.id}/process`);
       toast.success("AI is composing your album...");
       nav(`/editor/${album.id}?processing=1`);
@@ -138,6 +147,14 @@ export default function CreateAlbum() {
       setBusy(false);
     }
   };
+
+  if (resuming) {
+    return (
+      <main className="min-h-screen bg-[color:var(--paper)] flex items-center justify-center">
+        <Loader2 className="animate-spin text-[color:var(--muted)]" size={28} />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-24 pb-24 px-6 md:px-12">
@@ -181,7 +198,7 @@ export default function CreateAlbum() {
         )}
 
         {step === 2 && (
-          <StepPhotos files={files} handleFiles={handleFiles} removeFile={removeFile} fileInput={fileInput} />
+          <StepPhotos albumId={album?.id} serverPhotos={serverPhotos} onServerPhotosChange={setServerPhotos} />
         )}
 
         {/* Nav buttons */}
@@ -224,8 +241,9 @@ export default function CreateAlbum() {
 
 function StepFormat({ size, setSize, orientation, setOrientation, template }) {
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
+  const maxWidthBySize = { A3: 640, A4: 500, A5: 400 };
   const sizeContainerStyle = {
-    maxWidth: orientation === "landscape" ? (size === "A4" ? "560px" : "440px") : (size === "A4" ? "400px" : "320px"),
+    maxWidth: `${orientation === "landscape" ? maxWidthBySize[size] : maxWidthBySize[size] * 0.72}px`,
   };
 
   return (
@@ -236,7 +254,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, template }) {
         <div className="mb-10">
           <div className="eyebrow mb-4">Size</div>
           <div className="flex gap-3">
-            {["A4", "A5"].map((s) => (
+            {["A3", "A4", "A5"].map((s) => (
               <button
                 key={s}
                 data-testid={TID.sizeOption}
@@ -390,68 +408,19 @@ function StepEdit({
   );
 }
 
-function StepPhotos({ files, handleFiles, removeFile, fileInput }) {
-  const [drag, setDrag] = useState(false);
+function StepPhotos({ albumId, serverPhotos, onServerPhotosChange }) {
   return (
     <section className="animate-fade-up">
       <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Drop your photos.</h2>
       <p className="text-[color:var(--ink)]/70 mb-10">
         All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.
       </p>
-
-      <div
-        data-testid={TID.photoDropzone}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          handleFiles(e.dataTransfer.files);
-        }}
-        onClick={() => fileInput.current?.click()}
-        className={`border-2 border-dashed cursor-pointer p-16 text-center transition-colors ${
-          drag ? "border-[color:var(--coral)] bg-[color:var(--coral)]/5" : "border-[color:var(--ink)]/20 hover:border-[color:var(--ink)]/50"
-        }`}
-      >
-        <Upload size={32} className="mx-auto mb-4 text-[color:var(--muted)]" />
-        <p className="font-serif-display text-2xl mb-2">Drag your images here</p>
-        <p className="text-[color:var(--muted)] text-sm">or click to browse · JPG, PNG, WEBP</p>
-        <input
-          ref={fileInput}
-          data-testid={TID.photoInput}
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-      </div>
-
-      {files.length > 0 && (
-        <div className="mt-10">
-          <div className="eyebrow mb-4">{files.length} photo{files.length > 1 ? "s" : ""} · AI will choose the best ones</div>
-          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2">
-            {files.map((f, i) => (
-              <div key={i} className="relative aspect-square bg-[color:var(--editor-canvas)] overflow-hidden group">
-                <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFile(i);
-                  }}
-                  className="absolute top-1 right-1 bg-[color:var(--ink)] text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Remove"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <PhotoUploadMethods
+        albumId={albumId}
+        mode="wizard"
+        photos={serverPhotos}
+        onPhotosChange={onServerPhotosChange}
+      />
     </section>
   );
 }

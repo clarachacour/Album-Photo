@@ -14,6 +14,7 @@ export const TID = {
   authPasswordInput: "auth-password-input",
   authSubmit: "auth-submit",
   authToggle: "auth-toggle",
+  authForgotPassword: "auth-forgot-password",
 
   // Dashboard
   dashCreate: "dash-create-album",

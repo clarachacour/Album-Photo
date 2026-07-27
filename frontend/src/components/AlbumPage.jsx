@@ -231,7 +231,7 @@ export function AlbumPage({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspect} bg-[color:var(--paper)] overflow-hidden ${placingText ? "cursor-text" : ""}`}
+      className={`relative w-full ${aspect} bg-[color:var(--paper)] ${placingText ? "cursor-text" : ""}`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
@@ -434,8 +434,8 @@ export function CoverFrontPage({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspect} overflow-hidden`}
-      style={{ background: bg }}
+      className={`relative w-full ${aspect}`}
+      style={{ background: bg, containerType: "inline-size" }}
       onClick={(e) => {
         if (!editable) return;
         // Click on cover background → select cover
@@ -480,7 +480,7 @@ export function CoverFrontPage({
               color: text,
               fontFamily: titleFont,
               fontWeight: titleWeight,
-              fontSize: titleFontSize ? `${titleFontSize}px` : "clamp(28px, 6vw, 64px)",
+              fontSize: titleFontSize ? `${titleFontSize}px` : "clamp(18px, 9cqw, 56px)",
             }}
           >
             {title.split(" ").map((w, i) => (
@@ -498,7 +498,7 @@ export function CoverFrontPage({
             color: text,
             fontFamily: titleFont,
             fontWeight: titleWeight,
-            fontSize: titleFontSize ? `${titleFontSize}px` : "clamp(28px, 6vw, 64px)",
+            fontSize: titleFontSize ? `${titleFontSize}px` : "clamp(18px, 9cqw, 56px)",
           }}
         >
           {title.split(" ").map((w, i) => (
@@ -615,8 +615,8 @@ export function CoverBackPage({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspect} overflow-hidden flex flex-col items-center justify-between p-8`}
-      style={{ background: bg }}
+      className={`relative w-full ${aspect} flex flex-col items-center justify-between p-8`}
+      style={{ background: bg, containerType: "inline-size" }}
       onClick={(e) => {
         if (!editable) return;
         if (e.target === e.currentTarget) onSelectCover && onSelectCover();
@@ -627,7 +627,7 @@ export function CoverBackPage({
       <div />
       {extras.length === 0 && !cover.hide_back_text && (
         <div className="text-center">
-          <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "clamp(12px, 1.6vw, 18px)" }}>
+          <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "clamp(10px, 3.2cqw, 18px)" }}>
             {country || ""}
           </div>
         </div>

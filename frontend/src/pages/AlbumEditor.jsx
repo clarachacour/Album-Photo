@@ -10,8 +10,9 @@ import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage
 import Flipbook from "@/components/Flipbook";
 import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
+import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload } from "lucide-react";
 
 const FONT_OPTIONS = [
   { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
@@ -45,10 +46,15 @@ export default function AlbumEditor() {
   const bookRef = useRef();
   const coverInputRef = useRef();
   const [album, setAlbum] = useState(null);
+  const albumRef = useRef(null);
+  useEffect(() => {
+    albumRef.current = album;
+  }, [album]);
   const [pageIndex, setPageIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [cropMode, setCropMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverVersion, setCoverVersion] = useState(0);
@@ -175,18 +181,34 @@ export default function AlbumEditor() {
     }
   };
 
-  const save = async () => {
-    if (!album) return;
+  const save = async (opts = {}) => {
+    const { silent = false } = opts;
+    const current = albumRef.current;
+    if (!current) return;
     setSaving(true);
     try {
-      await api.patch(`/albums/${id}`, { title: album.title, country: album.country, year: album.year, pages: album.pages, cover: album.cover || {} });
-      toast.success("Saved");
+      await api.patch(`/albums/${id}`, { title: current.title, country: current.country, year: current.year, pages: current.pages, cover: current.cover || {} });
+      setLastSavedAt(new Date());
+      if (!silent) toast.success("Saved");
     } catch {
       toast.error("Failed to save");
     } finally {
       setSaving(false);
     }
   };
+
+  // Auto-save every 2 minutes so "My Albums" always reflects recent edits,
+  // even if the user never clicks the Save button themselves — silent, so it
+  // never interrupts with a popup; a small "Saved automatically" note near
+  // the Save button is enough.
+  useEffect(() => {
+    if (!album) return;
+    const interval = setInterval(() => {
+      save({ silent: true });
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [album?.id]);
 
   const exportPdf = async () => {
     setExporting(true);
@@ -609,13 +631,13 @@ export default function AlbumEditor() {
   const albumTemplate = getTemplate();
 
   return (
-    <main className="min-h-screen bg-[color:var(--editor-canvas)] pt-20 pb-24 relative">
+    <main className="min-h-screen bg-[color:var(--editor-canvas)] pt-16 pb-16 relative">
       <div className="absolute inset-0 grain pointer-events-none" />
 
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
         {/* Zone du Livre */}
-        <div className="flex flex-col items-center pt-6">
-          <div className="w-full max-w-2xl mb-8 flex items-center justify-between">
+        <div className="flex flex-col items-center pt-2">
+          <div className="w-full max-w-2xl mb-4 flex items-center justify-between">
             <h1 className="font-serif-display text-2xl truncate">{album.title}</h1>
             <div />
           </div>
@@ -656,7 +678,7 @@ export default function AlbumEditor() {
             onUpdateCoverItem={updateCoverItem}
           />
 
-          <div className="flex items-center gap-4 mt-8">
+          <div className="flex items-center gap-4 mt-4">
             <button
               data-testid={TID.editorPrev}
               onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
@@ -695,27 +717,48 @@ export default function AlbumEditor() {
               />
             </div>
           )}
+
+          {/* Add more photos — same 3 methods as the creation wizard. The AI
+              curates just the new ones and appends new pages at the end. */}
+          <div className="w-full mt-10 max-w-4xl">
+            <div className="eyebrow mb-3 text-center">Add more photos</div>
+            <PhotoUploadMethods
+              albumId={id}
+              mode="editor"
+              photos={[]}
+              onPhotosChange={() => loadAlbum()}
+              onProcessingStarted={() => setProcessing(true)}
+            />
+            <p className="text-xs text-[color:var(--muted)] mt-4 text-center">
+              The AI will pick the best of your new photos and add pages at the end of your album.
+            </p>
+          </div>
         </div>
 
         {/* Barre latérale (Sidebar) */}
-        <aside className="lg:sticky lg:top-24 bg-white p-6 border border-[color:var(--border-soft)]">
-          <div className="eyebrow mb-4">Tools</div>
+        <aside className="lg:sticky lg:top-16 bg-white p-4 border border-[color:var(--border-soft)] max-h-[calc(100vh-5rem)] overflow-y-auto">
+          <div className="eyebrow mb-3">Tools</div>
 
-          <div className="space-y-3 mb-6">
+          <div className="space-y-2 mb-4">
             <button
               data-testid={TID.editorSave}
               onClick={save}
               disabled={saving}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               <span className="text-sm font-semibold tracking-widest uppercase">Save</span>
             </button>
+            {lastSavedAt && (
+              <p className="text-[11px] text-[color:var(--muted)] text-center -mt-1">
+                Saved automatically at {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
             <button
               data-testid={TID.editorExportPdf}
               onClick={exportPdf}
               disabled={exporting}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)] py-3 hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)] py-2 hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors disabled:opacity-60"
             >
               {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               <span className="text-sm font-semibold tracking-widest uppercase">Export PDF</span>
@@ -723,7 +766,7 @@ export default function AlbumEditor() {
             <button
               data-testid={TID.editorAddText}
               onClick={() => setPlacingText((v) => !v)}
-              className={`w-full inline-flex items-center justify-center gap-2 border py-3 transition-colors ${
+              className={`w-full inline-flex items-center justify-center gap-2 border py-2 transition-colors ${
                 placingText
                   ? "bg-[color:var(--coral)] text-[color:var(--paper)] border-[color:var(--coral)]"
                   : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
@@ -736,8 +779,8 @@ export default function AlbumEditor() {
             </button>
           </div>
 
-          <div className="border-t border-[color:var(--border-soft)] pt-6">
-            <div className="eyebrow mb-4">Editing</div>
+          <div className="border-t border-[color:var(--border-soft)] pt-4">
+            <div className="eyebrow mb-3">Editing</div>
             {coverSel ? (
               <CoverEditorPanel
                 album={album}

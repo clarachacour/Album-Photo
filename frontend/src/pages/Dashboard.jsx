@@ -80,9 +80,11 @@ export default function Dashboard() {
             {albums.map((a) => {
               const cover = getCover(a.cover);
               if (a.cover_image_path) cover.image = coverImageUrl(a.id);
+              const isDraft = a.status === "draft";
+              const linkTo = isDraft ? `/create?albumId=${a.id}` : `/editor/${a.id}`;
               return (
                 <div key={a.id} className="group animate-fade-up" data-testid={TID.albumCard}>
-                  <Link to={`/editor/${a.id}`} className="block relative">
+                  <Link to={linkTo} className="block relative">
                     <CoverFront cover={cover} title={a.title || "Untitled"} />
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/30 flex items-center justify-center transition-opacity">
                       <ArrowUpRight className="text-white" size={32} />
@@ -96,6 +98,10 @@ export default function Dashboard() {
                       </div>
                       <div className="text-xs mt-2 uppercase tracking-widest text-[color:var(--coral)]">
                         {statusLabel(a.status)}
+                      </div>
+                      <div className="text-xs mt-2 text-[color:var(--muted)] space-y-0.5">
+                        <div>Created {formatDate(a.created_at)}</div>
+                        <div>Last modified {formatDate(a.updated_at)}</div>
                       </div>
                     </div>
                     <button
@@ -129,5 +135,14 @@ function statusLabel(s) {
       return "Error";
     default:
       return s || "—";
+  }
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "—";
   }
 }

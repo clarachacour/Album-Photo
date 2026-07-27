@@ -57,6 +57,7 @@
     "react-hook-form": "7.56.2",
     "react-pageflip": "^2.0.3",
     "react-resizable-panels": "3.0.1",
+    "qrcode.react": "^4.2.0",
     "react-rnd": "^10.5.3",
     "react-router-dom": "7.15.0",
     "react-scripts": "5.0.1",

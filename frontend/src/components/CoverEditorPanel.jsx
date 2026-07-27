@@ -38,7 +38,7 @@ export function CoverEditorPanel({
   const zoneLabel = side === "back" ? "Back Cover" : "Front Cover";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Entête du panneau */}
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
@@ -83,7 +83,7 @@ export function CoverEditorPanel({
 
       {/* 2. ÉDITION DU TITRE PRINCIPAL */}
       {coverSel.mode === "title" && (
-        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
+        <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
           <div className="eyebrow">Main Title</div>
           <textarea
             data-testid="cover-title-content"
@@ -172,7 +172,7 @@ export function CoverEditorPanel({
 
       {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / YEAR) */}
       {(coverSel.mode === "spine-title" || coverSel.mode === "spine-year") && (
-        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
+        <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
           <div className="eyebrow">
             {coverSel.mode === "spine-title" ? "Spine title" : "Spine year"}
           </div>
@@ -282,7 +282,7 @@ export function CoverEditorPanel({
 
       {/* 4. ÉDITION D'UN ÉLÉMENT SÉLECTIONNÉ (EXTRA ITEM) */}
       {selectedItem && (
-        <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-3">
+        <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
           <div className="eyebrow">Selected Item</div>
 
           {selectedItem.type === "text" && (

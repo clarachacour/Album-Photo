@@ -309,13 +309,25 @@ export function CoverFront({ cover, title = "Album" }) {
   const c = { ...DEFAULT_COVER, ...(cover || {}) };
   const { bg_color: bg, accent_color: accent, text_color: text } = c;
   const imageSrc = c.image_url || c.image;
-  const logoItem =
-    !imageSrc && (c.extra_items || []).find((it) => it.type === "image");
+  const extras = c.extra_items || [];
+  const hasImageExtra = extras.some((it) => it.type === "image");
+  const titleX = c.title_x ?? 0.08;
+  const titleY = c.title_y ?? 0.08;
+  const titleW = c.title_w ?? 0.84;
+
+  // The book editor renders a full page at ~500px wide, and title_font_size
+  // is stored as an absolute px value calibrated against that width. Using
+  // "cqw" (container query width) instead of "vw" scales the title relative
+  // to *this card's own width*, so a small dashboard thumbnail still shows
+  // text at the same proportion as the real, full-size cover.
+  const REFERENCE_PAGE_PX = 500;
+  const titleFontSizePx = c.title_font_size || 48;
+  const titleFontSizeCqw = (titleFontSizePx / REFERENCE_PAGE_PX) * 100;
 
   return (
     <div
       className="relative aspect-[3/4] w-full overflow-hidden book-shadow rounded-sm"
-      style={{ background: bg }}
+      style={{ background: bg, containerType: "inline-size" }}
     >
       {imageSrc ? (
         <img
@@ -327,20 +339,66 @@ export function CoverFront({ cover, title = "Album" }) {
         <div className="absolute inset-0 grain pointer-events-none" />
       )}
       {imageSrc && <div className="absolute inset-0 bg-black/10" />}
-      {logoItem && (
-        <img
-          src={logoItem.image_url}
-          alt=""
-          className="absolute object-contain pointer-events-none select-none"
-          style={{
-            left: `${logoItem.x * 100}%`,
-            top: `${logoItem.y * 100}%`,
-            width: `${logoItem.w * 100}%`,
-            height: `${logoItem.h * 100}%`,
-          }}
-        />
-      )}
-      {!imageSrc && !logoItem && (
+
+      {!imageSrc &&
+        extras.map((item) => {
+          if (item.type === "image") {
+            return (
+              <img
+                key={item.id}
+                src={item.image_url}
+                alt=""
+                className="absolute object-contain pointer-events-none select-none"
+                style={{
+                  left: `${item.x * 100}%`,
+                  top: `${item.y * 100}%`,
+                  width: `${item.w * 100}%`,
+                  height: `${item.h * 100}%`,
+                }}
+              />
+            );
+          }
+          if (item.type === "shape") {
+            return (
+              <div
+                key={item.id}
+                className="absolute pointer-events-none"
+                style={{
+                  left: `${item.x * 100}%`,
+                  top: `${item.y * 100}%`,
+                  width: `${item.w * 100}%`,
+                  height: `${item.h * 100}%`,
+                  background: item.fill_color || accent,
+                  borderRadius: item.shape_type === "circle" ? "9999px" : 0,
+                }}
+              />
+            );
+          }
+          if (item.type === "text") {
+            return (
+              <div
+                key={item.id}
+                className="absolute pointer-events-none whitespace-pre-wrap"
+                style={{
+                  left: `${item.x * 100}%`,
+                  top: `${item.y * 100}%`,
+                  width: `${item.w * 100}%`,
+                  height: `${item.h * 100}%`,
+                  color: item.color || text,
+                  fontFamily: item.font || "'Manrope', sans-serif",
+                  fontSize: `${((item.font_size || 16) / REFERENCE_PAGE_PX) * 100}cqw`,
+                  fontWeight: item.font_weight || "normal",
+                  overflow: "hidden",
+                }}
+              >
+                {item.content}
+              </div>
+            );
+          }
+          return null;
+        })}
+
+      {!imageSrc && !hasImageExtra && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div
             className="rounded-full"
@@ -348,19 +406,21 @@ export function CoverFront({ cover, title = "Album" }) {
           />
         </div>
       )}
-      <div className="relative z-10 p-3 h-full flex items-end">
-        <h3
-          className="leading-[0.95] tracking-tight uppercase"
-          style={{
-            color: text,
-            fontSize: "clamp(12px, 2.6vw, 18px)",
-            fontWeight: c.title_font_weight || 800,
-            fontFamily: c.title_font || DEFAULT_TITLE_FONT,
-          }}
-        >
-          {title}
-        </h3>
-      </div>
+
+      <h3
+        className="absolute leading-[0.95] tracking-tight uppercase"
+        style={{
+          left: `${titleX * 100}%`,
+          top: `${titleY * 100}%`,
+          width: `${titleW * 100}%`,
+          color: text,
+          fontSize: `clamp(6px, ${titleFontSizeCqw}cqw, 300px)`,
+          fontWeight: c.title_font_weight || 800,
+          fontFamily: c.title_font || DEFAULT_TITLE_FONT,
+        }}
+      >
+        {title}
+      </h3>
     </div>
   );
 }
