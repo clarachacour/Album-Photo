@@ -33,6 +33,55 @@ from reportlab.lib import colors as rl_colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+# Register the same fonts the web editor uses, so PDF text isn't silently
+# swapped for a generic fallback (Helvetica) that looks nothing like it.
+import cover_fonts as _cf
+import tempfile as _tempfile
+import os as _os
+
+_FONT_DIR = _os.path.join(_tempfile.gettempdir(), "albumai_fonts")
+_os.makedirs(_FONT_DIR, exist_ok=True)
+
+_WEB_FONTS = {
+    "Baloo2-ExtraBold": _cf.BALOO2_EXTRABOLD,
+    "Manrope-Regular": _cf.MANROPE_REGULAR,
+    "Manrope-Bold": _cf.MANROPE_BOLD,
+    "CormorantGaramond-Regular": _cf.CORMORANT_REGULAR,
+    "CormorantGaramond-Bold": _cf.CORMORANT_BOLD,
+}
+for _font_name, _font_bytes in _WEB_FONTS.items():
+    _font_path = _os.path.join(_FONT_DIR, f"{_font_name}.ttf")
+    if not _os.path.exists(_font_path):
+        with open(_font_path, "wb") as _fh:
+            _fh.write(_font_bytes)
+    pdfmetrics.registerFont(TTFont(_font_name, _font_path))
+
+# The web editor renders a single book page at roughly this many CSS pixels
+# wide — font sizes chosen in the editor (title_font_size, item font_size)
+# are stored as raw px calibrated against that width. PDF pages are measured
+# in points at their real print size, so a size stored as "48" needs scaling
+# by (actual page width in points / this reference) to look the same
+# proportion of the page as it did in the editor, not the same raw number.
+REFERENCE_PAGE_PX = 430
+
+def resolve_pdf_font(css_font: str, weight: str = "normal") -> str:
+    """Maps a CSS font-family string (as stored on cover/text items) to the
+    matching registered PDF font, falling back to Manrope if unrecognized."""
+    css_font = (css_font or "").lower()
+    is_bold = str(weight).lower() in ("bold", "600", "700", "800", "900") or (
+        str(weight).isdigit() and int(weight) >= 600
+    )
+    if "baloo" in css_font:
+        return "Baloo2-ExtraBold"  # only the extra-bold cut was bundled — it's the only weight used by the app
+    if "cormorant" in css_font:
+        return "CormorantGaramond-Bold" if is_bold else "CormorantGaramond-Regular"
+    if "courier" in css_font:
+        return "Courier-Bold" if is_bold else "Courier"
+    if "georgia" in css_font or "helvetica" in css_font or "arial" in css_font:
+        return "Helvetica-Bold" if is_bold else "Helvetica"
+    # Manrope (the app's default sans-serif) and anything unrecognized
+    return "Manrope-Bold" if is_bold else "Manrope-Regular"
+
 # LLM
 # LLM (Google Gemini officiel)
 from google import genai
@@ -53,7 +102,12 @@ STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 storage_key: Optional[str] = None
 
 # ---------- Mongo ----------
-client = AsyncIOMotorClient(MONGO_URL)
+# Explicitly point at certifi's CA bundle — on some fresh Python installs
+# (especially newer/pre-release versions on Windows), the system's default
+# certificate store isn't picked up automatically, causing
+# "CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate".
+import certifi
+client = AsyncIOMotorClient(MONGO_URL, tlsCAFile=certifi.where())
 db = client[DB_NAME]
 
 # ---------- App ----------
@@ -393,6 +447,31 @@ async def me(user: dict = Depends(get_current_user)):
     return UserOut(id=user["id"], email=user["email"], name=user["name"])
 
 # ---------- Album Routes ----------
+def make_title_page(title: str) -> dict:
+    """The first interior page every album starts with — right after the
+    cover, always right-hand (the left page of that spread stays blank), and
+    pre-filled with just the album's title. The user is free to add or
+    remove anything on it afterward."""
+    return {
+        "id": str(uuid.uuid4()),
+        "layout": "title_page",
+        "items": [
+            {
+                "id": str(uuid.uuid4()),
+                "type": "text",
+                "content": title or "Untitled",
+                "x": 0.1,
+                "y": 0.42,
+                "w": 0.8,
+                "h": 0.16,
+                "font": "'Baloo 2', sans-serif",
+                "font_weight": "800",
+                "font_size": 36,
+                "color": "#1A1A17",
+            }
+        ],
+    }
+
 @api_router.post("/albums")
 async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)):
     album_id = str(uuid.uuid4())
@@ -407,7 +486,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "size": data.size,
         "orientation": data.orientation,
         "status": "draft",
-        "pages": [],
+        "pages": [make_title_page(data.title)],
         "cover_image_path": None,
         "cover": data.cover or {},
         "created_at": now,
@@ -1207,19 +1286,24 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
 
 
 async def run_ai_processing(album_id: str, user_id: str):
-    """Background task: analyze photos, mark duplicates, generate layout from scratch."""
+    """Background task: analyze photos, mark duplicates, generate layout from scratch.
+    The album's first page (title page) is always preserved as-is — whatever
+    the user already has there, edited or still the default — only the pages
+    after it are (re)generated from the photos."""
     try:
         await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
+        album = await db.albums.find_one({"id": album_id}, {"_id": 0})
+        existing_pages = (album.get("pages") or []) if album else []
+        title_page = existing_pages[0] if existing_pages else make_title_page(album.get("title") if album else None)
+
         photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(1000)
         if not photos:
-            await db.albums.update_one({"id": album_id}, {"$set": {"status": "ready", "pages": []}})
+            await db.albums.update_one({"id": album_id}, {"$set": {"status": "ready", "pages": [title_page]}})
             return
 
         selected = await _curate_photos(photos)
-
-        album = await db.albums.find_one({"id": album_id}, {"_id": 0})
         orientation = album.get("orientation", "portrait") if album else "portrait"
-        pages = deterministic_layout(selected, orientation)
+        pages = [title_page] + deterministic_layout(selected, orientation)
 
         await db.albums.update_one(
             {"id": album_id},
@@ -1365,20 +1449,18 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     text_color = cover.get("text_color") or DEFAULT_TEXT
 
     def draw_text_item(item, page_w, page_h, default_color="#1A1A17"):
-        """Draw a text item using its font_weight/font_style. Uses Helvetica family."""
+        """Draw a text item using the same font family and proportional size
+        as the web editor."""
         weight = str(item.get("font_weight", "normal")).lower()
         style = str(item.get("font_style", "normal")).lower()
-        is_bold = weight in ("bold", "600", "700", "800", "900") or weight.isdigit() and int(weight) >= 600
-        is_italic = style == "italic"
-        if is_bold and is_italic:
-            font_name = "Helvetica-BoldOblique"
-        elif is_bold:
-            font_name = "Helvetica-Bold"
-        elif is_italic:
-            font_name = "Helvetica-Oblique"
-        else:
-            font_name = "Helvetica"
-        font_size = float(item.get("font_size", 16))
+        font_name = resolve_pdf_font(item.get("font"), weight)
+        # Oblique/italic isn't available for the embedded weights we bundled —
+        # ReportLab's base-14 Helvetica-Oblique is the only italic we can
+        # honor; anything else just skips the slant rather than crash.
+        if style == "italic" and font_name in ("Helvetica", "Helvetica-Bold"):
+            font_name += "-Oblique" if font_name == "Helvetica" else "Oblique"
+        raw_size = float(item.get("font_size", 16))
+        font_size = raw_size * (page_w / REFERENCE_PAGE_PX)
         c.setFillColor(hex_to_rl_color(item.get("color", default_color)))
         c.setFont(font_name, font_size)
         x = item["x"] * page_w
@@ -1395,18 +1477,24 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     title_x_norm = float(cover.get("title_x", 0.08))
     title_y_norm = float(cover.get("title_y", 0.08))
     title_font_weight = str(cover.get("title_font_weight", "600"))
-    title_is_bold = title_font_weight in ("bold", "600", "700", "800", "900") or (title_font_weight.isdigit() and int(title_font_weight) >= 600)
-    title_font_name = "Helvetica-Bold" if title_is_bold else "Helvetica"
-    title_font_size = float(cover.get("title_font_size") or (min(pw, ph) * 0.09))
+    title_font_name = resolve_pdf_font(cover.get("title_font"), title_font_weight)
+    if cover.get("title_font_size"):
+        # An explicit size was chosen in the editor (raw px, calibrated
+        # against the editor's on-screen page width) — scale it so it takes
+        # up the same proportion of the page here as it did there.
+        title_font_size = float(cover["title_font_size"]) * (pw / REFERENCE_PAGE_PX)
+    else:
+        title_font_size = min(pw, ph) * 0.09
     c.setFont(title_font_name, title_font_size)
     title = album.get("title", "Album")
     words = title.upper().split()
     lines = []
     cur = ""
-    max_chars = max(1, int(pw / (title_font_size * 0.55)))
+    title_box_w = float(cover.get("title_w", 0.84)) * pw
     for w in words:
-        if len(cur) + len(w) + 1 <= max_chars:
-            cur = (cur + " " + w).strip()
+        candidate = (cur + " " + w).strip()
+        if pdfmetrics.stringWidth(candidate, title_font_name, title_font_size) <= title_box_w:
+            cur = candidate
         else:
             if cur:
                 lines.append(cur)
@@ -1442,9 +1530,6 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
             c.restoreState()
         except Exception as e:
             logger.error(f"Cover image draw failed: {e}")
-    elif not cover.get("hide_illustration") and not any((it.get("type") == "image") for it in (cover.get("extra_items") or [])):
-        c.setFillColor(hex_to_rl_color(accent_color))
-        c.circle(pw * 0.5, ph * 0.42, min(pw, ph) * 0.18, fill=1, stroke=0)
 
     def draw_extra_items(items, default_accent):
         """Draw text / shape / image extra items (used by both front and back cover)."""
@@ -1510,9 +1595,10 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
                     slot_w = item["w"] * pw
                     slot_h = item["h"] * ph
                     y_bottom = y_top - slot_h
-                    scale = float(item.get("scale", 1.0))
+                    scale = max(float(item.get("scale", 1.0)), 1.0)
                     focal_x = float(item.get("focal_x", 0.5))
                     focal_y = float(item.get("focal_y", 0.5))
+                    rotation = float(item.get("rotation", 0))
                     iw, ih = img.getSize()
                     slot_ratio = slot_w / slot_h if slot_h else 1
                     img_ratio = iw / ih if ih else 1
@@ -1537,6 +1623,13 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
                     p = c.beginPath()
                     p.rect(x, y_bottom, slot_w, slot_h)
                     c.clipPath(p, stroke=0, fill=0)
+                    if rotation:
+                        # rotate the photo around the frame's own center — the
+                        # frame itself (its position/size) never changes.
+                        cx, cy = x + slot_w / 2, y_bottom + slot_h / 2
+                        c.translate(cx, cy)
+                        c.rotate(rotation)
+                        c.translate(-cx, -cy)
                     c.drawImage(img, img_x, img_y_bottom, width=draw_w, height=draw_h, mask='auto')
                     c.restoreState()
                 except Exception as e:

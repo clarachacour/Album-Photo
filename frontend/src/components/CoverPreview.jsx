@@ -283,16 +283,6 @@ export function CoverMockup({
                 </Rnd>
               );
             })}
-
-          {/* Badge central par défaut si aucune image */}
-          {!imageSrc && !extraItems.some((it) => it.type === "image") && (
-            <div className="relative z-10 self-center pointer-events-none my-auto">
-              <div
-                className="rounded-full"
-                style={{ width: 90, height: 90, background: accent }}
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -397,15 +387,6 @@ export function CoverFront({ cover, title = "Album" }) {
           }
           return null;
         })}
-
-      {!imageSrc && !hasImageExtra && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            className="rounded-full"
-            style={{ width: 60, height: 60, background: accent }}
-          />
-        </div>
-      )}
 
       <h3
         className="absolute leading-[0.95] tracking-tight uppercase"

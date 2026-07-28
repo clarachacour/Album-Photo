@@ -6,13 +6,14 @@ import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { CoverSpine } from "@/components/CoverSpine";
 import { makeCoverEditingActions, computeAlignSnap } from "@/lib/coverEditing";
+import { useHistoryState } from "@/lib/useHistoryState";
 import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import Flipbook from "@/components/Flipbook";
 import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload, Undo2, Redo2 } from "lucide-react";
 
 const FONT_OPTIONS = [
   { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
@@ -45,7 +46,7 @@ export default function AlbumEditor() {
   // --- États de l'Éditeur ---
   const bookRef = useRef();
   const coverInputRef = useRef();
-  const [album, setAlbum] = useState(null);
+  const [album, setAlbum, albumHistory] = useHistoryState(null);
   const albumRef = useRef(null);
   useEffect(() => {
     albumRef.current = album;
@@ -60,18 +61,20 @@ export default function AlbumEditor() {
   const [coverVersion, setCoverVersion] = useState(0);
   const [processing, setProcessing] = useState(params.get("processing") === "1");
   const [coverSel, setCoverSel] = useState(null);
+  const clipboardRef = useRef(null);
 
   const loadAlbum = useCallback(async () => {
     if (isCreating) return;
     try {
       const { data } = await api.get(`/albums/${id}`);
-      setAlbum(data);
+      albumHistory.resetState(data);
       if (data.status === "processing") setProcessing(true);
       else setProcessing(false);
     } catch {
       toast.error("Impossible de charger cet album");
       nav("/dashboard");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isCreating, nav]);
 
   useEffect(() => {
@@ -97,19 +100,79 @@ export default function AlbumEditor() {
   }, [coverSel, isCreating]);
 
   useEffect(() => {
-    if (isCreating || !selected) return;
+    if (isCreating) return;
     const onKeyDown = (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable) return;
-      if (e.key === "Delete" || e.key === "Backspace") {
+
+      const isMod = e.ctrlKey || e.metaKey;
+
+      if (isMod && !e.shiftKey && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        removeSelected();
+        albumHistory.undo();
+        return;
+      }
+      if (isMod && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) {
+        e.preventDefault();
+        albumHistory.redo();
+        return;
+      }
+      if (isMod && e.key.toLowerCase() === "c") {
+        if (selected) {
+          clipboardRef.current = { scope: "page", pageIdx: selected.pageIdx, item: JSON.parse(JSON.stringify(selected.item)) };
+        } else if (coverSel?.mode === "item") {
+          const cover = albumRef.current?.cover || {};
+          const key = coverSel.side === "back" ? "back_extra_items" : "extra_items";
+          const found = (cover[key] || []).find((it) => it.id === coverSel.itemId);
+          if (found) clipboardRef.current = { scope: "cover", side: coverSel.side, item: JSON.parse(JSON.stringify(found)) };
+        }
+        return;
+      }
+      if (isMod && e.key.toLowerCase() === "v") {
+        const clip = clipboardRef.current;
+        if (!clip) return;
+        e.preventDefault();
+        const newId = cryptoRandom();
+        const offset = 0.03;
+        const w = clip.item.w ?? 0.1;
+        const h = clip.item.h ?? 0.1;
+        const nx = Math.min((clip.item.x || 0) + offset, 1 - w);
+        const ny = Math.min((clip.item.y || 0) + offset, 1 - h);
+        if (clip.scope === "page") {
+          const targetPageIdx = selected ? selected.pageIdx : clip.pageIdx;
+          const newItem = { ...clip.item, id: newId, x: nx, y: ny };
+          setAlbum((prev) => {
+            const newPages = [...prev.pages];
+            newPages[targetPageIdx] = { ...newPages[targetPageIdx], items: [...newPages[targetPageIdx].items, newItem] };
+            return { ...prev, pages: newPages };
+          });
+          setSelected({ pageIdx: targetPageIdx, item: newItem });
+        } else if (clip.scope === "cover") {
+          const side = coverSel?.side || clip.side;
+          const key = side === "back" ? "back_extra_items" : "extra_items";
+          const newItem = { ...clip.item, id: newId, x: nx, y: ny };
+          setAlbum((prev) => {
+            const cover = prev.cover || {};
+            return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), newItem] } };
+          });
+          setCoverSel({ mode: "item", side, itemId: newId });
+        }
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selected) {
+          e.preventDefault();
+          removeSelected();
+        } else if (coverSel?.mode === "item") {
+          e.preventDefault();
+          removeCoverItem(coverSel.itemId, coverSel.side);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, isCreating]);
+  }, [selected, coverSel, isCreating]);
 
   useEffect(() => {
     if (!processing || isCreating) return;
@@ -740,6 +803,26 @@ export default function AlbumEditor() {
           <div className="eyebrow mb-3">Tools</div>
 
           <div className="space-y-2 mb-4">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => albumHistory.undo()}
+                disabled={!albumHistory.canUndo()}
+                data-testid="editor-undo"
+                className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 size={14} />
+              </button>
+              <button
+                onClick={() => albumHistory.redo()}
+                disabled={!albumHistory.canRedo()}
+                data-testid="editor-redo"
+                className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 size={14} />
+              </button>
+            </div>
             <button
               data-testid={TID.editorSave}
               onClick={save}

@@ -1,6 +1,6 @@
 import React, { useRef, useCallback, useState } from "react";
 import { photoImageUrl } from "@/lib/api";
-import { PhotoFrameToolbar, PhotoCropToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
+import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 
 /**
  * Common draggable + resizable wrapper for items placed with normalized
@@ -17,11 +17,22 @@ import { PhotoFrameToolbar, PhotoCropToolbar, PhotoPanOverlay, TextItemToolbar }
  */
 export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick }) {
   const dragState = useRef(null);
+  const lastClickAtRef = useRef(0);
 
   const onPointerDown = useCallback((e) => {
     if (!editable) return;
     e.stopPropagation();
     onSelect && onSelect();
+    // Manual double-click detection (two pointerdowns within 400ms) — the
+    // browser's native dblclick can miss this because the toolbar appears
+    // right after the first click and may intercept the second one.
+    const now = Date.now();
+    if (onDoubleClick && now - lastClickAtRef.current < 400) {
+      lastClickAtRef.current = 0;
+      onDoubleClick();
+      return;
+    }
+    lastClickAtRef.current = now;
     if (!containerRef?.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     dragState.current = {
@@ -35,7 +46,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     };
     onDragStateChange && onDragStateChange(true);
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [editable, item.x, item.y, onSelect, containerRef, onDragStateChange]);
+  }, [editable, item.x, item.y, onSelect, containerRef, onDragStateChange, onDoubleClick]);
 
   const onResizePointerDown = useCallback((e) => {
     if (!editable) return;
@@ -144,9 +155,9 @@ export function AlbumPage({
   const items = page?.items || [];
   const [draggingId, setDraggingId] = useState(null);
   const [textEditId, setTextEditId] = useState(null);
+  const [swapSourceId, setSwapSourceId] = useState(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
-  const dragStartBox = useRef(null);
 
   React.useEffect(() => {
     if (autoEditItemId && items.some((it) => it.id === autoEditItemId)) {
@@ -156,35 +167,8 @@ export function AlbumPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoEditItemId]);
 
-  const handlePhotoDragStateChange = (item, isDragging, mode) => {
-    if (isDragging) {
-      dragStartBox.current = { id: item.id, x: item.x, y: item.y, w: item.w, h: item.h };
-      setDraggingId(item.id);
-      return;
-    }
-    setDraggingId(null);
-    // Only a *move* can trigger a swap-by-drop — a resize never moves the
-    // frame, so there's nothing to swap or snap back.
-    if (mode !== "move") return;
-    const current = itemsRef.current.find((it) => it.id === item.id);
-    const start = dragStartBox.current;
-    if (!current || !start || current.type !== "photo") return;
-    const cx = current.x + current.w / 2;
-    const cy = current.y + current.h / 2;
-    let target = null;
-    for (const it of itemsRef.current) {
-      if (it.id === item.id || it.type !== "photo") continue;
-      if (cx >= it.x && cx <= it.x + it.w && cy >= it.y && cy <= it.y + it.h) {
-        target = it;
-        break;
-      }
-    }
-    if (target && onSwapItems) {
-      onSwapItems(item.id, target.id);
-      // Only snap the frame back to its pre-drag box when a swap actually
-      // happened — otherwise a normal move keeps wherever the user dropped it.
-      onUpdateItem && onUpdateItem(item.id, { x: start.x, y: start.y, w: start.w, h: start.h });
-    }
+  const handlePhotoDragStateChange = (item, isDragging) => {
+    setDraggingId(isDragging ? item.id : null);
   };
 
   const handleDragOver = (e) => {
@@ -217,6 +201,20 @@ export function AlbumPage({
   };
 
   const handleClick = (e) => {
+    if (swapSourceId) {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const nx = (e.clientX - rect.left) / rect.width;
+      const ny = (e.clientY - rect.top) / rect.height;
+      const target = itemsRef.current.find(
+        (it) => it.type === "photo" && it.id !== swapSourceId && nx >= it.x && nx <= it.x + it.w && ny >= it.y && ny <= it.y + it.h
+      );
+      if (target && onSwapItems) {
+        onSwapItems(swapSourceId, target.id);
+      }
+      setSwapSourceId(null);
+      return;
+    }
     if (e.target !== e.currentTarget) return; // ignore clicks that landed on an existing item
     if (placingText) {
       const rect = containerRef.current.getBoundingClientRect();
@@ -240,37 +238,36 @@ export function AlbumPage({
       {items.map((item) => {
         const isSel = selectedItemId === item.id;
         if (item.type === "photo") {
-          const scale = item.scale || 1;
+          const scale = Math.max(item.scale || 1, 1);
           const focalX = item.focal_x ?? 0.5;
           const focalY = item.focal_y ?? 0.5;
+          const rotation = item.rotation || 0;
           const inCrop = isSel && cropMode;
+          const isSwapSource = swapSourceId === item.id;
           return (
             <React.Fragment key={item.id}>
               <DraggableItem
                 item={item}
                 onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
                 onSelect={() => onSelectItem && onSelectItem(item)}
+                onDoubleClick={() => editable && setSwapSourceId(item.id)}
                 selected={isSel}
                 containerRef={containerRef}
                 editable={editable && !inCrop}
                 tid={`page-photo-${item.id}`}
                 onDragStateChange={(d, mode) => handlePhotoDragStateChange(item, d, mode)}
-                extraStyle={{ overflow: "hidden" }}
+                extraStyle={{ overflow: "hidden", outline: isSwapSource ? "2px dashed var(--coral)" : undefined, outlineOffset: isSwapSource ? "-2px" : undefined }}
               >
                 <img
                   src={photoImageUrl(item.photo_id)}
                   alt=""
                   className="w-full h-full pointer-events-none select-none"
-                  style={
-                    scale < 1
-                      ? { objectFit: "contain", objectPosition: "50% 50%" }
-                      : {
-                          objectFit: "cover",
-                          transform: `scale(${scale})`,
-                          transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
-                          objectPosition: `${focalX * 100}% ${focalY * 100}%`,
-                        }
-                  }
+                  style={{
+                    objectFit: "cover",
+                    transform: `scale(${scale}) rotate(${rotation}deg)`,
+                    transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
+                    objectPosition: `${focalX * 100}% ${focalY * 100}%`,
+                  }}
                   draggable={false}
                 />
                 {inCrop && (
@@ -286,17 +283,21 @@ export function AlbumPage({
                   x={item.x}
                   y={item.y}
                   w={item.w}
-                  onCrop={() => onEnterCrop && onEnterCrop(item.id)}
+                  onEdit={() => onEnterCrop && onEnterCrop(item.id)}
+                  onSwap={() => setSwapSourceId(isSwapSource ? null : item.id)}
+                  isSwapping={isSwapSource}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
                 />
               )}
               {inCrop && (
-                <PhotoCropToolbar
+                <PhotoEditToolbar
                   x={item.x}
                   y={item.y}
                   w={item.w}
                   scale={scale}
                   onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
+                  rotation={rotation}
+                  onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { rotation: r })}
                   onDone={() => onExitCrop && onExitCrop()}
                 />
               )}
@@ -426,9 +427,7 @@ export function CoverFrontPage({
   const titleW = cover.title_w ?? 0.84;
   const titleH = cover.title_h ?? 0.28;
   const titleFontSize = cover.title_font_size || null;
-  const SVGShape = getShape(template.illustration, accent);
   const extras = cover.extra_items || [];
-  const hasImageExtra = extras.some((it) => it.type === "image");
   const [draggingId, setDraggingId] = useState(null);
 
   return (
@@ -455,11 +454,6 @@ export function CoverFrontPage({
           className="absolute inset-x-[10%] top-[40%] w-[80%] h-[45%] object-cover pointer-events-none select-none"
           draggable={false}
         />
-      )}
-      {!coverImageUrl && !hasImageExtra && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="opacity-100">{SVGShape}</div>
-        </div>
       )}
 
       {/* Title (draggable if editable) */}

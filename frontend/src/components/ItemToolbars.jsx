@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Crop, Trash2, Check, ZoomIn, Bold, Palette } from "lucide-react";
+import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight } from "lucide-react";
 
 const TOOLBAR_FONTS = [
   { label: "Manrope", value: "'Manrope', sans-serif" },
@@ -41,12 +41,19 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
   );
 }
 
-/** Frame selected (not yet cropping): move/resize via the frame itself, plus crop + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onCrop, onDelete }) {
+/** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + delete actions. */
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onDelete }) {
   return (
     <ToolbarShell x={x} y={y} w={w}>
-      <ToolbarButton onClick={onCrop} title="Recadrer la photo" tid="frame-crop-btn">
-        <Crop size={14} />
+      <ToolbarButton onClick={onEdit} title="Edit photo" tid="frame-edit-btn">
+        <Pencil size={14} />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={onSwap}
+        title={isSwapping ? "Click another photo to swap" : "Swap with another photo"}
+        tid="frame-swap-btn"
+      >
+        <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
       </ToolbarButton>
       <ToolbarButton onClick={onDelete} title="Supprimer ce cadre" tid="frame-delete-btn" danger>
         <Trash2 size={14} />
@@ -55,24 +62,55 @@ export function PhotoFrameToolbar({ x, y, w, onCrop, onDelete }) {
   );
 }
 
-/** In crop mode: drag inside the frame to pan, slider to zoom, check to confirm. */
-export function PhotoCropToolbar({ x, y, w, scale, onScaleChange, onDone }) {
+/** Editing the photo itself: drag inside the frame to pan, sliders for zoom
+ * and free rotation (any angle — no 90° steps), check to confirm. */
+export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRotationChange, onDone }) {
   return (
-    <ToolbarShell x={x} y={y} w={w}>
-      <ZoomIn size={14} />
-      <input
-        type="range"
-        min="0.5"
-        max="2.5"
-        step="0.05"
-        value={scale}
-        onChange={(e) => onScaleChange(parseFloat(e.target.value))}
-        className="w-24 accent-[color:var(--coral)]"
-        data-testid="frame-zoom-slider"
-      />
-      <ToolbarButton onClick={onDone} title="Terminer le recadrage" tid="frame-crop-done">
-        <Check size={14} />
-      </ToolbarButton>
+    <ToolbarShell x={x} y={y} w={w} wide>
+      <div className="flex flex-col gap-1.5 w-full">
+        <div className="flex items-center gap-2">
+          <ZoomIn size={14} className="shrink-0" />
+          <input
+            type="range"
+            min="1"
+            max="2.5"
+            step="0.05"
+            value={scale}
+            onChange={(e) => onScaleChange(parseFloat(e.target.value))}
+            className="w-20 accent-[color:var(--coral)]"
+            data-testid="frame-zoom-slider"
+          />
+          <RotateCw size={14} className="shrink-0" />
+          <input
+            type="range"
+            min="-180"
+            max="180"
+            step="1"
+            value={rotation}
+            onChange={(e) => onRotationChange(parseFloat(e.target.value))}
+            className="w-20 accent-[color:var(--coral)]"
+            data-testid="frame-rotation-slider"
+          />
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <input
+            type="number"
+            min="-180"
+            max="180"
+            step="1"
+            value={Math.round(rotation)}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (!Number.isNaN(v)) onRotationChange(Math.max(-180, Math.min(180, v)));
+            }}
+            className="w-14 text-center text-[10px] bg-white/10 border border-white/20 rounded-sm tabular-nums"
+            data-testid="frame-rotation-input"
+          />
+          <ToolbarButton onClick={onDone} title="Terminer" tid="frame-edit-done">
+            <Check size={14} />
+          </ToolbarButton>
+        </div>
+      </div>
     </ToolbarShell>
   );
 }
