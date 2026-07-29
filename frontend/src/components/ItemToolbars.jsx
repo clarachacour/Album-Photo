@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight } from "lucide-react";
+import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown } from "lucide-react";
 
 const TOOLBAR_FONTS = [
   { label: "Manrope", value: "'Manrope', sans-serif" },
@@ -41,19 +41,29 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
   );
 }
 
-/** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onDelete }) {
+/** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, emptyFrame }) {
   return (
     <ToolbarShell x={x} y={y} w={w}>
-      <ToolbarButton onClick={onEdit} title="Edit photo" tid="frame-edit-btn">
-        <Pencil size={14} />
+      {!emptyFrame && (
+        <>
+          <ToolbarButton onClick={onEdit} title="Edit photo" tid="frame-edit-btn">
+            <Pencil size={14} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={onSwap}
+            title={isSwapping ? "Click another photo to swap" : "Swap with another photo"}
+            tid="frame-swap-btn"
+          >
+            <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
+          </ToolbarButton>
+        </>
+      )}
+      <ToolbarButton onClick={onSendBackward} title="Send backward" tid="frame-layer-back-btn">
+        <ChevronDown size={14} />
       </ToolbarButton>
-      <ToolbarButton
-        onClick={onSwap}
-        title={isSwapping ? "Click another photo to swap" : "Swap with another photo"}
-        tid="frame-swap-btn"
-      >
-        <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
+      <ToolbarButton onClick={onBringForward} title="Bring forward" tid="frame-layer-front-btn">
+        <ChevronUp size={14} />
       </ToolbarButton>
       <ToolbarButton onClick={onDelete} title="Supprimer ce cadre" tid="frame-delete-btn" danger>
         <Trash2 size={14} />
@@ -63,12 +73,14 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onDelet
 }
 
 /** Editing the photo itself: drag inside the frame to pan, sliders for zoom
- * and free rotation (any angle — no 90° steps), check to confirm. */
+ * and free rotation (any angle — no 90° steps), check to confirm. The exact
+ * rotation value sits directly under the rotation slider, not centered
+ * under the whole row. */
 export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRotationChange, onDone }) {
   return (
     <ToolbarShell x={x} y={y} w={w} wide>
-      <div className="flex flex-col gap-1.5 w-full">
-        <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
+        <div className="grid items-center gap-x-2 gap-y-1.5" style={{ gridTemplateColumns: "14px 80px 14px 80px" }}>
           <ZoomIn size={14} className="shrink-0" />
           <input
             type="range"
@@ -91,8 +103,9 @@ export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRo
             className="w-20 accent-[color:var(--coral)]"
             data-testid="frame-rotation-slider"
           />
-        </div>
-        <div className="flex items-center justify-center gap-2">
+          <div />
+          <div />
+          <div />
           <input
             type="number"
             min="-180"
@@ -103,13 +116,13 @@ export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRo
               const v = parseFloat(e.target.value);
               if (!Number.isNaN(v)) onRotationChange(Math.max(-180, Math.min(180, v)));
             }}
-            className="w-14 text-center text-[10px] bg-white/10 border border-white/20 rounded-sm tabular-nums"
+            className="w-14 justify-self-center text-center text-[10px] bg-white/10 border border-white/20 rounded-sm tabular-nums"
             data-testid="frame-rotation-input"
           />
-          <ToolbarButton onClick={onDone} title="Terminer" tid="frame-edit-done">
-            <Check size={14} />
-          </ToolbarButton>
         </div>
+        <ToolbarButton onClick={onDone} title="Terminer" tid="frame-edit-done">
+          <Check size={14} />
+        </ToolbarButton>
       </div>
     </ToolbarShell>
   );

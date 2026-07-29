@@ -130,8 +130,20 @@ if not LOCAL_STORAGE_DIR.exists():
 # Embarquées en base64 (voir cover_assets.py) pour ne jamais dépendre d'un fichier
 # présent sur le disque — évite les soucis de fichier oublié lors d'un déploiement.
 from cover_assets import CORAL_LOGO_BYTES
+from theme_assets import (
+    TRAVEL_SICILY_ICON, TRAVEL_HAWAII_ICON, TRAVEL_THAILAND_ICON,
+    TRAVEL_PAROS_ICON, TRAVEL_MOROCCO_ICON, TRAVEL_AUSTRALIA_ICON,
+    TRAVEL_BARCELONA_ICON,
+)
 BUNDLED_ASSETS_BYTES = {
     "coral": CORAL_LOGO_BYTES,
+    "travel_sicily": TRAVEL_SICILY_ICON,
+    "travel_hawaii": TRAVEL_HAWAII_ICON,
+    "travel_thailand": TRAVEL_THAILAND_ICON,
+    "travel_paros": TRAVEL_PAROS_ICON,
+    "travel_morocco": TRAVEL_MOROCCO_ICON,
+    "travel_australia": TRAVEL_AUSTRALIA_ICON,
+    "travel_barcelona": TRAVEL_BARCELONA_ICON,
 }
 
 def init_storage() -> Optional[str]:
@@ -450,8 +462,8 @@ async def me(user: dict = Depends(get_current_user)):
 def make_title_page(title: str) -> dict:
     """The first interior page every album starts with — right after the
     cover, always right-hand (the left page of that spread stays blank), and
-    pre-filled with just the album's title. The user is free to add or
-    remove anything on it afterward."""
+    pre-filled with the album's title plus a friendly hint. The user is free
+    to add or remove anything on it afterward, hint included."""
     return {
         "id": str(uuid.uuid4()),
         "layout": "title_page",
@@ -461,14 +473,29 @@ def make_title_page(title: str) -> dict:
                 "type": "text",
                 "content": title or "Untitled",
                 "x": 0.1,
-                "y": 0.42,
+                "y": 0.38,
                 "w": 0.8,
                 "h": 0.16,
                 "font": "'Baloo 2', sans-serif",
                 "font_weight": "800",
                 "font_size": 36,
                 "color": "#1A1A17",
-            }
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "type": "text",
+                "content": "This is your first page — make it yours. Add photos, text, or anything else you'd like.",
+                "x": 0.15,
+                "y": 0.56,
+                "w": 0.7,
+                "h": 0.12,
+                "font": "'Manrope', sans-serif",
+                "font_weight": "400",
+                "font_style": "italic",
+                "font_size": 14,
+                "color": "#8A8A82",
+                "text_align": "center",
+            },
         ],
     }
 
@@ -1465,9 +1492,15 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         c.setFont(font_name, font_size)
         x = item["x"] * page_w
         y_top = (1 - item["y"]) * page_h
+        text_align = item.get("text_align", "left")
         # multi-line wrap on newlines
         for i, line in enumerate((item.get("content", "") or "").split("\n")):
-            c.drawString(x, y_top - font_size * (i + 1), line)
+            y = y_top - font_size * (i + 1)
+            if text_align == "center":
+                center_x = x + item.get("w", 0) * page_w / 2
+                c.drawCentredString(center_x, y, line)
+            else:
+                c.drawString(x, y, line)
 
     # ---- FRONT COVER PAGE ----
     c.setFillColor(hex_to_rl_color(bg_color))

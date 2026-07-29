@@ -1,6 +1,8 @@
 import React, { useRef, useCallback, useState } from "react";
 import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
+import LayoutPicker from "@/components/LayoutPicker";
+import { ImagePlus, LayoutGrid } from "lucide-react";
 
 /**
  * Common draggable + resizable wrapper for items placed with normalized
@@ -138,9 +140,14 @@ export function AlbumPage({
   onSelectItem,
   onUpdateItem,
   onDeleteItem,
-  onSwapItems,
+  swapSourceItemId,
+  onSwapAction,
   onAddPhotoAt,
   onReplacePhoto,
+  onReorderLayer,
+  onApplyLayout,
+  placingPhotoId,
+  onPhotoPlaced,
   selectedItemId,
   cropMode = false,
   onEnterCrop,
@@ -155,7 +162,7 @@ export function AlbumPage({
   const items = page?.items || [];
   const [draggingId, setDraggingId] = useState(null);
   const [textEditId, setTextEditId] = useState(null);
-  const [swapSourceId, setSwapSourceId] = useState(null);
+  const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
@@ -201,18 +208,37 @@ export function AlbumPage({
   };
 
   const handleClick = (e) => {
-    if (swapSourceId) {
+    if (swapSourceItemId) {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const nx = (e.clientX - rect.left) / rect.width;
       const ny = (e.clientY - rect.top) / rect.height;
       const target = itemsRef.current.find(
-        (it) => it.type === "photo" && it.id !== swapSourceId && nx >= it.x && nx <= it.x + it.w && ny >= it.y && ny <= it.y + it.h
+        (it) => it.type === "photo" && it.id !== swapSourceItemId && nx >= it.x && nx <= it.x + it.w && ny >= it.y && ny <= it.y + it.h
       );
-      if (target && onSwapItems) {
-        onSwapItems(swapSourceId, target.id);
+      onSwapAction && onSwapAction(pageIndex, target ? target.id : null);
+      return;
+    }
+    if (placingPhotoId) {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const nx = (e.clientX - rect.left) / rect.width;
+      const ny = (e.clientY - rect.top) / rect.height;
+      const target = itemsRef.current.find(
+        (it) => it.type === "photo" && nx >= it.x && nx <= it.x + it.w && ny >= it.y && ny <= it.y + it.h
+      );
+      if (target) {
+        onReplacePhoto && onReplacePhoto(target.id, placingPhotoId);
+      } else {
+        const w = 0.35, h = 0.3;
+        onAddPhotoAt && onAddPhotoAt(placingPhotoId, {
+          x: Math.min(Math.max(nx - w / 2, 0), 1 - w),
+          y: Math.min(Math.max(ny - h / 2, 0), 1 - h),
+          w,
+          h,
+        });
       }
-      setSwapSourceId(null);
+      onPhotoPlaced && onPhotoPlaced();
       return;
     }
     if (e.target !== e.currentTarget) return; // ignore clicks that landed on an existing item
@@ -229,7 +255,7 @@ export function AlbumPage({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspect} bg-[color:var(--paper)] ${placingText ? "cursor-text" : ""}`}
+      className={`relative w-full ${aspect} bg-[color:var(--paper)] ${placingText ? "cursor-text" : ""} ${placingPhotoId ? "cursor-copy" : ""}`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
@@ -243,14 +269,15 @@ export function AlbumPage({
           const focalY = item.focal_y ?? 0.5;
           const rotation = item.rotation || 0;
           const inCrop = isSel && cropMode;
-          const isSwapSource = swapSourceId === item.id;
+          const isSwapSource = swapSourceItemId === item.id;
+          const isEmpty = !item.photo_id;
           return (
             <React.Fragment key={item.id}>
               <DraggableItem
                 item={item}
                 onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
                 onSelect={() => onSelectItem && onSelectItem(item)}
-                onDoubleClick={() => editable && setSwapSourceId(item.id)}
+                onDoubleClick={() => editable && !isEmpty && onSwapAction && onSwapAction(pageIndex, item.id)}
                 selected={isSel}
                 containerRef={containerRef}
                 editable={editable && !inCrop}
@@ -258,19 +285,26 @@ export function AlbumPage({
                 onDragStateChange={(d, mode) => handlePhotoDragStateChange(item, d, mode)}
                 extraStyle={{ overflow: "hidden", outline: isSwapSource ? "2px dashed var(--coral)" : undefined, outlineOffset: isSwapSource ? "-2px" : undefined }}
               >
-                <img
-                  src={photoImageUrl(item.photo_id)}
-                  alt=""
-                  className="w-full h-full pointer-events-none select-none"
-                  style={{
-                    objectFit: "cover",
-                    transform: `scale(${scale}) rotate(${rotation}deg)`,
-                    transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
-                    objectPosition: `${focalX * 100}% ${focalY * 100}%`,
-                  }}
-                  draggable={false}
-                />
-                {inCrop && (
+                {isEmpty ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[color:var(--editor-canvas)] border-2 border-dashed border-[color:var(--ink)]/20 pointer-events-none">
+                    <ImagePlus size={22} className="text-[color:var(--muted)]" />
+                    <span className="text-[10px] text-[color:var(--muted)] uppercase tracking-widest text-center px-2">Drop a photo here</span>
+                  </div>
+                ) : (
+                  <img
+                    src={photoImageUrl(item.photo_id)}
+                    alt=""
+                    className="w-full h-full pointer-events-none select-none"
+                    style={{
+                      objectFit: "cover",
+                      transform: `scale(${scale}) rotate(${rotation}deg)`,
+                      transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
+                      objectPosition: `${focalX * 100}% ${focalY * 100}%`,
+                    }}
+                    draggable={false}
+                  />
+                )}
+                {inCrop && !isEmpty && (
                   <PhotoPanOverlay
                     focalX={focalX}
                     focalY={focalY}
@@ -278,18 +312,34 @@ export function AlbumPage({
                   />
                 )}
               </DraggableItem>
-              {isSel && editable && !inCrop && (
+              {isSel && editable && !inCrop && !isEmpty && (
                 <PhotoFrameToolbar
                   x={item.x}
                   y={item.y}
                   w={item.w}
                   onEdit={() => onEnterCrop && onEnterCrop(item.id)}
-                  onSwap={() => setSwapSourceId(isSwapSource ? null : item.id)}
+                  onSwap={() => onSwapAction && onSwapAction(pageIndex, isSwapSource ? null : item.id)}
                   isSwapping={isSwapSource}
+                  onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
+                  onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
                 />
               )}
-              {inCrop && (
+              {isSel && editable && isEmpty && (
+                <PhotoFrameToolbar
+                  x={item.x}
+                  y={item.y}
+                  w={item.w}
+                  onEdit={() => {}}
+                  onSwap={() => {}}
+                  isSwapping={false}
+                  onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
+                  onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
+                  onDelete={() => onDeleteItem && onDeleteItem(item.id)}
+                  emptyFrame
+                />
+              )}
+              {inCrop && !isEmpty && (
                 <PhotoEditToolbar
                   x={item.x}
                   y={item.y}
@@ -328,6 +378,7 @@ export function AlbumPage({
                   overflow: "hidden",
                   wordBreak: "break-word",
                   padding: "2px 0",
+                  textAlign: item.text_align || "left",
                 }}
               >
                 {inTextEdit ? (
@@ -372,6 +423,28 @@ export function AlbumPage({
         guideX={page?.align_guide_x}
         guideY={page?.align_guide_y}
       />
+      {editable && onApplyLayout && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowLayoutPicker(true);
+          }}
+          data-testid={`page-layout-btn-${pageIndex}`}
+          className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "-right-9" : "-left-9"} z-30 flex flex-col items-center gap-1 bg-[color:var(--ink)]/90 text-[color:var(--paper)] px-1.5 py-2 hover:bg-[color:var(--ink)] transition-colors shadow-md`}
+          title="Choose layout"
+        >
+          <LayoutGrid size={13} />
+        </button>
+      )}
+      {showLayoutPicker && (
+        <LayoutPicker
+          onClose={() => setShowLayoutPicker(false)}
+          onChoose={(patternName) => {
+            onApplyLayout(patternName);
+            setShowLayoutPicker(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -655,6 +728,7 @@ export function CoverBackPage({
                 lineHeight: 1.15,
                 overflow: "hidden",
                 wordBreak: "break-word",
+                textAlign: item.text_align || "left",
               }}
             >
               <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">

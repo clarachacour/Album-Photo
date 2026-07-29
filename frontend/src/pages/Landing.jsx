@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { DEFAULT_COVER, defaultLogoItem } from "@/lib/coverTemplates";
-import { CoverMockup } from "@/components/CoverPreview";
+import { COVER_THEMES } from "@/lib/coverThemes";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, Sparkles, BookOpen, Wand2 } from "lucide-react";
 
@@ -54,12 +53,10 @@ export default function Landing() {
 
           <div className="md:col-span-5 animate-fade-up" style={{ animationDelay: "0.15s" }}>
             <div className="max-w-md mx-auto md:ml-auto">
-              <CoverMockup
-                cover={{ ...DEFAULT_COVER, extra_items: [defaultLogoItem()] }}
-                title="Western Australia"
-                year={2026}
-                country="Australia"
-                showLabels
+              <img
+                src="/hero-shelf.jpg"
+                alt="Printed photo albums on a shelf"
+                className="w-full h-auto rounded-sm book-shadow"
               />
             </div>
           </div>
@@ -103,29 +100,36 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Cover showcase */}
+      {/* Theme showcase */}
       <section id="templates" className="py-24 md:py-32 px-6 md:px-12">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-          <div>
-            <div className="eyebrow mb-4">Cover</div>
+        <div className="max-w-[1400px] mx-auto">
+          <div className="max-w-2xl mb-16">
+            <div className="eyebrow mb-4">Templates</div>
             <h2 className="font-serif-display text-4xl md:text-6xl tracking-tight leading-[1] mb-6">
-              One elegant template.<br />
-              <em className="not-italic text-[color:var(--muted)]">Fully yours.</em>
+              Start from a theme.<br />
+              <em className="not-italic text-[color:var(--muted)]">Make it yours.</em>
             </h2>
             <p className="text-[color:var(--ink)]/70">
-              Every album begins with a ready-made design you can customize from cover to content :
-              colors, title placement, your own photo, your own logo — all editable in the book editor.
+              Pick a starting look for your trip, your couple, your family, or a celebration —
+              then customize every detail in the book editor: colors, title, photos, layout.
             </p>
           </div>
-          <div className="max-w-md mx-auto md:ml-auto">
-            <CoverMockup
-              cover={{ ...DEFAULT_COVER, extra_items: [defaultLogoItem()] }}
-              title="Western Australia"
-              year={2026}
-              country="Australia"
-              showLabels
-            />
-          </div>
+
+          {COVER_THEMES.map((theme) => (
+            <div key={theme.id} className="mb-14">
+              <h3 className="font-serif-display text-2xl mb-5">{theme.label}</h3>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {theme.templates.map((tpl) => (
+                  <div key={tpl.id} className="shrink-0 w-40 md:w-48">
+                    <div className="aspect-[3/4] overflow-hidden book-shadow rounded-sm">
+                      <img src={tpl.landingImage} alt={tpl.name} className="w-full h-full object-cover" />
+                    </div>
+                    <p className="mt-2 text-xs text-[color:var(--ink)]/70 text-center">{tpl.name}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

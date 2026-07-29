@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_COVER, defaultLogoItem, getTemplate } from "@/lib/coverTemplates";
+import { findTemplate } from "@/lib/coverThemes";
 import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
 import { CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
@@ -13,16 +14,21 @@ import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
 const STEPS = ["Format", "Edit", "Pictures"];
 
-function defaultCoverPayload() {
+function defaultCoverPayload(chosenTemplate) {
   const year = new Date().getFullYear();
+  const tplCover = chosenTemplate?.cover || {};
   return {
     bg_color: DEFAULT_COVER.bg_color,
     accent_color: DEFAULT_COVER.accent_color,
     text_color: DEFAULT_COVER.text_color,
     title_font: DEFAULT_COVER.title_font,
     title_font_weight: DEFAULT_COVER.title_font_weight,
-    extra_items: [defaultLogoItem()],
-    back_extra_items: [
+    // Spread every field the template sets (colors, title size/position, spine
+    // subtitle, or anything added later) — nothing gets silently dropped just
+    // because this function wasn't updated to know about a new field name.
+    ...tplCover,
+    extra_items: tplCover.extra_items ? tplCover.extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [defaultLogoItem()],
+    back_extra_items: tplCover.back_extra_items ? tplCover.back_extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [
       {
         id: cryptoRandom(),
         type: "text",
@@ -35,7 +41,8 @@ function defaultCoverPayload() {
         font: "'Manrope', sans-serif",
         font_weight: "600",
         font_size: 16,
-        color: DEFAULT_COVER.text_color,
+        text_align: "center",
+        color: tplCover.text_color ?? DEFAULT_COVER.text_color,
       },
       {
         id: cryptoRandom(),
@@ -48,7 +55,8 @@ function defaultCoverPayload() {
         h: 0.06,
         font: "'Manrope', sans-serif",
         font_size: 11,
-        color: DEFAULT_COVER.text_color,
+        text_align: "center",
+        color: tplCover.text_color ?? DEFAULT_COVER.text_color,
       },
     ],
   };
@@ -57,6 +65,7 @@ function defaultCoverPayload() {
 export default function CreateAlbum() {
   const [params] = useSearchParams();
   const resumeAlbumId = params.get("albumId");
+  const chosenTemplate = findTemplate(params.get("template"));
   const [step, setStep] = useState(0);
   const [size, setSize] = useState("A4");
   const [orientation, setOrientation] = useState("portrait");
@@ -97,7 +106,13 @@ export default function CreateAlbum() {
     setBusy(true);
     try {
       if (!album) {
-        const { data } = await api.post("/albums", { size, orientation, cover: defaultCoverPayload() });
+        const { data } = await api.post("/albums", {
+          size,
+          orientation,
+          title: chosenTemplate?.title || "Untitled",
+          cover_template_id: chosenTemplate?.id || "default",
+          cover: defaultCoverPayload(chosenTemplate),
+        });
         setAlbum(data);
       } else {
         await api.patch(`/albums/${album.id}`, { size, orientation });
@@ -176,7 +191,7 @@ export default function CreateAlbum() {
           ))}
         </div>
 
-        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} template={template} />}
+        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} />}
 
         {step === 1 && album && (
           <StepEdit
@@ -239,7 +254,7 @@ export default function CreateAlbum() {
 
 // -------------------- STEP COMPONENTS --------------------
 
-function StepFormat({ size, setSize, orientation, setOrientation, template }) {
+function StepFormat({ size, setSize, orientation, setOrientation }) {
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
   const maxWidthBySize = { A3: 640, A4: 500, A5: 400 };
   const sizeContainerStyle = {
@@ -298,12 +313,12 @@ function StepFormat({ size, setSize, orientation, setOrientation, template }) {
       <div className="flex items-center justify-center">
         <div className="bg-[color:var(--editor-canvas)] p-8 transition-all duration-300 flex items-center justify-center w-full">
           <div
-            className={`${getAspectClass()} bg-white relative transition-all duration-300 shadow-sm`}
-            style={{ background: template.bg, width: "100%", ...sizeContainerStyle }}
+            className={`${getAspectClass()} relative transition-all duration-300 shadow-sm border border-[color:var(--border-soft)]`}
+            style={{ background: "#E4E1D8", width: "100%", ...sizeContainerStyle }}
           >
             <div className="absolute inset-0 grain" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-serif-display text-xl md:text-2xl" style={{ color: template.text }}>
+              <span className="font-serif-display text-xl md:text-2xl text-[color:var(--ink)]/60">
                 {size} · {orientation === "landscape" ? "landscape" : "portrait"}
               </span>
             </div>
@@ -342,7 +357,7 @@ function StepEdit({
             image or text anywhere on the cover.
           </p>
         </div>
-        <div className="grid grid-cols-[1fr_32px_1fr] gap-0 rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto">
+        <div className="grid grid-cols-[1fr_32px_1fr] gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70">
           <CoverBackPage
             template={template}
             country={album.country}

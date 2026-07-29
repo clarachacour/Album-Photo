@@ -10,6 +10,7 @@ import Landing from "@/pages/Landing";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
 import CreateAlbum from "@/pages/CreateAlbum";
+import ChooseTemplate from "@/pages/ChooseTemplate";
 import AlbumEditor from "@/pages/AlbumEditor";
 
 // 🆕 Imports des deux nouvelles pages
@@ -37,6 +38,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/choose-template"
+              element={
+                <ProtectedRoute>
+                  <ChooseTemplate />
                 </ProtectedRoute>
               }
             />

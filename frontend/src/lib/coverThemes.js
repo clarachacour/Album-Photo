@@ -1,0 +1,379 @@
+// Curated theme templates shown on the landing page and in the "choose a
+// template" step of album creation. Each one seeds a fully editable cover —
+// same system as the default template (drag/resize/recolor/retype anything)
+// — starting from colors, fonts and decorative elements sampled from the
+// reference designs, not a locked-in flat image.
+import {
+  TRAVEL_SICILY_ICON,
+  TRAVEL_HAWAII_ICON,
+  TRAVEL_THAILAND_ICON,
+  TRAVEL_PAROS_ICON,
+  TRAVEL_MOROCCO_ICON,
+  TRAVEL_AUSTRALIA_ICON,
+  TRAVEL_BARCELONA_ICON,
+} from "@/lib/themeAssets";
+
+const BALOO = "'Baloo 2', sans-serif";
+const MANROPE = "'Manrope', sans-serif";
+const CORMORANT = "'Cormorant Garamond', serif";
+
+function iconItem(imageUrl, assetKey, box = { x: 0.28, y: 0.42, w: 0.44, h: 0.36 }) {
+  return { id: "template-icon", type: "image", image_url: imageUrl, asset: assetKey, ...box };
+}
+
+function textItem(id, content, opts = {}) {
+  return {
+    id,
+    type: "text",
+    content,
+    x: opts.x ?? 0.1,
+    y: opts.y ?? 0.3,
+    w: opts.w ?? 0.8,
+    h: opts.h ?? 0.08,
+    font: opts.font ?? MANROPE,
+    font_weight: opts.font_weight ?? "700",
+    font_size: opts.font_size ?? 20,
+    color: opts.color,
+  };
+}
+
+export const COVER_THEMES = [
+  {
+    id: "travel",
+    label: "Travel",
+    templates: [
+      {
+        id: "travel-sicily",
+        name: "Sicily",
+        landingImage: "/theme-covers/travel-sicily.jpg",
+        title: "Sicily",
+        cover: {
+          bg_color: "#1B8F73",
+          accent_color: "#E0C132",
+          text_color: "#EAE7CE",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 68,
+          title_x: 0.06, title_y: 0.08, title_w: 0.9, title_h: 0.16,
+          spine_subtitle: "Dolce",
+          spine_subtitle_color: "#E0C132",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "800",
+          spine_title_size: 26,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_SICILY_ICON, "travel_sicily", { x: 0.26, y: 0.42, w: 0.48, h: 0.52 }),
+            textItem("subtitle", "Dolce", { x: 0.5, y: 0.24, w: 0.4, h: 0.09, font: BALOO, font_weight: "800", font_size: 34, color: "#E0C132" }),
+          ],
+        },
+      },
+      {
+        id: "travel-hawaii",
+        name: "Honolulu, Hawaii",
+        landingImage: "/theme-covers/travel-hawaii.jpg",
+        title: "Honolulu",
+        cover: {
+          bg_color: "#D9ACA8",
+          accent_color: "#D96A54",
+          text_color: "#F3EFEC",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 64,
+          title_x: 0.06, title_y: 0.09, title_w: 0.9, title_h: 0.16,
+          spine_subtitle: "Hawaii",
+          spine_subtitle_color: "#D96A54",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 26,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_HAWAII_ICON, "travel_hawaii", { x: 0.18, y: 0.46, w: 0.68, h: 0.37 }),
+            textItem("subtitle", "Hawaii", { x: 0.42, y: 0.25, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#D96A54" }),
+          ],
+        },
+      },
+      {
+        id: "travel-thailand",
+        name: "Thailand",
+        landingImage: "/theme-covers/travel-thailand.jpg",
+        title: "Thailand",
+        cover: {
+          bg_color: "#1B7A50",
+          accent_color: "#C2A45E",
+          text_color: "#F7F5EF",
+          title_font: MANROPE,
+          title_font_weight: "800",
+          title_font_size: 58,
+          title_x: 0.06, title_y: 0.11, title_w: 0.9, title_h: 0.13,
+          spine_subtitle: "Southeast Asia",
+          spine_subtitle_color: "#C2A45E",
+          spine_subtitle_font: MANROPE,
+          spine_subtitle_weight: "700",
+          spine_title_size: 22,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_THAILAND_ICON, "travel_thailand", { x: 0.22, y: 0.4, w: 0.56, h: 0.47 }),
+            textItem("subtitle", "Southeast Asia", { x: 0.36, y: 0.24, w: 0.55, h: 0.07, font: MANROPE, font_weight: "700", font_size: 21, color: "#C2A45E" }),
+          ],
+        },
+      },
+      {
+        id: "travel-paros",
+        name: "Paros, Greece",
+        landingImage: "/theme-covers/travel-paros.jpg",
+        title: "Paros",
+        cover: {
+          bg_color: "#154A8C",
+          accent_color: "#7EB6DB",
+          text_color: "#F5F8FB",
+          title_font: MANROPE,
+          title_font_weight: "800",
+          title_font_size: 64,
+          title_x: 0.08, title_y: 0.09, title_w: 0.86, title_h: 0.15,
+          spine_subtitle: "Greece",
+          spine_subtitle_color: "#7EB6DB",
+          spine_subtitle_font: MANROPE,
+          spine_subtitle_weight: "700",
+          spine_title_size: 26,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_PAROS_ICON, "travel_paros", { x: 0.2, y: 0.44, w: 0.6, h: 0.34 }),
+            textItem("subtitle", "Greece", { x: 0.44, y: 0.25, w: 0.5, h: 0.08, font: MANROPE, font_weight: "700", font_size: 26, color: "#7EB6DB" }),
+          ],
+        },
+      },
+      {
+        id: "travel-morocco",
+        name: "Morocco, Africa",
+        landingImage: "/theme-covers/travel-morocco.jpg",
+        title: "Morocco",
+        cover: {
+          bg_color: "#DCB987",
+          accent_color: "#BE6B4D",
+          text_color: "#FBF7F1",
+          title_font: MANROPE,
+          title_font_weight: "800",
+          title_font_size: 58,
+          title_x: 0.06, title_y: 0.08, title_w: 0.9, title_h: 0.13,
+          spine_subtitle: "Africa",
+          spine_subtitle_color: "#BE6B4D",
+          spine_subtitle_font: MANROPE,
+          spine_subtitle_weight: "700",
+          spine_title_size: 24,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_MOROCCO_ICON, "travel_morocco", { x: 0.25, y: 0.38, w: 0.5, h: 0.46 }),
+            textItem("subtitle", "Africa", { x: 0.4, y: 0.2, w: 0.5, h: 0.08, font: MANROPE, font_weight: "700", font_size: 24, color: "#BE6B4D" }),
+          ],
+        },
+      },
+      {
+        id: "travel-australia",
+        name: "Australia",
+        landingImage: "/theme-covers/travel-australia.jpg",
+        title: "Australia",
+        cover: {
+          bg_color: "#166F8C",
+          accent_color: "#F8625C",
+          text_color: "#F3EBDD",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 62,
+          title_x: 0.06, title_y: 0.08, title_w: 0.9, title_h: 0.14,
+          spine_subtitle: "Adventure",
+          spine_subtitle_color: "#F3EBDD",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 24,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_AUSTRALIA_ICON, "travel_australia", { x: 0.14, y: 0.42, w: 0.72, h: 0.34 }),
+            textItem("subtitle", "Adventure", { x: 0.42, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 24, color: "#F3EBDD" }),
+          ],
+        },
+      },
+      {
+        id: "travel-barcelona",
+        name: "Barcelona, Catalonia",
+        landingImage: "/theme-covers/travel-barcelona.jpg",
+        title: "Barcelona",
+        cover: {
+          bg_color: "#B0C385",
+          accent_color: "#D9764A",
+          text_color: "#F5F3EA",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 58,
+          title_x: 0.07, title_y: 0.1, title_w: 0.86, title_h: 0.14,
+          spine_subtitle: "Catalonia",
+          spine_subtitle_color: "#D9764A",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 24,
+          spine_year_hidden: true,
+          extra_items: [
+            iconItem(TRAVEL_BARCELONA_ICON, "travel_barcelona", { x: 0.16, y: 0.44, w: 0.68, h: 0.4 }),
+            textItem("subtitle", "Catalonia", { x: 0.42, y: 0.24, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 24, color: "#D9764A" }),
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "couple",
+    label: "Couple",
+    templates: [
+      {
+        id: "couple-notre-rencontre",
+        name: "Notre Rencontre",
+        landingImage: "/theme-covers/couple-notre-rencontre.jpg",
+        title: "Notre Rencontre",
+        cover: {
+          bg_color: "#D3C0BA",
+          accent_color: "#AD8973",
+          text_color: "#AD8973",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_x: 0.1, title_y: 0.08, title_w: 0.3, title_h: 0.6,
+          extra_items: [
+            textItem("year", "2024", { x: 0.1, y: 0.9, w: 0.3, h: 0.06, font: CORMORANT, font_weight: "600", font_size: 16, color: "#AD8973" }),
+          ],
+        },
+      },
+      {
+        id: "couple-notre-histoire",
+        name: "Notre Histoire",
+        landingImage: "/theme-covers/couple-notre-histoire.jpg",
+        title: "Notre histoire",
+        cover: {
+          bg_color: "#F8F6F2",
+          accent_color: "#1A1A17",
+          text_color: "#1A1A17",
+          title_font: CORMORANT,
+          title_font_weight: "600",
+          title_x: 0.15, title_y: 0.08, title_w: 0.7, title_h: 0.1,
+        },
+      },
+      {
+        id: "couple-forever-journey",
+        name: "Our Forever Journey",
+        landingImage: "/theme-covers/couple-forever-journey.jpg",
+        title: "Our Forever Journey",
+        cover: {
+          bg_color: "#F5F5F3",
+          accent_color: "#1A1A17",
+          text_color: "#1A1A17",
+          title_font: CORMORANT,
+          title_font_weight: "500",
+          title_x: 0.15, title_y: 0.06, title_w: 0.7, title_h: 0.1,
+        },
+      },
+    ],
+  },
+  {
+    id: "family",
+    label: "Family",
+    templates: [
+      {
+        id: "family-plain",
+        name: "family.",
+        landingImage: "/theme-covers/family-plain.jpg",
+        title: "family.",
+        cover: {
+          bg_color: "#CEBAB4",
+          accent_color: "#4E2917",
+          text_color: "#4E2917",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_x: 0.55, title_y: 0.1, title_w: 0.35, title_h: 0.5,
+        },
+      },
+      {
+        id: "family-mom",
+        name: "Mom",
+        landingImage: "/theme-covers/family-mom.jpg",
+        title: "Mom",
+        cover: {
+          bg_color: "#B24862",
+          accent_color: "#EFE6DD",
+          text_color: "#EFE6DD",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_x: 0.1, title_y: 0.35, title_w: 0.6, title_h: 0.14,
+          extra_items: [
+            textItem("definition", "Mom | noun", { x: 0.1, y: 0.5, w: 0.7, h: 0.06, font: CORMORANT, font_weight: "500", font_size: 16, color: "#EFE6DD" }),
+            textItem("description", "The person who holds your hand, guides your heart, and fills your life with an unconditional love that shapes who you are.", { x: 0.1, y: 0.58, w: 0.75, h: 0.16, font: MANROPE, font_weight: "400", font_size: 12, color: "#EFE6DD" }),
+            textItem("brand", "MEMORIES", { x: 0.35, y: 0.88, w: 0.3, h: 0.05, font: MANROPE, font_weight: "700", font_size: 11, color: "#EFE6DD" }),
+          ],
+        },
+      },
+      {
+        id: "family-dad",
+        name: "Dad",
+        landingImage: "/theme-covers/family-dad.jpg",
+        title: "Dad",
+        cover: {
+          bg_color: "#26354B",
+          accent_color: "#D9C6A3",
+          text_color: "#D9C6A3",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_x: 0.1, title_y: 0.35, title_w: 0.6, title_h: 0.14,
+          extra_items: [
+            textItem("definition", "Dad | noun", { x: 0.1, y: 0.5, w: 0.7, h: 0.06, font: CORMORANT, font_weight: "500", font_size: 16, color: "#D9C6A3" }),
+            textItem("description", "The person who holds your hand, guides your heart, and fills your life with strength, wisdom, and an unwavering presence.", { x: 0.1, y: 0.58, w: 0.75, h: 0.16, font: MANROPE, font_weight: "400", font_size: 12, color: "#D9C6A3" }),
+            textItem("brand", "MEMORIES", { x: 0.35, y: 0.88, w: 0.3, h: 0.05, font: MANROPE, font_weight: "700", font_size: 11, color: "#D9C6A3" }),
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "celebrations",
+    label: "Celebrations",
+    templates: [
+      {
+        id: "celebrations-best-friends",
+        name: "Best Friends",
+        landingImage: "/theme-covers/celebrations-best-friends.jpg",
+        title: "Best friends",
+        cover: {
+          bg_color: "#3C5065",
+          accent_color: "#E8E3D8",
+          text_color: "#E8E3D8",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_x: 0.1, title_y: 0.35, title_w: 0.7, title_h: 0.14,
+          extra_items: [
+            textItem("definition", "Best friends | noun", { x: 0.1, y: 0.5, w: 0.75, h: 0.06, font: CORMORANT, font_weight: "500", font_size: 16, color: "#E8E3D8" }),
+            textItem("description", "The person who turns everyday moments into memories, the one who fills the pages of your life with laughter, tears, and stories you'll always treasure.", { x: 0.1, y: 0.58, w: 0.78, h: 0.18, font: MANROPE, font_weight: "400", font_size: 12, color: "#E8E3D8" }),
+            textItem("brand", "MEMORIES", { x: 0.35, y: 0.9, w: 0.3, h: 0.05, font: MANROPE, font_weight: "700", font_size: 11, color: "#E8E3D8" }),
+          ],
+        },
+        placeholder: true, // more Celebrations templates coming later
+      },
+            {
+        id: "celebrations-our-year",
+        name: "Our Year",
+        landingImage: "/theme-covers/celebrations-our-year.jpg",
+        title: "Our Year",
+        cover: {
+          bg_color: "#E6DBD7",
+          accent_color: "#8A5C2F",
+          text_color: "#8A5C2F",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_x: 0.1, title_y: 0.08, title_w: 0.35, title_h: 0.5,
+        },
+      },
+    ],
+  },
+];
+
+export function findTemplate(templateId) {
+  for (const theme of COVER_THEMES) {
+    const found = theme.templates.find((t) => t.id === templateId);
+    if (found) return found;
+  }
+  return null;
+}

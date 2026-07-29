@@ -223,7 +223,7 @@ export function CoverEditorPanel({
             <input
               type="range"
               min={6}
-              max={20}
+              max={36}
               value={
                 (coverSel.mode === "spine-title"
                   ? cover.spine_title_size
@@ -242,6 +242,24 @@ export function CoverEditorPanel({
               }
             />
           </div>
+
+          <button
+            onClick={() => {
+              const key = coverSel.mode === "spine-title" ? "spine_title_weight" : "spine_year_weight";
+              const current = (coverSel.mode === "spine-title" ? cover.spine_title_weight : cover.spine_year_weight) || "700";
+              const isBold = current === "bold" || Number(current) >= 600;
+              updateCover({ [key]: isBold ? "400" : "700" });
+            }}
+            className={`w-full inline-flex items-center justify-center gap-2 border py-2 transition-colors ${
+              ((coverSel.mode === "spine-title" ? cover.spine_title_weight : cover.spine_year_weight) || "700") === "400"
+                ? "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+                : "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
+            }`}
+            data-testid={coverSel.mode === "spine-title" ? "spine-title-bold" : "spine-year-bold"}
+          >
+            <Bold size={14} />
+            <span className="text-xs font-semibold tracking-widest uppercase">Bold</span>
+          </button>
 
           <button
             onClick={() =>

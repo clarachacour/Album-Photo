@@ -50,7 +50,7 @@ export default function Dashboard() {
           </div>
           <button
             data-testid={TID.dashCreate}
-            onClick={() => nav("/create")}
+            onClick={() => nav("/choose-template")}
             className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors self-start"
           >
             <Plus size={16} />
@@ -69,7 +69,7 @@ export default function Dashboard() {
             <p className="font-serif-display text-3xl mb-4">No albums yet.</p>
             <p className="text-[color:var(--ink)]/70 mb-8">Create your first edition in a few minutes.</p>
             <button
-              onClick={() => nav("/create")}
+              onClick={() => nav("/choose-template")}
               className="bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 text-sm font-semibold tracking-widest uppercase hover:bg-[color:var(--coral)] transition-colors"
             >
               Get started

@@ -18,7 +18,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     x: 0,
     y: cover.spine_title_y ?? 0.08,
     w: 1,
-    h: cover.spine_title_h ?? 0.42,
+    h: cover.spine_title_h ?? 0.8,
   };
   const yearItem = {
     id: "spine-year",
@@ -43,16 +43,30 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           minW={1}
         >
           <div
-            className="w-full h-full flex items-center justify-center opacity-90 tracking-[0.3em] font-sans font-semibold uppercase overflow-hidden pointer-events-none select-none"
+            className="w-full h-full flex items-center justify-center opacity-90 tracking-[0.3em] font-sans uppercase overflow-hidden pointer-events-none select-none whitespace-nowrap"
             style={{
               color: text,
               writingMode: "vertical-rl",
               transform: "rotate(180deg)",
               fontSize: `${cover.spine_title_size || 9}px`,
               fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
+              fontWeight: cover.spine_title_weight || "700",
             }}
           >
-            {title || "Album"}
+            <span>{title || "Album"}</span>
+            {cover.spine_subtitle && (
+              <span
+                className="normal-case tracking-normal"
+                style={{
+                  color: cover.spine_subtitle_color || text,
+                  fontSize: `${cover.spine_subtitle_size || cover.spine_title_size || 9}px`,
+                  fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
+                  fontWeight: cover.spine_subtitle_weight || "600",
+                }}
+              >
+                {"\u00A0" + cover.spine_subtitle}
+              </span>
+            )}
           </div>
         </DraggableItem>
       )}
@@ -68,13 +82,14 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           minW={1}
         >
           <div
-            className="w-full h-full flex items-center justify-center font-sans font-semibold tracking-widest overflow-hidden pointer-events-none select-none"
+            className="w-full h-full flex items-center justify-center font-sans tracking-widest overflow-hidden pointer-events-none select-none"
             style={{
               color: text,
               writingMode: "vertical-rl",
               transform: "rotate(180deg)",
               fontSize: `${cover.spine_year_size || 9}px`,
               fontFamily: cover.spine_year_font || "'Manrope', sans-serif",
+              fontWeight: cover.spine_year_weight || "700",
             }}
           >
             {year || ""}

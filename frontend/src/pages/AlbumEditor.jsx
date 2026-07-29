@@ -6,6 +6,7 @@ import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { CoverSpine } from "@/components/CoverSpine";
 import { makeCoverEditingActions, computeAlignSnap } from "@/lib/coverEditing";
+import { LAYOUT_PATTERNS } from "@/lib/layoutPatterns";
 import { useHistoryState } from "@/lib/useHistoryState";
 import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import Flipbook from "@/components/Flipbook";
@@ -342,25 +343,115 @@ export default function AlbumEditor() {
     setCropMode(false);
   };
 
-  const swapItemsById = (pageIdx, idA, idB) => {
+  const swapItemsAcrossPages = (srcPageIdx, srcItemId, tgtPageIdx, tgtItemId) => {
     setAlbum((prev) => {
       if (!prev) return prev;
       const newPages = [...prev.pages];
-      const items = newPages[pageIdx].items;
-      const a = items.find((it) => it.id === idA);
-      const b = items.find((it) => it.id === idB);
+      const srcItems = newPages[srcPageIdx].items;
+      const tgtItems = srcPageIdx === tgtPageIdx ? srcItems : newPages[tgtPageIdx].items;
+      const a = srcItems.find((it) => it.id === srcItemId);
+      const b = tgtItems.find((it) => it.id === tgtItemId);
       if (!a || !b) return prev;
-      newPages[pageIdx] = {
-        ...newPages[pageIdx],
-        items: items.map((it) => {
-          if (it.id === idA) return { ...it, photo_id: b.photo_id, focal_x: b.focal_x, focal_y: b.focal_y, scale: b.scale };
-          if (it.id === idB) return { ...it, photo_id: a.photo_id, focal_x: a.focal_x, focal_y: a.focal_y, scale: a.scale };
-          return it;
-        }),
-      };
+      const swapFields = (it, other) => ({
+        ...it,
+        photo_id: other.photo_id,
+        focal_x: other.focal_x,
+        focal_y: other.focal_y,
+        scale: other.scale,
+        rotation: other.rotation,
+      });
+      if (srcPageIdx === tgtPageIdx) {
+        newPages[srcPageIdx] = {
+          ...newPages[srcPageIdx],
+          items: srcItems.map((it) => {
+            if (it.id === srcItemId) return swapFields(it, b);
+            if (it.id === tgtItemId) return swapFields(it, a);
+            return it;
+          }),
+        };
+      } else {
+        newPages[srcPageIdx] = { ...newPages[srcPageIdx], items: srcItems.map((it) => (it.id === srcItemId ? swapFields(it, b) : it)) };
+        newPages[tgtPageIdx] = { ...newPages[tgtPageIdx], items: tgtItems.map((it) => (it.id === tgtItemId ? swapFields(it, a) : it)) };
+      }
       return { ...prev, pages: newPages };
     });
     toast.success("Pictures swapped");
+  };
+
+  // Global so a swap can be started on one page and completed on another —
+  // click "Swap" (or double-click a photo) to mark it as the source, then
+  // click any other photo anywhere in the book to complete the swap.
+  const [swapSource, setSwapSource] = useState(null); // { pageIdx, itemId } | null
+  const [placingPhotoId, setPlacingPhotoId] = useState(null); // gallery photo armed for click-to-place
+
+  const handleSwapAction = (pageIdx, itemId) => {
+    if (itemId === null) {
+      setSwapSource(null);
+      return;
+    }
+    if (!swapSource) {
+      setSwapSource({ pageIdx, itemId });
+      return;
+    }
+    if (swapSource.pageIdx === pageIdx && swapSource.itemId === itemId) {
+      setSwapSource(null); // clicked the same photo again — cancel
+      return;
+    }
+    swapItemsAcrossPages(swapSource.pageIdx, swapSource.itemId, pageIdx, itemId);
+    setSwapSource(null);
+  };
+
+  // Moves an item one step forward (toward the top) or backward (toward
+  // the bottom) in the stacking order — items later in the array render on
+  // top of earlier ones.
+  const reorderItemLayer = (pageIdx, itemId, direction) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const items = [...prev.pages[pageIdx].items];
+      const idx = items.findIndex((it) => it.id === itemId);
+      if (idx === -1) return prev;
+      const newIdx = direction === "forward" ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
+      if (newIdx === idx) return prev;
+      const [moved] = items.splice(idx, 1);
+      items.splice(newIdx, 0, moved);
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = { ...newPages[pageIdx], items };
+      return { ...prev, pages: newPages };
+    });
+  };
+
+  // Reflows a page onto the chosen layout: existing photos (their content —
+  // photo, zoom, focal point, rotation) move into the new pattern's slots in
+  // order, and any extra slots the pattern needs become empty frames. If the
+  // page already has more photos than the pattern has slots, the extra ones
+  // are left exactly where they were rather than dropped.
+  const applyLayoutToPage = (pageIdx, patternName) => {
+    const pattern = LAYOUT_PATTERNS[patternName];
+    if (!pattern) return;
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const existingItems = prev.pages[pageIdx].items || [];
+      const existingPhotos = existingItems.filter((it) => it.type === "photo");
+      const otherItems = existingItems.filter((it) => it.type !== "photo");
+      const reflowedPhotos = pattern.slots.map((slot, i) => {
+        const existing = existingPhotos[i];
+        if (existing) return { ...existing, ...slot };
+        return {
+          id: cryptoRandom(),
+          type: "photo",
+          photo_id: null,
+          focal_x: 0.5,
+          focal_y: 0.5,
+          scale: 1,
+          rotation: 0,
+          ...slot,
+        };
+      });
+      const leftoverPhotos = existingPhotos.slice(pattern.slots.length); // kept untouched if the new layout has fewer slots
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = { ...newPages[pageIdx], items: [...reflowedPhotos, ...leftoverPhotos, ...otherItems] };
+      return { ...prev, pages: newPages };
+    });
   };
 
   const replacePhotoInItem = (pageIdx, itemId, photoId) => {
@@ -717,9 +808,14 @@ export default function AlbumEditor() {
             }}
             onUpdateItem={updateItemById}
             onDeleteItem={deleteItemById}
-            onSwapItems={swapItemsById}
+            swapSourceItemId={swapSource?.itemId}
+            onSwapAction={handleSwapAction}
             onAddPhotoAt={addPhotoAt}
             onReplacePhoto={replacePhotoInItem}
+            onReorderLayer={reorderItemLayer}
+            onApplyLayout={applyLayoutToPage}
+            placingPhotoId={placingPhotoId}
+            onPhotoPlaced={() => setPlacingPhotoId(null)}
             selectedId={selected?.item?.id}
             cropMode={cropMode}
             onEnterCrop={(itemId) => setCropMode(true)}
@@ -773,10 +869,12 @@ export default function AlbumEditor() {
 
           {album.photos && album.photos.length > 0 && (
             <div className="w-full mt-8 max-w-4xl">
-              <div className="eyebrow mb-3 text-center">All your photos · drag and drop</div>
+              <div className="eyebrow mb-3 text-center">All your photos · click or drag onto a page</div>
               <PhotoGallery
                 photos={album.photos}
                 placedPhotoIds={new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo").map((it) => it.photo_id)))}
+                selectedPhotoId={placingPhotoId}
+                onSelectPhoto={setPlacingPhotoId}
               />
             </div>
           )}
@@ -916,9 +1014,14 @@ function BookRenderer({
   onSelectItem,
   onUpdateItem,
   onDeleteItem,
-  onSwapItems,
+  swapSourceItemId,
+  onSwapAction,
   onAddPhotoAt,
   onReplacePhoto,
+  onReorderLayer,
+  onApplyLayout,
+  placingPhotoId,
+  onPhotoPlaced,
   selectedId,
   cropMode,
   onEnterCrop,
@@ -968,9 +1071,14 @@ function BookRenderer({
         onSelectItem={(item) => onSelectItem(i, item)}
         onUpdateItem={(itemId, patch) => onUpdateItem(i, itemId, patch)}
         onDeleteItem={(itemId) => onDeleteItem(i, itemId)}
-        onSwapItems={(idA, idB) => onSwapItems(i, idA, idB)}
+        swapSourceItemId={swapSourceItemId}
+        onSwapAction={onSwapAction}
         onAddPhotoAt={(photoId, box) => onAddPhotoAt(i, photoId, box)}
         onReplacePhoto={(itemId, photoId) => onReplacePhoto(i, itemId, photoId)}
+        onReorderLayer={(itemId, direction) => onReorderLayer(i, itemId, direction)}
+        placingPhotoId={placingPhotoId}
+        onPhotoPlaced={onPhotoPlaced}
+        onApplyLayout={(patternName) => onApplyLayout(i, patternName)}
         cropMode={cropMode}
         onEnterCrop={onEnterCrop}
         onExitCrop={onExitCrop}

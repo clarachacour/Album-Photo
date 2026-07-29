@@ -3,8 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
-import { CoverMockup } from "@/components/CoverPreview";
-import { DEFAULT_COVER, defaultLogoItem } from "@/lib/coverTemplates";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { Loader2 } from "lucide-react";
 
@@ -166,7 +164,7 @@ export default function AuthPage() {
       <div className="hidden md:flex bg-[color:var(--editor-canvas)] items-center justify-center p-16 relative overflow-hidden">
         <div className="absolute inset-0 grain" />
         <div className="relative max-w-md w-full">
-          <CoverMockup cover={{ ...DEFAULT_COVER, extra_items: [defaultLogoItem()] }} title="Western Australia" year={2026} country="Australia" />
+          <img src="/hero-shelf.jpg" alt="Printed photo albums on a shelf" className="w-full h-auto rounded-sm book-shadow" />
         </div>
       </div>
     </main>
