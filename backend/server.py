@@ -1520,24 +1520,52 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         title_font_size = min(pw, ph) * 0.09
     c.setFont(title_font_name, title_font_size)
     title = album.get("title", "Album")
-    words = title.upper().split()
-    lines = []
-    cur = ""
-    title_box_w = float(cover.get("title_w", 0.84)) * pw
-    for w in words:
-        candidate = (cur + " " + w).strip()
-        if pdfmetrics.stringWidth(candidate, title_font_name, title_font_size) <= title_box_w:
-            cur = candidate
-        else:
-            if cur:
-                lines.append(cur)
-            cur = w
-    if cur:
-        lines.append(cur)
+    title_uppercase = cover.get("title_uppercase", True)
+    title_rotation = float(cover.get("title_rotation", 0))
+    title_writing_mode = cover.get("title_writing_mode")
+    display_title = title.upper() if title_uppercase else title
+    if title_writing_mode == "vertical-rl":
+        # One continuous vertical line (not wrapped per word) — matches the
+        # single-flow rendering used on the web for vertical titles.
+        lines = [display_title]
+    else:
+        words = display_title.split()
+        lines = []
+        cur = ""
+        title_box_w = float(cover.get("title_w", 0.84)) * pw
+        for w in words:
+            candidate = (cur + " " + w).strip()
+            if pdfmetrics.stringWidth(candidate, title_font_name, title_font_size) <= title_box_w:
+                cur = candidate
+            else:
+                if cur:
+                    lines.append(cur)
+                cur = w
+        if cur:
+            lines.append(cur)
     line_h = title_font_size * 1.05
     title_top = (1 - title_y_norm) * ph
-    for i, line in enumerate(lines):
-        c.drawString(title_x_norm * pw, title_top - line_h * (i + 1), line)
+    if title_writing_mode == "vertical-rl":
+        # Each word becomes its own vertical column, columns proceeding
+        # right-to-left across the title box — matches the CSS vertical-rl
+        # writing mode used on the web so print output stays consistent.
+        col_w = title_font_size * 1.15
+        char_h = title_font_size * 1.05
+        right_edge = title_box_w + title_x_norm * pw
+        for col_i, line in enumerate(lines):
+            col_x = right_edge - col_w * (col_i + 1)
+            for ch_i, ch in enumerate(line):
+                c.drawCentredString(col_x + col_w / 2, title_top - char_h * (ch_i + 1), ch)
+    elif title_rotation:
+        c.saveState()
+        c.translate(title_x_norm * pw, title_top)
+        c.rotate(title_rotation)
+        for i, line in enumerate(lines):
+            c.drawString(0, -line_h * (i + 1), line)
+        c.restoreState()
+    else:
+        for i, line in enumerate(lines):
+            c.drawString(title_x_norm * pw, title_top - line_h * (i + 1), line)
 
     cover_image_path = album.get("cover_image_path")
     if cover_image_path:

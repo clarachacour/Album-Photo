@@ -484,11 +484,14 @@ export function CoverFrontPage({
   onUpdateItem,
   onSelectTitle,
   onUpdateTitle,
+  onTitleTextChange,
   onSelectCover,
   selectedItemId,
   titleSelected,
 }) {
   const containerRef = useRef(null);
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [extraTextEditId, setExtraTextEditId] = useState(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const bg = cover.bg_color || template.bg;
   const accent = cover.accent_color || template.accent;
@@ -500,6 +503,9 @@ export function CoverFrontPage({
   const titleW = cover.title_w ?? 0.84;
   const titleH = cover.title_h ?? 0.28;
   const titleFontSize = cover.title_font_size || null;
+  const titleRotation = cover.title_rotation || 0;
+  const titleWritingMode = cover.title_writing_mode || null; // "vertical-rl" keeps the box's own footprint, unlike rotate() which pivots around the box's center
+  const titleUppercase = cover.title_uppercase !== false;
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
 
@@ -535,25 +541,57 @@ export function CoverFrontPage({
           item={{ id: "cover-title", x: titleX, y: titleY, w: titleW, h: titleH }}
           onChange={(patch) => onUpdateTitle && onUpdateTitle(patch)}
           onSelect={() => onSelectTitle && onSelectTitle()}
+          onDoubleClick={() => onTitleTextChange && setTitleEditing(true)}
           selected={titleSelected}
           containerRef={containerRef}
-          editable={editable}
+          editable={editable && !titleEditing}
           tid="cover-title"
           onDragStateChange={(d) => setDraggingId(d ? "cover-title" : null)}
         >
-          <h1
-            className="leading-[0.95] tracking-tight w-full h-full pointer-events-none select-none"
-            style={{
-              color: text,
-              fontFamily: titleFont,
-              fontWeight: titleWeight,
-              fontSize: titleFontSize ? `${titleFontSize}px` : "clamp(18px, 9cqw, 56px)",
-            }}
-          >
-            {title.split(" ").map((w, i) => (
-              <span key={i} className="block uppercase">{w}</span>
-            ))}
-          </h1>
+          {titleEditing ? (
+            <textarea
+              autoFocus
+              value={title}
+              onChange={(e) => onTitleTextChange && onTitleTextChange(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onBlur={() => setTitleEditing(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" || e.key === "Enter") { e.currentTarget.blur(); }
+                e.stopPropagation();
+              }}
+              className={`leading-[0.95] tracking-tight w-full h-full bg-transparent border-0 outline-none resize-none whitespace-pre-wrap ${titleUppercase ? "uppercase" : ""}`}
+              style={{
+                color: text,
+                fontFamily: titleFont,
+                fontWeight: titleWeight,
+                fontSize: titleFontSize ? `${((titleFontSize / 430) * 100).toFixed(2)}cqw` : "clamp(18px, 9cqw, 56px)",
+                writingMode: titleWritingMode || undefined,
+              }}
+              data-testid="cover-title-input"
+            />
+          ) : (
+            <h1
+              className="leading-[0.95] tracking-tight w-full h-full pointer-events-none select-none"
+              style={{
+                color: text,
+                fontFamily: titleFont,
+                fontWeight: titleWeight,
+                fontSize: titleFontSize ? `${((titleFontSize / 430) * 100).toFixed(2)}cqw` : "clamp(18px, 9cqw, 56px)",
+                transform: !titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined,
+                writingMode: titleWritingMode || undefined,
+                whiteSpace: titleWritingMode ? "nowrap" : undefined,
+              }}
+            >
+              {titleWritingMode ? (
+                <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
+              ) : (
+                title.split(" ").map((w, i) => (
+                  <span key={i} className={`block ${titleUppercase ? "uppercase" : ""}`}>{w}</span>
+                ))
+              )}
+            </h1>
+          )}
         </DraggableItem>
       ) : (
         <h1
@@ -565,12 +603,19 @@ export function CoverFrontPage({
             color: text,
             fontFamily: titleFont,
             fontWeight: titleWeight,
-            fontSize: titleFontSize ? `${titleFontSize}px` : "clamp(18px, 9cqw, 56px)",
+            fontSize: titleFontSize ? `${((titleFontSize / 430) * 100).toFixed(2)}cqw` : "clamp(18px, 9cqw, 56px)",
+            transform: !titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined,
+            writingMode: titleWritingMode || undefined,
+            whiteSpace: titleWritingMode ? "nowrap" : undefined,
           }}
         >
-          {title.split(" ").map((w, i) => (
-            <span key={i} className="block uppercase">{w}</span>
-          ))}
+          {titleWritingMode ? (
+            <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
+          ) : (
+            title.split(" ").map((w, i) => (
+              <span key={i} className={`block ${titleUppercase ? "uppercase" : ""}`}>{w}</span>
+            ))
+          )}
         </h1>
       )}
 
@@ -578,31 +623,52 @@ export function CoverFrontPage({
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
         if (item.type === "text") {
+          const inTextEdit = isSel && extraTextEditId === item.id;
           return (
             <DraggableItem
               key={item.id}
               item={item}
               onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
               onSelect={() => onSelectItem && onSelectItem(item)}
+              onDoubleClick={() => setExtraTextEditId(item.id)}
               selected={isSel}
               containerRef={containerRef}
-              editable={editable}
+              editable={editable && !inTextEdit}
               tid={`cover-extra-${item.id}`}
               onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
               extraStyle={{
                 color: item.color || text,
                 fontFamily: item.font || titleFont,
-                fontSize: `${item.font_size || 20}px`,
+                fontSize: `${((( item.font_size || 20) / 430) * 100).toFixed(2)}cqw`,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
                 lineHeight: 1.15,
                 overflow: "hidden",
                 wordBreak: "break-word",
+                textAlign: item.text_align || "left",
               }}
             >
-              <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">
-                {item.content}
-              </span>
+              {inTextEdit ? (
+                <textarea
+                  autoFocus
+                  value={item.content}
+                  onChange={(e) => onUpdateItem && onUpdateItem(item.id, { content: e.target.value })}
+                  onFocus={(e) => e.target.select()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onBlur={() => setExtraTextEditId(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { e.currentTarget.blur(); }
+                    e.stopPropagation();
+                  }}
+                  className="whitespace-pre-wrap block w-full h-full bg-transparent border-0 outline-none resize-none"
+                  style={{ color: "inherit", font: "inherit", lineHeight: "inherit" }}
+                  data-testid={`cover-extra-input-${item.id}`}
+                />
+              ) : (
+                <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">
+                  {item.content}
+                </span>
+              )}
             </DraggableItem>
           );
         }
@@ -640,12 +706,19 @@ export function CoverFrontPage({
               tid={`cover-image-${item.id}`}
               onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
             >
-              <img
-                src={item.image_url}
-                alt=""
-                className="w-full h-full object-contain pointer-events-none select-none"
-                draggable={false}
-              />
+              {item.image_url ? (
+                <img
+                  src={item.image_url}
+                  alt=""
+                  className="w-full h-full object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-black/5 border-2 border-dashed border-current opacity-60 pointer-events-none">
+                  <ImagePlus size={18} />
+                  <span className="text-[9px] uppercase tracking-widest text-center px-1">Add a photo</span>
+                </div>
+              )}
             </DraggableItem>
           );
         }
@@ -679,6 +752,7 @@ export function CoverBackPage({
   const accent = cover.accent_color || template.accent;
   const extras = cover.back_extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
+  const [backTextEditId, setBackTextEditId] = useState(null);
   return (
     <div
       ref={containerRef}
@@ -708,21 +782,23 @@ export function CoverBackPage({
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
         if (item.type === "text") {
+          const inTextEdit = isSel && backTextEditId === item.id;
           return (
             <DraggableItem
               key={item.id}
               item={item}
               onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
               onSelect={() => onSelectItem && onSelectItem(item)}
+              onDoubleClick={() => setBackTextEditId(item.id)}
               selected={isSel}
               containerRef={containerRef}
-              editable={editable}
+              editable={editable && !inTextEdit}
               tid={`cover-back-text-${item.id}`}
               onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
               extraStyle={{
                 color: item.color || text,
                 fontFamily: item.font || "'Manrope', sans-serif",
-                fontSize: `${item.font_size || 16}px`,
+                fontSize: `${(((item.font_size || 16) / 430) * 100).toFixed(2)}cqw`,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
                 lineHeight: 1.15,
@@ -731,9 +807,27 @@ export function CoverBackPage({
                 textAlign: item.text_align || "left",
               }}
             >
-              <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">
-                {item.content}
-              </span>
+              {inTextEdit ? (
+                <textarea
+                  autoFocus
+                  value={item.content}
+                  onChange={(e) => onUpdateItem && onUpdateItem(item.id, { content: e.target.value })}
+                  onFocus={(e) => e.target.select()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onBlur={() => setBackTextEditId(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { e.currentTarget.blur(); }
+                    e.stopPropagation();
+                  }}
+                  className="whitespace-pre-wrap block w-full h-full bg-transparent border-0 outline-none resize-none"
+                  style={{ color: "inherit", font: "inherit", lineHeight: "inherit" }}
+                  data-testid={`cover-back-text-input-${item.id}`}
+                />
+              ) : (
+                <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">
+                  {item.content}
+                </span>
+              )}
             </DraggableItem>
           );
         }
@@ -771,12 +865,19 @@ export function CoverBackPage({
               tid={`cover-back-image-${item.id}`}
               onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
             >
-              <img
-                src={item.image_url}
-                alt=""
-                className="w-full h-full object-contain pointer-events-none select-none"
-                draggable={false}
-              />
+              {item.image_url ? (
+                <img
+                  src={item.image_url}
+                  alt=""
+                  className="w-full h-full object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-black/5 border-2 border-dashed border-current opacity-60 pointer-events-none">
+                  <ImagePlus size={18} />
+                  <span className="text-[9px] uppercase tracking-widest text-center px-1">Add a photo</span>
+                </div>
+              )}
             </DraggableItem>
           );
         }

@@ -29,7 +29,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   };
 
   return (
-    <div ref={containerRef} className="relative h-full" style={{ background: bg }}>
+    <div ref={containerRef} className="relative h-full" style={{ background: bg, containerType: "size" }}>
       <div className="absolute inset-0 grain pointer-events-none" />
       {!cover.spine_title_hidden && (
         <DraggableItem
@@ -48,7 +48,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
               color: text,
               writingMode: "vertical-rl",
               transform: "rotate(180deg)",
-              fontSize: `${cover.spine_title_size || 9}px`,
+              fontSize: `${(((cover.spine_title_size || 9) / 608) * 100).toFixed(2)}cqh`,
               fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
               fontWeight: cover.spine_title_weight || "700",
             }}
@@ -59,7 +59,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
                 className="normal-case tracking-normal"
                 style={{
                   color: cover.spine_subtitle_color || text,
-                  fontSize: `${cover.spine_subtitle_size || cover.spine_title_size || 9}px`,
+                  fontSize: `${(((cover.spine_subtitle_size || cover.spine_title_size || 9) / 608) * 100).toFixed(2)}cqh`,
                   fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
                   fontWeight: cover.spine_subtitle_weight || "600",
                 }}
@@ -87,7 +87,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
               color: text,
               writingMode: "vertical-rl",
               transform: "rotate(180deg)",
-              fontSize: `${cover.spine_year_size || 9}px`,
+              fontSize: `${(((cover.spine_year_size || 9) / 608) * 100).toFixed(2)}cqh`,
               fontFamily: cover.spine_year_font || "'Manrope', sans-serif",
               fontWeight: cover.spine_year_weight || "700",
             }}

@@ -392,6 +392,7 @@ function StepEdit({
             onSelectTitle={() => setCoverSel({ mode: "title", side: "front" })}
             onSelectItem={(item) => setCoverSel({ mode: "item", side: "front", itemId: item.id })}
             onUpdateTitle={updateCoverTitle}
+            onTitleTextChange={updateAlbumTitle}
             onUpdateItem={(itemId, patch) => updateCoverItem(itemId, patch, "front")}
             titleSelected={coverSel?.mode === "title"}
             selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
