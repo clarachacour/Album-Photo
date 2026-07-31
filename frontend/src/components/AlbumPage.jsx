@@ -20,14 +20,15 @@ function measureTextWidth(text, fontPx, fontWeight, fontFamily) {
 }
 
 /**
- * Fits the cover title to its box: starts from the size the template author
- * chose (scaled to the container's real width), then measures the widest
- * word with a canvas and shrinks proportionally if it would overflow —
- * so a long word (e.g. "AUSTRALIA") never bleeds past the cover edge, no
- * matter what title_font_size was eyeballed to in the template data. Only
- * ever shrinks; never enlarges past what the template author picked.
+ * Fits the cover title to its box: measures the widest word with a canvas
+ * and scales the font size so it fills the full width of the title box —
+ * for every template, regardless of word length. This both shrinks long
+ * words (e.g. "AUSTRALIA") so they never bleed past the cover edge, and
+ * grows short words (e.g. "SICILY") so they aren't left looking small in
+ * an oversized box. The stored title_font_size is only used as the
+ * starting point for measurement, not as a ceiling.
  */
-function useFitTitleFontSize({ containerWidth, boxWidthFraction, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode }) {
+function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode }) {
   const [fontSize, setFontSize] = useState(storedFontSize || 32);
 
   useLayoutEffect(() => {
@@ -38,20 +39,32 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, text, storedFon
       return;
     }
     const boxWidthPx = boxWidthFraction * containerWidth;
-    const nominalPx = storedFontSize
+    const basePx = storedFontSize
       ? (storedFontSize / REFERENCE_PAGE_PX) * containerWidth
       : containerWidth * 0.09;
 
     const words = String(text).split(" ").map((w) => (uppercase ? w.toUpperCase() : w));
-    const widest = Math.max(1, ...words.map((w) => measureTextWidth(w, nominalPx, fontWeight, fontFamily)));
+    const widestAtBase = Math.max(1, ...words.map((w) => measureTextWidth(w, basePx, fontWeight, fontFamily)));
 
     const SAFETY = 0.96; // small margin so glyph edges never touch the box border
-    const fitted = widest > boxWidthPx ? nominalPx * (boxWidthPx / widest) * SAFETY : nominalPx;
+    let fitted = basePx * (boxWidthPx / widestAtBase) * SAFETY;
+
+    // Cap by the box's own height so a short word in a multi-line title
+    // (e.g. "Our" / "Forever" / "Journey") can't grow past what the box can
+    // actually hold once every line is stacked.
+    if (boxHeightFraction && lineCount) {
+      const boxHeightPx = boxHeightFraction * containerWidth * 1.414; // page is portrait, ~1:1.414
+      const maxByHeight = (boxHeightPx / lineCount) * 0.92;
+      fitted = Math.min(fitted, maxByHeight);
+    }
+
     setFontSize(Math.max(10, fitted));
-  }, [containerWidth, boxWidthFraction, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode]);
+  }, [containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode]);
 
   return fontSize;
 }
+
+
 
 /** Tracks an element's live pixel width via ResizeObserver. */
 function useElementWidth(ref) {
@@ -574,11 +587,16 @@ export function CoverFrontPage({
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
 
-  // Shrinks the stored title_font_size (if needed) so a long word never
-  // bleeds past the cover edge — see useFitTitleFontSize above.
+  // Fills the full width of the title box for every template — shrinks long
+  // words so they never bleed past the cover edge, and grows short words so
+  // they aren't left looking small in an oversized box. Capped by the box's
+  // own height so a short word in a multi-line title doesn't blow up past
+  // what the box can actually hold.
   const fittedTitleFontSizePx = useFitTitleFontSize({
     containerWidth,
     boxWidthFraction: titleW,
+    boxHeightFraction: titleH,
+    lineCount: titleWritingMode ? 1 : String(title || "").split(" ").length,
     text: title,
     storedFontSize: titleFontSize,
     fontFamily: titleFont,
@@ -587,6 +605,19 @@ export function CoverFrontPage({
     writingMode: titleWritingMode,
   });
   const titleFontSizeStyle = containerWidth ? `${fittedTitleFontSizePx}px` : "clamp(18px, 9cqw, 56px)";
+
+  // The stored title_h was sized for the old fixed font_size and is often
+  // taller than the text actually needs now that the font fills the box's
+  // width dynamically. Shrink the *visual* box to hug the fitted text so
+  // the selection frame matches the title instead of leaving empty space
+  // below it (the subtitle, positioned right at the box's bottom edge,
+  // then sits right under the real text too). Manual resizing by the user
+  // still writes to title_h as before via onUpdateTitle.
+  const titleLineCount = titleWritingMode ? 1 : String(title || "").split(" ").length;
+  const visualTitleH = containerWidth
+    ? Math.min(titleH, (fittedTitleFontSizePx * 0.95 * titleLineCount) / (containerWidth * 1.414))
+    : titleH;
+
 
   return (
     <div
@@ -617,7 +648,7 @@ export function CoverFrontPage({
       {/* Title (draggable if editable) */}
       {editable ? (
         <DraggableItem
-          item={{ id: "cover-title", x: titleX, y: titleY, w: titleW, h: titleH }}
+          item={{ id: "cover-title", x: titleX, y: titleY, w: titleW, h: visualTitleH }}
           onChange={(patch) => onUpdateTitle && onUpdateTitle(patch)}
           onSelect={() => onSelectTitle && onSelectTitle()}
           onDoubleClick={() => onTitleTextChange && setTitleEditing(true)}
@@ -701,12 +732,18 @@ export function CoverFrontPage({
       {/* Extra items on cover (text / shape) */}
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
+        // The subtitle is meant to sit right at the title box's bottom edge.
+        // That edge is now dynamic (the title box hugs the fitted text size
+        // instead of a fixed stored height), so override the subtitle's
+        // stored y with the title's real bottom rather than trusting the
+        // template's static value, which would drift out of sync.
+        const renderItem = item.id === "subtitle" ? { ...item, y: titleY + visualTitleH } : item;
         if (item.type === "text") {
           const inTextEdit = isSel && extraTextEditId === item.id;
           return (
             <DraggableItem
               key={item.id}
-              item={item}
+              item={renderItem}
               onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
               onSelect={() => onSelectItem && onSelectItem(item)}
               onDoubleClick={() => setExtraTextEditId(item.id)}

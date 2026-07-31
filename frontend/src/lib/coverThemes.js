@@ -74,7 +74,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_SICILY_ICON, "travel_sicily", { x: 0.22, y: 0.5, w: 0.56, h: 0.37 }),
-            textItem("subtitle", "Dolce", { x: 0.45, y: 0.26, w: 0.5, h: 0.09, font: BALOO, font_weight: "800", font_size: 34, color: "#E0C132" }),
+            textItem("subtitle", "Dolce", { x: 0.44, y: 0.22, w: 0.5, h: 0.09, font: BALOO, font_weight: "800", font_size: 34, color: "#E0C132", text_align: "right" }),
           ],
         },
       },
@@ -100,7 +100,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_HAWAII_ICON, "travel_hawaii", { x: 0.2, y: 0.48, w: 0.64, h: 0.35 }),
-            textItem("subtitle", "Hawaii", { x: 0.44, y: 0.24, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#D96A54" }),
+            textItem("subtitle", "Hawaii", { x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#D96A54", text_align: "right" }),
           ],
         },
       },
@@ -126,7 +126,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_THAILAND_ICON, "travel_thailand", { x: 0.28, y: 0.48, w: 0.44, h: 0.37 }),
-            textItem("subtitle", "Southeast Asia", { x: 0.34, y: 0.28, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 22, color: "#C2A45E" }),
+            textItem("subtitle", "Southeast Asia", { x: 0.34, y: 0.22, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 22, color: "#C2A45E", text_align: "right" }),
           ],
         },
       },
@@ -152,7 +152,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_PAROS_ICON, "travel_paros", { x: 0.2, y: 0.5, w: 0.6, h: 0.34 }),
-            textItem("subtitle", "Greece", { x: 0.46, y: 0.29, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#7EB6DB" }),
+            textItem("subtitle", "Greece", { x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#7EB6DB", text_align: "right" }),
           ],
         },
       },
@@ -178,7 +178,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_MOROCCO_ICON, "travel_morocco", { x: 0.35, y: 0.42, w: 0.3, h: 0.41 }),
-            textItem("subtitle", "Africa", { x: 0.4, y: 0.28, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 26, color: "#BE6B4D" }),
+            textItem("subtitle", "Africa", { x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 26, color: "#BE6B4D", text_align: "right" }),
           ],
         },
       },
@@ -204,7 +204,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_AUSTRALIA_ICON, "travel_australia", { x: 0.16, y: 0.48, w: 0.68, h: 0.42 }),
-            textItem("subtitle", "Adventure", { x: 0.42, y: 0.24, w: 0.55, h: 0.08, font: BALOO, font_weight: "700", font_size: 24, color: "#F3EBDD" }),
+            textItem("subtitle", "Adventure", { x: 0.39, y: 0.22, w: 0.55, h: 0.08, font: BALOO, font_weight: "700", font_size: 24, color: "#F3EBDD", text_align: "right" }),
           ],
         },
       },
@@ -230,7 +230,7 @@ export const COVER_THEMES = [
           spine_year_hidden: true,
           extra_items: [
             iconItem(TRAVEL_BARCELONA_ICON, "travel_barcelona", { x: 0.28, y: 0.46, w: 0.44, h: 0.46 }),
-            textItem("subtitle", "Catalonia", { x: 0.36, y: 0.28, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 26, color: "#D9764A" }),
+            textItem("subtitle", "Catalonia", { x: 0.34, y: 0.22, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 26, color: "#D9764A", text_align: "right" }),
           ],
         },
       },
