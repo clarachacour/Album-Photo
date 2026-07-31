@@ -1,8 +1,72 @@
-import React, { useRef, useCallback, useState } from "react";
+import React, { useRef, useCallback, useState, useLayoutEffect, useEffect } from "react";
 import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 import LayoutPicker from "@/components/LayoutPicker";
 import { ImagePlus, LayoutGrid } from "lucide-react";
+
+// Same reference width the backend PDF export (server.py) scales
+// `title_font_size` / extra_items `font_size` against, so a value stored on
+// a template renders at the same relative size here as it will in the final
+// PDF. Kept as one named constant instead of the magic number 430 repeated
+// inline, so the two stay easy to keep in sync.
+const REFERENCE_PAGE_PX = 430;
+
+let _measureCanvas = null;
+function measureTextWidth(text, fontPx, fontWeight, fontFamily) {
+  if (!_measureCanvas) _measureCanvas = document.createElement("canvas");
+  const ctx = _measureCanvas.getContext("2d");
+  ctx.font = `${fontWeight || 400} ${fontPx}px ${fontFamily}`;
+  return ctx.measureText(text).width;
+}
+
+/**
+ * Fits the cover title to its box: starts from the size the template author
+ * chose (scaled to the container's real width), then measures the widest
+ * word with a canvas and shrinks proportionally if it would overflow —
+ * so a long word (e.g. "AUSTRALIA") never bleeds past the cover edge, no
+ * matter what title_font_size was eyeballed to in the template data. Only
+ * ever shrinks; never enlarges past what the template author picked.
+ */
+function useFitTitleFontSize({ containerWidth, boxWidthFraction, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode }) {
+  const [fontSize, setFontSize] = useState(storedFontSize || 32);
+
+  useLayoutEffect(() => {
+    if (!containerWidth || !text || writingMode) {
+      // Vertical/rotated titles (writing-mode) use a fixed narrow footprint
+      // by design — skip auto-fit and just honor the stored size.
+      if (storedFontSize) setFontSize((storedFontSize / REFERENCE_PAGE_PX) * containerWidth);
+      return;
+    }
+    const boxWidthPx = boxWidthFraction * containerWidth;
+    const nominalPx = storedFontSize
+      ? (storedFontSize / REFERENCE_PAGE_PX) * containerWidth
+      : containerWidth * 0.09;
+
+    const words = String(text).split(" ").map((w) => (uppercase ? w.toUpperCase() : w));
+    const widest = Math.max(1, ...words.map((w) => measureTextWidth(w, nominalPx, fontWeight, fontFamily)));
+
+    const SAFETY = 0.96; // small margin so glyph edges never touch the box border
+    const fitted = widest > boxWidthPx ? nominalPx * (boxWidthPx / widest) * SAFETY : nominalPx;
+    setFontSize(Math.max(10, fitted));
+  }, [containerWidth, boxWidthFraction, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode]);
+
+  return fontSize;
+}
+
+/** Tracks an element's live pixel width via ResizeObserver. */
+function useElementWidth(ref) {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.unobserve(el);
+  }, [ref]);
+  return width;
+}
 
 /**
  * Common draggable + resizable wrapper for items placed with normalized
@@ -490,6 +554,7 @@ export function CoverFrontPage({
   titleSelected,
 }) {
   const containerRef = useRef(null);
+  const containerWidth = useElementWidth(containerRef);
   const [titleEditing, setTitleEditing] = useState(false);
   const [extraTextEditId, setExtraTextEditId] = useState(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
@@ -509,10 +574,24 @@ export function CoverFrontPage({
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
 
+  // Shrinks the stored title_font_size (if needed) so a long word never
+  // bleeds past the cover edge — see useFitTitleFontSize above.
+  const fittedTitleFontSizePx = useFitTitleFontSize({
+    containerWidth,
+    boxWidthFraction: titleW,
+    text: title,
+    storedFontSize: titleFontSize,
+    fontFamily: titleFont,
+    fontWeight: titleWeight,
+    uppercase: titleUppercase,
+    writingMode: titleWritingMode,
+  });
+  const titleFontSizeStyle = containerWidth ? `${fittedTitleFontSizePx}px` : "clamp(18px, 9cqw, 56px)";
+
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspect}`}
+      className={`relative w-full ${aspect} overflow-hidden`}
       style={{ background: bg, containerType: "inline-size" }}
       onClick={(e) => {
         if (!editable) return;
@@ -565,7 +644,7 @@ export function CoverFrontPage({
                 color: text,
                 fontFamily: titleFont,
                 fontWeight: titleWeight,
-                fontSize: titleFontSize ? `${((titleFontSize / 430) * 100).toFixed(2)}cqw` : "clamp(18px, 9cqw, 56px)",
+                fontSize: titleFontSizeStyle,
                 writingMode: titleWritingMode || undefined,
               }}
               data-testid="cover-title-input"
@@ -577,7 +656,7 @@ export function CoverFrontPage({
                 color: text,
                 fontFamily: titleFont,
                 fontWeight: titleWeight,
-                fontSize: titleFontSize ? `${((titleFontSize / 430) * 100).toFixed(2)}cqw` : "clamp(18px, 9cqw, 56px)",
+                fontSize: titleFontSizeStyle,
                 transform: !titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined,
                 writingMode: titleWritingMode || undefined,
                 whiteSpace: titleWritingMode ? "nowrap" : undefined,
@@ -595,7 +674,7 @@ export function CoverFrontPage({
         </DraggableItem>
       ) : (
         <h1
-          className="absolute leading-[0.95] tracking-tight"
+          className="absolute leading-[0.95] tracking-tight overflow-hidden"
           style={{
             left: `${titleX * 100}%`,
             top: `${titleY * 100}%`,
@@ -603,7 +682,7 @@ export function CoverFrontPage({
             color: text,
             fontFamily: titleFont,
             fontWeight: titleWeight,
-            fontSize: titleFontSize ? `${((titleFontSize / 430) * 100).toFixed(2)}cqw` : "clamp(18px, 9cqw, 56px)",
+            fontSize: titleFontSizeStyle,
             transform: !titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined,
             writingMode: titleWritingMode || undefined,
             whiteSpace: titleWritingMode ? "nowrap" : undefined,
@@ -639,7 +718,7 @@ export function CoverFrontPage({
               extraStyle={{
                 color: item.color || text,
                 fontFamily: item.font || titleFont,
-                fontSize: `${((( item.font_size || 20) / 430) * 100).toFixed(2)}cqw`,
+                fontSize: `${((( item.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
                 lineHeight: 1.15,
@@ -798,7 +877,7 @@ export function CoverBackPage({
               extraStyle={{
                 color: item.color || text,
                 fontFamily: item.font || "'Manrope', sans-serif",
-                fontSize: `${(((item.font_size || 16) / 430) * 100).toFixed(2)}cqw`,
+                fontSize: `${(((item.font_size || 16) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
                 lineHeight: 1.15,
