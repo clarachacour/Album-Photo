@@ -12,11 +12,40 @@ import { ImagePlus, LayoutGrid } from "lucide-react";
 const REFERENCE_PAGE_PX = 430;
 
 let _measureCanvas = null;
-function measureTextWidth(text, fontPx, fontWeight, fontFamily) {
+export function measureTextWidth(text, fontPx, fontWeight, fontFamily) {
   if (!_measureCanvas) _measureCanvas = document.createElement("canvas");
   const ctx = _measureCanvas.getContext("2d");
   ctx.font = `${fontWeight || 400} ${fontPx}px ${fontFamily}`;
   return ctx.measureText(text).width;
+}
+
+let _measureEl = null;
+/**
+ * Measures text width using an actual hidden DOM element instead of canvas.
+ * Unlike canvas.measureText(), this automatically reflects letter-spacing,
+ * text-transform, and whichever font actually ended up loaded — no manual
+ * per-property correction needed, and no risk of measuring against a
+ * fallback font before the real one is ready.
+ */
+export function measureDomTextWidth(text, { fontPx, fontWeight, fontFamily, letterSpacing, uppercase }) {
+  if (typeof document === "undefined") return 0;
+  if (!_measureEl) {
+    _measureEl = document.createElement("span");
+    _measureEl.style.position = "absolute";
+    _measureEl.style.visibility = "hidden";
+    _measureEl.style.whiteSpace = "pre";
+    _measureEl.style.top = "-9999px";
+    _measureEl.style.left = "-9999px";
+    _measureEl.style.pointerEvents = "none";
+    document.body.appendChild(_measureEl);
+  }
+  _measureEl.style.fontFamily = fontFamily;
+  _measureEl.style.fontWeight = fontWeight || "400";
+  _measureEl.style.fontSize = `${fontPx}px`;
+  _measureEl.style.letterSpacing = letterSpacing || "normal";
+  _measureEl.style.textTransform = uppercase ? "uppercase" : "none";
+  _measureEl.textContent = text;
+  return _measureEl.getBoundingClientRect().width;
 }
 
 /**
@@ -38,27 +67,62 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
       if (storedFontSize) setFontSize((storedFontSize / REFERENCE_PAGE_PX) * containerWidth);
       return;
     }
-    const boxWidthPx = boxWidthFraction * containerWidth;
-    const basePx = storedFontSize
-      ? (storedFontSize / REFERENCE_PAGE_PX) * containerWidth
-      : containerWidth * 0.09;
 
-    const words = String(text).split(" ").map((w) => (uppercase ? w.toUpperCase() : w));
-    const widestAtBase = Math.max(1, ...words.map((w) => measureTextWidth(w, basePx, fontWeight, fontFamily)));
+    const compute = () => {
+      const boxWidthPx = boxWidthFraction * containerWidth;
+      const REF_PX = 100; // fixed reference size for measurement; only the ratio matters
 
-    const SAFETY = 0.96; // small margin so glyph edges never touch the box border
-    let fitted = basePx * (boxWidthPx / widestAtBase) * SAFETY;
+      const words = String(text).split(" ");
+      const widestAtRef = Math.max(
+        1,
+        ...words.map((w) =>
+          measureDomTextWidth(w, {
+            fontPx: REF_PX,
+            fontWeight,
+            fontFamily,
+            letterSpacing: "-0.025em", // matches the title's `tracking-tight` class
+            uppercase,
+          })
+        )
+      );
 
-    // Cap by the box's own height so a short word in a multi-line title
-    // (e.g. "Our" / "Forever" / "Journey") can't grow past what the box can
-    // actually hold once every line is stacked.
-    if (boxHeightFraction && lineCount) {
-      const boxHeightPx = boxHeightFraction * containerWidth * 1.414; // page is portrait, ~1:1.414
-      const maxByHeight = (boxHeightPx / lineCount) * 0.92;
-      fitted = Math.min(fitted, maxByHeight);
+      const SAFETY = 0.96; // small margin so glyph edges never touch the box border
+      let fitted = REF_PX * (boxWidthPx / widestAtRef) * SAFETY;
+
+      // Cap by the box's own height so a short word in a MULTI-line title
+      // (e.g. "Our" / "Forever" / "Journey") can't grow past what the box can
+      // actually hold once every line is stacked. A single-word title has no
+      // such risk — capping it too would silently override the width-fill
+      // goal using the stored title_h, which was sized for the old, smaller
+      // static font and is often too short for a true full-width fit.
+      if (boxHeightFraction && lineCount > 1) {
+        const boxHeightPx = boxHeightFraction * containerWidth * 1.414; // page is portrait, ~1:1.414
+        const maxByHeight = (boxHeightPx / lineCount) * 0.92;
+        fitted = Math.min(fitted, maxByHeight);
+      }
+
+      setFontSize(Math.max(10, fitted));
+    };
+
+    // Measure immediately for a fast first paint...
+    compute();
+
+    // ...then re-measure once the real @font-face is confirmed loaded. Since
+    // this now measures a real DOM element with the same font-family, this
+    // re-run is what corrects an initial fallback-font measurement — no
+    // manual per-property math needed for whichever font is actually active.
+    let cancelled = false;
+    if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
+      const spec = `${fontWeight || 400} 16px ${fontFamily}`;
+      Promise.all([document.fonts.load(spec), document.fonts.ready])
+        .then(() => {
+          if (!cancelled) compute();
+        })
+        .catch(() => {});
     }
-
-    setFontSize(Math.max(10, fitted));
+    return () => {
+      cancelled = true;
+    };
   }, [containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode]);
 
   return fontSize;
@@ -732,12 +796,16 @@ export function CoverFrontPage({
       {/* Extra items on cover (text / shape) */}
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
-        // The subtitle is meant to sit right at the title box's bottom edge.
-        // That edge is now dynamic (the title box hugs the fitted text size
-        // instead of a fixed stored height), so override the subtitle's
-        // stored y with the title's real bottom rather than trusting the
-        // template's static value, which would drift out of sync.
-        const renderItem = item.id === "subtitle" ? { ...item, y: titleY + visualTitleH } : item;
+        // The subtitle is meant to sit right at the title box's bottom edge,
+        // sized proportionally to the title (0.46x) rather than its own
+        // fixed stored font_size — that stored value was calibrated to the
+        // old, smaller static title and looks undersized now that the title
+        // fills the box's full width dynamically.
+        const SUBTITLE_RATIO = 0.58;
+        const renderItem =
+          item.role === "subtitle"
+            ? { ...item, y: titleY + visualTitleH, font_size: containerWidth ? (fittedTitleFontSizePx / containerWidth) * REFERENCE_PAGE_PX * SUBTITLE_RATIO : item.font_size }
+            : item;
         if (item.type === "text") {
           const inTextEdit = isSel && extraTextEditId === item.id;
           return (
@@ -762,6 +830,7 @@ export function CoverFrontPage({
                 overflow: "hidden",
                 wordBreak: "break-word",
                 textAlign: item.text_align || "left",
+                textTransform: item.role === "subtitle" ? "uppercase" : "none",
               }}
             >
               {inTextEdit ? (
