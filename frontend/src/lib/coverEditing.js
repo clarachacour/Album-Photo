@@ -191,6 +191,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
         const newItem = {
           id: cryptoRandom(),
           type: "image",
+          is_photo: true,
           x: 0.28,
           y: 0.42,
           w: 0.44,

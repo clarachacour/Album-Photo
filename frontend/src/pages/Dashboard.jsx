@@ -3,9 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { TID } from "@/constants/testIds";
-import { getCover } from "@/lib/coverTemplates";
+import { getCover, getTemplate } from "@/lib/coverTemplates";
 import { coverImageUrl } from "@/lib/api";
-import { CoverFront } from "@/components/CoverPreview";
+import { CoverFrontPage } from "@/components/AlbumPage";
 import { Plus, Trash2, ArrowUpRight } from "lucide-react";
 
 export default function Dashboard() {
@@ -79,13 +79,20 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
             {albums.map((a) => {
               const cover = getCover(a.cover);
-              if (a.cover_image_path) cover.image = coverImageUrl(a.id);
+              const uploadedCoverImageUrl = a.cover_image_path ? coverImageUrl(a.id) : undefined;
               const isDraft = a.status === "draft";
               const linkTo = isDraft ? `/create?albumId=${a.id}` : `/editor/${a.id}`;
               return (
                 <div key={a.id} className="group animate-fade-up" data-testid={TID.albumCard}>
                   <Link to={linkTo} className="block relative">
-                    <CoverFront cover={cover} title={a.title || "Untitled"} />
+                    <CoverFrontPage
+                      template={getTemplate()}
+                      cover={cover}
+                      title={a.title || "Untitled"}
+                      orientation={a.orientation || "portrait"}
+                      coverImageUrl={uploadedCoverImageUrl}
+                      editable={false}
+                    />
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/30 flex items-center justify-center transition-opacity">
                       <ArrowUpRight className="text-white" size={32} />
                     </div>

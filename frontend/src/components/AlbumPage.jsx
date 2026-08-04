@@ -57,22 +57,57 @@ export function measureDomTextWidth(text, { fontPx, fontWeight, fontFamily, lett
  * an oversized box. The stored title_font_size is only used as the
  * starting point for measurement, not as a ceiling.
  */
-function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode }) {
+function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode, pageAspect, singleLine, scale }) {
   const [fontSize, setFontSize] = useState(storedFontSize || 32);
 
   useLayoutEffect(() => {
-    if (!containerWidth || !text || writingMode) {
-      // Vertical/rotated titles (writing-mode) use a fixed narrow footprint
-      // by design — skip auto-fit and just honor the stored size.
-      if (storedFontSize) setFontSize((storedFontSize / REFERENCE_PAGE_PX) * containerWidth);
-      return;
+    if (!containerWidth || !text) return;
+
+    if (writingMode) {
+      // Vertical title (e.g. "Notre Rencontre"): fit it to the box's real
+      // footprint instead of trusting the stored size blindly — the text's
+      // rendered *width* becomes its vertical extent once rotated, and the
+      // box's own width caps how "thick" it can safely get.
+      const compute = () => {
+        const REF_PX = 100;
+        const lengthPx = boxHeightFraction * containerWidth * pageAspect; // box height -> px (the reading-direction length)
+        const thicknessPx = boxWidthFraction * containerWidth; // box width -> px (the cap on stroke thickness)
+        const measured = Math.max(
+          1,
+          measureDomTextWidth(String(text), {
+            fontPx: REF_PX,
+            fontWeight,
+            fontFamily,
+            letterSpacing: "-0.025em",
+            uppercase,
+          })
+        );
+        const fitted = Math.min(REF_PX * (lengthPx / measured) * 0.92, thicknessPx * 0.92);
+        setFontSize(Math.max(8, fitted));
+      };
+      compute();
+      let cancelled = false;
+      if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
+        const spec = `${fontWeight || 400} 16px ${fontFamily}`;
+        Promise.all([document.fonts.load(spec), document.fonts.ready])
+          .then(() => {
+            if (!cancelled) compute();
+          })
+          .catch(() => {});
+      }
+      return () => {
+        cancelled = true;
+      };
     }
 
     const compute = () => {
       const boxWidthPx = boxWidthFraction * containerWidth;
       const REF_PX = 100; // fixed reference size for measurement; only the ratio matters
 
-      const words = String(text).split(" ");
+      // Single-line titles ("Our Forever Journey" on one row) measure the
+      // whole string at once; multi-line titles (one word per line) fit to
+      // whichever individual word is widest.
+      const words = singleLine ? [String(text)] : String(text).split(" ");
       const widestAtRef = Math.max(
         1,
         ...words.map((w) =>
@@ -86,7 +121,13 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
         )
       );
 
-      const SAFETY = 0.96; // small margin so glyph edges never touch the box border
+      // SAFETY is the "fill 100% of the box" baseline; `scale` (1 = fill
+      // exactly, <1 shrinks, >1 grows past the box edge if pushed hard) is
+      // the only thing the size slider in the right panel controls now.
+      // Without a scale term here, any value the slider writes to
+      // storedFontSize cancels out of this ratio algebraically — that's
+      // the bug that made the slider look like it stopped doing anything.
+      const SAFETY = 0.96 * (scale ?? 1);
       let fitted = REF_PX * (boxWidthPx / widestAtRef) * SAFETY;
 
       // Cap by the box's own height so a short word in a MULTI-line title
@@ -96,7 +137,7 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
       // goal using the stored title_h, which was sized for the old, smaller
       // static font and is often too short for a true full-width fit.
       if (boxHeightFraction && lineCount > 1) {
-        const boxHeightPx = boxHeightFraction * containerWidth * 1.414; // page is portrait, ~1:1.414
+        const boxHeightPx = boxHeightFraction * containerWidth * pageAspect; // height = width * (page height / page width)
         const maxByHeight = (boxHeightPx / lineCount) * 0.92;
         fitted = Math.min(fitted, maxByHeight);
       }
@@ -123,7 +164,7 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
     return () => {
       cancelled = true;
     };
-  }, [containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode]);
+  }, [containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode, pageAspect, singleLine, scale]);
 
   return fontSize;
 }
@@ -634,6 +675,10 @@ export function CoverFrontPage({
   const containerWidth = useElementWidth(containerRef);
   const [titleEditing, setTitleEditing] = useState(false);
   const [extraTextEditId, setExtraTextEditId] = useState(null);
+  // Which cover photo (if any) is currently in pan/zoom/rotate mode. Purely
+  // local UI state — not persisted, same idea as the interior page editor's
+  // cropMode.
+  const [cropItemId, setCropItemId] = useState(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const bg = cover.bg_color || template.bg;
   const accent = cover.accent_color || template.accent;
@@ -648,8 +693,16 @@ export function CoverFrontPage({
   const titleRotation = cover.title_rotation || 0;
   const titleWritingMode = cover.title_writing_mode || null; // "vertical-rl" keeps the box's own footprint, unlike rotate() which pivots around the box's center
   const titleUppercase = cover.title_uppercase !== false;
+  const titleFontStyle = cover.title_font_style || "normal";
+  const titleSingleLine = !!cover.title_single_line;
+  const titleTextAlign = cover.title_text_align || "left";
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
+  // height = width * pageAspect. Was hardcoded to the portrait ratio
+  // (1.414) everywhere, which silently broke every size/position
+  // calculation below in landscape orientation (text and images
+  // overlapping) since the assumed page shape didn't match the real one.
+  const pageAspect = orientation === "landscape" ? 1 / 1.414 : 1.414;
 
   // Fills the full width of the title box for every template — shrinks long
   // words so they never bleed past the cover edge, and grows short words so
@@ -660,13 +713,16 @@ export function CoverFrontPage({
     containerWidth,
     boxWidthFraction: titleW,
     boxHeightFraction: titleH,
-    lineCount: titleWritingMode ? 1 : String(title || "").split(" ").length,
+    lineCount: (titleWritingMode || titleSingleLine) ? 1 : String(title || "").split(" ").length,
     text: title,
     storedFontSize: titleFontSize,
     fontFamily: titleFont,
     fontWeight: titleWeight,
     uppercase: titleUppercase,
     writingMode: titleWritingMode,
+    pageAspect,
+    singleLine: titleSingleLine,
+    scale: cover.title_scale ?? 1,
   });
   const titleFontSizeStyle = containerWidth ? `${fittedTitleFontSizePx}px` : "clamp(18px, 9cqw, 56px)";
 
@@ -676,11 +732,16 @@ export function CoverFrontPage({
   // the selection frame matches the title instead of leaving empty space
   // below it (the subtitle, positioned right at the box's bottom edge,
   // then sits right under the real text too). Manual resizing by the user
-  // still writes to title_h as before via onUpdateTitle.
-  const titleLineCount = titleWritingMode ? 1 : String(title || "").split(" ").length;
-  const visualTitleH = containerWidth
-    ? Math.min(titleH, (fittedTitleFontSizePx * 0.95 * titleLineCount) / (containerWidth * 1.414))
-    : titleH;
+  // still writes to title_h as before via onUpdateTitle. Skipped entirely
+  // for vertical-writing-mode titles ("Notre Rencontre", "Our Year") — a
+  // rotated title's real footprint isn't a simple line-height calculation,
+  // and hugging it the same way collapsed the box to a sliver, making the
+  // title effectively unselectable/undraggable.
+  const titleLineCount = (titleWritingMode || titleSingleLine) ? 1 : String(title || "").split(" ").length;
+  const visualTitleH =
+    containerWidth && !titleWritingMode
+      ? Math.min(titleH, (fittedTitleFontSizePx * 0.95 * titleLineCount) / (containerWidth * pageAspect))
+      : titleH;
 
 
   return (
@@ -739,6 +800,8 @@ export function CoverFrontPage({
                 color: text,
                 fontFamily: titleFont,
                 fontWeight: titleWeight,
+                fontStyle: titleFontStyle,
+                textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
                 writingMode: titleWritingMode || undefined,
               }}
@@ -751,13 +814,15 @@ export function CoverFrontPage({
                 color: text,
                 fontFamily: titleFont,
                 fontWeight: titleWeight,
+                fontStyle: titleFontStyle,
+                textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
-                transform: !titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined,
+                transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
                 writingMode: titleWritingMode || undefined,
-                whiteSpace: titleWritingMode ? "nowrap" : undefined,
+                whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
               }}
             >
-              {titleWritingMode ? (
+              {titleWritingMode || titleSingleLine ? (
                 <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
               ) : (
                 title.split(" ").map((w, i) => (
@@ -777,13 +842,15 @@ export function CoverFrontPage({
             color: text,
             fontFamily: titleFont,
             fontWeight: titleWeight,
+            fontStyle: titleFontStyle,
+            textAlign: titleTextAlign,
             fontSize: titleFontSizeStyle,
-            transform: !titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined,
+            transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
             writingMode: titleWritingMode || undefined,
-            whiteSpace: titleWritingMode ? "nowrap" : undefined,
+            whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
           }}
         >
-          {titleWritingMode ? (
+          {titleWritingMode || titleSingleLine ? (
             <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
           ) : (
             title.split(" ").map((w, i) => (
@@ -823,7 +890,7 @@ export function CoverFrontPage({
               extraStyle={{
                 color: item.color || text,
                 fontFamily: item.font || titleFont,
-                fontSize: `${((( item.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
+                fontSize: `${((( renderItem.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
                 lineHeight: 1.15,
@@ -879,32 +946,80 @@ export function CoverFrontPage({
           );
         }
         if (item.type === "image") {
+          const isPhoto = !!item.is_photo;
+          const inCrop = isPhoto && cropItemId === item.id;
+          const scale = Math.max(item.scale || 1, 1);
+          const rotation = item.rotation || 0;
+          const focalX = item.focal_x ?? 0.5;
+          const focalY = item.focal_y ?? 0.5;
           return (
-            <DraggableItem
-              key={item.id}
-              item={item}
-              onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
-              onSelect={() => onSelectItem && onSelectItem(item)}
-              selected={isSel}
-              containerRef={containerRef}
-              editable={editable}
-              tid={`cover-image-${item.id}`}
-              onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
-            >
-              {item.image_url ? (
-                <img
-                  src={item.image_url}
-                  alt=""
-                  className="w-full h-full object-contain pointer-events-none select-none"
-                  draggable={false}
+            <React.Fragment key={item.id}>
+              <DraggableItem
+                item={item}
+                onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+                onSelect={() => onSelectItem && onSelectItem(item)}
+                selected={isSel}
+                containerRef={containerRef}
+                editable={editable && !inCrop}
+                tid={`cover-image-${item.id}`}
+                onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
+                extraStyle={{ overflow: "hidden" }}
+              >
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt=""
+                    className="w-full h-full pointer-events-none select-none"
+                    style={
+                      isPhoto
+                        ? {
+                            objectFit: "cover",
+                            transform: `scale(${scale}) rotate(${rotation}deg)`,
+                            transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
+                            objectPosition: `${focalX * 100}% ${focalY * 100}%`,
+                          }
+                        : { objectFit: "contain" }
+                    }
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-black/5 border-2 border-dashed border-current opacity-60 pointer-events-none">
+                    <ImagePlus size={18} />
+                    <span className="text-[9px] uppercase tracking-widest text-center px-1">Add a photo</span>
+                  </div>
+                )}
+                {inCrop && (
+                  <PhotoPanOverlay
+                    focalX={focalX}
+                    focalY={focalY}
+                    onPan={(fx, fy) => onUpdateItem && onUpdateItem(item.id, { focal_x: fx, focal_y: fy })}
+                  />
+                )}
+              </DraggableItem>
+              {isPhoto && item.image_url && isSel && editable && !inCrop && (
+                <PhotoFrameToolbar
+                  x={item.x}
+                  y={item.y}
+                  w={item.w}
+                  onEdit={() => setCropItemId(item.id)}
+                  onDelete={() => onUpdateItem && onUpdateItem(item.id, { image_url: null, storage_path: null, scale: 1, rotation: 0, focal_x: 0.5, focal_y: 0.5 })}
+                  hideSwap
+                  hideReorder
                 />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-black/5 border-2 border-dashed border-current opacity-60 pointer-events-none">
-                  <ImagePlus size={18} />
-                  <span className="text-[9px] uppercase tracking-widest text-center px-1">Add a photo</span>
-                </div>
               )}
-            </DraggableItem>
+              {inCrop && (
+                <PhotoEditToolbar
+                  x={item.x}
+                  y={item.y}
+                  w={item.w}
+                  scale={scale}
+                  onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
+                  rotation={rotation}
+                  onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { rotation: r })}
+                  onDone={() => setCropItemId(null)}
+                />
+              )}
+            </React.Fragment>
           );
         }
         return null;

@@ -1493,12 +1493,35 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         x = item["x"] * page_w
         y_top = (1 - item["y"]) * page_h
         text_align = item.get("text_align", "left")
-        # multi-line wrap on newlines
-        for i, line in enumerate((item.get("content", "") or "").split("\n")):
+        content = (item.get("content", "") or "")
+        if item.get("role") == "subtitle":
+            content = content.upper()
+
+        # Word-wrap each manual paragraph (split on "\n") to fit the box
+        # width — without this, a long line with no manual break just runs
+        # off both sides of the page instead of staying inside its frame.
+        box_w = item.get("w", 1) * page_w
+        wrapped_lines = []
+        for paragraph in content.split("\n"):
+            words = paragraph.split(" ")
+            cur = ""
+            for w in words:
+                candidate = (cur + " " + w).strip()
+                if not cur or pdfmetrics.stringWidth(candidate, font_name, font_size) <= box_w:
+                    cur = candidate
+                else:
+                    wrapped_lines.append(cur)
+                    cur = w
+            wrapped_lines.append(cur)
+
+        for i, line in enumerate(wrapped_lines):
             y = y_top - font_size * (i + 1)
             if text_align == "center":
                 center_x = x + item.get("w", 0) * page_w / 2
                 c.drawCentredString(center_x, y, line)
+            elif text_align == "right":
+                right_x = x + item.get("w", 0) * page_w
+                c.drawRightString(right_x, y, line)
             else:
                 c.drawString(x, y, line)
 
@@ -1530,19 +1553,36 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         lines = [display_title]
     else:
         words = display_title.split()
-        lines = []
-        cur = ""
         title_box_w = float(cover.get("title_w", 0.84)) * pw
-        for w in words:
-            candidate = (cur + " " + w).strip()
-            if pdfmetrics.stringWidth(candidate, title_font_name, title_font_size) <= title_box_w:
-                cur = candidate
-            else:
-                if cur:
-                    lines.append(cur)
-                cur = w
-        if cur:
-            lines.append(cur)
+
+        # Fill the box width the same way the web editor does: scale the
+        # font size so the widest resulting line takes up the full box
+        # width, instead of just using the stored size verbatim (which was
+        # calibrated for the old, smaller static title and left a gap here).
+        def wrap_at(size):
+            lines_ = []
+            cur_ = ""
+            for w in words:
+                candidate = (cur_ + " " + w).strip()
+                if pdfmetrics.stringWidth(candidate, title_font_name, size) <= title_box_w:
+                    cur_ = candidate
+                else:
+                    if cur_:
+                        lines_.append(cur_)
+                    cur_ = w
+            if cur_:
+                lines_.append(cur_)
+            return lines_
+
+        probe_lines = wrap_at(title_font_size)
+        widest = max(
+            (pdfmetrics.stringWidth(line, title_font_name, title_font_size) for line in probe_lines),
+            default=1,
+        )
+        if widest > 0:
+            title_font_size = title_font_size * (title_box_w * 0.96 * float(cover.get("title_scale", 1)) / widest)
+            c.setFont(title_font_name, title_font_size)
+        lines = wrap_at(title_font_size)
     line_h = title_font_size * 1.05
     title_top = (1 - title_y_norm) * ph
     if title_writing_mode == "vertical-rl":
@@ -1633,7 +1673,23 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
                     logger.error(f"Cover extra image draw failed: {e}")
 
     # Extra items on front cover (text / shape / image)
-    draw_extra_items(cover.get("extra_items", []), accent_color)
+    # The subtitle sits right at the title box's real bottom edge, sized
+    # proportionally to the title — matches the web editor, where both are
+    # computed dynamically instead of using the template's static stored
+    # values (which were calibrated for the old, smaller static title).
+    title_visual_h_frac = (line_h * len(lines)) / ph if lines else 0
+    front_extra_items = cover.get("extra_items", []) or []
+    adjusted_extra_items = []
+    for item in front_extra_items:
+        if item.get("type") == "text" and item.get("role") == "subtitle":
+            item = {
+                **item,
+                "y": title_y_norm + title_visual_h_frac,
+                "font_size": title_font_size * (REFERENCE_PAGE_PX / pw) * 0.58,
+            }
+        adjusted_extra_items.append(item)
+
+    draw_extra_items(adjusted_extra_items, accent_color)
     c.showPage()
 
     # ---- CONTENT PAGES ----

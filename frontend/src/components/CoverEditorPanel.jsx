@@ -42,7 +42,7 @@ export function CoverEditorPanel({
       {/* Entête du panneau */}
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
-          {coverSel.mode === "spine-title" || coverSel.mode === "spine-year"
+          {coverSel.mode === "spine-title" || coverSel.mode === "spine-year" || coverSel.mode === "spine-caption"
             ? "Cover — Spine"
             : `Cover — ${zoneLabel}`}
         </div>
@@ -104,6 +104,7 @@ export function CoverEditorPanel({
             >
               <option value="'Baloo 2', sans-serif">Baloo (rounded)</option>
               <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
+              <option value="'Alex Brush', cursive">Alex Brush (script)</option>
               <option value="'Manrope', sans-serif">Manrope (sans)</option>
               <option value="Georgia, serif">Georgia</option>
               <option value="Helvetica, Arial, sans-serif">Helvetica</option>
@@ -113,15 +114,32 @@ export function CoverEditorPanel({
 
           <div>
             <label className="eyebrow block mb-2">Title Size</label>
-            <input
-              type="range"
-              min={20}
-              max={120}
-              value={cover.title_font_size || 48}
-              onChange={(e) => updateCover({ title_font_size: Number(e.target.value) })}
-              className="w-full"
-              data-testid="cover-title-size"
-            />
+            {cover.title_writing_mode ? (
+              <input
+                type="range"
+                min={20}
+                max={120}
+                value={cover.title_font_size || 48}
+                onChange={(e) => updateCover({ title_font_size: Number(e.target.value) })}
+                className="w-full"
+                data-testid="cover-title-size"
+              />
+            ) : (
+              // Horizontal titles always auto-fit to fill the width of
+              // their box, so title_font_size itself has no visible effect
+              // (it cancels out of that fill calculation). This scale
+              // multiplier is what actually grows/shrinks the result.
+              <input
+                type="range"
+                min={0.5}
+                max={1.6}
+                step={0.02}
+                value={cover.title_scale ?? 1}
+                onChange={(e) => updateCover({ title_scale: Number(e.target.value) })}
+                className="w-full"
+                data-testid="cover-title-size"
+              />
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -171,13 +189,16 @@ export function CoverEditorPanel({
       )}
 
       {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / YEAR) */}
-      {(coverSel.mode === "spine-title" || coverSel.mode === "spine-year") && (
+      {(coverSel.mode === "spine-title" || coverSel.mode === "spine-year" || coverSel.mode === "spine-caption") && (() => {
+        const zone = coverSel.mode; // "spine-title" | "spine-year" | "spine-caption"
+        const prefix = zone === "spine-title" ? "spine_title" : zone === "spine-year" ? "spine_year" : "spine_caption";
+        const label = zone === "spine-title" ? "Spine title" : zone === "spine-year" ? "Spine year" : "Spine text";
+        const testidPrefix = zone === "spine-title" ? "spine-title" : zone === "spine-year" ? "spine-year" : "spine-caption";
+        return (
         <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">
-            {coverSel.mode === "spine-title" ? "Spine title" : "Spine year"}
-          </div>
+          <div className="eyebrow">{label}</div>
 
-          {coverSel.mode === "spine-year" && updateAlbumYear && (
+          {zone === "spine-year" && updateAlbumYear && (
             <div>
               <label className="eyebrow block mb-2">Year</label>
               <input
@@ -189,29 +210,46 @@ export function CoverEditorPanel({
             </div>
           )}
 
+          {zone === "spine-caption" && (
+            <div>
+              <label className="eyebrow block mb-2">Text (2 lines)</label>
+              <textarea
+                data-testid="spine-caption-content"
+                value={cover.spine_caption || ""}
+                onChange={(e) => updateCover({ spine_caption: e.target.value })}
+                rows={2}
+                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
+                placeholder={"CAMILLE & THOMAS\n15 MAY 2025"}
+              />
+            </div>
+          )}
+
+          {zone === "spine-title" && (
+            <div>
+              <label className="eyebrow block mb-2">Subtitle</label>
+              <input
+                type="text"
+                data-testid="spine-subtitle-content"
+                value={cover.spine_subtitle || ""}
+                onChange={(e) => updateCover({ spine_subtitle: e.target.value })}
+                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
+                placeholder="Optional — shown right after the title"
+              />
+            </div>
+          )}
+
           <div>
             <label className="eyebrow block mb-2">Font</label>
             <select
-              data-testid={
-                coverSel.mode === "spine-title" ? "spine-title-font" : "spine-year-font"
-              }
-              value={
-                (coverSel.mode === "spine-title"
-                  ? cover.spine_title_font
-                  : cover.spine_year_font) || "'Manrope', sans-serif"
-              }
-              onChange={(e) =>
-                updateCover({
-                  [coverSel.mode === "spine-title"
-                    ? "spine_title_font"
-                    : "spine_year_font"]: e.target.value,
-                })
-              }
+              data-testid={`${testidPrefix}-font`}
+              value={cover[`${prefix}_font`] || "'Manrope', sans-serif"}
+              onChange={(e) => updateCover({ [`${prefix}_font`]: e.target.value })}
               className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
             >
               <option value="'Baloo 2', sans-serif">Baloo (rounded)</option>
               <option value="'Manrope', sans-serif">Manrope (sans)</option>
               <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
+              <option value="'Alex Brush', cursive">Alex Brush (script)</option>
               <option value="Georgia, serif">Georgia</option>
               <option value="Helvetica, Arial, sans-serif">Helvetica</option>
               <option value="'Courier New', monospace">Courier</option>
@@ -224,79 +262,56 @@ export function CoverEditorPanel({
               type="range"
               min={6}
               max={36}
-              value={
-                (coverSel.mode === "spine-title"
-                  ? cover.spine_title_size
-                  : cover.spine_year_size) || 9
-              }
-              onChange={(e) =>
-                updateCover({
-                  [coverSel.mode === "spine-title"
-                    ? "spine_title_size"
-                    : "spine_year_size"]: Number(e.target.value),
-                })
-              }
+              value={cover[`${prefix}_size`] || 9}
+              onChange={(e) => updateCover({ [`${prefix}_size`]: Number(e.target.value) })}
               className="w-full"
-              data-testid={
-                coverSel.mode === "spine-title" ? "spine-title-size" : "spine-year-size"
-              }
+              data-testid={`${testidPrefix}-size`}
             />
           </div>
 
           <button
             onClick={() => {
-              const key = coverSel.mode === "spine-title" ? "spine_title_weight" : "spine_year_weight";
-              const current = (coverSel.mode === "spine-title" ? cover.spine_title_weight : cover.spine_year_weight) || "700";
+              const key = `${prefix}_weight`;
+              const current = cover[key] || "700";
               const isBold = current === "bold" || Number(current) >= 600;
               updateCover({ [key]: isBold ? "400" : "700" });
             }}
             className={`w-full inline-flex items-center justify-center gap-2 border py-2 transition-colors ${
-              ((coverSel.mode === "spine-title" ? cover.spine_title_weight : cover.spine_year_weight) || "700") === "400"
+              (cover[`${prefix}_weight`] || "700") === "400"
                 ? "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
                 : "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
             }`}
-            data-testid={coverSel.mode === "spine-title" ? "spine-title-bold" : "spine-year-bold"}
+            data-testid={`${testidPrefix}-bold`}
           >
             <Bold size={14} />
             <span className="text-xs font-semibold tracking-widest uppercase">Bold</span>
           </button>
 
-          <button
-            onClick={() =>
-              updateCover({
-                [coverSel.mode === "spine-title"
-                  ? "spine_title_hidden"
-                  : "spine_year_hidden"]: !(coverSel.mode === "spine-title"
-                  ? cover.spine_title_hidden
-                  : cover.spine_year_hidden),
-              })
-            }
-            className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-            data-testid={
-              coverSel.mode === "spine-title" ? "spine-title-toggle" : "spine-year-toggle"
-            }
-          >
-            {(
-              coverSel.mode === "spine-title"
-                ? cover.spine_title_hidden
-                : cover.spine_year_hidden
-            ) ? (
-              <Eye size={14} />
-            ) : (
+          {zone !== "spine-caption" && (
+            <button
+              onClick={() => updateCover({ [`${prefix}_hidden`]: !cover[`${prefix}_hidden`] })}
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+              data-testid={`${testidPrefix}-toggle`}
+            >
+              {cover[`${prefix}_hidden`] ? <Eye size={14} /> : <EyeOff size={14} />}
+              <span className="text-xs font-semibold tracking-widest uppercase">
+                {cover[`${prefix}_hidden`] ? "Show" : "Hide"}
+              </span>
+            </button>
+          )}
+          {zone === "spine-caption" && cover.spine_caption && (
+            <button
+              onClick={() => updateCover({ spine_caption: "" })}
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+              data-testid="spine-caption-clear"
+            >
               <EyeOff size={14} />
-            )}
-            <span className="text-xs font-semibold tracking-widest uppercase">
-              {(
-                coverSel.mode === "spine-title"
-                  ? cover.spine_title_hidden
-                  : cover.spine_year_hidden
-              )
-                ? "Show"
-                : "Hide"}
-            </span>
-          </button>
+              <span className="text-xs font-semibold tracking-widest uppercase">Clear</span>
+            </button>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* 4. ÉDITION D'UN ÉLÉMENT SÉLECTIONNÉ (EXTRA ITEM) */}
       {selectedItem && (
@@ -329,6 +344,7 @@ export function CoverEditorPanel({
                 <option value="'Baloo 2', sans-serif">Baloo (rounded)</option>
                 <option value="'Manrope', sans-serif">Manrope (sans)</option>
                 <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
+                <option value="'Alex Brush', cursive">Alex Brush (script)</option>
                 <option value="Georgia, serif">Georgia</option>
                 <option value="Helvetica, Arial, sans-serif">Helvetica</option>
                 <option value="'Courier New', monospace">Courier</option>

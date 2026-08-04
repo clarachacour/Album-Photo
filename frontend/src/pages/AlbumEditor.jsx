@@ -63,14 +63,20 @@ export default function AlbumEditor() {
   const [processing, setProcessing] = useState(params.get("processing") === "1");
   const [coverSel, setCoverSel] = useState(null);
   const clipboardRef = useRef(null);
+  // Guards against the "Album prêt" toast appearing more than once for the
+  // same processing run (e.g. React re-invoking effects, or the status
+  // poll landing twice before the interval is torn down).
+  const notifiedRef = useRef(false);
 
   const loadAlbum = useCallback(async () => {
     if (isCreating) return;
     try {
       const { data } = await api.get(`/albums/${id}`);
       albumHistory.resetState(data);
-      if (data.status === "processing") setProcessing(true);
-      else setProcessing(false);
+      if (data.status === "processing") {
+        notifiedRef.current = false;
+        setProcessing(true);
+      } else setProcessing(false);
     } catch {
       toast.error("Impossible de charger cet album");
       nav("/dashboard");
@@ -183,8 +189,11 @@ export default function AlbumEditor() {
         if (data.status !== "processing") {
           setProcessing(false);
           loadAlbum();
-          if (data.status === "ready") toast.success("Album prêt");
-          if (data.status === "error") toast.error("Erreur lors du traitement IA");
+          if (!notifiedRef.current) {
+            notifiedRef.current = true;
+            if (data.status === "ready") toast.success("Album prêt");
+            if (data.status === "error") toast.error("Erreur lors du traitement IA");
+          }
         }
       } catch {
         /* noop */
@@ -888,7 +897,10 @@ export default function AlbumEditor() {
               mode="editor"
               photos={[]}
               onPhotosChange={() => loadAlbum()}
-              onProcessingStarted={() => setProcessing(true)}
+              onProcessingStarted={() => {
+                notifiedRef.current = false;
+                setProcessing(true);
+              }}
             />
             <p className="text-xs text-[color:var(--muted)] mt-4 text-center">
               The AI will pick the best of your new photos and add pages at the end of your album.

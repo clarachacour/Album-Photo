@@ -42,7 +42,7 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
 }
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, emptyFrame }) {
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, emptyFrame, hideSwap, hideReorder }) {
   return (
     <ToolbarShell x={x} y={y} w={w}>
       {!emptyFrame && (
@@ -50,21 +50,27 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
           <ToolbarButton onClick={onEdit} title="Edit photo" tid="frame-edit-btn">
             <Pencil size={14} />
           </ToolbarButton>
-          <ToolbarButton
-            onClick={onSwap}
-            title={isSwapping ? "Click another photo to swap" : "Swap with another photo"}
-            tid="frame-swap-btn"
-          >
-            <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
+          {!hideSwap && (
+            <ToolbarButton
+              onClick={onSwap}
+              title={isSwapping ? "Click another photo to swap" : "Swap with another photo"}
+              tid="frame-swap-btn"
+            >
+              <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
+            </ToolbarButton>
+          )}
+        </>
+      )}
+      {!hideReorder && (
+        <>
+          <ToolbarButton onClick={onSendBackward} title="Send backward" tid="frame-layer-back-btn">
+            <ChevronDown size={14} />
+          </ToolbarButton>
+          <ToolbarButton onClick={onBringForward} title="Bring forward" tid="frame-layer-front-btn">
+            <ChevronUp size={14} />
           </ToolbarButton>
         </>
       )}
-      <ToolbarButton onClick={onSendBackward} title="Send backward" tid="frame-layer-back-btn">
-        <ChevronDown size={14} />
-      </ToolbarButton>
-      <ToolbarButton onClick={onBringForward} title="Bring forward" tid="frame-layer-front-btn">
-        <ChevronUp size={14} />
-      </ToolbarButton>
       <ToolbarButton onClick={onDelete} title="Supprimer ce cadre" tid="frame-delete-btn" danger>
         <Trash2 size={14} />
       </ToolbarButton>

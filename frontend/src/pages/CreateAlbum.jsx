@@ -10,6 +10,7 @@ import { CoverSpine } from "@/components/CoverSpine";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
+import { useHistoryState } from "@/lib/useHistoryState";
 import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 
 const STEPS = ["Format", "Edit", "Pictures"];
@@ -69,7 +70,7 @@ export default function CreateAlbum() {
   const [step, setStep] = useState(0);
   const [size, setSize] = useState("A4");
   const [orientation, setOrientation] = useState("portrait");
-  const [album, setAlbum] = useState(null); // created once we leave the Format step
+  const [album, setAlbum, albumHistory] = useHistoryState(null); // created once we leave the Format step
   const [coverSel, setCoverSel] = useState(null);
   const [serverPhotos, setServerPhotos] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -81,7 +82,7 @@ export default function CreateAlbum() {
     (async () => {
       try {
         const { data } = await api.get(`/albums/${resumeAlbumId}`);
-        setAlbum(data);
+        albumHistory.resetState(data);
         setServerPhotos(data.photos || []);
         setSize(data.size || "A4");
         setOrientation(data.orientation || "portrait");
@@ -100,6 +101,27 @@ export default function CreateAlbum() {
   const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable) return;
+
+      const isMod = e.ctrlKey || e.metaKey;
+      if (isMod && !e.shiftKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        albumHistory.undo();
+        return;
+      }
+      if (isMod && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) {
+        e.preventDefault();
+        albumHistory.redo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Format -> Edit: create the album the first time, or persist size/orientation if we're revisiting.
   const goToEdit = async () => {
@@ -113,7 +135,7 @@ export default function CreateAlbum() {
           cover_template_id: chosenTemplate?.id || "default",
           cover: defaultCoverPayload(chosenTemplate),
         });
-        setAlbum(data);
+        albumHistory.resetState(data);
       } else {
         await api.patch(`/albums/${album.id}`, { size, orientation });
       }
@@ -379,6 +401,9 @@ function StepEdit({
             selectedZone={coverSel?.mode}
             onSelectTitle={() => setCoverSel({ mode: "spine-title" })}
             onSelectYear={() => setCoverSel({ mode: "spine-year" })}
+            onSelectCaption={() => setCoverSel({ mode: "spine-caption" })}
+            onSelectLogo={() => setCoverSel({ mode: "spine-logo" })}
+            onSelectDivider={() => setCoverSel({ mode: "spine-divider" })}
             onUpdateCover={updateCover}
           />
           <CoverFrontPage
