@@ -28,9 +28,9 @@ export function getToken() {
   return localStorage.getItem("album_token");
 }
 
-export function photoImageUrl(photoId) {
+export function photoImageUrl(photoId, variant = "thumb") {
   const t = getToken();
-  return `${API}/photos/${photoId}/image?auth=${encodeURIComponent(t || "")}`;
+  return `${API}/photos/${photoId}/image?auth=${encodeURIComponent(t || "")}&variant=${variant}`;
 }
 
 export function pdfExportUrl(albumId) {
@@ -38,12 +38,12 @@ export function pdfExportUrl(albumId) {
   return `${API}/albums/${albumId}/export?auth=${encodeURIComponent(t || "")}`;
 }
 
-export function coverImageUrl(albumId, version = 0) {
+export function coverImageUrl(albumId, version = 0, variant = "thumb") {
   const t = getToken();
-  return `${API}/albums/${albumId}/cover-image?auth=${encodeURIComponent(t || "")}&v=${version}`;
+  return `${API}/albums/${albumId}/cover-image?auth=${encodeURIComponent(t || "")}&v=${version}&variant=${variant}`;
 }
 
-export function coverAssetUrl(storagePath) {
+export function coverAssetUrl(storagePath, variant = "thumb") {
   const t = getToken();
-  return `${API}/cover-assets/image?path=${encodeURIComponent(storagePath)}&auth=${encodeURIComponent(t || "")}`;
+  return `${API}/cover-assets/image?path=${encodeURIComponent(storagePath)}&auth=${encodeURIComponent(t || "")}&variant=${variant}`;
 }

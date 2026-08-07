@@ -226,6 +226,32 @@ export function CoverEditorPanel({
 
           {zone === "spine-title" && (
             <div>
+              <label className="eyebrow flex items-center justify-between mb-2">
+                <span>Spine Title</span>
+                {cover.spine_title_text != null && (
+                  <button
+                    type="button"
+                    onClick={() => updateCover({ spine_title_text: null })}
+                    className="underline text-[10px] normal-case tracking-normal font-normal"
+                    data-testid="spine-title-text-reset"
+                  >
+                    match cover title
+                  </button>
+                )}
+              </label>
+              <input
+                type="text"
+                data-testid="spine-title-text-content"
+                value={cover.spine_title_text ?? album?.title ?? ""}
+                onChange={(e) => updateCover({ spine_title_text: e.target.value })}
+                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
+                placeholder="Same as the cover title"
+              />
+            </div>
+          )}
+
+          {zone === "spine-title" && (
+            <div>
               <label className="eyebrow block mb-2">Subtitle</label>
               <input
                 type="text"

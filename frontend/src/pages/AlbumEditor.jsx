@@ -844,6 +844,8 @@ export default function AlbumEditor() {
             onSelectCoverItem={(item, side = "front") => { setSelected(null); setCoverSel({ mode: "item", side, itemId: item.id }); }}
             onUpdateCoverTitle={updateCoverTitle}
             onUpdateCoverItem={updateCoverItem}
+            onUpdateCover={updateCover}
+            onSelectSpine={(mode) => { setSelected(null); setCoverSel({ mode }); }}
           />
 
           <div className="flex items-center gap-4 mt-4">
@@ -1050,27 +1052,62 @@ function BookRenderer({
   onSelectCoverItem,
   onUpdateCoverTitle,
   onUpdateCoverItem,
+  onUpdateCover,
+  onSelectSpine,
 }) {
   const blank = (
     <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
   );
   const pages = [
-    <CoverFrontPage
-      key="cover-front"
-      template={template}
-      title={album.title}
-      orientation={orientation}
-      coverImageUrl={coverImageUrl}
-      cover={album.cover || {}}
-      editable
-      onSelectCover={() => onSelectCover("front")}
-      onSelectTitle={onSelectCoverTitle}
-      onSelectItem={(item) => onSelectCoverItem(item, "front")}
-      onUpdateTitle={onUpdateCoverTitle}
-      onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "front")}
-      titleSelected={coverSel?.mode === "title"}
-      selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
-    />,
+    <div key="cover-front" className="relative h-full w-full">
+      {/* The front cover keeps its full, correctly-proportioned size
+          (matching the chosen format/orientation exactly) — the spine is
+          attached as an extra strip just outside its left edge instead of
+          eating into its width, which used to squash it and leave a gap. */}
+      <div
+        className="absolute top-0 h-full"
+        style={{ width: "32px", right: "calc(100% + 3px)" }}
+      >
+        <CoverSpine
+          title={album.title}
+          year={album.year}
+          template={template}
+          cover={album.cover || {}}
+          editable
+          selectedZone={coverSel?.mode}
+          onSelectTitle={() => onSelectSpine && onSelectSpine("spine-title")}
+          onSelectYear={() => onSelectSpine && onSelectSpine("spine-year")}
+          onSelectCaption={() => onSelectSpine && onSelectSpine("spine-caption")}
+          onSelectLogo={() => onSelectSpine && onSelectSpine("spine-logo")}
+          onSelectDivider={() => onSelectSpine && onSelectSpine("spine-divider")}
+          onUpdateCover={onUpdateCover}
+        />
+      </div>
+      {/* A thin visible seam between the spine and the cover, matching the
+          gap already used in the "Make it yours" flat-spread layout — makes
+          it clear these are two separate, distinct pieces. */}
+      <div
+        className="absolute top-0 h-full bg-[color:var(--ink)]/70"
+        style={{ width: "3px", right: "100%" }}
+      />
+      <div className="h-full w-full">
+        <CoverFrontPage
+          template={template}
+          title={album.title}
+          orientation={orientation}
+          coverImageUrl={coverImageUrl}
+          cover={album.cover || {}}
+          editable
+          onSelectCover={() => onSelectCover("front")}
+          onSelectTitle={onSelectCoverTitle}
+          onSelectItem={(item) => onSelectCoverItem(item, "front")}
+          onUpdateTitle={onUpdateCoverTitle}
+          onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "front")}
+          titleSelected={coverSel?.mode === "title"}
+          selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
+        />
+      </div>
+    </div>,
     <React.Fragment key="blank-inner-front">{blank}</React.Fragment>,
     ...(album.pages || []).map((page, i) => (
       <AlbumPage

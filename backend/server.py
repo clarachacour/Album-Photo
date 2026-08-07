@@ -1,3 +1,14 @@
+import sys
+import asyncio
+
+if sys.platform == "win32":
+    # The default Windows event loop (Selector) can't spawn subprocesses,
+    # which is exactly what Playwright needs to launch the browser for PDF
+    # export — without this, it fails with NotImplementedError. Must be set
+    # before uvicorn/FastAPI create their event loop, so this needs to run
+    # at import time, before anything else touches asyncio.
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Header, Query, BackgroundTasks
 from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -13,12 +24,14 @@ import os
 import logging
 import uuid
 import json
+import base64
 import bcrypt
 import jwt
 import requests
 import re
 import asyncio
 from PIL import Image, ExifTags
+import numpy as np
 import smtplib
 from email.mime.text import MIMEText
 from google.oauth2 import id_token as google_id_token
@@ -31,6 +44,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors as rl_colors
 from reportlab.pdfbase import pdfmetrics
+from playwright.sync_api import sync_playwright
 from reportlab.pdfbase.ttfonts import TTFont
 
 # Register the same fonts the web editor uses, so PDF text isn't silently
@@ -559,6 +573,49 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
 # ---------- Photo Upload ----------
 ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
+def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: str, album_id: str) -> dict:
+    """All the CPU/disk-bound work for one photo — EXIF, thumbnail
+    generation, perceptual hash, and the two disk writes. Deliberately a
+    plain synchronous function (no async, no awaits) so it can run in a
+    thread executor: none of this benefits from asyncio on its own, and
+    running it inline on the event loop was blocking every other request
+    (and every other photo in the same batch) for its entire duration."""
+    ext = (filename or "img.jpg").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    photo_id = str(uuid.uuid4())
+    path = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}.{ext}"
+    result = put_object(path, data, content_type)
+
+    exif_info = extract_exif_info(data)
+    img_w, img_h = None, None
+    thumb_path = None
+    try:
+        with Image.open(BytesIO(data)) as _probe:
+            img_w, img_h = _probe.size
+            thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
+            thumb.thumbnail((640, 640), Image.LANCZOS)
+            thumb_buf = BytesIO()
+            thumb.save(thumb_buf, format="JPEG", quality=82)
+            thumb_path_candidate = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}_thumb.jpg"
+            put_object(thumb_path_candidate, thumb_buf.getvalue(), "image/jpeg")
+            thumb_path = thumb_path_candidate
+    except Exception as e:
+        logger.debug(f"Impossible de générer la vignette (fallback sur l'original): {e}")
+
+    return {
+        "photo_id": photo_id,
+        "storage_path": result["path"],
+        "thumbnail_path": thumb_path,
+        "size": result.get("size", len(data)),
+        "width": img_w,
+        "height": img_h,
+        "taken_at": exif_info["taken_at"],
+        "gps_lat": exif_info["gps_lat"],
+        "gps_lng": exif_info["gps_lng"],
+        "phash": _ahash_to_str(compute_ahash(data)),
+    }
+
 async def _store_new_photo(album_id: str, user_id: str, filename: str, content_type: str, data: bytes) -> Optional[dict]:
     """Shared logic to persist one photo (bytes already in hand) as a Photo
     document — used by the normal upload endpoint, the phone QR upload, and
@@ -568,43 +625,33 @@ async def _store_new_photo(album_id: str, user_id: str, filename: str, content_t
         return None
     if len(data) == 0:
         return None
-    ext = (filename or "img.jpg").rsplit(".", 1)[-1].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "jpg"
-    photo_id = str(uuid.uuid4())
-    path = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}.{ext}"
     try:
-        result = put_object(path, data, content_type)
+        loop = asyncio.get_event_loop()
+        processed = await loop.run_in_executor(None, _process_photo_sync, data, content_type, filename, user_id, album_id)
     except Exception as e:
         logger.error(f"Upload failed for {filename}: {e}")
         return None
-    exif_info = extract_exif_info(data)
-    img_w, img_h = None, None
-    try:
-        with Image.open(BytesIO(data)) as _probe:
-            img_w, img_h = _probe.size
-    except Exception as e:
-        logger.debug(f"Impossible de lire les dimensions de l'image: {e}")
     photo_doc = {
-        "id": photo_id,
+        "id": processed["photo_id"],
         "album_id": album_id,
         "user_id": user_id,
-        "storage_path": result["path"],
+        "storage_path": processed["storage_path"],
+        "thumbnail_path": processed["thumbnail_path"],
         "original_filename": filename,
         "content_type": content_type,
-        "size": result.get("size", len(data)),
-        "width": img_w,
-        "height": img_h,
+        "size": processed["size"],
+        "width": processed["width"],
+        "height": processed["height"],
         "ai_score": None,
         "ai_description": None,
         "ai_group": None,
         "ai_is_reject": False,
         "ai_focal_x": 0.5,
         "ai_focal_y": 0.5,
-        "taken_at": exif_info["taken_at"],
-        "gps_lat": exif_info["gps_lat"],
-        "gps_lng": exif_info["gps_lng"],
-        "phash": _ahash_to_str(compute_ahash(data)),
+        "taken_at": processed["taken_at"],
+        "gps_lat": processed["gps_lat"],
+        "gps_lng": processed["gps_lng"],
+        "phash": processed["phash"],
         "is_selected": True,
         "is_duplicate": False,
         "is_deleted": False,
@@ -624,13 +671,19 @@ async def upload_photos(
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
 
-    uploaded = []
-    for f in files:
-        content_type = f.content_type or "image/jpeg"
-        data = await f.read()
-        photo_doc = await _store_new_photo(album_id, user["id"], f.filename, content_type, data)
-        if photo_doc:
-            uploaded.append(photo_doc)
+    # Files are read here (must happen on the main loop — UploadFile isn't
+    # safe to touch from a worker thread), but everything CPU/disk-bound
+    # after that runs concurrently, bounded so a huge batch doesn't spawn
+    # hundreds of threads at once.
+    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
+    semaphore = asyncio.Semaphore(8)
+
+    async def store_one(filename, content_type, data):
+        async with semaphore:
+            return await _store_new_photo(album_id, user["id"], filename, content_type, data)
+
+    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
+    uploaded = [p for p in results if p]
     return {"uploaded": len(uploaded), "photos": uploaded}
 
 # ---------- Mobile upload (QR code) ----------
@@ -671,13 +724,15 @@ async def mobile_upload_info(token: str):
 @api_router.post("/mobile-upload/{token}/photos")
 async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
     session = _get_mobile_session(token)
-    uploaded = []
-    for f in files:
-        content_type = f.content_type or "image/jpeg"
-        data = await f.read()
-        photo_doc = await _store_new_photo(session["album_id"], session["user_id"], f.filename, content_type, data)
-        if photo_doc:
-            uploaded.append(photo_doc)
+    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
+    semaphore = asyncio.Semaphore(8)
+
+    async def store_one(filename, content_type, data):
+        async with semaphore:
+            return await _store_new_photo(session["album_id"], session["user_id"], filename, content_type, data)
+
+    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
+    uploaded = [p for p in results if p]
 
     if uploaded:
         album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "status": 1})
@@ -704,37 +759,54 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         raise HTTPException(status_code=404, detail="Album introuvable")
 
     headers = {"Authorization": f"Bearer {data.access_token}"}
+    items = []
+    page_token = None
     try:
-        resp = requests.get(
-            "https://photospicker.googleapis.com/v1/mediaItems",
-            headers=headers,
-            params={"sessionId": data.session_id, "pageSize": 100},
-            timeout=15,
-        )
-        resp.raise_for_status()
+        while True:
+            params = {"sessionId": data.session_id, "pageSize": 100}
+            if page_token:
+                params["pageToken"] = page_token
+            resp = requests.get(
+                "https://photospicker.googleapis.com/v1/mediaItems",
+                headers=headers,
+                params=params,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            page = resp.json()
+            items.extend(page.get("mediaItems", []))
+            page_token = page.get("nextPageToken")
+            if not page_token:
+                break
     except Exception as e:
         logger.error(f"Échec de la lecture de la sélection Google Photos : {e}")
         raise HTTPException(status_code=502, detail="Impossible de récupérer la sélection Google Photos")
 
-    items = resp.json().get("mediaItems", [])
     uploaded = []
-    for item in items:
+    semaphore = asyncio.Semaphore(8)  # bounded concurrency, so we don't hammer Google's API or the local disk
+    loop = asyncio.get_event_loop()
+
+    async def fetch_one(item):
         media_file = item.get("mediaFile", {})
         base_url = media_file.get("baseUrl")
         filename = media_file.get("filename", "photo.jpg")
         if not base_url:
-            continue
-        try:
-            img_resp = requests.get(f"{base_url}=d", headers=headers, timeout=20)
-            if img_resp.status_code != 200:
-                continue
-            content_type = img_resp.headers.get("Content-Type", "image/jpeg")
-            photo_doc = await _store_new_photo(album_id, user["id"], filename, content_type, img_resp.content)
-            if photo_doc:
-                uploaded.append(photo_doc)
-        except Exception as e:
-            logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) : {e}")
-            continue
+            return None
+        async with semaphore:
+            try:
+                img_resp = await loop.run_in_executor(
+                    None, lambda: requests.get(f"{base_url}=d", headers=headers, timeout=20)
+                )
+                if img_resp.status_code != 200:
+                    return None
+                content_type = img_resp.headers.get("Content-Type", "image/jpeg")
+                return await _store_new_photo(album_id, user["id"], filename, content_type, img_resp.content)
+            except Exception as e:
+                logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) : {e}")
+                return None
+
+    results = await asyncio.gather(*(fetch_one(item) for item in items))
+    uploaded = [p for p in results if p]
 
     if uploaded and album.get("status") == "ready":
         await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
@@ -742,7 +814,7 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
 
     return {"uploaded": len(uploaded)}
 @api_router.get("/photos/{photo_id}/image")
-async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None)):
+async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
     # Support both header and query auth (for <img> tags)
     token = None
     if authorization and authorization.lower().startswith("bearer "):
@@ -755,8 +827,16 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
     photo = await db.photos.find_one({"id": photo_id, "user_id": user_id, "is_deleted": False})
     if not photo:
         raise HTTPException(status_code=404, detail="Photo introuvable")
-    data, ctype = get_object(photo["storage_path"])
-    return Response(content=data, media_type=photo.get("content_type") or ctype)
+    # "thumb" (default, used everywhere on the site) keeps normal browsing
+    # fast; "original" (used only by the PDF print page) always gets the
+    # full-resolution file, since print quality must never be compromised.
+    path = photo["storage_path"]
+    served_content_type = photo.get("content_type")
+    if variant == "thumb" and photo.get("thumbnail_path"):
+        path = photo["thumbnail_path"]
+        served_content_type = "image/jpeg"
+    data, ctype = get_object(path)
+    return Response(content=data, media_type=served_content_type or ctype)
 
 # ---------- Cover image upload ----------
 @api_router.post("/albums/{album_id}/cover-image")
@@ -778,11 +858,30 @@ async def upload_cover_image(
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "jpg"
     path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-{uuid.uuid4()}.{ext}"
-    result = put_object(path, data, content_type)
+
+    def _save():
+        result = put_object(path, data, content_type)
+        thumb_path = None
+        try:
+            with Image.open(BytesIO(data)) as _probe:
+                thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
+                thumb.thumbnail((640, 640), Image.LANCZOS)
+                thumb_buf = BytesIO()
+                thumb.save(thumb_buf, format="JPEG", quality=82)
+                thumb_path_candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
+                put_object(thumb_path_candidate, thumb_buf.getvalue(), "image/jpeg")
+                thumb_path = thumb_path_candidate
+        except Exception as e:
+            logger.debug(f"Impossible de générer la vignette pour la couverture: {e}")
+        return result, thumb_path
+
+    loop = asyncio.get_event_loop()
+    result, thumb_path = await loop.run_in_executor(None, _save)
     await db.albums.update_one(
         {"id": album_id},
         {"$set": {
             "cover_image_path": result["path"],
+            "cover_image_thumbnail_path": thumb_path,
             "cover_image_content_type": content_type,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }}
@@ -801,7 +900,7 @@ async def remove_cover_image(album_id: str, user: dict = Depends(get_current_use
     return {"ok": True}
 
 @api_router.get("/albums/{album_id}/cover-image")
-async def get_cover_image(album_id: str, auth: str = Query(None), authorization: str = Header(None)):
+async def get_cover_image(album_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
     token = None
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1]
@@ -813,8 +912,13 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
     album = await db.albums.find_one({"id": album_id, "user_id": user_id})
     if not album or not album.get("cover_image_path"):
         raise HTTPException(status_code=404, detail="Aucune couverture personnalisée")
-    data, ctype = get_object(album["cover_image_path"])
-    return Response(content=data, media_type=album.get("cover_image_content_type") or ctype)
+    path = album["cover_image_path"]
+    served_content_type = album.get("cover_image_content_type")
+    if variant == "thumb" and album.get("cover_image_thumbnail_path"):
+        path = album["cover_image_thumbnail_path"]
+        served_content_type = "image/jpeg"
+    data, ctype = get_object(path)
+    return Response(content=data, media_type=served_content_type or ctype)
 
 # ---------- Cover element assets (logo / added images on the cover) ----------
 @api_router.post("/albums/{album_id}/cover-assets")
@@ -832,12 +936,30 @@ async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: 
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "png"
     asset_id = str(uuid.uuid4())
-    path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
-    result = put_object(path, data, content_type)
-    return {"storage_path": result["path"]}
+
+    def _save():
+        path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
+        result = put_object(path, data, content_type)
+        thumb_path = None
+        try:
+            with Image.open(BytesIO(data)) as _probe:
+                thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
+                thumb.thumbnail((640, 640), Image.LANCZOS)
+                thumb_buf = BytesIO()
+                thumb.save(thumb_buf, format="JPEG", quality=82)
+                thumb_path_candidate = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}_thumb.jpg"
+                put_object(thumb_path_candidate, thumb_buf.getvalue(), "image/jpeg")
+                thumb_path = thumb_path_candidate
+        except Exception as e:
+            logger.debug(f"Impossible de générer la vignette pour l'image de couverture: {e}")
+        return result, thumb_path
+
+    loop = asyncio.get_event_loop()
+    result, thumb_path = await loop.run_in_executor(None, _save)
+    return {"storage_path": result["path"], "thumbnail_path": thumb_path}
 
 @api_router.get("/cover-assets/image")
-async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None), authorization: str = Header(None)):
+async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
     token = None
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1]
@@ -849,8 +971,17 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
     # Safety: only serve assets that belong to the requesting user
     if f"/users/{user_id}/" not in path:
         raise HTTPException(status_code=403, detail="Accès refusé")
-    data, ctype = get_object(path)
-    return Response(content=data, media_type=ctype)
+    served_path = path
+    served_content_type = None
+    if variant == "thumb" and not path.endswith("_thumb.jpg"):
+        candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
+        try:
+            data, ctype = get_object(candidate)
+            return Response(content=data, media_type="image/jpeg")
+        except Exception:
+            pass  # no thumbnail on disk (asset predates this change, or generation failed) — fall back to original
+    data, ctype = get_object(served_path)
+    return Response(content=data, media_type=served_content_type or ctype)
 
 
 # ---------- AI Processing ----------
@@ -924,6 +1055,25 @@ def _ahash_to_str(h: Optional[int]) -> Optional[str]:
     16-char hex string instead."""
     return f"{h:016x}" if h is not None else None
 
+
+def compute_sharpness(data: bytes) -> float:
+    """Cheap, no-AI focus/sharpness estimate (Laplacian variance on a small
+    grayscale version) — used to pick the best frame out of a burst/cluster
+    of near-duplicates without spending a Gemini call on every one of them.
+    Higher = sharper. Purely classical image processing, near-instant."""
+    try:
+        with Image.open(BytesIO(data)) as img:
+            small = img.convert("L").resize((256, 256), Image.LANCZOS)
+            arr = np.asarray(small, dtype=np.float64)
+            # Simple discrete Laplacian kernel (edge/detail response)
+            lap = (
+                -4 * arr
+                + np.roll(arr, 1, axis=0) + np.roll(arr, -1, axis=0)
+                + np.roll(arr, 1, axis=1) + np.roll(arr, -1, axis=1)
+            )
+            return float(lap.var())
+    except Exception:
+        return 0.0
 
 def hamming_distance(a, b) -> int:
     if a is None or b is None:
@@ -1154,12 +1304,16 @@ async def analyze_photo_batch(photos_data: List[Dict[str, Any]]) -> List[Dict[st
         response = None
         for attempt in range(MAX_RETRIES):
             try:
-                response = client.models.generate_content(
-                    model="gemini-3.1-flash-lite",
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        temperature=0.2,
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model="gemini-3.1-flash-lite",
+                        contents=contents,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            temperature=0.2,
+                        )
                     )
                 )
                 last_error = None
@@ -1203,36 +1357,129 @@ async def analyze_photo_batch(photos_data: List[Dict[str, Any]]) -> List[Dict[st
         return fallback_results
 
 async def _curate_photos(new_photos: List[dict], existing_selected: Optional[List[dict]] = None) -> List[dict]:
-    """Runs Gemini analysis, real duplicate detection, quality selection and
-    group/date/location sorting on `new_photos`. When `existing_selected` is
-    given (already-placed photos elsewhere in the album), new photos are also
-    checked for duplicates against them — a new photo that matches something
-    already in the album is dropped, and the pre-existing photo is left
-    untouched either way. Returns the final ordered list of NEW photos to
-    lay out (existing photos are never included in the return value)."""
+    """Real duplicate/burst detection, fast local best-of-cluster selection,
+    Gemini analysis (only on the survivors), quality selection, and
+    group/date/location sorting. When `existing_selected` is given
+    (already-placed photos elsewhere in the album), new photos are also
+    checked for duplicates against them — a new photo that matches
+    something already in the album is dropped, and the pre-existing photo
+    is left untouched either way. Returns the final ordered list of NEW
+    photos to lay out (existing photos are never included in the return
+    value)."""
     existing_selected = existing_selected or []
     existing_ids = {e["id"] for e in existing_selected}
 
-    # ---- Gemini analysis (only the new photos need this) ----
-    photos_with_bytes = []
-    for p in new_photos:
+    # ---- 1. Real duplicate/burst detection (new photos vs each other AND
+    # vs what's already in the album) — done BEFORE any AI call, using only
+    # cheap local signals: perceptual similarity (phash) and how close
+    # together in time the shots were taken. Photos taken close together in
+    # time are almost certainly the same moment even if the framing/angle
+    # drifted a bit (someone stepping sideways, a slightly different crop of
+    # the same scene), so those get a looser similarity threshold; photos
+    # with no timing signal (or taken far apart) need to look genuinely
+    # closer to each other to be treated as the same shot. ----
+    HASH_THRESHOLD = 8
+    BURST_HASH_THRESHOLD = 20
+    BURST_SECONDS = 45
+
+    def _parse_taken_at(p):
+        ts = p.get("taken_at")
+        if not ts:
+            return None
         try:
-            img_data, ctype = get_object(p["storage_path"])
-            photos_with_bytes.append({"id": p["id"], "bytes": img_data, "mime_type": p.get("content_type") or ctype})
+            return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except Exception:
+            return None
+
+    def _is_match(p, other):
+        dist = hamming_distance(p.get("phash"), other.get("phash"))
+        t1, t2 = _parse_taken_at(p), _parse_taken_at(other)
+        if t1 and t2 and abs((t1 - t2).total_seconds()) <= BURST_SECONDS:
+            return dist <= BURST_HASH_THRESHOLD
+        return dist <= HASH_THRESHOLD
+
+    clusters: List[List[dict]] = [[e] for e in existing_selected]
+    for p in new_photos:
+        placed = False
+        for cluster in clusters:
+            # Compare against every photo already in the cluster, not just
+            # the first one added — a burst sequence can drift gradually
+            # frame to frame, so the closest match may be a later member.
+            if any(_is_match(p, member) for member in cluster):
+                cluster.append(p)
+                placed = True
+                break
+        if not placed:
+            clusters.append([p])
+
+    # ---- 2. Pick a representative per cluster using a fast, local,
+    # no-AI sharpness check — this is what lets us skip sending every burst
+    # frame to Gemini and still reliably keep the sharpest one. ----
+    loop = asyncio.get_event_loop()
+
+    async def _sharpness_of(p):
+        try:
+            read_path = p.get("thumbnail_path") or p["storage_path"]
+            data, _ = get_object(read_path)
+            return await loop.run_in_executor(None, compute_sharpness, data)
+        except Exception:
+            return 0.0
+
+    representatives: List[dict] = []  # one per cluster that has at least one new photo
+    cluster_by_rep_id: Dict[str, List[dict]] = {}
+    for cluster in clusters:
+        new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
+        if not new_in_cluster:
+            continue  # cluster made only of pre-existing photos — nothing new here
+        if cluster[0]["id"] in existing_ids:
+            # An existing photo anchors this cluster — every new photo here
+            # is a duplicate of it, so none of them need scoring at all.
+            for d in new_in_cluster:
+                await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+            continue
+        if len(new_in_cluster) == 1:
+            rep = new_in_cluster[0]
+        else:
+            sharpness_scores = await asyncio.gather(*(_sharpness_of(p) for p in new_in_cluster))
+            rep = max(zip(new_in_cluster, sharpness_scores), key=lambda x: x[1])[0]
+            for d in new_in_cluster:
+                if d["id"] != rep["id"]:
+                    await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+        representatives.append(rep)
+        cluster_by_rep_id[rep["id"]] = new_in_cluster
+
+    # ---- 3. Gemini analysis — only on cluster representatives, not every
+    # photo. Sends the already-generated 640px thumbnail, not the full-
+    # resolution original — judging quality/composition doesn't need print
+    # resolution, and skipping the original cuts the data transferred (and
+    # Gemini's own processing time) substantially. Neither of these has any
+    # effect on export quality, which always reads the original separately. ----
+    photos_with_bytes = []
+    for p in representatives:
+        try:
+            read_path = p.get("thumbnail_path") or p["storage_path"]
+            img_data, ctype = get_object(read_path)
+            mime = "image/jpeg" if p.get("thumbnail_path") else (p.get("content_type") or ctype)
+            photos_with_bytes.append({"id": p["id"], "bytes": img_data, "mime_type": mime})
         except Exception as e:
             logger.error(f"Impossible de lire les bytes pour la photo {p['id']}: {e}")
 
-    BATCH = 5
+    BATCH = 15
+    CONCURRENCY = 8
     all_results = {}
-    for i in range(0, len(photos_with_bytes), BATCH):
-        batch = photos_with_bytes[i:i + BATCH]
-        results = await analyze_photo_batch(batch)
+    batches = [photos_with_bytes[i:i + BATCH] for i in range(0, len(photos_with_bytes), BATCH)]
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+
+    async def run_batch(batch):
+        async with semaphore:
+            return await analyze_photo_batch(batch)
+
+    batch_results = await asyncio.gather(*(run_batch(b) for b in batches))
+    for results in batch_results:
         for res in results:
             all_results[res.get("photo_id")] = res
-        if i + BATCH < len(photos_with_bytes):
-            await asyncio.sleep(2)
 
-    for p in new_photos:
+    for p in representatives:
         ai = all_results.get(p["id"], {})
         update = {
             "ai_description": ai.get("description", ""),
@@ -1245,44 +1492,16 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         await db.photos.update_one({"id": p["id"]}, {"$set": update})
         p.update(update)
 
-    # ---- 1. Real duplicate detection (new photos vs each other AND vs what's already in the album) ----
-    HASH_THRESHOLD = 6
-    clusters: List[List[dict]] = [[e] for e in existing_selected]
-    for p in new_photos:
-        placed = False
-        for cluster in clusters:
-            if hamming_distance(p.get("phash"), cluster[0].get("phash")) <= HASH_THRESHOLD:
-                cluster.append(p)
-                placed = True
-                break
-        if not placed:
-            clusters.append([p])
-
-    # ---- 2. Best-photo selection ----
+    # ---- 4. Final quality gate on each representative ----
     QUALITY_FLOOR = 3.5
     selected = []
-    for cluster in clusters:
-        new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
-        if not new_in_cluster:
-            continue  # cluster made only of pre-existing photos — nothing new here
-        cluster.sort(key=lambda x: -(x.get("ai_score") or 0))
-        best = cluster[0]
-        for d in cluster[1:]:
-            if d["id"] in existing_ids:
-                continue  # never touch a photo that was already placed elsewhere
-            await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
-        if best["id"] in existing_ids:
-            # the best shot in this cluster is already in the album — every
-            # new photo here is a duplicate of it, so none of them get added
-            for d in new_in_cluster:
-                await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
-            continue
-        is_clear_miss = best.get("ai_is_reject") and (best.get("ai_score") or 0) < QUALITY_FLOOR
+    for rep in representatives:
+        is_clear_miss = rep.get("ai_is_reject") and (rep.get("ai_score") or 0) < QUALITY_FLOOR
         if is_clear_miss:
-            await db.photos.update_one({"id": best["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+            await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
         else:
-            await db.photos.update_one({"id": best["id"]}, {"$set": {"is_duplicate": False, "is_selected": True}})
-            selected.append(best)
+            await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": False, "is_selected": True}})
+            selected.append(rep)
 
     # ---- 3. Group & sort (place / date priority, same rules as the initial pass) ----
     with_gps = [p for p in selected if p.get("gps_lat") is not None and p.get("gps_lng") is not None]
@@ -1415,12 +1634,15 @@ async def add_more_photos(
         raise HTTPException(status_code=404, detail="Album introuvable")
 
     new_ids = []
-    for f in files:
-        content_type = f.content_type or "image/jpeg"
-        data = await f.read()
-        photo_doc = await _store_new_photo(album_id, user["id"], f.filename, content_type, data)
-        if photo_doc:
-            new_ids.append(photo_doc["id"])
+    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
+    semaphore = asyncio.Semaphore(8)
+
+    async def store_one(filename, content_type, data):
+        async with semaphore:
+            return await _store_new_photo(album_id, user["id"], filename, content_type, data)
+
+    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
+    new_ids = [p["id"] for p in results if p]
 
     if not new_ids:
         raise HTTPException(status_code=400, detail="Aucune photo valide n'a pu être ajoutée")
@@ -1443,8 +1665,84 @@ def hex_to_rl_color(hex_color: str):
     except Exception:
         return rl_colors.black
 
+def decode_data_uri_image(data_uri: str):
+    """Decode a `data:image/...;base64,...` string (our custom cover logos —
+    heart, rings, compass — are stored this way) into an ImageReader.
+    Returns None for anything else (SVG data URIs, external URLs, etc.) so
+    callers can just skip drawing rather than crash."""
+    try:
+        if not data_uri or not data_uri.startswith("data:image/"):
+            return None
+        header, _, encoded = data_uri.partition(",")
+        if "base64" not in header:
+            return None
+        if "svg" in header:
+            return None  # SVG needs a separate renderer we don't have wired up
+        raw = base64.b64decode(encoded)
+        return ImageReader(BytesIO(raw))
+    except Exception as e:
+        logger.error(f"decode_data_uri_image failed: {e}")
+        return None
+
+def _render_pdf_via_browser_sync(print_url: str) -> bytes:
+    """Runs entirely with Playwright's sync API. Must be called off the main
+    asyncio loop (via run_in_executor) since it blocks the calling thread —
+    but that's exactly why it sidesteps the Windows subprocess/event-loop
+    conflict: the sync API manages its own event loop internally, in its
+    own thread, independent of whatever loop uvicorn is using."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(print_url, wait_until="networkidle", timeout=30000)
+        page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=20000)
+        error_el = page.query_selector('[data-print-error="true"]')
+        if error_el:
+            error_text = error_el.inner_text()
+            raise RuntimeError(f"print page reported an error: {error_text}")
+        page.evaluate("document.fonts.ready")
+        page.wait_for_timeout(300)  # small buffer for images to finish painting after load
+        pdf_bytes = page.pdf(print_background=True, prefer_css_page_size=True)
+        browser.close()
+        return pdf_bytes
+
 @api_router.get("/albums/{album_id}/export")
 async def export_pdf(album_id: str, auth: str = Query(None), authorization: str = Header(None)):
+    """Generates the PDF by opening the album's dedicated print page
+    (frontend/src/pages/PrintAlbum.jsx) in a headless browser and printing
+    it — this is the exact same React/CSS rendering the flipbook uses, so
+    the PDF is guaranteed to match it, instead of a hand-written parallel
+    drawing implementation that has to be kept in sync by hand.
+    Falls back to the old manual reportlab renderer if the browser export
+    fails for any reason (e.g. the headless browser isn't installed), so a
+    deploy issue here doesn't take down PDF export entirely."""
+    token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1]
+    elif auth:
+        token = auth
+    user_id = decode_token(token) if token else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    album = await db.albums.find_one({"id": album_id, "user_id": user_id}, {"_id": 0})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+
+    try:
+        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
+        loop = asyncio.get_event_loop()
+        pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
+        filename = f"{album.get('title', 'album').replace(' ', '_')}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        logger.error(f"Browser-based PDF export failed, falling back to reportlab: {e}")
+        return await export_pdf_reportlab_legacy(album_id=album_id, auth=auth, authorization=authorization)
+
+async def export_pdf_reportlab_legacy(album_id: str, auth: str = Query(None), authorization: str = Header(None)):
     token = None
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1]
@@ -1547,13 +1845,26 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     title_rotation = float(cover.get("title_rotation", 0))
     title_writing_mode = cover.get("title_writing_mode")
     display_title = title.upper() if title_uppercase else title
+    title_box_w = float(cover.get("title_w", 0.84)) * pw
     if title_writing_mode == "vertical-rl":
         # One continuous vertical line (not wrapped per word) — matches the
         # single-flow rendering used on the web for vertical titles.
         lines = [display_title]
+
+        # The web fits vertical titles dynamically (length from box height,
+        # thickness capped by box width) instead of trusting the stored
+        # static size — without this, the PDF title stays small/thin no
+        # matter how generous the box actually is.
+        title_box_h = float(cover.get("title_h", 0.8)) * ph
+        non_space_chars = max(1, len(display_title.replace(" ", "")))
+        space_count = display_title.count(" ")
+        # Matches the char_h/space_h ratio used when drawing below.
+        fitted_by_length = (title_box_h * 0.92) / (non_space_chars * 1.05 + space_count * 0.4)
+        fitted_by_thickness = title_box_w * 0.92
+        title_font_size = min(fitted_by_length, fitted_by_thickness) * float(cover.get("title_scale", 1))
+        c.setFont(title_font_name, title_font_size)
     else:
         words = display_title.split()
-        title_box_w = float(cover.get("title_w", 0.84)) * pw
 
         # Fill the box width the same way the web editor does: scale the
         # font size so the widest resulting line takes up the full box
@@ -1591,11 +1902,16 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         # writing mode used on the web so print output stays consistent.
         col_w = title_font_size * 1.15
         char_h = title_font_size * 1.05
+        space_h = title_font_size * 0.4  # a space shouldn't take a full blank character row
         right_edge = title_box_w + title_x_norm * pw
         for col_i, line in enumerate(lines):
             col_x = right_edge - col_w * (col_i + 1)
-            for ch_i, ch in enumerate(line):
-                c.drawCentredString(col_x + col_w / 2, title_top - char_h * (ch_i + 1), ch)
+            cursor_y = title_top
+            for ch in line:
+                step = space_h if ch == " " else char_h
+                cursor_y -= step
+                if ch != " ":
+                    c.drawCentredString(col_x + col_w / 2, cursor_y, ch)
     elif title_rotation:
         c.saveState()
         c.translate(title_x_norm * pw, title_top)
@@ -1652,12 +1968,19 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
             elif it_type == "image":
                 try:
                     data = None
+                    img = None
                     if item.get("storage_path"):
                         data, _ = get_object(item["storage_path"])
                     elif item.get("asset") in BUNDLED_ASSETS_BYTES:
                         data = BUNDLED_ASSETS_BYTES[item["asset"]]
+                    elif item.get("image_url"):
+                        # Our custom-drawn logos (rings, heart, compass...) are
+                        # stored as raw base64 data URIs, not an uploaded file
+                        # or a pre-bundled asset name.
+                        img = decode_data_uri_image(item["image_url"])
                     if data:
                         img = ImageReader(BytesIO(data))
+                    if img:
                         x = item["x"] * pw
                         y_top = (1 - item["y"]) * ph
                         slot_w = item["w"] * pw
@@ -1691,6 +2014,87 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
 
     draw_extra_items(adjusted_extra_items, accent_color)
     c.showPage()
+
+    # ---- SPINE (its own narrow page, since the interior/cover pages are
+    # otherwise all fixed to the same page_size — a merged single wide
+    # "back+spine+front" sheet would need restructuring the whole cover
+    # drawing code below, which the other cover art still depends on) ----
+    num_interior_pages = len(album.get("pages", []) or [])
+    spine_w = max(16, min(35, 4 + num_interior_pages * 0.12)) * 2.83465  # mm -> pt, thickness scales with page count
+    c.setPageSize((spine_w, ph))
+    c.setFillColor(hex_to_rl_color(bg_color))
+    c.rect(0, 0, spine_w, ph, fill=1, stroke=0)
+
+    spine_text_color = cover.get("spine_title_color") or text_color
+    spine_max_font = spine_w * 0.9  # never let the text get thicker than the spine itself
+
+    def fit_spine_font(text_str, font_name, box_h_frac):
+        box_h = box_h_frac * ph
+        size = 40.0
+        while size > 4 and pdfmetrics.stringWidth(text_str, font_name, size) > box_h * 0.9:
+            size -= 0.5
+        return min(size, spine_max_font)
+
+    # Title (mirrors the web: album title, or a spine-specific override, in
+    # small caps, rotated to read top-to-bottom along the spine)
+    spine_title_str = (cover.get("spine_title_text") or album.get("title", "Album")).upper()
+    spine_title_font = resolve_pdf_font(cover.get("spine_title_font"), cover.get("spine_title_weight", "600"))
+    title_box_y = cover.get("spine_title_y", 0.08)
+    title_box_h = cover.get("spine_title_h", 0.8)
+    spine_title_size = fit_spine_font(spine_title_str, spine_title_font, title_box_h)
+    c.setFont(spine_title_font, spine_title_size)
+    c.setFillColor(hex_to_rl_color(spine_text_color))
+    c.saveState()
+    title_cy = ph * (1 - title_box_y - title_box_h / 2)
+    c.translate(spine_w / 2, title_cy)
+    c.rotate(-90)
+    c.drawCentredString(0, 0, spine_title_str)
+    c.restoreState()
+
+    # Caption (e.g. "MEMORIES") — one rotated line per manual line break
+    spine_caption_str = cover.get("spine_caption")
+    if spine_caption_str:
+        cap_font = resolve_pdf_font(cover.get("spine_caption_font"), cover.get("spine_caption_weight", "600"))
+        cap_lines = str(spine_caption_str).split("\n")
+        cap_box_y = cover.get("spine_caption_y", 0.64)
+        cap_box_h = cover.get("spine_caption_h", 0.24)
+        cap_color = cover.get("spine_caption_color") or spine_text_color
+        per_line_h = cap_box_h / max(1, len(cap_lines))
+        cap_size = min(fit_spine_font(max(cap_lines, key=len), cap_font, per_line_h), spine_max_font / max(1, len(cap_lines)))
+        c.setFont(cap_font, cap_size)
+        c.setFillColor(hex_to_rl_color(cap_color))
+        for i, line in enumerate(cap_lines):
+            line_cy = ph * (1 - cap_box_y - per_line_h * (i + 0.5))
+            c.saveState()
+            c.translate(spine_w / 2, line_cy)
+            c.rotate(-90)
+            c.drawCentredString(0, 0, line.upper())
+            c.restoreState()
+
+    # Logo (heart / rings / compass...) — a plain image, only its own
+    # explicit rotation (if any) applies, independent of the text rotation
+    spine_logo_img = decode_data_uri_image(cover.get("spine_logo_image"))
+    if spine_logo_img:
+        lx = cover.get("spine_logo_x", 0.1) * spine_w
+        ly_top = ph * (1 - cover.get("spine_logo_y", 0.46))
+        lw = cover.get("spine_logo_w", 0.8) * spine_w
+        lh = cover.get("spine_logo_h", 0.16) * ph
+        iw, ih = spine_logo_img.getSize()
+        ratio = min(lw / iw, lh / ih) if iw and ih else 1
+        draw_w, draw_h = iw * ratio, ih * ratio
+        lcx, lcy = lx + lw / 2, ly_top - lh / 2
+        c.saveState()
+        rot = float(cover.get("spine_logo_rotation", 0) or 0)
+        if rot:
+            c.translate(lcx, lcy)
+            c.rotate(rot)
+            c.drawImage(spine_logo_img, -draw_w / 2, -draw_h / 2, width=draw_w, height=draw_h, mask="auto")
+        else:
+            c.drawImage(spine_logo_img, lcx - draw_w / 2, lcy - draw_h / 2, width=draw_w, height=draw_h, mask="auto")
+        c.restoreState()
+
+    c.showPage()
+    c.setPageSize((pw, ph))
 
     # ---- CONTENT PAGES ----
     pages = album.get("pages", []) or []

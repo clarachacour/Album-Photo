@@ -73,8 +73,18 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
           body: "{}",
         });
         const session = await sessionRes.json();
-        window.open(session.pickerUri, "_blank", "width=500,height=700");
-        toast.info("Choose your photos in the Google Photos window, then come back here.");
+        // Always a manual click-to-open, rather than trying to auto-open or
+        // auto-navigate a window ourselves — that depended on timing around
+        // Google's own consent flow and worked inconsistently. A button
+        // click is always a trusted user gesture, so this opens reliably
+        // every time, at the cost of one extra click.
+        toast.info("Click below to choose your photos in Google Photos, then come back here.", {
+          duration: 15000,
+          action: {
+            label: "Open Google Photos",
+            onClick: () => window.open(session.pickerUri, "_blank", "width=500,height=700"),
+          },
+        });
 
         const done = await pollSession(accessToken, session.id);
         if (!done) {

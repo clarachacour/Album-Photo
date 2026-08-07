@@ -183,7 +183,10 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       const { data } = await api.post(`/albums/${albumId}/cover-assets`, form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      const imageUrl = coverAssetUrl(data.storage_path);
+      // Stored permanently on the cover item and reused later by the PDF
+      // export — must stay full resolution, unlike normal on-screen photo
+      // display which defaults to the thumbnail.
+      const imageUrl = coverAssetUrl(data.storage_path, "original");
       if (replaceItemId) {
         updateCoverItem(replaceItemId, { image_url: imageUrl, storage_path: data.storage_path, asset: null }, side);
         toast.success("Image remplacée");

@@ -318,6 +318,7 @@ export function AlbumPage({
   page,
   orientation = "portrait",
   pageIndex = 0,
+  highRes = false,
   editable = false,
   onSelectItem,
   onUpdateItem,
@@ -474,7 +475,7 @@ export function AlbumPage({
                   </div>
                 ) : (
                   <img
-                    src={photoImageUrl(item.photo_id)}
+                    src={photoImageUrl(item.photo_id, highRes ? "original" : "thumb")}
                     alt=""
                     className="w-full h-full pointer-events-none select-none"
                     style={{
@@ -804,6 +805,7 @@ export function CoverFrontPage({
                 textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
                 writingMode: titleWritingMode || undefined,
+                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.6em" : undefined,
               }}
               data-testid="cover-title-input"
             />
@@ -819,6 +821,7 @@ export function CoverFrontPage({
                 fontSize: titleFontSizeStyle,
                 transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
                 writingMode: titleWritingMode || undefined,
+                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.6em" : undefined,
                 whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
               }}
             >
@@ -847,6 +850,7 @@ export function CoverFrontPage({
             fontSize: titleFontSizeStyle,
             transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
             writingMode: titleWritingMode || undefined,
+            wordSpacing: titleWritingMode === "vertical-rl" ? "-0.6em" : undefined,
             whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
           }}
         >

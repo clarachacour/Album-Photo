@@ -31,7 +31,7 @@ function useElementHeight(ref) {
 // that fixed column, no matter what a height-only fill calculation says.
 const SPINE_MAX_FONT_PX = 29;
 
-function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, subtitle, baseFontSize, fontFamily, fontWeight, upright }) {
+function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, baseFontSize, fontFamily, fontWeight, upright }) {
   const [fontSize, setFontSize] = useState(baseFontSize || 9);
 
   useLayoutEffect(() => {
@@ -54,11 +54,6 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, subtit
         return;
       }
 
-      // Rotated 90°, so the text's rendered *width* becomes its vertical
-      // extent — title, a thin space, then subtitle, back to back. The
-      // subtitle renders at a smaller ratio than the title, not the same
-      // size (matches the front cover, where the subtitle is smaller too).
-      const SUBTITLE_RATIO = 0.72;
       const titleMeasured = measureDomTextWidth(String(title), {
         fontPx: REF_PX,
         fontWeight,
@@ -66,16 +61,7 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, subtit
         letterSpacing: "-0.025em",
         uppercase: true,
       });
-      const subtitleMeasured = subtitle
-        ? measureDomTextWidth(` ${subtitle}`, {
-            fontPx: REF_PX * SUBTITLE_RATIO,
-            fontWeight,
-            fontFamily,
-            letterSpacing: "-0.025em",
-            uppercase: true,
-          })
-        : 0;
-      const measured = Math.max(1, titleMeasured + subtitleMeasured);
+      const measured = Math.max(1, titleMeasured);
       const SAFETY = 0.86; // a bit more margin so the spine text never brushes the top/bottom edge
       let fitted = REF_PX * (boxHeightPx / measured) * SAFETY;
       // The spine column itself is a fixed 32px wide (see the grid-cols-
@@ -101,7 +87,7 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, subtit
     return () => {
       cancelled = true;
     };
-  }, [containerHeight, boxHeightFraction, title, subtitle, fontFamily, fontWeight, upright]);
+  }, [containerHeight, boxHeightFraction, title, fontFamily, fontWeight, upright]);
 
   return fontSize;
 }
@@ -119,6 +105,9 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const containerHeight = useElementHeight(containerRef);
   const bg = cover.bg_color || template.bg;
   const text = cover.text_color || template.text;
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [subtitleEditing, setSubtitleEditing] = useState(false);
+  const [captionEditing, setCaptionEditing] = useState(false);
 
   const titleItem = {
     id: "spine-title",
@@ -126,6 +115,15 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     y: cover.spine_title_y ?? 0.08,
     w: 1,
     h: cover.spine_title_h ?? 0.8,
+  };
+  const subtitleItem = {
+    id: "spine-subtitle",
+    x: 0,
+    // Defaults to right after the title box, roughly where the old inline
+    // rendering used to sit, so existing templates don't visually jump.
+    y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
+    w: 1,
+    h: cover.spine_subtitle_h ?? 0.12,
   };
   const yearItem = {
     id: "spine-year",
@@ -207,7 +205,6 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     containerHeight,
     boxHeightFraction: titleItem.h,
     title: cover.spine_title_text || title || "Album",
-    subtitle: cover.spine_subtitle,
     baseFontSize: cover.spine_title_size || 9,
     fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
     fontWeight: cover.spine_title_weight || "700",
@@ -228,10 +225,39 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   // The subtitle renders smaller than the title (0.72x, matching the ratio
   // the fit calculation above assumes) unless the template set its own
   // explicit spine_subtitle_size.
-  const SPINE_SUBTITLE_RATIO = 0.72;
-  const spineSubtitleFontSizeStyle = cover.spine_subtitle_size
-    ? (containerHeight ? `${fittedSpineFontSizePx * (cover.spine_subtitle_size / (cover.spine_title_size || 9))}px` : `${(((cover.spine_subtitle_size) / 608) * 100).toFixed(2)}cqh`)
-    : (containerHeight ? `${fittedSpineFontSizePx * SPINE_SUBTITLE_RATIO}px` : spineTitleFontSizeStyle);
+  const [fittedSubtitleFontSizePx, setFittedSubtitleFontSizePx] = useState(cover.spine_subtitle_size || 9);
+  useLayoutEffect(() => {
+    if (!containerHeight || !cover.spine_subtitle) return;
+    const compute = () => {
+      const boxHeightPx = subtitleItem.h * containerHeight;
+      const REF_PX = 100;
+      const upright = cover.spine_text_orientation === "upright";
+      const measured = upright
+        ? Math.max(1, String(cover.spine_subtitle).replace(/\s/g, "").length * REF_PX * 1.05)
+        : measureDomTextWidth(String(cover.spine_subtitle), {
+            fontPx: REF_PX,
+            fontWeight: cover.spine_subtitle_weight || "600",
+            fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
+            letterSpacing: "-0.025em",
+            uppercase: false,
+          });
+      setFittedSubtitleFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / Math.max(1, measured)) * 0.86, SPINE_MAX_FONT_PX)));
+    };
+    compute();
+    let cancelled = false;
+    if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
+      const spec = `${cover.spine_subtitle_weight || 600} 16px ${cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif"}`;
+      Promise.all([document.fonts.load(spec), document.fonts.ready]).then(() => {
+        if (!cancelled) compute();
+      }).catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [containerHeight, subtitleItem.h, cover.spine_subtitle, cover.spine_subtitle_font, cover.spine_subtitle_weight, cover.spine_title_font, cover.spine_text_orientation]);
+  const spineSubtitleFontSizeStyle = containerHeight
+    ? `${fittedSubtitleFontSizePx}px`
+    : `${(((cover.spine_subtitle_size || 9) / 608) * 100).toFixed(2)}cqh`;
 
   return (
     <div ref={containerRef} className="relative h-full" style={{ background: bg, containerType: "size" }}>
@@ -241,12 +267,39 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           item={titleItem}
           onChange={(patch) => onUpdateCover && onUpdateCover({ spine_title_y: patch.y ?? titleItem.y, spine_title_h: patch.h ?? titleItem.h })}
           onSelect={() => onSelectTitle && onSelectTitle()}
+          onDoubleClick={() => setTitleEditing(true)}
           selected={selectedZone === "spine-title"}
           containerRef={containerRef}
-          editable={editable}
+          editable={editable && !titleEditing}
           tid="spine-title"
           minW={1}
         >
+          {titleEditing ? (
+            <textarea
+              autoFocus
+              value={cover.spine_title_text ?? title ?? ""}
+              onChange={(e) => onUpdateCover && onUpdateCover({ spine_title_text: e.target.value })}
+              onFocus={(e) => e.target.select()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onBlur={() => setTitleEditing(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" || e.key === "Enter") { e.currentTarget.blur(); }
+                e.stopPropagation();
+              }}
+              className="w-full h-full bg-transparent border-0 outline-none resize-none uppercase text-center"
+              style={{
+                color: cover.spine_title_color || text,
+                writingMode: "vertical-rl",
+                textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
+                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                fontSize: spineTitleFontSizeStyle,
+                fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
+                fontWeight: cover.spine_title_weight || "700",
+                lineHeight: 1,
+              }}
+              data-testid="spine-title-input"
+            />
+          ) : (
           <div
             className="w-full h-full flex items-center justify-center opacity-90 font-sans uppercase overflow-hidden pointer-events-none select-none whitespace-nowrap"
             style={{
@@ -261,20 +314,64 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             }}
           >
             <span>{String(cover.spine_title_text || title || "Album").toUpperCase()}</span>
-            {cover.spine_subtitle && (
-              <span
-                className=""
-                style={{
-                  color: cover.spine_subtitle_color || text,
-                  fontSize: spineSubtitleFontSizeStyle,
-                  fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
-                  fontWeight: cover.spine_subtitle_weight || "600",
-                }}
-              >
-                {"\u00A0" + cover.spine_subtitle}
-              </span>
-            )}
           </div>
+          )}
+        </DraggableItem>
+      )}
+      {cover.spine_subtitle && (
+        <DraggableItem
+          item={subtitleItem}
+          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_subtitle_y: patch.y ?? subtitleItem.y, spine_subtitle_h: patch.h ?? subtitleItem.h })}
+          onSelect={() => onSelectTitle && onSelectTitle()}
+          onDoubleClick={() => setSubtitleEditing(true)}
+          selected={selectedZone === "spine-title"}
+          containerRef={containerRef}
+          editable={editable && !subtitleEditing}
+          tid="spine-subtitle"
+          minW={1}
+        >
+          {subtitleEditing ? (
+            <textarea
+              autoFocus
+              value={cover.spine_subtitle || ""}
+              onChange={(e) => onUpdateCover && onUpdateCover({ spine_subtitle: e.target.value })}
+              onFocus={(e) => e.target.select()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onBlur={() => setSubtitleEditing(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" || e.key === "Enter") { e.currentTarget.blur(); }
+                e.stopPropagation();
+              }}
+              className="w-full h-full bg-transparent border-0 outline-none resize-none text-center"
+              style={{
+                color: cover.spine_subtitle_color || text,
+                writingMode: "vertical-rl",
+                textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
+                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                fontSize: spineSubtitleFontSizeStyle,
+                fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
+                fontWeight: cover.spine_subtitle_weight || "600",
+                lineHeight: 1,
+              }}
+              data-testid="spine-subtitle-input"
+            />
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center font-sans overflow-hidden pointer-events-none select-none whitespace-nowrap"
+              style={{
+                color: cover.spine_subtitle_color || text,
+                writingMode: "vertical-rl",
+                textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
+                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                fontSize: spineSubtitleFontSizeStyle,
+                fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
+                fontWeight: cover.spine_subtitle_weight || "600",
+                lineHeight: 1,
+              }}
+            >
+              {cover.spine_subtitle}
+            </div>
+          )}
         </DraggableItem>
       )}
       {!cover.spine_year_hidden && (
@@ -332,12 +429,39 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           item={captionItem}
           onChange={(patch) => onUpdateCover && onUpdateCover({ spine_caption_y: patch.y ?? captionItem.y, spine_caption_h: patch.h ?? captionItem.h })}
           onSelect={() => onSelectCaption && onSelectCaption()}
+          onDoubleClick={() => setCaptionEditing(true)}
           selected={selectedZone === "spine-caption"}
           containerRef={containerRef}
-          editable={editable}
+          editable={editable && !captionEditing}
           tid="spine-caption"
           minW={1}
         >
+          {captionEditing ? (
+            <textarea
+              autoFocus
+              value={cover.spine_caption || ""}
+              onChange={(e) => onUpdateCover && onUpdateCover({ spine_caption: e.target.value })}
+              onFocus={(e) => e.target.select()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onBlur={() => setCaptionEditing(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.currentTarget.blur(); }
+                e.stopPropagation();
+              }}
+              className="w-full h-full bg-transparent border-0 outline-none resize-none text-center"
+              style={{
+                color: cover.spine_caption_color || text,
+                writingMode: "vertical-rl",
+                textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
+                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                fontSize: spineCaptionFontSizeStyle,
+                fontFamily: cover.spine_caption_font || "'Manrope', sans-serif",
+                fontWeight: cover.spine_caption_weight || "600",
+                lineHeight: 1,
+              }}
+              data-testid="spine-caption-input"
+            />
+          ) : (
           <div
             className="w-full h-full flex items-center justify-center font-sans overflow-hidden pointer-events-none select-none"
             style={{
@@ -355,6 +479,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           >
             {cover.spine_caption}
           </div>
+          )}
         </DraggableItem>
       )}
       {cover.spine_logo_image && (

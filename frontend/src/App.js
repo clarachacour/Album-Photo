@@ -1,6 +1,6 @@
 import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/lib/auth";
@@ -17,13 +17,40 @@ import AlbumEditor from "@/pages/AlbumEditor";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import MobileUpload from "@/pages/MobileUpload";
+import PrintAlbum from "@/pages/PrintAlbum";
+
+function AppChrome({ children }) {
+  const location = useLocation();
+  const isPrintRoute = location.pathname.startsWith("/print/");
+  if (isPrintRoute) return children;
+  return (
+    <>
+      <TopNav />
+      {children}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: "#1A1A17",
+            color: "#F9F8F6",
+            border: "none",
+            borderRadius: 0,
+            fontFamily: "Manrope, sans-serif",
+            fontSize: "13px",
+            letterSpacing: "0.02em",
+          },
+        }}
+      />
+    </>
+  );
+}
 
 function App() {
   return (
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
-          <TopNav />
+          <AppChrome>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -32,6 +59,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/mobile-upload/:token" element={<MobileUpload />} />
+            <Route path="/print/:id" element={<PrintAlbum />} />
 
             <Route
               path="/dashboard"
@@ -66,20 +94,7 @@ function App() {
               }
             />
           </Routes>
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              style: {
-                background: "#1A1A17",
-                color: "#F9F8F6",
-                border: "none",
-                borderRadius: 0,
-                fontFamily: "Manrope, sans-serif",
-                fontSize: "13px",
-                letterSpacing: "0.02em",
-              },
-            }}
-          />
+          </AppChrome>
         </AuthProvider>
       </BrowserRouter>
     </div>
