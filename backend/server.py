@@ -132,13 +132,39 @@ security = HTTPBearer(auto_error=False)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --------- Storage helpers (Sauvegarde locale sur PC) ----------
-from pathlib import Path
+# --------- Storage helpers (Cloudflare R2 — S3-compatible object storage) ----------
+# Files never live on the app server's own disk: uploads/thumbnails/PDFs go
+# straight to R2, which is durable, cheap, and independent of whichever
+# machine happens to be running the backend at any given moment (important
+# since Render's free/starter instances don't guarantee the same disk
+# across redeploys or restarts).
+import boto3
+from botocore.config import Config as BotoConfig
 
-# Dossier où seront stockées les images sur ton PC
-LOCAL_STORAGE_DIR = Path("uploads")
-if not LOCAL_STORAGE_DIR.exists():
-    LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID")
+R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID")
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY")
+R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "album-photo")
+
+_r2_client = None
+
+def get_r2_client():
+    global _r2_client
+    if _r2_client is None:
+        if not (R2_ACCOUNT_ID and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
+            raise RuntimeError(
+                "R2 storage is not configured — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, "
+                "R2_SECRET_ACCESS_KEY and R2_BUCKET_NAME in the environment."
+            )
+        _r2_client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            config=BotoConfig(signature_version="s3v4"),
+            region_name="auto",
+        )
+    return _r2_client
 
 # Images packagées avec l'application (ex: logo corail par défaut sur la couverture)
 # Embarquées en base64 (voir cover_assets.py) pour ne jamais dépendre d'un fichier
@@ -161,46 +187,37 @@ BUNDLED_ASSETS_BYTES = {
 }
 
 def init_storage() -> Optional[str]:
-    """Ne fait rien d'externe, indique juste que le stockage local est prêt."""
-    return "local_storage_active"
+    """Verifies R2 is reachable and the bucket exists at startup, so a
+    misconfiguration is caught immediately in the logs rather than on the
+    first photo upload."""
+    try:
+        get_r2_client().head_bucket(Bucket=R2_BUCKET_NAME)
+        return "r2_storage_active"
+    except Exception as e:
+        logger.error(f"R2 storage is not reachable at startup: {e}")
+        return None
 
-# Exemple de correction dans la fonction de sauvegarde locale (put_object ou équivalent)
 def put_object(path, data, content_type=None):
-    """Sauvegarde locale sécurisée du fichier et retourne un dictionnaire avec le chemin et la taille."""
-    file_path = LOCAL_STORAGE_DIR / path
-    
-    # S'assure uniquement que les dossiers parents existent sans perturber la racine 'uploads'
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Écriture propre des octets de l'image
-    file_path.write_bytes(data)
-    
-    return {
-        "path": path,
-        "size": len(data)
-    }
+    """Uploads bytes to R2 and returns a dict with the path and size —
+    same shape as the old local-disk version, so every caller is unaffected."""
+    get_r2_client().put_object(
+        Bucket=R2_BUCKET_NAME,
+        Key=path,
+        Body=data,
+        ContentType=content_type or "application/octet-stream",
+    )
+    return {"path": path, "size": len(data)}
 
 def get_object(path: str) -> tuple:
-    """Lit le fichier directement depuis le dossier uploads du PC."""
+    """Downloads bytes from R2 — same (content, content_type) return shape
+    as the old local-disk version."""
     try:
-        file_path = LOCAL_STORAGE_DIR / path
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="Image non trouvée")
-            
-        with open(file_path, "rb") as f:
-            content = f.read()
-            
-        # Détermination simple du type MIME
-        content_type = "image/jpeg"
-        if path.lower().endswith(".png"):
-            content_type = "image/png"
-        elif path.lower().endswith(".webp"):
-            content_type = "image/webp"
-            
-        return content, content_type
+        resp = get_r2_client().get_object(Bucket=R2_BUCKET_NAME, Key=path)
     except Exception as e:
-        logger.error(f"Erreur de lecture locale pour {path}: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur de lecture locale: {e}")
+        raise HTTPException(status_code=404, detail="Image non trouvée")
+    content = resp["Body"].read()
+    content_type = resp.get("ContentType") or "image/jpeg"
+    return content, content_type
 
 # ---------- Auth ----------
 def hash_password(password: str) -> str:
@@ -235,17 +252,12 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "no-reply@albumai.local")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
-def send_password_reset_email(to_email: str, name: str, reset_link: str):
-    subject = "Reset your password"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"Click the link below to reset your password (valid for 1 hour):\n{reset_link}\n\n"
-        f"If you didn't request this, you can safely ignore this email."
-    )
+def send_email(to_email: str, subject: str, body: str):
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
-        # No email provider configured — log the link so it's usable in local/dev testing
-        # without silently failing. Set SMTP_HOST/SMTP_USER/SMTP_PASSWORD to send real emails.
-        logger.warning(f"[DEV] SMTP non configuré — lien de réinitialisation pour {to_email} : {reset_link}")
+        # No email provider configured — log it so it's usable in local/dev
+        # testing without silently failing. Set SMTP_HOST/SMTP_USER/
+        # SMTP_PASSWORD to send real emails.
+        logger.warning(f"[DEV] SMTP non configuré — email non envoyé à {to_email} : {subject}\n{body}")
         return
     try:
         msg = MIMEText(body)
@@ -257,7 +269,16 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str):
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [to_email], msg.as_string())
     except Exception as e:
-        logger.error(f"Échec de l'envoi de l'email de réinitialisation : {e}")
+        logger.error(f"Échec de l'envoi de l'email à {to_email} : {e}")
+
+def send_password_reset_email(to_email: str, name: str, reset_link: str):
+    subject = "Reset your password"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Click the link below to reset your password (valid for 1 hour):\n{reset_link}\n\n"
+        f"If you didn't request this, you can safely ignore this email."
+    )
+    send_email(to_email, subject, body)
 
 # ---------- OAuth (Google / Apple) ----------
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
@@ -318,6 +339,52 @@ class UserOut(BaseModel):
     id: str
     email: str
     name: str
+    phone: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+
+class ChangePasswordInput(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6)
+
+class ContactInput(BaseModel):
+    name: str = Field(min_length=1)
+    email: EmailStr
+    subject: str = Field(min_length=1)
+    message: str = Field(min_length=1)
+
+class ShippingAddress(BaseModel):
+    full_name: str = Field(min_length=1)
+    phone: Optional[str] = None
+    address_line1: str = Field(min_length=1)
+    address_line2: Optional[str] = None
+    city: str = Field(min_length=1)
+    postal_code: str = Field(min_length=1)
+    country: str = Field(min_length=1)
+
+class OrderCreate(BaseModel):
+    album_id: str
+    quantity: int = Field(default=1, ge=1, le=20)
+    shipping_address: ShippingAddress
+
+# Flat per-copy price by format, in cents — server-side only, the client
+# never gets to set its own price. Adjust freely; this is the one place
+# that needs to change if pricing changes.
+ORDER_PRICE_CENTS = {"A5": 2900, "A4": 3900, "A3": 5900}
+
+ORDER_STATUSES = ["pending_payment", "paid", "processing", "printing", "shipped", "delivered", "cancelled"]
 
 class AuthResponse(BaseModel):
     token: str
@@ -366,6 +433,7 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await db.albums.create_index("user_id")
     await db.photos.create_index("album_id")
+    await db.orders.create_index("user_id")
     logger.info("Startup complete")
 
 @app.on_event("shutdown")
@@ -470,7 +538,56 @@ async def apple_auth(data: AppleAuthInput):
 
 @api_router.get("/auth/me", response_model=UserOut)
 async def me(user: dict = Depends(get_current_user)):
-    return UserOut(id=user["id"], email=user["email"], name=user["name"])
+    return UserOut(
+        id=user["id"], email=user["email"], name=user["name"],
+        phone=user.get("phone"), address_line1=user.get("address_line1"),
+        address_line2=user.get("address_line2"), city=user.get("city"),
+        postal_code=user.get("postal_code"), country=user.get("country"),
+    )
+
+@api_router.put("/auth/me", response_model=UserOut)
+async def update_profile(data: ProfileUpdate, user: dict = Depends(get_current_user)):
+    updates = {k: v for k, v in data.dict().items() if v is not None}
+    if updates:
+        await db.users.update_one({"id": user["id"]}, {"$set": updates})
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
+    return UserOut(
+        id=fresh["id"], email=fresh["email"], name=fresh["name"],
+        phone=fresh.get("phone"), address_line1=fresh.get("address_line1"),
+        address_line2=fresh.get("address_line2"), city=fresh.get("city"),
+        postal_code=fresh.get("postal_code"), country=fresh.get("country"),
+    )
+
+@api_router.put("/auth/password")
+async def change_password(data: ChangePasswordInput, user: dict = Depends(get_current_user)):
+    full_user = await db.users.find_one({"id": user["id"]})
+    if not full_user or not full_user.get("password_hash") or not verify_password(data.current_password, full_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(data.new_password)}})
+    return {"message": "Mot de passe mis à jour"}
+
+@api_router.post("/contact")
+async def submit_contact(data: ContactInput):
+    contact_id = str(uuid.uuid4())
+    doc = {
+        "id": contact_id,
+        "name": data.name,
+        "email": data.email.lower(),
+        "subject": data.subject,
+        "message": data.message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.contact_messages.insert_one(doc)
+    # Notify the team inbox if one is configured; never fails the request if
+    # email sending isn't set up (already logged by send_email in that case).
+    support_email = os.environ.get("SUPPORT_EMAIL")
+    if support_email:
+        send_email(
+            support_email,
+            f"[Contact] {data.subject}",
+            f"From: {data.name} <{data.email}>\n\n{data.message}",
+        )
+    return {"message": "Message envoyé, nous vous répondrons rapidement."}
 
 # ---------- Album Routes ----------
 def make_title_page(title: str) -> dict:
@@ -2185,7 +2302,96 @@ async def export_pdf_reportlab_legacy(album_id: str, auth: str = Query(None), au
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
-# ---------- Cover Templates listing ----------
+# ---------- Orders ----------
+ORDER_STATUS_LABELS = {
+    "pending_payment": "Payment pending",
+    "paid": "Payment confirmed",
+    "processing": "Preparing your album",
+    "printing": "Printing",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+}
+# The order in which a normal (non-cancelled) order is expected to progress —
+# drives the tracking timeline on the frontend.
+ORDER_STATUS_SEQUENCE = ["pending_payment", "paid", "processing", "printing", "shipped", "delivered"]
+
+async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
+    """Runs in the background right after an order is created. Reuses the
+    exact same browser-based renderer as the (now customer-facing-removed)
+    PDF export, so the file the team sends to the printer is guaranteed to
+    match what the customer saw in the flipbook. Never surfaced to the
+    customer directly — this is purely for internal/printer use."""
+    try:
+        token = create_token(user_id)
+        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
+        loop = asyncio.get_event_loop()
+        pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
+        path = f"{APP_NAME}/orders/{order_id}.pdf"
+        put_object(path, pdf_bytes, "application/pdf")
+        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True}})
+    except Exception as e:
+        logger.error(f"Échec de la génération du PDF pour la commande {order_id}: {e}")
+        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
+
+@api_router.post("/orders")
+async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": data.album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    if not album.get("pages"):
+        raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
+    unit_price = ORDER_PRICE_CENTS.get(album.get("size", "A4"), ORDER_PRICE_CENTS["A4"])
+    order_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    order_doc = {
+        "id": order_id,
+        "user_id": user["id"],
+        "album_id": album["id"],
+        "album_title": album.get("title", "Album"),
+        "size": album.get("size", "A4"),
+        "orientation": album.get("orientation", "portrait"),
+        "quantity": data.quantity,
+        "unit_price_cents": unit_price,
+        "total_price_cents": unit_price * data.quantity,
+        "currency": "eur",
+        "shipping_address": data.shipping_address.dict(),
+        "status": "pending_payment",
+        "status_history": [{"status": "pending_payment", "at": now}],
+        "pdf_ready": False,
+        "pdf_path": None,
+        "tracking_number": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.orders.insert_one(order_doc)
+    background_tasks.add_task(_generate_order_pdf, order_id, album["id"], user["id"])
+    order_doc.pop("_id", None)
+    return order_doc
+
+@api_router.get("/orders")
+async def list_orders(user: dict = Depends(get_current_user)):
+    orders = await db.orders.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return orders
+
+@api_router.get("/orders/{order_id}")
+async def get_order(order_id: str, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    if order["status"] == "cancelled":
+        timeline = [{"status": "cancelled", "label": ORDER_STATUS_LABELS["cancelled"], "done": True}]
+    else:
+        current_idx = ORDER_STATUS_SEQUENCE.index(order["status"]) if order["status"] in ORDER_STATUS_SEQUENCE else 0
+        timeline = [
+            {"status": s, "label": ORDER_STATUS_LABELS[s], "done": i <= current_idx}
+            for i, s in enumerate(ORDER_STATUS_SEQUENCE)
+        ]
+    order["timeline"] = timeline
+    order["status_label"] = ORDER_STATUS_LABELS.get(order["status"], order["status"])
+    return order
+
+
 @api_router.get("/cover-templates")
 async def list_cover_templates():
     return [
