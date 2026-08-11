@@ -1309,21 +1309,22 @@ function PhotoEditor({ item, onChange, onRemove }) {
   );
 }
 
+const PROCESSING_STAGES = [
+  "Analyzing images…",
+  "Detecting duplicates…",
+  "Grouping by scene…",
+  "Composing pages…",
+];
+
 function ProcessingScreen({ title }) {
   const [dots, setDots] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setDots((d) => (d + 1) % 4), 500);
     return () => clearInterval(t);
   }, []);
-  const stages = [
-    "Analyzing images…",
-    "Detecting duplicates…",
-    "Grouping by scene…",
-    "Composing pages…",
-  ];
   const [stage, setStage] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setStage((s) => (s + 1) % stages.length), 2000);
+    const t = setInterval(() => setStage((s) => (s + 1) % PROCESSING_STAGES.length), 2000);
     return () => clearInterval(t);
   }, []);
   return (
@@ -1336,7 +1337,7 @@ function ProcessingScreen({ title }) {
           {title}
         </h1>
         <p className="font-serif-display text-xl md:text-2xl text-[color:var(--muted)] italic">
-          {stages[stage]}{".".repeat(dots)}
+          {PROCESSING_STAGES[stage]}{".".repeat(dots)}
         </p>
       </div>
     </main>
