@@ -18,6 +18,12 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import MobileUpload from "@/pages/MobileUpload";
 import PrintAlbum from "@/pages/PrintAlbum";
+import AccountPage from "@/pages/AccountPage";
+import OrdersPage from "@/pages/OrdersPage";
+import OrderDetailPage from "@/pages/OrderDetailPage";
+import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
+import FAQPage from "@/pages/FAQPage";
+import ContactPage from "@/pages/ContactPage";
 
 function AppChrome({ children }) {
   const location = useLocation();
@@ -60,6 +66,41 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/mobile-upload/:token" element={<MobileUpload />} />
             <Route path="/print/:id" element={<PrintAlbum />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <AccountPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:id"
+              element={
+                <ProtectedRoute>
+                  <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/order/:albumId"
+              element={
+                <ProtectedRoute>
+                  <OrderCheckoutPage />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/dashboard"

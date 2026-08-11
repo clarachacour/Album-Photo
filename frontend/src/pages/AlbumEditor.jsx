@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { api, pdfExportUrl, coverImageUrl, coverAssetUrl } from "@/lib/api";
+import { api, coverImageUrl, coverAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
@@ -14,7 +14,7 @@ import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, Download, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload, Undo2, Redo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload, Undo2, Redo2 } from "lucide-react";
 
 const FONT_OPTIONS = [
   { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
@@ -57,7 +57,6 @@ export default function AlbumEditor() {
   const [cropMode, setCropMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
-  const [exporting, setExporting] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [coverVersion, setCoverVersion] = useState(0);
   const [processing, setProcessing] = useState(params.get("processing") === "1");
@@ -283,14 +282,8 @@ export default function AlbumEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [album?.id]);
 
-  const exportPdf = async () => {
-    setExporting(true);
-    try {
-      const url = pdfExportUrl(id);
-      window.open(url, "_blank");
-    } finally {
-      setTimeout(() => setExporting(false), 1200);
-    }
+  const goToOrder = () => {
+    nav(`/order/${id}`);
   };
 
   const updateSelectedItem = (patch) => {
@@ -951,12 +944,12 @@ export default function AlbumEditor() {
             )}
             <button
               data-testid={TID.editorExportPdf}
-              onClick={exportPdf}
-              disabled={exporting}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)] py-2 hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors disabled:opacity-60"
+              onClick={goToOrder}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2.5 hover:bg-[color:var(--coral)] transition-colors"
+              data-testid={TID.editorExportPdf}
             >
-              {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Export PDF</span>
+              <ShoppingBag size={14} />
+              <span className="text-sm font-semibold tracking-widest uppercase">Order this album</span>
             </button>
             <button
               data-testid={TID.editorAddText}

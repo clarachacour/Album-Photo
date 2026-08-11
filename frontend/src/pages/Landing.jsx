@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { COVER_THEMES } from "@/lib/coverThemes";
 import { TID } from "@/constants/testIds";
-import { ArrowRight, Sparkles, BookOpen, Wand2 } from "lucide-react";
+import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -97,6 +97,58 @@ export default function Landing() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* How the AI sorting actually works */}
+      <section className="py-24 md:py-32 px-6 md:px-12">
+        <div className="max-w-[1400px] mx-auto">
+          <div className="max-w-2xl mb-16">
+            <div className="eyebrow mb-4">How the sorting works</div>
+            <h2 className="font-serif-display text-4xl md:text-6xl tracking-tight leading-[1] mb-6">
+              What actually happens<br />
+              <em className="not-italic text-[color:var(--muted)]">to your photos.</em>
+            </h2>
+            <p className="text-[color:var(--ink)]/70 leading-relaxed">
+              You can upload everything — hundreds of photos, duplicates, near-identical
+              bursts, the odd blurry shot — and skip the sorting yourself. Here's exactly
+              what we do to turn that into a book, step by step, without ever touching the
+              resolution of the images you'll actually print.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-14">
+            {[
+              {
+                icon: <Images size={20} />,
+                title: "Finding near-duplicates and bursts",
+                body: "Every photo gets a visual fingerprint, and shots taken close together in time are compared to each other. Near-identical frames — the same moment shot two or three times — are grouped together automatically.",
+              },
+              {
+                icon: <ScanEye size={20} />,
+                title: "Picking the sharpest one",
+                body: "Within each group, we measure focus and clarity directly (a classic, fast image-processing check — no AI needed for this part) and keep the sharpest frame. The rest are quietly set aside rather than deleted.",
+              },
+              {
+                icon: <Sparkles size={20} />,
+                title: "Sorting by date and place",
+                body: "The surviving, distinct photos are then ordered chronologically. Where a photo carries location data, it's grouped with others taken at the same place before sorting by time — so your book follows the order things actually happened, place by place.",
+              },
+              {
+                icon: <ListChecks size={20} />,
+                title: "Filtering out clear misses",
+                body: "Genuinely poor shots the AI flags as low quality are left out of the automatic layout. Nothing is ever permanently deleted — everything set aside during sorting stays available for you to add back in the editor if you disagree.",
+              },
+            ].map((s, i) => (
+              <div key={i} className="flex gap-5 items-start">
+                <div className="mt-1 text-[color:var(--coral)] shrink-0">{s.icon}</div>
+                <div>
+                  <h3 className="font-serif-display text-xl mb-2">{s.title}</h3>
+                  <p className="text-[color:var(--ink)]/70 leading-relaxed text-sm">{s.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

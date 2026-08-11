@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
-import { LogOut, LayoutGrid } from "lucide-react";
+import { LogOut, LayoutGrid, User, Package, HelpCircle } from "lucide-react";
 
 export default function TopNav() {
   const { user, logout } = useAuth();
@@ -27,7 +27,25 @@ export default function TopNav() {
             >
               <LayoutGrid size={14} /> My albums
             </Link>
-            <span className="hidden md:inline-block eyebrow">{user.name}</span>
+            <Link
+              to="/orders"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+            >
+              <Package size={14} /> Orders
+            </Link>
+            <Link
+              to="/faq"
+              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+            >
+              <HelpCircle size={14} /> FAQ
+            </Link>
+            <Link
+              to="/account"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+            >
+              <User size={14} />
+              <span className="hidden md:inline">{user.name}</span>
+            </Link>
             <button
               data-testid={TID.navLogout}
               onClick={() => {

@@ -523,7 +523,7 @@ export const COVER_THEMES = [
       {
         id: "celebrations-our-year",
         name: "Our Year",
-        landingImage: "/theme-covers/couple-our-year.jpg",
+        landingImage: "/theme-covers/celebrations-our-year.jpg",
         title: "Our Year",
         cover: {
           bg_color: "#E6DBD7",
