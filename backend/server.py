@@ -2268,11 +2268,6 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     return order
 
 
-@api_router.get("/cover-templates")
-async def list_cover_templates():
-    return [
-        {"id": "default", "name": "Classic", "bg": "#0F5A67", "accent": "#E56B55", "text": "#F9F8F6"},
-    ]
 
 # ---------- Health ----------
 @api_router.get("/")
