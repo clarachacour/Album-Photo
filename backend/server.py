@@ -705,21 +705,13 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
 # ---------- Photo Upload ----------
 ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
-def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: str, album_id: str) -> dict:
-    """All the CPU/disk-bound work for one photo — EXIF, thumbnail
-    generation, perceptual hash, and the two disk writes. Deliberately a
-    plain synchronous function (no async, no awaits) so it can run in a
-    thread executor: none of this benefits from asyncio on its own, and
-    running it inline on the event loop was blocking every other request
-    (and every other photo in the same batch) for its entire duration."""
-    ext = (filename or "img.jpg").rsplit(".", 1)[-1].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "jpg"
-    photo_id = str(uuid.uuid4())
-    path = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}.{ext}"
+def _store_image_with_thumbnail(path: str, data: bytes, content_type: str):
+    """Uploads the original image, then a best-effort 300x300 JPEG thumbnail
+    alongside it (same path with _thumb.jpg instead of the original
+    extension). Returns (upload_result, thumbnail_path_or_None,
+    width_or_None, height_or_None). Shared by every place that stores an
+    image + its thumbnail — regular photos, cover images, cover assets."""
     result = put_object(path, data, content_type)
-
-    exif_info = extract_exif_info(data)
     img_w, img_h = None, None
     thumb_path = None
     try:
@@ -734,11 +726,27 @@ def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: 
             thumb.thumbnail((300, 300), Image.LANCZOS)
             thumb_buf = BytesIO()
             thumb.save(thumb_buf, format="JPEG", quality=82)
-            thumb_path_candidate = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}_thumb.jpg"
+            thumb_path_candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
             put_object(thumb_path_candidate, thumb_buf.getvalue(), "image/jpeg")
             thumb_path = thumb_path_candidate
     except Exception as e:
         logger.debug(f"Impossible de générer la vignette (fallback sur l'original): {e}")
+    return result, thumb_path, img_w, img_h
+
+def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: str, album_id: str) -> dict:
+    """All the CPU/disk-bound work for one photo — EXIF, thumbnail
+    generation, perceptual hash, and the two disk writes. Deliberately a
+    plain synchronous function (no async, no awaits) so it can run in a
+    thread executor: none of this benefits from asyncio on its own, and
+    running it inline on the event loop was blocking every other request
+    (and every other photo in the same batch) for its entire duration."""
+    ext = (filename or "img.jpg").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    photo_id = str(uuid.uuid4())
+    path = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}.{ext}"
+    exif_info = extract_exif_info(data)
+    result, thumb_path, img_w, img_h = _store_image_with_thumbnail(path, data, content_type)
 
     return {
         "photo_id": photo_id,
@@ -798,6 +806,24 @@ async def _store_new_photo(album_id: str, user_id: str, filename: str, content_t
     photo_doc.pop("_id", None)
     return photo_doc
 
+async def _store_many_photos(album_id: str, user_id: str, files: List[UploadFile]) -> List[dict]:
+    """Reads then stores a batch of uploaded files concurrently (bounded by
+    UPLOAD_CONCURRENCY), skipping any that fail validation or processing.
+    Shared by every endpoint that accepts photo uploads. Files are read here
+    (must happen on the main loop — UploadFile isn't safe to touch from a
+    worker thread), but everything CPU/disk-bound after that runs
+    concurrently, bounded so a huge batch doesn't spawn hundreds of threads
+    at once."""
+    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
+    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
+
+    async def store_one(filename, content_type, data):
+        async with semaphore:
+            return await _store_new_photo(album_id, user_id, filename, content_type, data)
+
+    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
+    return [p for p in results if p]
+
 @api_router.post("/albums/{album_id}/photos")
 async def upload_photos(
     album_id: str,
@@ -807,20 +833,7 @@ async def upload_photos(
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
-
-    # Files are read here (must happen on the main loop — UploadFile isn't
-    # safe to touch from a worker thread), but everything CPU/disk-bound
-    # after that runs concurrently, bounded so a huge batch doesn't spawn
-    # hundreds of threads at once.
-    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
-    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
-
-    async def store_one(filename, content_type, data):
-        async with semaphore:
-            return await _store_new_photo(album_id, user["id"], filename, content_type, data)
-
-    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
-    uploaded = [p for p in results if p]
+    uploaded = await _store_many_photos(album_id, user["id"], files)
     return {"uploaded": len(uploaded), "photos": uploaded}
 
 # ---------- Mobile upload (QR code) ----------
@@ -861,15 +874,7 @@ async def mobile_upload_info(token: str):
 @api_router.post("/mobile-upload/{token}/photos")
 async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
     session = _get_mobile_session(token)
-    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
-    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
-
-    async def store_one(filename, content_type, data):
-        async with semaphore:
-            return await _store_new_photo(session["album_id"], session["user_id"], filename, content_type, data)
-
-    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
-    uploaded = [p for p in results if p]
+    uploaded = await _store_many_photos(session["album_id"], session["user_id"], files)
 
     if uploaded:
         album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "status": 1})
@@ -995,26 +1000,8 @@ async def upload_cover_image(
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "jpg"
     path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-{uuid.uuid4()}.{ext}"
-
-    def _save():
-        result = put_object(path, data, content_type)
-        thumb_path = None
-        try:
-            with Image.open(BytesIO(data)) as _probe:
-                _probe.draft("RGB", (300, 300))
-                thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
-                thumb.thumbnail((300, 300), Image.LANCZOS)
-                thumb_buf = BytesIO()
-                thumb.save(thumb_buf, format="JPEG", quality=82)
-                thumb_path_candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
-                put_object(thumb_path_candidate, thumb_buf.getvalue(), "image/jpeg")
-                thumb_path = thumb_path_candidate
-        except Exception as e:
-            logger.debug(f"Impossible de générer la vignette pour la couverture: {e}")
-        return result, thumb_path
-
     loop = asyncio.get_event_loop()
-    result, thumb_path = await loop.run_in_executor(None, _save)
+    result, thumb_path, _, _ = await loop.run_in_executor(None, _store_image_with_thumbnail, path, data, content_type)
     await db.albums.update_one(
         {"id": album_id},
         {"$set": {
@@ -1074,27 +1061,9 @@ async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: 
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "png"
     asset_id = str(uuid.uuid4())
-
-    def _save():
-        path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
-        result = put_object(path, data, content_type)
-        thumb_path = None
-        try:
-            with Image.open(BytesIO(data)) as _probe:
-                _probe.draft("RGB", (300, 300))
-                thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
-                thumb.thumbnail((300, 300), Image.LANCZOS)
-                thumb_buf = BytesIO()
-                thumb.save(thumb_buf, format="JPEG", quality=82)
-                thumb_path_candidate = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}_thumb.jpg"
-                put_object(thumb_path_candidate, thumb_buf.getvalue(), "image/jpeg")
-                thumb_path = thumb_path_candidate
-        except Exception as e:
-            logger.debug(f"Impossible de générer la vignette pour l'image de couverture: {e}")
-        return result, thumb_path
-
+    path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
     loop = asyncio.get_event_loop()
-    result, thumb_path = await loop.run_in_executor(None, _save)
+    result, thumb_path, _, _ = await loop.run_in_executor(None, _store_image_with_thumbnail, path, data, content_type)
     return {"storage_path": result["path"], "thumbnail_path": thumb_path}
 
 @api_router.get("/cover-assets/image")
@@ -1626,16 +1595,8 @@ async def add_more_photos(
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
 
-    new_ids = []
-    file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
-    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
-
-    async def store_one(filename, content_type, data):
-        async with semaphore:
-            return await _store_new_photo(album_id, user["id"], filename, content_type, data)
-
-    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
-    new_ids = [p["id"] for p in results if p]
+    uploaded = await _store_many_photos(album_id, user["id"], files)
+    new_ids = [p["id"] for p in uploaded]
 
     if not new_ids:
         raise HTTPException(status_code=400, detail="Aucune photo valide n'a pu être ajoutée")
