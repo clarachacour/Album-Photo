@@ -100,7 +100,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How the AI sorting actually works */}
+      {/* How the sorting actually works */}
       <section className="py-24 md:py-32 px-6 md:px-12">
         <div className="max-w-[1400px] mx-auto">
           <div className="max-w-2xl mb-16">
@@ -127,7 +127,7 @@ export default function Landing() {
               {
                 icon: <ScanEye size={20} />,
                 title: "Picking the sharpest one",
-                body: "Within each group, we measure focus and clarity directly (a classic, fast image-processing check — no AI needed for this part) and keep the sharpest frame. The rest are quietly set aside rather than deleted.",
+                body: "Within each group, we measure focus and clarity directly and keep the sharpest frame. The rest are quietly set aside rather than deleted.",
               },
               {
                 icon: <Sparkles size={20} />,
@@ -137,7 +137,7 @@ export default function Landing() {
               {
                 icon: <ListChecks size={20} />,
                 title: "Filtering out clear misses",
-                body: "Genuinely poor shots the AI flags as low quality are left out of the automatic layout. Nothing is ever permanently deleted — everything set aside during sorting stays available for you to add back in the editor if you disagree.",
+                body: "Shots that are dramatically out of focus — severe motion blur, a finger over the lens — are left out of the automatic layout, based on the same sharpness check used to pick between near-duplicates. Nothing is ever permanently deleted — everything set aside during sorting stays available for you to add back in the editor if you disagree.",
               },
             ].map((s, i) => (
               <div key={i} className="flex gap-5 items-start">
