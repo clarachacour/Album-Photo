@@ -58,7 +58,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       // Several batches in flight at once — sending them strictly one after
       // another meant a single big upload could never benefit from the
       // backend being able to handle multiple requests at the same time.
-      const BATCH_CONCURRENCY = 4;
+      const BATCH_CONCURRENCY = 16;
       let nextBatch = 0;
       const runNext = async () => {
         while (nextBatch < batches.length) {
