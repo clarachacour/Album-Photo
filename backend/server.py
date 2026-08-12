@@ -24,6 +24,7 @@ import os
 import logging
 import uuid
 import json
+import math
 import base64
 import bcrypt
 import jwt
@@ -664,6 +665,20 @@ async def list_albums(user: dict = Depends(get_current_user)):
     albums = await cursor.to_list(500)
     return albums
 
+def _json_safe(value):
+    """Recursively replaces any NaN/Infinity float (not valid JSON, but a
+    valid Python float that can end up stored from a numeric computation
+    gone wrong) with 0, so a single bad value can't make an entire API
+    response fail to serialize. Fixes already-affected records on read,
+    without needing a manual database cleanup."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else 0
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    return value
+
 @api_router.get("/albums/{album_id}")
 async def get_album(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0})
@@ -671,7 +686,7 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Album introuvable")
     # Also include photos
     photos = await db.photos.find({"album_id": album_id}, {"_id": 0}).to_list(1000)
-    album["photos"] = photos
+    album["photos"] = _json_safe(photos)
     return album
 
 @api_router.patch("/albums/{album_id}")
@@ -1202,7 +1217,10 @@ def compute_sharpness(data: bytes) -> float:
                 + np.roll(arr, 1, axis=0) + np.roll(arr, -1, axis=0)
                 + np.roll(arr, 1, axis=1) + np.roll(arr, -1, axis=1)
             )
-            return float(lap.var())
+            result = float(lap.var())
+            if not math.isfinite(result):
+                return 0.0
+            return result
     except Exception:
         return 0.0
 
