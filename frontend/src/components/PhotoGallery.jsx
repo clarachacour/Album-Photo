@@ -43,6 +43,7 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
               <img
                 src={photoImageUrl(p.id)}
                 alt=""
+                loading="lazy"
                 className={`w-full h-full object-cover pointer-events-none select-none ${placed ? "opacity-50" : ""}`}
                 draggable={false}
               />
