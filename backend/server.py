@@ -96,10 +96,6 @@ def resolve_pdf_font(css_font: str, weight: str = "normal") -> str:
     # Manrope (the app's default sans-serif) and anything unrecognized
     return "Manrope-Bold" if is_bold else "Manrope-Regular"
 
-# LLM
-# LLM (Google Gemini officiel)
-from google import genai
-from google.genai import types
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -111,6 +107,14 @@ JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXP_HOURS = 24 * 30
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 APP_NAME = os.environ.get('APP_NAME', 'albumai')
+# How many photos get processed at once (uploads) / analyzed at once (AI).
+# Each one held in memory means the *decoded* image, not just the file size
+# — a single 12MP JPEG can take 30-50MB once decoded. On a small instance
+# (e.g. Render's 512MB Starter plan), running 8 at once was enough to run
+# out of memory on a batch of ordinary phone photos. Lower default here,
+# safely raise via env var once on a larger instance — no code change needed.
+UPLOAD_CONCURRENCY = int(os.environ.get("UPLOAD_CONCURRENCY", "3"))
+AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "3"))
 
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 storage_key: Optional[str] = None
@@ -710,8 +714,13 @@ def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: 
     try:
         with Image.open(BytesIO(data)) as _probe:
             img_w, img_h = _probe.size
+            # For JPEGs, this tells the decoder to decode directly at
+            # roughly this size instead of full resolution — a real
+            # decode-time memory saving, not just a resize after the fact.
+            # No-op (safely ignored) for PNG/WEBP.
+            _probe.draft("RGB", (300, 300))
             thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
-            thumb.thumbnail((640, 640), Image.LANCZOS)
+            thumb.thumbnail((300, 300), Image.LANCZOS)
             thumb_buf = BytesIO()
             thumb.save(thumb_buf, format="JPEG", quality=82)
             thumb_path_candidate = f"{APP_NAME}/users/{user_id}/albums/{album_id}/{photo_id}_thumb.jpg"
@@ -793,7 +802,7 @@ async def upload_photos(
     # after that runs concurrently, bounded so a huge batch doesn't spawn
     # hundreds of threads at once.
     file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
-    semaphore = asyncio.Semaphore(8)
+    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
 
     async def store_one(filename, content_type, data):
         async with semaphore:
@@ -842,7 +851,7 @@ async def mobile_upload_info(token: str):
 async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
     session = _get_mobile_session(token)
     file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
-    semaphore = asyncio.Semaphore(8)
+    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
 
     async def store_one(filename, content_type, data):
         async with semaphore:
@@ -900,7 +909,7 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         raise HTTPException(status_code=502, detail="Impossible de récupérer la sélection Google Photos")
 
     uploaded = []
-    semaphore = asyncio.Semaphore(8)  # bounded concurrency, so we don't hammer Google's API or the local disk
+    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)  # bounded concurrency, so we don't hammer Google's API or the local disk
     loop = asyncio.get_event_loop()
 
     async def fetch_one(item):
@@ -981,8 +990,9 @@ async def upload_cover_image(
         thumb_path = None
         try:
             with Image.open(BytesIO(data)) as _probe:
+                _probe.draft("RGB", (300, 300))
                 thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
-                thumb.thumbnail((640, 640), Image.LANCZOS)
+                thumb.thumbnail((300, 300), Image.LANCZOS)
                 thumb_buf = BytesIO()
                 thumb.save(thumb_buf, format="JPEG", quality=82)
                 thumb_path_candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
@@ -1060,8 +1070,9 @@ async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: 
         thumb_path = None
         try:
             with Image.open(BytesIO(data)) as _probe:
+                _probe.draft("RGB", (300, 300))
                 thumb = _probe.convert("RGB") if _probe.mode not in ("RGB", "L") else _probe.copy()
-                thumb.thumbnail((640, 640), Image.LANCZOS)
+                thumb.thumbnail((300, 300), Image.LANCZOS)
                 thumb_buf = BytesIO()
                 thumb.save(thumb_buf, format="JPEG", quality=82)
                 thumb_path_candidate = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}_thumb.jpg"
@@ -1156,7 +1167,9 @@ def compute_ahash(data: bytes) -> Optional[int]:
     (same burst, same framing) — used to find real duplicates deterministically,
     on top of what the AI itself flags."""
     try:
-        img = Image.open(BytesIO(data)).convert("L").resize((8, 8), Image.LANCZOS)
+        img = Image.open(BytesIO(data))
+        img.draft("L", (32, 32))  # decode near the target size directly, not full-resolution
+        img = img.convert("L").resize((8, 8), Image.LANCZOS)
         pixels = list(img.getdata())
         avg = sum(pixels) / len(pixels)
         bits = "".join("1" if p >= avg else "0" for p in pixels)
@@ -1176,10 +1189,11 @@ def _ahash_to_str(h: Optional[int]) -> Optional[str]:
 def compute_sharpness(data: bytes) -> float:
     """Cheap, no-AI focus/sharpness estimate (Laplacian variance on a small
     grayscale version) — used to pick the best frame out of a burst/cluster
-    of near-duplicates without spending a Gemini call on every one of them.
+    of near-duplicates cheaply and locally, no external service call needed.
     Higher = sharper. Purely classical image processing, near-instant."""
     try:
         with Image.open(BytesIO(data)) as img:
+            img.draft("L", (256, 256))
             small = img.convert("L").resize((256, 256), Image.LANCZOS)
             arr = np.asarray(small, dtype=np.float64)
             # Simple discrete Laplacian kernel (edge/detail response)
@@ -1349,133 +1363,9 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
         p_idx += 1
     return pages
 
-async def analyze_photo_batch(photos_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Analyse un lot d'images avec l'API Google Gemini officielle.
-    
-    Chaque élément de `photos_data` doit être un dictionnaire contenant :
-      - "id": identifiant unique de la photo
-      - "bytes": contenu binaire de l'image (bytes)
-      - "mime_type": type de l'image (ex: 'image/jpeg', 'image/png')
-    """
-    # Récupération de la clé API depuis l'environnement
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
-    if not api_key:
-        logger.error("Aucune clé GEMINI_API_KEY trouvée dans les variables d'environnement.")
-        raise ValueError("Clé API Gemini manquante. Ajoutez GEMINI_API_KEY dans votre fichier .env")
-
-    # Initialisation du client officiel Google GenAI
-    client = genai.Client(api_key=api_key)
-
-    # Consignes claires pour l'IA
-    prompt_text = """
-    Vous êtes un éditeur photo professionnel pour un livre d'art / album photo "Coffee Table Book".
-    Analysez chaque image du lot fourni et renvoyez STRICTEMENT un tableau JSON (Array d'objets).
-    
-    Pour CHAQUE image, générez un objet respectant exactement cette structure :
-    [
-      {
-        "photo_id": "ID_DE_LA_PHOTO",
-        "description": "Courte description poétique et précise en français",
-        "quality_score": 8.5,  # Note de 1.0 à 10.0 (basée sur netteté, lumière, cadrage)
-        "group": "Catégorie ou thème (ex: 'Paysages', 'Portraits', 'Gastronomie', 'Architecture')",
-        "is_duplicate_or_burst": false, # true si c'est une photo floue, ratée ou doublon d'une rafale
-        "focal_x": 0.5, # Centre d'intérêt horizontal (entre 0.0 et 1.0)
-        "focal_y": 0.5  # Centre d'intérêt vertical (entre 0.0 et 1.0)
-      }
-    ]
-    """
-
-    contents = [prompt_text]
-    processed_ids = []
-
-    # Préparation des images au format attendu par le SDK Google GenAI
-    for idx, item in enumerate(photos_data):
-        photo_id = item.get("id") or f"photo_{idx}"
-        img_bytes = item.get("bytes")
-        mime_type = item.get("mime_type", "image/jpeg")
-
-        if not img_bytes:
-            continue
-
-        processed_ids.append(photo_id)
-
-        # Ajout du repère d'ID et de l'image sous forme de Part
-        contents.append(f"Photo ID: {photo_id}")
-        contents.append(
-            types.Part.from_bytes(
-                data=img_bytes,
-                mime_type=mime_type
-            )
-        )
-
-    if not processed_ids:
-        return []
-
-    try:
-        # Appel à Gemini avec nouvelles tentatives automatiques en cas de
-        # limite de débit (429) — respecte le délai suggéré par Google quand
-        # il est présent dans la réponse d'erreur.
-        MAX_RETRIES = 3
-        last_error = None
-        response = None
-        for attempt in range(MAX_RETRIES):
-            try:
-                loop = asyncio.get_event_loop()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model="gemini-3.1-flash-lite",
-                        contents=contents,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            temperature=0.2,
-                        )
-                    )
-                )
-                last_error = None
-                break
-            except Exception as retry_err:
-                last_error = retry_err
-                err_text = str(retry_err)
-                if "429" in err_text or "RESOURCE_EXHAUSTED" in err_text:
-                    delay = 20.0  # repli par défaut si le délai suggéré n'est pas trouvé
-                    match = re.search(r"retryDelay['\"]?:\s*['\"]?(\d+(?:\.\d+)?)", err_text)
-                    if match:
-                        delay = float(match.group(1)) + 1  # petite marge de sécurité
-                    logger.warning(f"Limite Gemini atteinte, nouvelle tentative dans {delay:.0f}s (essai {attempt + 1}/{MAX_RETRIES})")
-                    await asyncio.sleep(delay)
-                    continue
-                else:
-                    # Erreur non liée au débit (ex: 404 modèle invalide) → inutile de réessayer
-                    break
-        if last_error is not None:
-            raise last_error
-
-        # Lecture du résultat JSON renvoyé par l'IA
-        analysis_result = json.loads(response.text)
-        return analysis_result
-
-    except Exception as e:
-        logger.error(f"Erreur lors de l'analyse Gemini : {e}")
-        
-        # Secours (Fallback) en cas d'erreur de l'IA pour ne pas bloquer l'utilisateur
-        fallback_results = []
-        for pid in processed_ids:
-            fallback_results.append({
-                "photo_id": pid,
-                "description": "Photo importée",
-                "quality_score": 7.5,
-                "group": "Souvenirs",
-                "is_duplicate_or_burst": False,
-                "focal_x": 0.5,
-                "focal_y": 0.5
-            })
-        return fallback_results
-
 async def _curate_photos(new_photos: List[dict], existing_selected: Optional[List[dict]] = None) -> List[dict]:
     """Real duplicate/burst detection, fast local best-of-cluster selection,
-    Gemini analysis (only on the survivors), quality selection, and
+    a classical sharpness quality gate on the survivors, and
     group/date/location sorting. When `existing_selected` is given
     (already-placed photos elsewhere in the album), new photos are also
     checked for duplicates against them — a new photo that matches
@@ -1531,7 +1421,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
 
     # ---- 2. Pick a representative per cluster using a fast, local,
     # no-AI sharpness check — this is what lets us skip sending every burst
-    # frame to Gemini and still reliably keep the sharpest one. ----
+    # frame locally, no external AI call needed. ----
     loop = asyncio.get_event_loop()
 
     async def _sharpness_of(p):
@@ -1543,7 +1433,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             return 0.0
 
     representatives: List[dict] = []  # one per cluster that has at least one new photo
-    cluster_by_rep_id: Dict[str, List[dict]] = {}
+    rep_sharpness: Dict[str, float] = {}
     for cluster in clusters:
         new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
         if not new_in_cluster:
@@ -1554,73 +1444,45 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             for d in new_in_cluster:
                 await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
             continue
-        if len(new_in_cluster) == 1:
-            rep = new_in_cluster[0]
-        else:
-            sharpness_scores = await asyncio.gather(*(_sharpness_of(p) for p in new_in_cluster))
-            rep = max(zip(new_in_cluster, sharpness_scores), key=lambda x: x[1])[0]
-            for d in new_in_cluster:
-                if d["id"] != rep["id"]:
-                    await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+        sharpness_scores = await asyncio.gather(*(_sharpness_of(p) for p in new_in_cluster))
+        rep, rep_score = max(zip(new_in_cluster, sharpness_scores), key=lambda x: x[1])
+        for d, score in zip(new_in_cluster, sharpness_scores):
+            if d["id"] != rep["id"]:
+                await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
         representatives.append(rep)
-        cluster_by_rep_id[rep["id"]] = new_in_cluster
+        rep_sharpness[rep["id"]] = rep_score
 
-    # ---- 3. Gemini analysis — only on cluster representatives, not every
-    # photo. Sends the already-generated 640px thumbnail, not the full-
-    # resolution original — judging quality/composition doesn't need print
-    # resolution, and skipping the original cuts the data transferred (and
-    # Gemini's own processing time) substantially. Neither of these has any
-    # effect on export quality, which always reads the original separately. ----
-    photos_with_bytes = []
-    for p in representatives:
-        try:
-            read_path = p.get("thumbnail_path") or p["storage_path"]
-            img_data, ctype = get_object(read_path)
-            mime = "image/jpeg" if p.get("thumbnail_path") else (p.get("content_type") or ctype)
-            photos_with_bytes.append({"id": p["id"], "bytes": img_data, "mime_type": mime})
-        except Exception as e:
-            logger.error(f"Impossible de lire les bytes pour la photo {p['id']}: {e}")
-
-    BATCH = 15
-    CONCURRENCY = 8
-    all_results = {}
-    batches = [photos_with_bytes[i:i + BATCH] for i in range(0, len(photos_with_bytes), BATCH)]
-    semaphore = asyncio.Semaphore(CONCURRENCY)
-
-    async def run_batch(batch):
-        async with semaphore:
-            return await analyze_photo_batch(batch)
-
-    batch_results = await asyncio.gather(*(run_batch(b) for b in batches))
-    for results in batch_results:
-        for res in results:
-            all_results[res.get("photo_id")] = res
-
-    for p in representatives:
-        ai = all_results.get(p["id"], {})
-        update = {
-            "ai_description": ai.get("description", ""),
-            "ai_score": ai.get("quality_score", 0.7),
-            "ai_group": ai.get("group", "misc"),
-            "ai_is_reject": bool(ai.get("is_duplicate_or_burst", False)),
-            "ai_focal_x": ai.get("focal_x", 0.5),
-            "ai_focal_y": ai.get("focal_y", 0.5),
-        }
-        await db.photos.update_one({"id": p["id"]}, {"$set": update})
-        p.update(update)
-
-    # ---- 4. Final quality gate on each representative ----
-    QUALITY_FLOOR = 3.5
+    # ---- 3. Quality gate — classical, no AI call. A genuinely broken shot
+    # (severe motion blur, a finger over the lens, camera-shake) scores
+    # dramatically lower on the same sharpness metric than a normal in-focus
+    # photo, even accounting for scene-to-scene variation (a plain sky vs. a
+    # detailed street scene) — this catches the clear failures without
+    # needing semantic judgment of composition/expression, which is the
+    # trade-off of not calling an AI model here. Deliberately conservative
+    # (low threshold) so it only screens out unambiguous misses rather than
+    # trying to rank "good" vs "great". ----
+    SHARPNESS_FLOOR = 15.0
     selected = []
     for rep in representatives:
-        is_clear_miss = rep.get("ai_is_reject") and (rep.get("ai_score") or 0) < QUALITY_FLOOR
-        if is_clear_miss:
+        score = rep_sharpness.get(rep["id"], 0.0)
+        update = {
+            "ai_score": score,
+            "ai_is_reject": score < SHARPNESS_FLOOR,
+            # No AI call means no suggested focal point — default to center,
+            # same as any manually-added photo; the user can still drag to
+            # reframe any photo in the editor same as always.
+            "ai_focal_x": 0.5,
+            "ai_focal_y": 0.5,
+        }
+        await db.photos.update_one({"id": rep["id"]}, {"$set": update})
+        rep.update(update)
+        if update["ai_is_reject"]:
             await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
         else:
             await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": False, "is_selected": True}})
             selected.append(rep)
 
-    # ---- 3. Group & sort (place / date priority, same rules as the initial pass) ----
+    # ---- 4. Group & sort (place / date priority, same rules as the initial pass) ----
     with_gps = [p for p in selected if p.get("gps_lat") is not None and p.get("gps_lng") is not None]
     with_gps_ids = {p["id"] for p in with_gps}
     without_gps = [p for p in selected if p["id"] not in with_gps_ids]
@@ -1752,7 +1614,7 @@ async def add_more_photos(
 
     new_ids = []
     file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
-    semaphore = asyncio.Semaphore(8)
+    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
 
     async def store_one(filename, content_type, data):
         async with semaphore:
