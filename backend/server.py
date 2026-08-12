@@ -1445,7 +1445,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     async def _sharpness_of(p):
         try:
             read_path = p.get("thumbnail_path") or p["storage_path"]
-            data, _ = get_object(read_path)
+            data, _ = await loop.run_in_executor(None, get_object, read_path)
             return await loop.run_in_executor(None, compute_sharpness, data)
         except Exception:
             return 0.0
