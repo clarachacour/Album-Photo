@@ -977,7 +977,7 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
         path = photo["thumbnail_path"]
         served_content_type = "image/jpeg"
     data, ctype = get_object(path)
-    return Response(content=data, media_type=served_content_type or ctype)
+    return Response( content=data, media_type=served_content_type or ctype, headers={"Cache-Control": "private, max-age=31536000, immutable"}, )
 
 # ---------- Cover image upload ----------
 @api_router.post("/albums/{album_id}/cover-image")
