@@ -14,4 +14,7 @@ RUN playwright install --with-deps chromium
 COPY . .
 
 EXPOSE 8000
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Shell form (not exec-array form) is required here so $PORT actually gets
+# substituted — Cloud Run injects PORT=8080 and expects the container to
+# listen on it; platforms that don't set it (e.g. Render) fall back to 8000.
+CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}
