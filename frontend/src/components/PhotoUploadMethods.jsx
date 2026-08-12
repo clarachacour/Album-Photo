@@ -43,6 +43,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       // large individual photos are.
       const MAX_BATCH_BYTES = 20 * 1024 * 1024;
       const MAX_BATCH_COUNT = 8;
+      const batches = [];
       let i = 0;
       while (i < files.length) {
         const chunk = [];
@@ -52,10 +53,22 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           batchBytes += files[i].size;
           i++;
         }
-        const form = new FormData();
-        chunk.forEach((f) => form.append("files", f));
-        await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" } });
+        batches.push(chunk);
       }
+      // Several batches in flight at once — sending them strictly one after
+      // another meant a single big upload could never benefit from the
+      // backend being able to handle multiple requests at the same time.
+      const BATCH_CONCURRENCY = 4;
+      let nextBatch = 0;
+      const runNext = async () => {
+        while (nextBatch < batches.length) {
+          const chunk = batches[nextBatch++];
+          const form = new FormData();
+          chunk.forEach((f) => form.append("files", f));
+          await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" } });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
       if (mode === "editor") {
         toast.success("Adding your new photos…");
         onProcessingStarted && onProcessingStarted();
