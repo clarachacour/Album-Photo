@@ -106,7 +106,6 @@ DB_NAME = os.environ['DB_NAME']
 JWT_SECRET = os.environ.get('JWT_SECRET', 'dev-secret')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXP_HOURS = 24 * 30
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 APP_NAME = os.environ.get('APP_NAME', 'albumai')
 # How many photos get processed at once (uploads) / analyzed at once (AI).
 # Each one held in memory means the *decoded* image, not just the file size
@@ -116,9 +115,6 @@ APP_NAME = os.environ.get('APP_NAME', 'albumai')
 # safely raise via env var once on a larger instance — no code change needed.
 UPLOAD_CONCURRENCY = int(os.environ.get("UPLOAD_CONCURRENCY", "3"))
 AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "3"))
-
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-storage_key: Optional[str] = None
 
 # ---------- Mongo ----------
 # Explicitly point at certifi's CA bundle — on some fresh Python installs
