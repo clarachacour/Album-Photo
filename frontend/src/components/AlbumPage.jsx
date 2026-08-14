@@ -868,15 +868,39 @@ export function CoverFrontPage({
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
         // The subtitle is meant to sit right at the title box's bottom edge,
-        // sized proportionally to the title (0.46x) rather than its own
+        // sized proportionally to the title (0.58x) rather than its own
         // fixed stored font_size — that stored value was calibrated to the
         // old, smaller static title and looks undersized now that the title
         // fills the box's full width dynamically.
         const SUBTITLE_RATIO = 0.58;
-        const renderItem =
-          item.role === "subtitle"
-            ? { ...item, y: titleY + visualTitleH, font_size: containerWidth ? (fittedTitleFontSizePx / containerWidth) * REFERENCE_PAGE_PX * SUBTITLE_RATIO : item.font_size }
-            : item;
+        const renderItem = (() => {
+          if (item.role !== "subtitle") return item;
+          const idealFontSize = containerWidth
+            ? (fittedTitleFontSizePx / containerWidth) * REFERENCE_PAGE_PX * SUBTITLE_RATIO
+            : item.font_size;
+          // idealFontSize above is derived purely from the title's own
+          // fitted size, with no awareness of the subtitle's own box —
+          // some templates (e.g. Sicily) position the subtitle in a
+          // narrower, hand-placed box than the title's. Cap the font size
+          // so the text never overflows that box, the same way the title
+          // fits its own box, instead of letting a large title push the
+          // subtitle past the edge of a box sized for a smaller font.
+          let fontSize = idealFontSize;
+          if (containerWidth && item.content) {
+            const boxWidthPx = item.w * containerWidth;
+            const measuredAtIdeal = measureDomTextWidth(item.content, {
+              fontPx: idealFontSize,
+              fontWeight: item.font_weight || "normal",
+              fontFamily: item.font || titleFont,
+              letterSpacing: "normal",
+              uppercase: true, // subtitle always renders uppercase (see textTransform below)
+            });
+            if (measuredAtIdeal > boxWidthPx) {
+              fontSize = idealFontSize * (boxWidthPx / measuredAtIdeal) * 0.96; // small safety margin
+            }
+          }
+          return { ...item, y: titleY + visualTitleH, font_size: fontSize };
+        })();
         if (item.type === "text") {
           const inTextEdit = isSel && extraTextEditId === item.id;
           return (
