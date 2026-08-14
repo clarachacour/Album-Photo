@@ -84,7 +84,6 @@ export const COVER_THEMES = [
           title_font_weight: "800",
           title_font_size: 66,
           title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-          spine_text_orientation: "upright",
           spine_title_y: 0.06, spine_title_h: 0.42,
           spine_subtitle_h: 0.24,
           spine_subtitle: "DOLCE",
