@@ -4,24 +4,7 @@ import { api, coverImageUrl } from "@/lib/api";
 import { getTemplate } from "@/lib/coverTemplates";
 import { CoverFrontPage, CoverBackPage, AlbumPage } from "@/components/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
-
-// Physical page sizes in mm, matching the backend's reportlab A3/A4/A5 tables.
-const PAGE_SIZES_MM = {
-  A3: { w: 297, h: 420 },
-  A4: { w: 210, h: 297 },
-  A5: { w: 148, h: 210 },
-};
-
-function pageDimsMm(size, orientation) {
-  const base = PAGE_SIZES_MM[(size || "A4").toUpperCase()] || PAGE_SIZES_MM.A4;
-  return orientation === "landscape" ? { w: base.h, h: base.w } : { w: base.w, h: base.h };
-}
-
-// Same page-count-based spine thickness estimate as the backend, so the
-// printed spine width matches between the PDF and this browser render.
-function spineWidthMm(numPages) {
-  return Math.max(16, Math.min(35, 4 + numPages * 0.12));
-}
+import { pageDimsMm, spineWidthMm } from "@/lib/printDims";
 
 /**
  * Renders the whole album — front cover + spine, interior pages, back cover
