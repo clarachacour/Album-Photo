@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { CoverSpine } from "@/components/CoverSpine";
+import { spineRatio } from "@/lib/printDims";
 import { makeCoverEditingActions, computeAlignSnap } from "@/lib/coverEditing";
 import { LAYOUT_PATTERNS } from "@/lib/layoutPatterns";
 import { useHistoryState } from "@/lib/useHistoryState";
@@ -1051,6 +1052,10 @@ function BookRenderer({
   const blank = (
     <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
   );
+  // Real page count is known here (unlike the creation wizard's cover step,
+  // which runs before any photos exist), so the spine matches exactly what
+  // the PDF export will produce.
+  const spineWidthPercent = spineRatio(album.size, orientation, (album.pages || []).length) * 100;
   const pages = [
     <div key="cover-front" className="relative h-full w-full">
       {/* The front cover keeps its full, correctly-proportioned size
@@ -1059,7 +1064,7 @@ function BookRenderer({
           eating into its width, which used to squash it and leave a gap. */}
       <div
         className="absolute top-0 h-full"
-        style={{ width: "32px", right: "calc(100% + 3px)" }}
+        style={{ width: `${spineWidthPercent}%`, right: "calc(100% + 3px)" }}
       >
         <CoverSpine
           title={album.title}
