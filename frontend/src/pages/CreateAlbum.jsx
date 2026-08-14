@@ -7,6 +7,7 @@ import { findTemplate } from "@/lib/coverThemes";
 import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
 import { CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
+import { spineRatio, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
@@ -218,6 +219,7 @@ export default function CreateAlbum() {
         {step === 1 && album && (
           <StepEdit
             album={album}
+            size={size}
             orientation={orientation}
             template={template}
             coverSel={coverSel}
@@ -353,6 +355,7 @@ function StepFormat({ size, setSize, orientation, setOrientation }) {
 
 function StepEdit({
   album,
+  size,
   orientation,
   template,
   coverSel,
@@ -368,6 +371,11 @@ function StepEdit({
   removeCoverItem,
 }) {
   const cover = album.cover || {};
+  // No photos uploaded yet at this step (cover editing comes before the
+  // "Pictures" step), so there's no real page count to base the spine on —
+  // DEFAULT_PAGE_COUNT_ESTIMATE stands in until AlbumEditor.jsx picks up
+  // the real album.pages.length.
+  const spineFr = spineRatio(size, orientation, DEFAULT_PAGE_COUNT_ESTIMATE);
 
   return (
     <section className="animate-fade-up grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
@@ -379,7 +387,10 @@ function StepEdit({
             image or text anywhere on the cover.
           </p>
         </div>
-        <div className="grid grid-cols-[1fr_32px_1fr] gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70">
+        <div
+          className="grid gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70"
+          style={{ gridTemplateColumns: `1fr ${spineFr}fr 1fr` }}
+        >
           <CoverBackPage
             template={template}
             country={album.country}
