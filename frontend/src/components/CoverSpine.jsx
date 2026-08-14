@@ -16,6 +16,21 @@ function useElementHeight(ref) {
   return height;
 }
 
+/** Tracks an element's live pixel width via ResizeObserver. */
+function useElementWidth(ref) {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) setWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.unobserve(el);
+  }, [ref]);
+  return width;
+}
+
 /**
  * Fits the (rotated) spine title+subtitle to the full height of their box,
  * the same way the front cover title fills its box's width — otherwise the
@@ -25,13 +40,16 @@ function useElementHeight(ref) {
  * so the tight letter-spacing it now shares with the front title is
  * reflected automatically, instead of hand-adjusted per property.
  */
-// The spine column is a fixed 32px wide in the cover layout grid
-// (grid-cols-[1fr_32px_1fr]) regardless of page format/orientation — no
-// spine font size should ever be allowed to exceed a safe thickness for
-// that fixed column, no matter what a height-only fill calculation says.
-const SPINE_MAX_FONT_PX = 29;
+// The spine column's width is now proportional (see printDims.js) instead
+// of a fixed 32px, so the safe max font size — the text's *thickness* in
+// vertical-rl — is computed from the spine's actual measured width instead
+// of a hardcoded constant. 0.9 mirrors the original 29px-for-32px-column
+// ratio (a little under the full column width, so text never brushes the
+// edges), and now simply scales with however wide the column actually is.
+const SPINE_MAX_FONT_RATIO = 0.9;
+const SPINE_MAX_FONT_FALLBACK_PX = 29; // used only before the column's real width is known (first paint)
 
-function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, baseFontSize, fontFamily, fontWeight, upright }) {
+function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, title, baseFontSize, fontFamily, fontWeight, upright }) {
   const [fontSize, setFontSize] = useState(baseFontSize || 9);
 
   useLayoutEffect(() => {
@@ -49,7 +67,7 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, baseFo
         const chars = String(title).replace(/\s/g, "").length;
         const measured = Math.max(1, chars * REF_PX * 1.05);
         const SAFETY = 0.86;
-        const fitted = Math.min(REF_PX * (boxHeightPx / measured) * SAFETY, SPINE_MAX_FONT_PX);
+        const fitted = Math.min(REF_PX * (boxHeightPx / measured) * SAFETY, maxFontPx);
         setFontSize(Math.max(6, fitted));
         return;
       }
@@ -64,13 +82,11 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, baseFo
       const measured = Math.max(1, titleMeasured);
       const SAFETY = 0.86; // a bit more margin so the spine text never brushes the top/bottom edge
       let fitted = REF_PX * (boxHeightPx / measured) * SAFETY;
-      // The spine column itself is a fixed 32px wide (see the grid-cols-
-      // [1fr_32px_1fr] layout) no matter the page format/orientation. In
-      // vertical-rl, font-size is roughly the text's *thickness* — without
-      // this cap, a short book with a tall-relative-to-width spine (e.g. A5
-      // landscape) computes a font size that fits the height fine but is
-      // far too thick for that fixed width, overflowing the column.
-      fitted = Math.min(fitted, SPINE_MAX_FONT_PX);
+      // In vertical-rl, font-size is roughly the text's *thickness* —
+      // without this cap, a short book with a tall-relative-to-width spine
+      // (e.g. A5 landscape) computes a font size that fits the height fine
+      // but is far too thick for the spine's actual width, overflowing it.
+      fitted = Math.min(fitted, maxFontPx);
       setFontSize(Math.max(6, fitted));
     };
 
@@ -87,7 +103,7 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, baseFo
     return () => {
       cancelled = true;
     };
-  }, [containerHeight, boxHeightFraction, title, fontFamily, fontWeight, upright]);
+  }, [containerHeight, maxFontPx, boxHeightFraction, title, fontFamily, fontWeight, upright]);
 
   return fontSize;
 }
@@ -103,6 +119,8 @@ function useFitSpineFontSize({ containerHeight, boxHeightFraction, title, baseFo
 export function CoverSpine({ title, year, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectYear, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
   const containerRef = useRef(null);
   const containerHeight = useElementHeight(containerRef);
+  const containerWidth = useElementWidth(containerRef);
+  const spineMaxFontPx = containerWidth ? containerWidth * SPINE_MAX_FONT_RATIO : SPINE_MAX_FONT_FALLBACK_PX;
   const bg = cover.bg_color || template.bg;
   const text = cover.text_color || template.text;
   const [titleEditing, setTitleEditing] = useState(false);
@@ -186,7 +204,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
       // Each stacked line shares the same fixed-width column, so the safe
       // per-line thickness shrinks as more lines are stacked (2 lines means
       // each can only be about half as thick as a single line could be).
-      const maxPerLine = SPINE_MAX_FONT_PX / Math.max(1, lines.length);
+      const maxPerLine = spineMaxFontPx / Math.max(1, lines.length);
       setFittedCaptionFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / widest) * 0.9, maxPerLine)));
     };
     compute();
@@ -200,9 +218,10 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     return () => {
       cancelled = true;
     };
-  }, [containerHeight, captionItem.h, cover.spine_caption, cover.spine_caption_font, cover.spine_caption_weight, cover.spine_text_orientation]);
+  }, [containerHeight, spineMaxFontPx, captionItem.h, cover.spine_caption, cover.spine_caption_font, cover.spine_caption_weight, cover.spine_text_orientation]);
   const fittedSpineFontSizePx = useFitSpineFontSize({
     containerHeight,
+    maxFontPx: spineMaxFontPx,
     boxHeightFraction: titleItem.h,
     title: cover.spine_title_text || title || "Album",
     baseFontSize: cover.spine_title_size || 9,
@@ -241,7 +260,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             letterSpacing: "-0.025em",
             uppercase: false,
           });
-      setFittedSubtitleFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / Math.max(1, measured)) * 0.86, SPINE_MAX_FONT_PX)));
+      setFittedSubtitleFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / Math.max(1, measured)) * 0.86, spineMaxFontPx)));
     };
     compute();
     let cancelled = false;
@@ -254,7 +273,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     return () => {
       cancelled = true;
     };
-  }, [containerHeight, subtitleItem.h, cover.spine_subtitle, cover.spine_subtitle_font, cover.spine_subtitle_weight, cover.spine_title_font, cover.spine_text_orientation]);
+  }, [containerHeight, spineMaxFontPx, subtitleItem.h, cover.spine_subtitle, cover.spine_subtitle_font, cover.spine_subtitle_weight, cover.spine_title_font, cover.spine_text_orientation]);
   const spineSubtitleFontSizeStyle = containerHeight
     ? `${fittedSubtitleFontSizePx}px`
     : `${(((cover.spine_subtitle_size || 9) / 608) * 100).toFixed(2)}cqh`;
