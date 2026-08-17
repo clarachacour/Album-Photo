@@ -115,6 +115,11 @@ APP_NAME = os.environ.get('APP_NAME', 'albumai')
 # safely raise via env var once on a larger instance — no code change needed.
 UPLOAD_CONCURRENCY = int(os.environ.get("UPLOAD_CONCURRENCY", "3"))
 AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "3"))
+# Shared secret Cloud Scheduler must send to trigger the 30-day draft-album
+# purge (see /internal/cleanup-expired-albums) — without it, anyone who
+# finds the URL could wipe every never-ordered album on demand.
+CLEANUP_SECRET = os.environ.get("CLEANUP_SECRET")
+DRAFT_ALBUM_RETENTION_DAYS = int(os.environ.get("DRAFT_ALBUM_RETENTION_DAYS", "30"))
 
 # ---------- Mongo ----------
 # Explicitly point at certifi's CA bundle — on some fresh Python installs
@@ -219,6 +224,18 @@ def get_object(path: str) -> tuple:
     content = resp["Body"].read()
     content_type = resp.get("ContentType") or "image/jpeg"
     return content, content_type
+
+def delete_object(path: str) -> None:
+    """Deletes one object from R2. Never raises — a missing/already-deleted
+    object is not an error for a cleanup operation, and callers (order-time
+    cleanup, the 30-day draft purge) run in bulk and shouldn't abort the
+    whole batch over one object that's already gone."""
+    if not path:
+        return
+    try:
+        get_r2_client().delete_object(Bucket=R2_BUCKET_NAME, Key=path)
+    except Exception as e:
+        logger.debug(f"Impossible de supprimer {path} de R2 (probablement déjà supprimé) : {e}")
 
 # ---------- Auth ----------
 def hash_password(password: str) -> str:
@@ -705,18 +722,43 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
 # ---------- Photo Upload ----------
 ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
+# A phone photo is often far larger than any of our page sizes need at
+# print quality (300 DPI) — even our biggest format, A3, only needs
+# ~3508x4961px (see pageDimsMm equivalent on the frontend). 5000px keeps a
+# comfortable margin above that while cutting the excess most cameras
+# capture well beyond what a printed page can show, saving real storage
+# with no visible loss at print time.
+MAX_STORED_DIMENSION_PX = 5000
+
 def _store_image_with_thumbnail(path: str, data: bytes, content_type: str):
-    """Uploads the original image, then a best-effort 300x300 JPEG thumbnail
-    alongside it (same path with _thumb.jpg instead of the original
-    extension). Returns (upload_result, thumbnail_path_or_None,
-    width_or_None, height_or_None). Shared by every place that stores an
-    image + its thumbnail — regular photos, cover images, cover assets."""
-    result = put_object(path, data, content_type)
+    """Uploads a print-quality (but not necessarily full-original-resolution)
+    version of the image, then a best-effort 300x300 JPEG thumbnail alongside
+    it (same path with _thumb.jpg instead of the original extension).
+    Returns (upload_result, thumbnail_path_or_None, width_or_None,
+    height_or_None). Shared by every place that stores an image + its
+    thumbnail — regular photos, cover images, cover assets."""
     img_w, img_h = None, None
     thumb_path = None
+    store_data, store_content_type = data, content_type
     try:
         with Image.open(BytesIO(data)) as _probe:
-            img_w, img_h = _probe.size
+            orig_w, orig_h = _probe.size
+            if max(orig_w, orig_h) > MAX_STORED_DIMENSION_PX:
+                scaled = _probe.copy()
+                scaled.thumbnail((MAX_STORED_DIMENSION_PX, MAX_STORED_DIMENSION_PX), Image.LANCZOS)
+                out_buf = BytesIO()
+                save_kwargs = {"quality": 92} if (_probe.format or "").upper() == "JPEG" else {}
+                scaled.save(out_buf, format=_probe.format or "JPEG", **save_kwargs)
+                store_data = out_buf.getvalue()
+                img_w, img_h = scaled.size
+            else:
+                img_w, img_h = orig_w, orig_h
+    except Exception as e:
+        logger.debug(f"Impossible de redimensionner l'image à l'upload (on garde l'originale) : {e}")
+
+    result = put_object(path, store_data, store_content_type)
+    try:
+        with Image.open(BytesIO(store_data)) as _probe:
             # For JPEGs, this tells the decoder to decode directly at
             # roughly this size instead of full resolution — a real
             # decode-time memory saving, not just a resize after the fact.
@@ -2171,6 +2213,25 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         logger.error(f"Échec de la génération du PDF pour la commande {order_id}: {e}")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
 
+async def _delete_unselected_photos(album_id: str):
+    """Runs in the background right after an order is created. The photos
+    the AI didn't select (duplicates, blurry rejects) were never going to
+    appear in the printed book — once the album is actually ordered there's
+    no remaining reason to keep them on R2, so we delete the files and mark
+    them is_deleted so they stop showing up anywhere in the app."""
+    try:
+        unselected = await db.photos.find(
+            {"album_id": album_id, "is_deleted": False, "is_selected": False}, {"_id": 0}
+        ).to_list(5000)
+        for p in unselected:
+            delete_object(p.get("storage_path"))
+            delete_object(p.get("thumbnail_path"))
+        ids = [p["id"] for p in unselected]
+        if ids:
+            await db.photos.update_many({"id": {"$in": ids}}, {"$set": {"is_deleted": True}})
+    except Exception as e:
+        logger.error(f"Échec du nettoyage des photos non sélectionnées pour l'album {album_id}: {e}")
+
 @api_router.post("/orders")
 async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": data.album_id, "user_id": user["id"]})
@@ -2203,6 +2264,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     }
     await db.orders.insert_one(order_doc)
     background_tasks.add_task(_generate_order_pdf, order_id, album["id"], user["id"])
+    background_tasks.add_task(_delete_unselected_photos, album["id"])
     order_doc.pop("_id", None)
     return order_doc
 
@@ -2228,7 +2290,45 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     order["status_label"] = ORDER_STATUS_LABELS.get(order["status"], order["status"])
     return order
 
+# ---------- Maintenance ----------
+@api_router.post("/internal/cleanup-expired-albums")
+async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
+    """Deletes albums that were never ordered and are older than
+    DRAFT_ALBUM_RETENTION_DAYS (default 30) — their photos on R2, cover
+    image, and the album document itself. An ordered album is never touched
+    here regardless of age (see _delete_unselected_photos for what happens
+    to its unselected photos, at order time instead).
 
+    Not reachable by end users — meant to be called on a schedule by Cloud
+    Scheduler, authenticated with CLEANUP_SECRET rather than a user token,
+    since there's no logged-in user in that context.
+    """
+    if not CLEANUP_SECRET:
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET n'est pas configuré sur ce serveur")
+    if x_cleanup_secret != CLEANUP_SECRET:
+        raise HTTPException(status_code=401, detail="Non autorisé")
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)).isoformat()
+    ordered_album_ids = set(await db.orders.distinct("album_id"))
+
+    candidates = await db.albums.find(
+        {"is_deleted": {"$ne": True}, "created_at": {"$lt": cutoff}}, {"_id": 0}
+    ).to_list(2000)
+
+    deleted_count = 0
+    for album in candidates:
+        if album["id"] in ordered_album_ids:
+            continue  # ever ordered, however long ago — never auto-purged
+        photos = await db.photos.find({"album_id": album["id"]}, {"_id": 0}).to_list(5000)
+        for p in photos:
+            delete_object(p.get("storage_path"))
+            delete_object(p.get("thumbnail_path"))
+        delete_object(album.get("cover_image_path"))
+        await db.photos.update_many({"album_id": album["id"]}, {"$set": {"is_deleted": True}})
+        await db.albums.update_one({"id": album["id"]}, {"$set": {"is_deleted": True}})
+        deleted_count += 1
+
+    return {"checked": len(candidates), "deleted": deleted_count, "retention_days": DRAFT_ALBUM_RETENTION_DAYS}
 
 # ---------- Health ----------
 @api_router.get("/")
