@@ -89,7 +89,7 @@ export default function OrderCheckoutPage() {
         </div>
 
         <div className="grid md:grid-cols-[1fr_320px] gap-12">
-          <form onSubmit={placeOrder} id="checkout-form">
+          <form onSubmit={placeOrder} id="checkout-form" noValidate>
             <div className="eyebrow mb-6">Shipping address</div>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div className="md:col-span-2">
