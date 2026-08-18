@@ -160,6 +160,9 @@ export default function OrderCheckoutPage() {
                   This album has fewer pages than your chosen {album.target_pages}-page tier — there weren't enough good-quality photos to fill it (we recommend uploading around {recommendedMinPhotos(album.target_pages)} photos for this tier). Add more photos, or you'll still be charged the {album.target_pages}-page price.
                 </div>
               )}
+              <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
+                The preview you edited is shown at reduced quality for fast loading — the book we print for you will be at full print resolution.
+              </div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[color:var(--muted)]">Quantity</span>
                 <input
