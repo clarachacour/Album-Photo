@@ -91,11 +91,32 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
           toast.error("Photo selection timed out");
           return;
         }
-        const { data } = await api.post(`/albums/${albumId}/import/google-photos`, {
+        // The backend now processes the import in the background (large
+        // selections — hundreds of photos — used to time out trying to
+        // finish inside one HTTP request), so this call returns almost
+        // immediately and we poll the album's status instead of waiting
+        // on the response body for the real result.
+        await api.post(`/albums/${albumId}/import/google-photos`, {
           access_token: accessToken,
           session_id: session.id,
         });
-        toast.success(`${data.uploaded} photo${data.uploaded > 1 ? "s" : ""} imported from Google Photos`);
+        toast.info("Importing your photos — this can take a few minutes for a large selection.");
+        for (let i = 0; i < 240; i++) {
+          await new Promise((r) => setTimeout(r, 2500));
+          try {
+            const { data } = await api.get(`/albums/${albumId}/status`);
+            if (data.status !== "processing") {
+              if (data.status === "error") {
+                toast.error("Google Photos import failed");
+              } else {
+                toast.success("Photos imported from Google Photos");
+              }
+              break;
+            }
+          } catch {
+            /* keep polling — a transient network hiccup shouldn't abort the whole import */
+          }
+        }
         onImported && onImported();
       } catch (err) {
         toast.error(err?.response?.data?.detail || "Google Photos import failed");
