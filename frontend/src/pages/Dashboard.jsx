@@ -110,6 +110,13 @@ export default function Dashboard() {
                         <div>Created {formatDate(a.created_at)}</div>
                         <div>Last modified {formatDate(a.updated_at)}</div>
                       </div>
+                      {!a.is_ordered && a.days_until_deletion != null && (
+                        <div className="text-xs mt-2 font-medium text-red-600">
+                          {a.days_until_deletion === 0
+                            ? "This album will be deleted today"
+                            : `This album will be deleted in ${a.days_until_deletion} day${a.days_until_deletion === 1 ? "" : "s"}`}
+                        </div>
+                      )}
                     </div>
                     {!a.is_ordered && (
                       <button
