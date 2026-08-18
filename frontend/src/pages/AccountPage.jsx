@@ -10,9 +10,10 @@ export default function AccountPage() {
   const [form, setForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
-    address_line1: user?.address_line1 || "",
+    street: user?.street || "",
+    building: user?.building || "",
     city: user?.city || "",
-    country: user?.country || "",
+    additional_info: user?.additional_info || "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -96,16 +97,20 @@ export default function AccountPage() {
               <input className={inputClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Country</label>
-              <input className={inputClass} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+              <label className="eyebrow block mb-2">Street</label>
+              <input className={inputClass} value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
             </div>
-            <div className="md:col-span-2">
-              <label className="eyebrow block mb-2">Address line</label>
-              <input className={inputClass} value={form.address_line1} onChange={(e) => setForm({ ...form, address_line1: e.target.value })} />
+            <div>
+              <label className="eyebrow block mb-2">Building</label>
+              <input className={inputClass} value={form.building} onChange={(e) => setForm({ ...form, building: e.target.value })} />
             </div>
             <div>
               <label className="eyebrow block mb-2">City</label>
               <input className={inputClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="eyebrow block mb-2">Additional info (optional)</label>
+              <input className={inputClass} value={form.additional_info} onChange={(e) => setForm({ ...form, additional_info: e.target.value })} placeholder="Floor, gate code, delivery notes..." />
             </div>
           </div>
           <button
