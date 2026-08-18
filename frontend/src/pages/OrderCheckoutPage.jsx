@@ -20,9 +20,7 @@ export default function OrderCheckoutPage() {
     full_name: user?.name || "",
     phone: user?.phone || "",
     address_line1: user?.address_line1 || "",
-    address_line2: user?.address_line2 || "",
     city: user?.city || "",
-    postal_code: user?.postal_code || "",
     country: user?.country || "",
   });
   const [placing, setPlacing] = useState(false);
@@ -43,7 +41,7 @@ export default function OrderCheckoutPage() {
 
   const placeOrder = async (e) => {
     e.preventDefault();
-    const required = ["full_name", "address_line1", "city", "postal_code", "country"];
+    const required = ["full_name", "address_line1", "city", "country"];
     for (const field of required) {
       if (!address[field]?.trim()) {
         toast.error("Please fill in all required shipping fields");
@@ -102,20 +100,12 @@ export default function OrderCheckoutPage() {
                 <input className={inputClass} value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
               </div>
               <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">Address line 1</label>
+                <label className="eyebrow block mb-2">Address line</label>
                 <input className={inputClass} value={address.address_line1} onChange={(e) => setAddress({ ...address, address_line1: e.target.value })} required />
-              </div>
-              <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">Address line 2 (optional)</label>
-                <input className={inputClass} value={address.address_line2} onChange={(e) => setAddress({ ...address, address_line2: e.target.value })} />
               </div>
               <div>
                 <label className="eyebrow block mb-2">City</label>
                 <input className={inputClass} value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} required />
-              </div>
-              <div>
-                <label className="eyebrow block mb-2">Postal code</label>
-                <input className={inputClass} value={address.postal_code} onChange={(e) => setAddress({ ...address, postal_code: e.target.value })} required />
               </div>
               <div className="md:col-span-2">
                 <label className="eyebrow block mb-2">Country</label>
