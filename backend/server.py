@@ -299,6 +299,43 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str):
     )
     send_email(to_email, subject, body)
 
+def send_order_confirmation_email(to_email: str, name: str, order: dict):
+    order_url = f"{FRONTEND_URL}/orders/{order['id']}"
+    total = order.get("total_price_cents", 0) / 100
+    subject = "Your Everbook order is confirmed"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Thanks for your order! We've received it and will start preparing your book.\n\n"
+        f"Order total: {total:.2f} {order.get('currency', 'eur').upper()}\n"
+        f"Quantity: {order.get('quantity', 1)}\n\n"
+        f"You can follow its status here:\n{order_url}\n\n"
+        f"We'll email you again once it ships."
+    )
+    send_email(to_email, subject, body)
+
+def send_order_shipped_email(to_email: str, name: str, order: dict):
+    order_url = f"{FRONTEND_URL}/orders/{order['id']}"
+    tracking = order.get("tracking_number")
+    subject = "Your Everbook order is on its way"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Good news — your book has shipped!\n\n"
+        + (f"Tracking number: {tracking}\n\n" if tracking else "")
+        + f"You can follow its status here:\n{order_url}"
+    )
+    send_email(to_email, subject, body)
+
+def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
+    contact_url = f"{FRONTEND_URL}/contact"
+    subject = "How did your Everbook turn out?"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Your book should have arrived by now — we hope you love it!\n\n"
+        f"We'd love to hear what you thought, or know right away if anything wasn't right:\n{contact_url}\n\n"
+        f"Thank you for printing with Everbook."
+    )
+    send_email(to_email, subject, body)
+
 # ---------- OAuth (Google / Apple) ----------
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID")  # Apple "Services ID"
@@ -991,25 +1028,28 @@ class GooglePhotosImportInput(BaseModel):
     access_token: str
     session_id: str
 
-@api_router.post("/albums/{album_id}/import/google-photos")
-async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
-    if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
-
-    headers = {"Authorization": f"Bearer {data.access_token}"}
-    items = []
-    page_token = None
+async def _import_google_photos_task(album_id: str, user_id: str, access_token: str, session_id: str):
+    """Runs in the background — fetching and storing potentially hundreds of
+    photos from a Google Photos selection was previously done inline in the
+    request handler, which meant the whole thing had to finish inside a
+    single HTTP request/response cycle. For a large selection (hundreds of
+    photos) that easily exceeds Cloud Run's request timeout, so the browser
+    saw nothing but a dropped connection no matter how well the work itself
+    was going. Chunking + a background task is the same pattern already
+    used for AI processing, and it's what lets a regular multi-photo upload
+    handle large batches without this problem (many small requests instead
+    of one huge one) — Google Photos didn't have an equivalent."""
+    headers = {"Authorization": f"Bearer {access_token}"}
     try:
+        items = []
+        page_token = None
         while True:
-            params = {"sessionId": data.session_id, "pageSize": 100}
+            params = {"sessionId": session_id, "pageSize": 100}
             if page_token:
                 params["pageToken"] = page_token
             resp = requests.get(
                 "https://photospicker.googleapis.com/v1/mediaItems",
-                headers=headers,
-                params=params,
-                timeout=15,
+                headers=headers, params=params, timeout=15,
             )
             resp.raise_for_status()
             page = resp.json()
@@ -1018,11 +1058,11 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
             if not page_token:
                 break
     except Exception as e:
-        logger.error(f"Échec de la lecture de la sélection Google Photos : {e}")
-        raise HTTPException(status_code=502, detail="Impossible de récupérer la sélection Google Photos")
+        logger.error(f"Échec de la lecture de la sélection Google Photos pour l'album {album_id}: {e}")
+        await db.albums.update_one({"id": album_id}, {"$set": {"status": "error"}})
+        return
 
-    uploaded = []
-    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)  # bounded concurrency, so we don't hammer Google's API or the local disk
+    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
     loop = asyncio.get_event_loop()
 
     async def fetch_one(item):
@@ -1039,19 +1079,37 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
                 if img_resp.status_code != 200:
                     return None
                 content_type = img_resp.headers.get("Content-Type", "image/jpeg")
-                return await _store_new_photo(album_id, user["id"], filename, content_type, img_resp.content)
+                return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
             except Exception as e:
                 logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) : {e}")
                 return None
 
-    results = await asyncio.gather(*(fetch_one(item) for item in items))
-    uploaded = [p for p in results if p]
+    # Processed in bounded chunks (not one giant asyncio.gather over
+    # everything) so a selection of hundreds of photos doesn't hold
+    # hundreds of pending coroutines — and so failures/slow items in one
+    # chunk can't stall visibility into the rest.
+    CHUNK_SIZE = 20
+    uploaded = []
+    for i in range(0, len(items), CHUNK_SIZE):
+        chunk = items[i:i + CHUNK_SIZE]
+        results = await asyncio.gather(*(fetch_one(it) for it in chunk))
+        uploaded.extend([p for p in results if p])
 
-    if uploaded and album.get("status") == "ready":
-        await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
-        background_tasks.add_task(run_ai_processing_incremental, album_id, user["id"], [p["id"] for p in uploaded])
+    if uploaded:
+        await run_ai_processing_incremental(album_id, user_id, [p["id"] for p in uploaded])
+    else:
+        await db.albums.update_one({"id": album_id}, {"$set": {"status": "ready"}})
+    logger.info(f"Import Google Photos terminé pour l'album {album_id}: {len(uploaded)}/{len(items)} photos")
 
-    return {"uploaded": len(uploaded)}
+@api_router.post("/albums/{album_id}/import/google-photos")
+async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
+    background_tasks.add_task(_import_google_photos_task, album_id, user["id"], data.access_token, data.session_id)
+    return {"status": "processing"}
+
 @api_router.get("/photos/{photo_id}/image")
 async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
     # Support both header and query auth (for <img> tags)
