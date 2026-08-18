@@ -395,10 +395,35 @@ class OrderCreate(BaseModel):
     quantity: int = Field(default=1, ge=1, le=20)
     shipping_address: ShippingAddress
 
-# Flat per-copy price by format, in cents — server-side only, the client
-# never gets to set its own price. Adjust freely; this is the one place
-# that needs to change if pricing changes.
-ORDER_PRICE_CENTS = {"A5": 2900, "A4": 3900, "A3": 5900}
+# Fixed page-count tiers the user picks from at album creation. A "custom"
+# page count (not one of these) is priced at the nearest lower tier plus a
+# per-page surcharge — see compute_order_price_cents.
+PAGE_TIERS = [24, 50, 100, 150, 250]
+
+# Price by format AND page tier, in cents — server-side only, the client
+# never gets to set its own price. These are PLACEHOLDER values (Clara
+# hasn't finalized real pricing with the printer yet) — adjust freely, this
+# is the one place that needs to change once real prices are set.
+ORDER_PRICE_CENTS = {
+    "A5": {24: 2500, 50: 3500, 100: 5500, 150: 7500, 250: 11000},
+    "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 250: 15900},
+    "A3": {24: 5500, 50: 7500, 100: 11900, 150: 16900, 250: 24900},
+}
+
+# Per extra page beyond the nearest lower tier, in cents — also a
+# placeholder until real per-page economics are confirmed.
+OVERAGE_PER_PAGE_CENTS = {"A5": 30, "A4": 45, "A3": 70}
+
+def compute_order_price_cents(size: str, target_pages: int) -> int:
+    size = size if size in ORDER_PRICE_CENTS else "A4"
+    tier_prices = ORDER_PRICE_CENTS[size]
+    target_pages = max(1, int(target_pages or PAGE_TIERS[0]))
+    if target_pages in tier_prices:
+        return tier_prices[target_pages]
+    lower_tiers = [t for t in PAGE_TIERS if t <= target_pages]
+    base_tier = max(lower_tiers) if lower_tiers else min(PAGE_TIERS)
+    extra_pages = max(0, target_pages - base_tier)
+    return tier_prices[base_tier] + extra_pages * OVERAGE_PER_PAGE_CENTS[size]
 
 ORDER_STATUSES = ["pending_payment", "paid", "processing", "printing", "shipped", "delivered", "cancelled"]
 
@@ -428,6 +453,7 @@ class AlbumCreate(BaseModel):
     cover: Optional[Dict[str, Any]] = None
     size: str = "A4"  # A3, A4 or A5
     orientation: str = "portrait"  # portrait or landscape
+    target_pages: int = 50  # one of PAGE_TIERS, or any custom page count
 
 class AlbumUpdate(BaseModel):
     title: Optional[str] = None
@@ -436,6 +462,7 @@ class AlbumUpdate(BaseModel):
     cover_template_id: Optional[str] = None
     size: Optional[str] = None
     orientation: Optional[str] = None
+    target_pages: Optional[int] = None
     pages: Optional[List[Dict[str, Any]]] = None
     status: Optional[str] = None
     cover_image_path: Optional[str] = None
@@ -659,6 +686,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "cover_template_id": data.cover_template_id,
         "size": data.size,
         "orientation": data.orientation,
+        "target_pages": data.target_pages,
         "status": "draft",
         "pages": [make_title_page(data.title)],
         "cover_image_path": None,
@@ -1553,6 +1581,31 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     return selected
 
 
+async def _trim_pages_to_target(pages: List[dict], target_pages: int) -> tuple:
+    """Trims `pages` (title page included) down to at most target_pages —
+    the real fix for the AI-generated layout drifting from whatever page
+    tier the user paid for at album creation, since deterministic_layout
+    otherwise just produces however many pages the selected photos happen
+    to fill. Any photo that lands on a trimmed-off page is un-selected
+    (not deleted outright — see _delete_unselected_photos for when the
+    actual files get cleaned up, at order time) so it stops showing up
+    anywhere in the app. Returns (trimmed_pages, fell_short) — fell_short
+    is True when there weren't even enough good photos to reach the target,
+    which the frontend can use to warn the person rather than silently
+    shipping fewer pages than they picked."""
+    if len(pages) <= target_pages:
+        return pages, len(pages) < target_pages
+    kept, dropped = pages[:target_pages], pages[target_pages:]
+    dropped_photo_ids = [
+        it["photo_id"]
+        for pg in dropped
+        for it in (pg.get("items") or [])
+        if it.get("type") == "photo" and it.get("photo_id")
+    ]
+    if dropped_photo_ids:
+        await db.photos.update_many({"id": {"$in": dropped_photo_ids}}, {"$set": {"is_selected": False}})
+    return kept, False
+
 async def run_ai_processing(album_id: str, user_id: str):
     """Background task: analyze photos, mark duplicates, generate layout from scratch.
     The album's first page (title page) is always preserved as-is — whatever
@@ -1571,11 +1624,13 @@ async def run_ai_processing(album_id: str, user_id: str):
 
         selected = await _curate_photos(photos)
         orientation = album.get("orientation", "portrait") if album else "portrait"
+        target_pages = album.get("target_pages", 50) if album else 50
         pages = [title_page] + deterministic_layout(selected, orientation)
+        pages, fell_short = await _trim_pages_to_target(pages, target_pages)
 
         await db.albums.update_one(
             {"id": album_id},
-            {"$set": {"pages": pages, "status": "ready", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"pages": pages, "status": "ready", "pages_below_target": fell_short, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
         logger.info(f"AI processing complete for album {album_id}: {len(selected)} photos, {len(pages)} pages")
     except Exception as e:
@@ -1610,10 +1665,12 @@ async def run_ai_processing_incremental(album_id: str, user_id: str, new_photo_i
         start_idx = len(existing_pages) % len(LAYOUT_PATTERN)
         new_pages = deterministic_layout(newly_selected, orientation, pattern_start_idx=start_idx)
         combined_pages = existing_pages + new_pages
+        target_pages = album.get("target_pages", 50) if album else 50
+        combined_pages, fell_short = await _trim_pages_to_target(combined_pages, target_pages)
 
         await db.albums.update_one(
             {"id": album_id},
-            {"$set": {"pages": combined_pages, "status": "ready", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"pages": combined_pages, "status": "ready", "pages_below_target": fell_short, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
         logger.info(f"Incremental AI processing complete for album {album_id}: +{len(newly_selected)} photos, +{len(new_pages)} pages")
     except Exception as e:
@@ -2257,7 +2314,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         raise HTTPException(status_code=404, detail="Album introuvable")
     if not album.get("pages"):
         raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
-    unit_price = ORDER_PRICE_CENTS.get(album.get("size", "A4"), ORDER_PRICE_CENTS["A4"])
+    unit_price = compute_order_price_cents(album.get("size", "A4"), album.get("target_pages", 50))
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     order_doc = {
