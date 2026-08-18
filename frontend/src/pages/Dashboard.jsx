@@ -104,21 +104,23 @@ export default function Dashboard() {
                         {a.country || "—"} · {a.year} · {a.size} {a.orientation === "landscape" ? "landscape" : "portrait"}
                       </div>
                       <div className="text-xs mt-2 uppercase tracking-widest text-[color:var(--coral)]">
-                        {statusLabel(a.status)}
+                        {a.is_ordered ? "Ordered" : statusLabel(a.status)}
                       </div>
                       <div className="text-xs mt-2 text-[color:var(--muted)] space-y-0.5">
                         <div>Created {formatDate(a.created_at)}</div>
                         <div>Last modified {formatDate(a.updated_at)}</div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => remove(a.id, a.title)}
-                      className="text-[color:var(--muted)] hover:text-red-600 transition-colors"
-                      data-testid={`album-delete-${a.id}`}
-                      aria-label="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {!a.is_ordered && (
+                      <button
+                        onClick={() => remove(a.id, a.title)}
+                        className="text-[color:var(--muted)] hover:text-red-600 transition-colors"
+                        data-testid={`album-delete-${a.id}`}
+                        aria-label="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
