@@ -359,16 +359,18 @@ class UserOut(BaseModel):
     email: str
     name: str
     phone: Optional[str] = None
-    address_line1: Optional[str] = None
+    street: Optional[str] = None
+    building: Optional[str] = None
     city: Optional[str] = None
-    country: Optional[str] = None
+    additional_info: Optional[str] = None
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
-    address_line1: Optional[str] = None
+    street: Optional[str] = None
+    building: Optional[str] = None
     city: Optional[str] = None
-    country: Optional[str] = None
+    additional_info: Optional[str] = None
 
 class ChangePasswordInput(BaseModel):
     current_password: str
@@ -383,9 +385,10 @@ class ContactInput(BaseModel):
 class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=1)
     phone: Optional[str] = None
-    address_line1: str = Field(min_length=1)
+    street: str = Field(min_length=1)
+    building: Optional[str] = None
     city: str = Field(min_length=1)
-    country: str = Field(min_length=1)
+    additional_info: Optional[str] = None
 
 class OrderCreate(BaseModel):
     album_id: str
@@ -553,8 +556,9 @@ async def apple_auth(data: AppleAuthInput):
 async def me(user: dict = Depends(get_current_user)):
     return UserOut(
         id=user["id"], email=user["email"], name=user["name"],
-        phone=user.get("phone"), address_line1=user.get("address_line1"),
-        city=user.get("city"), country=user.get("country"),
+        phone=user.get("phone"), street=user.get("street"),
+        building=user.get("building"), city=user.get("city"),
+        additional_info=user.get("additional_info"),
     )
 
 @api_router.put("/auth/me", response_model=UserOut)
@@ -565,8 +569,9 @@ async def update_profile(data: ProfileUpdate, user: dict = Depends(get_current_u
     fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
     return UserOut(
         id=fresh["id"], email=fresh["email"], name=fresh["name"],
-        phone=fresh.get("phone"), address_line1=fresh.get("address_line1"),
-        city=fresh.get("city"), country=fresh.get("country"),
+        phone=fresh.get("phone"), street=fresh.get("street"),
+        building=fresh.get("building"), city=fresh.get("city"),
+        additional_info=fresh.get("additional_info"),
     )
 
 @api_router.put("/auth/password")
