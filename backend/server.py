@@ -716,6 +716,28 @@ async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(ge
 
 @api_router.delete("/albums/{album_id}")
 async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        return {"deleted": 0}
+
+    was_ordered = await db.orders.find_one({"album_id": album_id}) is not None
+    photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
+
+    if not was_ordered:
+        # Never ordered — nothing downstream depends on these files anymore,
+        # so actually delete them from R2 instead of leaving them as
+        # invisible, still-billed orphans (the album row disappearing while
+        # its photos silently stayed on R2 forever was the bug being fixed
+        # here).
+        for p in photos:
+            delete_object(p.get("storage_path"))
+            delete_object(p.get("thumbnail_path"))
+        delete_object(album.get("cover_image_path"))
+    # If it *was* ordered, we deliberately keep every file on R2 — same
+    # policy as the 30-day draft purge (see cleanup_expired_albums): an
+    # order is a paying customer's record, kept indefinitely regardless of
+    # what happens to the album/draft around it.
+
     result = await db.albums.delete_one({"id": album_id, "user_id": user["id"]})
     await db.photos.update_many({"album_id": album_id}, {"$set": {"is_deleted": True}})
     return {"deleted": result.deleted_count}
