@@ -71,6 +71,7 @@ export default function CreateAlbum() {
   const [step, setStep] = useState(0);
   const [size, setSize] = useState("A4");
   const [orientation, setOrientation] = useState("portrait");
+  const [targetPages, setTargetPages] = useState(50);
   const [album, setAlbum, albumHistory] = useHistoryState(null); // created once we leave the Format step
   const [coverSel, setCoverSel] = useState(null);
   const [serverPhotos, setServerPhotos] = useState([]);
@@ -87,6 +88,7 @@ export default function CreateAlbum() {
         setServerPhotos(data.photos || []);
         setSize(data.size || "A4");
         setOrientation(data.orientation || "portrait");
+        setTargetPages(data.target_pages || 50);
         setStep(2); // straight to Pictures — cover/format were already set
       } catch {
         toast.error("Could not load this album");
@@ -132,13 +134,14 @@ export default function CreateAlbum() {
         const { data } = await api.post("/albums", {
           size,
           orientation,
+          target_pages: targetPages,
           title: chosenTemplate?.title || "Untitled",
           cover_template_id: chosenTemplate?.id || "default",
           cover: defaultCoverPayload(chosenTemplate),
         });
         albumHistory.resetState(data);
       } else {
-        await api.patch(`/albums/${album.id}`, { size, orientation });
+        await api.patch(`/albums/${album.id}`, { size, orientation, target_pages: targetPages });
       }
       setStep(1);
     } catch (err) {
@@ -214,7 +217,7 @@ export default function CreateAlbum() {
           ))}
         </div>
 
-        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} />}
+        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} targetPages={targetPages} setTargetPages={setTargetPages} />}
 
         {step === 1 && album && (
           <StepEdit
@@ -237,7 +240,7 @@ export default function CreateAlbum() {
         )}
 
         {step === 2 && (
-          <StepPhotos albumId={album?.id} serverPhotos={serverPhotos} onServerPhotosChange={setServerPhotos} />
+          <StepPhotos albumId={album?.id} serverPhotos={serverPhotos} onServerPhotosChange={setServerPhotos} targetPages={targetPages} />
         )}
 
         {/* Nav buttons */}
@@ -278,12 +281,15 @@ export default function CreateAlbum() {
 
 // -------------------- STEP COMPONENTS --------------------
 
-function StepFormat({ size, setSize, orientation, setOrientation }) {
+const PAGE_TIERS = [24, 50, 100, 150, 250];
+
+function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages }) {
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
   const maxWidthBySize = { A3: 640, A4: 500, A5: 400 };
   const sizeContainerStyle = {
     maxWidth: `${orientation === "landscape" ? maxWidthBySize[size] : maxWidthBySize[size] * 0.72}px`,
   };
+  const isCustom = !PAGE_TIERS.includes(targetPages);
 
   return (
     <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
@@ -310,7 +316,7 @@ function StepFormat({ size, setSize, orientation, setOrientation }) {
             ))}
           </div>
         </div>
-        <div>
+        <div className="mb-10">
           <div className="eyebrow mb-4">Orientation</div>
           <div className="flex gap-3">
             {[
@@ -332,6 +338,46 @@ function StepFormat({ size, setSize, orientation, setOrientation }) {
               </button>
             ))}
           </div>
+        </div>
+        <div>
+          <div className="eyebrow mb-4">Number of pages</div>
+          <div className="flex flex-wrap gap-3">
+            {PAGE_TIERS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTargetPages(t)}
+                className={`px-6 py-3 border ${
+                  targetPages === t
+                    ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
+                    : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
+                } transition-colors`}
+              >
+                <span className="font-semibold tracking-widest text-sm">{t}p</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setTargetPages(isCustom ? targetPages : PAGE_TIERS[PAGE_TIERS.length - 1] + 1)}
+              className={`px-6 py-3 border ${
+                isCustom
+                  ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
+                  : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
+              } transition-colors`}
+            >
+              <span className="font-semibold tracking-widest text-sm">Custom</span>
+            </button>
+          </div>
+          {isCustom && (
+            <div className="mt-4">
+              <input
+                type="number"
+                min={1}
+                value={targetPages}
+                onChange={(e) => setTargetPages(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                className="w-32 px-4 py-2 border border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] outline-none"
+              />
+              <span className="text-sm text-[color:var(--ink)]/60 ml-3">pages — priced above the nearest standard tier</span>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-center">
@@ -460,13 +506,42 @@ function StepEdit({
   );
 }
 
-function StepPhotos({ albumId, serverPhotos, onServerPhotosChange }) {
+// Derived from LAYOUT_PATTERN's 7 templates (single_full=1, dual_vertical=2,
+// hero_strip=4, single_centered=1, quad_grid=4, triptych=3,
+// dual_horizontal=2 photos each) — kept in sync with the backend's layout
+// logic in server.py. A 1.3x margin accounts for photos the AI rejects as
+// duplicates or too blurry, so this is a recommendation, not a guarantee —
+// actual results still depend on the quality of what's uploaded.
+const AVG_PHOTOS_PER_PAGE = 17 / 7;
+const CURATION_SAFETY_MARGIN = 1.3;
+
+function recommendedMinPhotos(targetPages) {
+  const contentPages = Math.max(0, (targetPages || 0) - 1); // minus the title page
+  return Math.ceil(contentPages * AVG_PHOTOS_PER_PAGE * CURATION_SAFETY_MARGIN);
+}
+
+function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages }) {
+  const recommended = recommendedMinPhotos(targetPages);
+  const uploaded = serverPhotos.length;
+  const enough = uploaded >= recommended;
+
   return (
     <section className="animate-fade-up">
       <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Drop your photos.</h2>
-      <p className="text-[color:var(--ink)]/70 mb-10">
+      <p className="text-[color:var(--ink)]/70 mb-4">
         All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.
       </p>
+      <div
+        className={`text-sm border rounded px-4 py-3 mb-6 ${
+          enough
+            ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+            : "text-amber-700 bg-amber-50 border-amber-200"
+        }`}
+      >
+        {enough
+          ? `${uploaded} photos uploaded — that's enough for your ${targetPages}-page album.`
+          : `${uploaded} of the ~${recommended} photos we recommend for a ${targetPages}-page album (some will be rejected as duplicates or too blurry — upload more to fill every page).`}
+      </div>
       <PhotoUploadMethods
         albumId={albumId}
         mode="wizard"
