@@ -703,8 +703,17 @@ async def list_albums(user: dict = Depends(get_current_user)):
     cursor = db.albums.find({"user_id": user["id"]}, {"_id": 0}).sort("updated_at", -1)
     albums = await cursor.to_list(500)
     ordered_ids = set(await db.orders.distinct("album_id", {"user_id": user["id"]}))
+    now = datetime.now(timezone.utc)
     for a in albums:
         a["is_ordered"] = a["id"] in ordered_ids
+        a["days_until_deletion"] = None
+        if not a["is_ordered"] and a.get("created_at"):
+            try:
+                created = datetime.fromisoformat(a["created_at"])
+                deadline = created + timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)
+                a["days_until_deletion"] = max(0, (deadline - now).days)
+            except (ValueError, TypeError):
+                pass
     return albums
 
 def _json_safe(value):
