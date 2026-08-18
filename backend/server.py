@@ -677,6 +677,9 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
 async def list_albums(user: dict = Depends(get_current_user)):
     cursor = db.albums.find({"user_id": user["id"]}, {"_id": 0}).sort("updated_at", -1)
     albums = await cursor.to_list(500)
+    ordered_ids = set(await db.orders.distinct("album_id", {"user_id": user["id"]}))
+    for a in albums:
+        a["is_ordered"] = a["id"] in ordered_ids
     return albums
 
 def _json_safe(value):
@@ -721,22 +724,17 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
         return {"deleted": 0}
 
     was_ordered = await db.orders.find_one({"album_id": album_id}) is not None
-    photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
+    if was_ordered:
+        # An order is a paying customer's record — never removable via this
+        # endpoint, regardless of what the UI does or doesn't show. Matches
+        # the 30-day draft purge's same rule (see cleanup_expired_albums).
+        raise HTTPException(status_code=403, detail="Impossible de supprimer un album déjà commandé")
 
-    if not was_ordered:
-        # Never ordered — nothing downstream depends on these files anymore,
-        # so actually delete them from R2 instead of leaving them as
-        # invisible, still-billed orphans (the album row disappearing while
-        # its photos silently stayed on R2 forever was the bug being fixed
-        # here).
-        for p in photos:
-            delete_object(p.get("storage_path"))
-            delete_object(p.get("thumbnail_path"))
-        delete_object(album.get("cover_image_path"))
-    # If it *was* ordered, we deliberately keep every file on R2 — same
-    # policy as the 30-day draft purge (see cleanup_expired_albums): an
-    # order is a paying customer's record, kept indefinitely regardless of
-    # what happens to the album/draft around it.
+    photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
+    for p in photos:
+        delete_object(p.get("storage_path"))
+        delete_object(p.get("thumbnail_path"))
+    delete_object(album.get("cover_image_path"))
 
     result = await db.albums.delete_one({"id": album_id, "user_id": user["id"]})
     await db.photos.update_many({"album_id": album_id}, {"$set": {"is_deleted": True}})
