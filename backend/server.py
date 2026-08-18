@@ -116,6 +116,12 @@ APP_NAME = os.environ.get('APP_NAME', 'albumai')
 # safely raise via env var once on a larger instance — no code change needed.
 UPLOAD_CONCURRENCY = int(os.environ.get("UPLOAD_CONCURRENCY", "3"))
 AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "3"))
+# Deliberately separate from — and lower than — UPLOAD_CONCURRENCY: this
+# one bounds simultaneous connections to Google's own servers (Google
+# Photos import), not our own R2 bucket, and pushing it as high as
+# UPLOAD_CONCURRENCY caused Google to start dropping connections
+# (SSLEOFError / "Max retries exceeded") under load.
+GOOGLE_PHOTOS_CONCURRENCY = int(os.environ.get("GOOGLE_PHOTOS_CONCURRENCY", "4"))
 # Shared secret Cloud Scheduler must send to trigger the 30-day draft-album
 # purge (see /internal/cleanup-expired-albums) — without it, anyone who
 # finds the URL could wipe every never-ordered album on demand.
@@ -1062,7 +1068,13 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
         await db.albums.update_one({"id": album_id}, {"$set": {"status": "error"}})
         return
 
-    semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
+    # Bounded lower than UPLOAD_CONCURRENCY (a separate constant, see near
+    # the top of the file) — hammering Google's own servers with many
+    # simultaneous connections is what was causing the SSLEOFError/"Max
+    # retries exceeded" drops in the first place, so Google Photos
+    # downloads specifically stay bounded lower regardless of how high
+    # UPLOAD_CONCURRENCY is set for the unrelated device-upload path.
+    semaphore = asyncio.Semaphore(GOOGLE_PHOTOS_CONCURRENCY)
     loop = asyncio.get_event_loop()
 
     async def fetch_one(item):
@@ -1071,15 +1083,18 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
         filename = media_file.get("filename", "photo.jpg")
         if not base_url:
             return None
-        async with semaphore:
-            # Google's servers occasionally drop the connection under
-            # concurrent load (SSLEOFError / "Max retries exceeded") — this
-            # is a transient network hiccup, not a real failure, and a
-            # retry almost always succeeds. Without this, those photos were
-            # silently dropped with no way for the person to know which
-            # ones, or how many.
-            last_error = None
-            for attempt in range(3):
+        # Google's servers occasionally drop the connection under
+        # concurrent load (SSLEOFError / "Max retries exceeded") — this is
+        # a transient network hiccup, not a real failure, and a retry
+        # almost always succeeds. The semaphore is only held during the
+        # actual attempt, never during the backoff sleep — holding it the
+        # whole time meant one failing, retrying photo occupied a
+        # concurrency slot for up to a minute, which starved every other
+        # photo waiting for that slot and made large imports far slower
+        # than before retries existed.
+        last_error = None
+        for attempt in range(3):
+            async with semaphore:
                 try:
                     img_resp = await loop.run_in_executor(
                         None, lambda: requests.get(f"{base_url}=d", headers=headers, timeout=20)
@@ -1090,10 +1105,10 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
                     return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
                 except Exception as e:
                     last_error = e
-                    if attempt < 2:
-                        await asyncio.sleep(1.5 * (attempt + 1))  # 1.5s, then 3s
-            logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) après 3 tentatives : {last_error}")
-            return None
+            if attempt < 2:
+                await asyncio.sleep(1.5 * (attempt + 1))  # 1.5s, then 3s — outside the semaphore
+        logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) après 3 tentatives : {last_error}")
+        return None
 
     # Processed in bounded chunks (not one giant asyncio.gather over
     # everything) so a selection of hundreds of photos doesn't hold
