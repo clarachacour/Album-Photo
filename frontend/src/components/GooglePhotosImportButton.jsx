@@ -109,7 +109,12 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
               if (data.status === "error") {
                 toast.error("Google Photos import failed");
               } else {
-                toast.success("Photos imported from Google Photos");
+                const result = data.google_import_result;
+                if (result && result.failed > 0) {
+                  toast.warning(`${result.uploaded} of ${result.total} photos imported — ${result.failed} failed and were skipped. You can try importing them again.`, { duration: 8000 });
+                } else {
+                  toast.success("Photos imported from Google Photos");
+                }
               }
               break;
             }
