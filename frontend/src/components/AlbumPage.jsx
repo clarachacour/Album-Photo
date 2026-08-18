@@ -475,7 +475,7 @@ export function AlbumPage({
                   </div>
                 ) : (
                   <img
-                    src={photoImageUrl(item.photo_id, highRes ? "original" : "thumb")}
+                    src={photoImageUrl(item.photo_id, highRes ? "original" : "medium")}
                     alt=""
                     className="w-full h-full pointer-events-none select-none"
                     style={{
