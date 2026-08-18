@@ -106,8 +106,7 @@ export default function OrderDetailPage() {
             <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
               <div>{addr.full_name}</div>
               <div>{addr.address_line1}</div>
-              {addr.address_line2 && <div>{addr.address_line2}</div>}
-              <div>{addr.postal_code} {addr.city}</div>
+              <div>{addr.city}</div>
               <div>{addr.country}</div>
               {addr.phone && <div className="pt-1">{addr.phone}</div>}
             </div>
