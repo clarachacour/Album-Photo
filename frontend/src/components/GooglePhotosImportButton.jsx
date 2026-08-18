@@ -6,6 +6,17 @@ import { ImageDown, Loader2 } from "lucide-react";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const PICKER_SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly";
 
+// A batch this size keeps each request comfortably inside Cloud Run's
+// default timeout even for large originals, while still being efficient
+// (not one request per photo). BATCH_CONCURRENCY is deliberately much
+// lower than the 16 used for regular device uploads (see
+// PhotoUploadMethods.jsx) — these downloads go through Google's own
+// servers, which start dropping connections (SSLEOFError) under too much
+// simultaneous load; the backend adds its own additional per-request cap
+// (GOOGLE_PHOTOS_CONCURRENCY) on top of this.
+const BATCH_SIZE = 20;
+const BATCH_CONCURRENCY = 2;
+
 function loadScript(src, id) {
   return new Promise((resolve, reject) => {
     if (document.getElementById(id)) return resolve();
@@ -22,8 +33,12 @@ function loadScript(src, id) {
 /**
  * "Import from Google Photos" — opens Google's own picker UI (the user
  * never shares credentials with us, only the photos they explicitly select
- * in that session), then hands the session off to the backend to fetch
- * and store the chosen photos.
+ * in that session), fetches the resulting selection directly, and uploads
+ * it to the backend in small batches — the same active-request-per-batch
+ * pattern regular device uploads already use, instead of handing the
+ * backend a session_id and one giant background task to work through on
+ * its own (which ran with throttled CPU once the response had been sent,
+ * making large imports far slower than they needed to be).
  */
 export default function GooglePhotosImportButton({ albumId, onImported, disabled }) {
   const [ready, setReady] = useState(false);
@@ -55,6 +70,23 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
       await new Promise((r) => setTimeout(r, 2000));
     }
     return false;
+  };
+
+  const fetchAllItems = async (accessToken, sessionId) => {
+    const items = [];
+    let pageToken = null;
+    for (let page = 0; page < 100; page++) {
+      const url = new URL("https://photospicker.googleapis.com/v1/mediaItems");
+      url.searchParams.set("sessionId", sessionId);
+      url.searchParams.set("pageSize", "100");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const data = await res.json();
+      items.push(...(data.mediaItems || []));
+      pageToken = data.nextPageToken;
+      if (!pageToken) break;
+    }
+    return items;
   };
 
   const startImport = () => {
@@ -91,36 +123,46 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
           toast.error("Photo selection timed out");
           return;
         }
-        // The backend now processes the import in the background (large
-        // selections — hundreds of photos — used to time out trying to
-        // finish inside one HTTP request), so this call returns almost
-        // immediately and we poll the album's status instead of waiting
-        // on the response body for the real result.
-        await api.post(`/albums/${albumId}/import/google-photos`, {
-          access_token: accessToken,
-          session_id: session.id,
-        });
-        toast.info("Importing your photos — this can take a few minutes for a large selection.");
-        for (let i = 0; i < 240; i++) {
-          await new Promise((r) => setTimeout(r, 2500));
-          try {
-            const { data } = await api.get(`/albums/${albumId}/status`);
-            if (data.status !== "processing") {
-              if (data.status === "error") {
-                toast.error("Google Photos import failed");
-              } else {
-                const result = data.google_import_result;
-                if (result && result.failed > 0) {
-                  toast.warning(`${result.uploaded} of ${result.total} photos imported — ${result.failed} failed and were skipped. You can try importing them again.`, { duration: 8000 });
-                } else {
-                  toast.success("Photos imported from Google Photos");
-                }
-              }
-              break;
+
+        const items = await fetchAllItems(accessToken, session.id);
+        if (items.length === 0) {
+          toast.error("No photos were selected");
+          return;
+        }
+
+        const batches = [];
+        for (let i = 0; i < items.length; i += BATCH_SIZE) {
+          batches.push(items.slice(i, i + BATCH_SIZE));
+        }
+
+        toast.info(`Importing ${items.length} photo${items.length > 1 ? "s" : ""} — this can take a few minutes for a large selection.`);
+
+        let uploaded = 0;
+        let nextBatch = 0;
+        const runNext = async () => {
+          while (nextBatch < batches.length) {
+            const batch = batches[nextBatch++];
+            try {
+              const { data } = await api.post(`/albums/${albumId}/import/google-photos`, {
+                access_token: accessToken,
+                items: batch,
+              });
+              uploaded += data.uploaded || 0;
+            } catch {
+              // one batch failing (e.g. a transient backend error) shouldn't
+              // abort every other batch still in flight — the final count
+              // reported to the person reflects whatever actually made it
+              // through.
             }
-          } catch {
-            /* keep polling — a transient network hiccup shouldn't abort the whole import */
           }
+        };
+        await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
+
+        const failed = items.length - uploaded;
+        if (failed > 0) {
+          toast.warning(`${uploaded} of ${items.length} photos imported — ${failed} failed and were skipped. You can try importing them again.`, { duration: 8000 });
+        } else {
+          toast.success(`${uploaded} photo${uploaded > 1 ? "s" : ""} imported from Google Photos`);
         }
         onImported && onImported();
       } catch (err) {
