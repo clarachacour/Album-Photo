@@ -5,10 +5,35 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-// Kept in sync with the backend's ORDER_PRICE_CENTS — shown here only for
-// the live summary as the user picks a quantity; the backend always
-// recomputes and owns the real charged price.
-const PRICE_TABLE = { A5: 29, A4: 39, A3: 59 };
+// Kept in sync with the backend's ORDER_PRICE_CENTS / compute_order_price_cents
+// — shown here only for the live summary as the user picks a quantity; the
+// backend always recomputes and owns the real charged price.
+const PAGE_TIERS = [24, 50, 100, 150, 250];
+const PRICE_TABLE = {
+  A5: { 24: 25, 50: 35, 100: 55, 150: 75, 250: 110 },
+  A4: { 24: 35, 50: 49, 100: 79, 150: 109, 250: 159 },
+  A3: { 24: 55, 50: 75, 100: 119, 150: 169, 250: 249 },
+};
+const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45, A3: 0.7 };
+
+// Same formula as CreateAlbum.jsx's StepPhotos — kept in sync manually
+// since it's just a heuristic recommendation shown in two different
+// places, not something either page depends on for correctness.
+const AVG_PHOTOS_PER_PAGE = 17 / 7;
+const CURATION_SAFETY_MARGIN = 1.3;
+function recommendedMinPhotos(targetPages) {
+  const contentPages = Math.max(0, (targetPages || 0) - 1);
+  return Math.ceil(contentPages * AVG_PHOTOS_PER_PAGE * CURATION_SAFETY_MARGIN);
+}
+
+function computeUnitPrice(size, targetPages) {
+  const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
+  if (tierPrices[targetPages] != null) return tierPrices[targetPages];
+  const lowerTiers = PAGE_TIERS.filter((t) => t <= targetPages);
+  const baseTier = lowerTiers.length ? Math.max(...lowerTiers) : Math.min(...PAGE_TIERS);
+  const extraPages = Math.max(0, targetPages - baseTier);
+  return tierPrices[baseTier] + extraPages * (OVERAGE_PER_PAGE[size] || OVERAGE_PER_PAGE.A4);
+}
 
 export default function OrderCheckoutPage() {
   const { albumId } = useParams();
@@ -37,7 +62,7 @@ export default function OrderCheckoutPage() {
     })();
   }, [albumId]);
 
-  const unitPrice = album ? PRICE_TABLE[album.size] || PRICE_TABLE.A4 : 0;
+  const unitPrice = album ? computeUnitPrice(album.size || "A4", album.target_pages || 50) : 0;
   const total = unitPrice * quantity;
 
   const placeOrder = async (e) => {
@@ -126,6 +151,15 @@ export default function OrderCheckoutPage() {
                 <span className="text-[color:var(--muted)]">Format</span>
                 <span>{album.size} · {album.orientation}</span>
               </div>
+              <div className="flex justify-between mb-1">
+                <span className="text-[color:var(--muted)]">Pages</span>
+                <span>{album.pages?.length || album.target_pages} / {album.target_pages}</span>
+              </div>
+              {album.pages_below_target && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3 mt-1">
+                  This album has fewer pages than your chosen {album.target_pages}-page tier — there weren't enough good-quality photos to fill it (we recommend uploading around {recommendedMinPhotos(album.target_pages)} photos for this tier). Add more photos, or you'll still be charged the {album.target_pages}-page price.
+                </div>
+              )}
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[color:var(--muted)]">Quantity</span>
                 <input
