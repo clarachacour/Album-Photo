@@ -798,6 +798,9 @@ export default function AlbumEditor() {
             <h1 className="font-serif-display text-2xl truncate">{album.title}</h1>
             <div />
           </div>
+          <div className="w-full max-w-2xl mb-4 text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2">
+            This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.
+          </div>
 
           <BookRenderer
             album={album}
