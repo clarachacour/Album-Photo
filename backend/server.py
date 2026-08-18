@@ -1072,17 +1072,28 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
         if not base_url:
             return None
         async with semaphore:
-            try:
-                img_resp = await loop.run_in_executor(
-                    None, lambda: requests.get(f"{base_url}=d", headers=headers, timeout=20)
-                )
-                if img_resp.status_code != 200:
-                    return None
-                content_type = img_resp.headers.get("Content-Type", "image/jpeg")
-                return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
-            except Exception as e:
-                logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) : {e}")
-                return None
+            # Google's servers occasionally drop the connection under
+            # concurrent load (SSLEOFError / "Max retries exceeded") — this
+            # is a transient network hiccup, not a real failure, and a
+            # retry almost always succeeds. Without this, those photos were
+            # silently dropped with no way for the person to know which
+            # ones, or how many.
+            last_error = None
+            for attempt in range(3):
+                try:
+                    img_resp = await loop.run_in_executor(
+                        None, lambda: requests.get(f"{base_url}=d", headers=headers, timeout=20)
+                    )
+                    if img_resp.status_code != 200:
+                        return None
+                    content_type = img_resp.headers.get("Content-Type", "image/jpeg")
+                    return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
+                except Exception as e:
+                    last_error = e
+                    if attempt < 2:
+                        await asyncio.sleep(1.5 * (attempt + 1))  # 1.5s, then 3s
+            logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) après 3 tentatives : {last_error}")
+            return None
 
     # Processed in bounded chunks (not one giant asyncio.gather over
     # everything) so a selection of hundreds of photos doesn't hold
@@ -1094,6 +1105,12 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
         chunk = items[i:i + CHUNK_SIZE]
         results = await asyncio.gather(*(fetch_one(it) for it in chunk))
         uploaded.extend([p for p in results if p])
+
+    failed_count = len(items) - len(uploaded)
+    await db.albums.update_one(
+        {"id": album_id},
+        {"$set": {"google_import_result": {"uploaded": len(uploaded), "total": len(items), "failed": failed_count}}},
+    )
 
     if uploaded:
         await run_ai_processing_incremental(album_id, user_id, [p["id"] for p in uploaded])
@@ -1759,10 +1776,10 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
 
 @api_router.get("/albums/{album_id}/status")
 async def get_status(album_id: str, user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0, "status": 1, "id": 1})
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0, "status": 1, "id": 1, "google_import_result": 1})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
-    return {"status": album.get("status", "draft")}
+    return {"status": album.get("status", "draft"), "google_import_result": album.get("google_import_result")}
 
 @api_router.post("/albums/{album_id}/add-photos")
 async def add_more_photos(
