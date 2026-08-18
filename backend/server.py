@@ -33,6 +33,11 @@ import requests
 import re
 import asyncio
 from PIL import Image, ExifTags
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()  # lets Image.open() read iPhone HEIC/HEIF photos — plain Pillow can't decode them on its own
+except ImportError:
+    logging.getLogger(__name__).warning("pillow-heif non installé — les photos HEIC/HEIF (format par défaut iPhone) échoueront au décodage")
 import numpy as np
 import smtplib
 from email.mime.text import MIMEText
@@ -1032,48 +1037,21 @@ async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, fi
 # ---------- Google Photos import (Photos Picker API) ----------
 class GooglePhotosImportInput(BaseModel):
     access_token: str
-    session_id: str
+    items: List[Dict[str, Any]]  # one batch of raw mediaItems from the Photos Picker API — the frontend now fetches the full selection itself and sends it here in small batches (same shape as regular multi-photo upload), instead of handing over a session_id and making the backend do everything (originals, potentially hundreds of them) inside a single background task. A background task only gets a fraction of its normal CPU once Cloud Run's request-based billing considers the request "done" — which made large imports far slower than an equivalent active request. Small batches processed as ordinary active requests never hit that throttling, exactly like regular device uploads already didn't.
 
-async def _import_google_photos_task(album_id: str, user_id: str, access_token: str, session_id: str):
-    """Runs in the background — fetching and storing potentially hundreds of
-    photos from a Google Photos selection was previously done inline in the
-    request handler, which meant the whole thing had to finish inside a
-    single HTTP request/response cycle. For a large selection (hundreds of
-    photos) that easily exceeds Cloud Run's request timeout, so the browser
-    saw nothing but a dropped connection no matter how well the work itself
-    was going. Chunking + a background task is the same pattern already
-    used for AI processing, and it's what lets a regular multi-photo upload
-    handle large batches without this problem (many small requests instead
-    of one huge one) — Google Photos didn't have an equivalent."""
-    headers = {"Authorization": f"Bearer {access_token}"}
-    try:
-        items = []
-        page_token = None
-        while True:
-            params = {"sessionId": session_id, "pageSize": 100}
-            if page_token:
-                params["pageToken"] = page_token
-            resp = requests.get(
-                "https://photospicker.googleapis.com/v1/mediaItems",
-                headers=headers, params=params, timeout=15,
-            )
-            resp.raise_for_status()
-            page = resp.json()
-            items.extend(page.get("mediaItems", []))
-            page_token = page.get("nextPageToken")
-            if not page_token:
-                break
-    except Exception as e:
-        logger.error(f"Échec de la lecture de la sélection Google Photos pour l'album {album_id}: {e}")
-        await db.albums.update_one({"id": album_id}, {"$set": {"status": "error"}})
-        return
+@api_router.post("/albums/{album_id}/import/google-photos")
+async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
 
+    headers = {"Authorization": f"Bearer {data.access_token}"}
     # Bounded lower than UPLOAD_CONCURRENCY (a separate constant, see near
     # the top of the file) — hammering Google's own servers with many
-    # simultaneous connections is what was causing the SSLEOFError/"Max
-    # retries exceeded" drops in the first place, so Google Photos
-    # downloads specifically stay bounded lower regardless of how high
-    # UPLOAD_CONCURRENCY is set for the unrelated device-upload path.
+    # simultaneous connections is what caused SSLEOFError/"Max retries
+    # exceeded" drops, so Google Photos downloads specifically stay
+    # bounded lower regardless of how high UPLOAD_CONCURRENCY is set for
+    # the unrelated device-upload path.
     semaphore = asyncio.Semaphore(GOOGLE_PHOTOS_CONCURRENCY)
     loop = asyncio.get_event_loop()
 
@@ -1087,11 +1065,9 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
         # concurrent load (SSLEOFError / "Max retries exceeded") — this is
         # a transient network hiccup, not a real failure, and a retry
         # almost always succeeds. The semaphore is only held during the
-        # actual attempt, never during the backoff sleep — holding it the
-        # whole time meant one failing, retrying photo occupied a
-        # concurrency slot for up to a minute, which starved every other
-        # photo waiting for that slot and made large imports far slower
-        # than before retries existed.
+        # actual attempt, never during the backoff sleep, so one failing,
+        # retrying photo doesn't starve every other photo waiting for that
+        # slot.
         last_error = None
         for attempt in range(3):
             async with semaphore:
@@ -1102,7 +1078,7 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
                     if img_resp.status_code != 200:
                         return None
                     content_type = img_resp.headers.get("Content-Type", "image/jpeg")
-                    return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
+                    return await _store_new_photo(album_id, user["id"], filename, content_type, img_resp.content)
                 except Exception as e:
                     last_error = e
             if attempt < 2:
@@ -1110,37 +1086,20 @@ async def _import_google_photos_task(album_id: str, user_id: str, access_token: 
         logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) après 3 tentatives : {last_error}")
         return None
 
-    # Processed in bounded chunks (not one giant asyncio.gather over
-    # everything) so a selection of hundreds of photos doesn't hold
-    # hundreds of pending coroutines — and so failures/slow items in one
-    # chunk can't stall visibility into the rest.
-    CHUNK_SIZE = 20
-    uploaded = []
-    for i in range(0, len(items), CHUNK_SIZE):
-        chunk = items[i:i + CHUNK_SIZE]
-        results = await asyncio.gather(*(fetch_one(it) for it in chunk))
-        uploaded.extend([p for p in results if p])
+    results = await asyncio.gather(*(fetch_one(it) for it in data.items))
+    uploaded = [p for p in results if p]
 
-    failed_count = len(items) - len(uploaded)
-    await db.albums.update_one(
-        {"id": album_id},
-        {"$set": {"google_import_result": {"uploaded": len(uploaded), "total": len(items), "failed": failed_count}}},
-    )
+    # Mirrors the regular "add more photos" behavior exactly: only kick off
+    # AI processing here if the album had already been through its first
+    # AI pass before (the "editor" / add-more-later case). During the
+    # creation wizard the album is still a fresh draft — photos just land
+    # in the pool, and the wizard's own "Start AI" step processes
+    # everything (this batch plus every other one) together, once.
+    if uploaded and album.get("status") == "ready":
+        await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
+        background_tasks.add_task(run_ai_processing_incremental, album_id, user["id"], [p["id"] for p in uploaded])
 
-    if uploaded:
-        await run_ai_processing_incremental(album_id, user_id, [p["id"] for p in uploaded])
-    else:
-        await db.albums.update_one({"id": album_id}, {"$set": {"status": "ready"}})
-    logger.info(f"Import Google Photos terminé pour l'album {album_id}: {len(uploaded)}/{len(items)} photos")
-
-@api_router.post("/albums/{album_id}/import/google-photos")
-async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
-    if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
-    await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
-    background_tasks.add_task(_import_google_photos_task, album_id, user["id"], data.access_token, data.session_id)
-    return {"status": "processing"}
+    return {"uploaded": len(uploaded), "total": len(data.items)}
 
 @api_router.get("/photos/{photo_id}/image")
 async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
