@@ -105,9 +105,9 @@ export default function OrderDetailPage() {
             <div className="eyebrow mb-4">Shipping to</div>
             <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
               <div>{addr.full_name}</div>
-              <div>{addr.address_line1}</div>
+              <div>{addr.street}{addr.building && `, ${addr.building}`}</div>
               <div>{addr.city}</div>
-              <div>{addr.country}</div>
+              {addr.additional_info && <div>{addr.additional_info}</div>}
               {addr.phone && <div className="pt-1">{addr.phone}</div>}
             </div>
           </div>
