@@ -360,18 +360,14 @@ class UserOut(BaseModel):
     name: str
     phone: Optional[str] = None
     address_line1: Optional[str] = None
-    address_line2: Optional[str] = None
     city: Optional[str] = None
-    postal_code: Optional[str] = None
     country: Optional[str] = None
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     address_line1: Optional[str] = None
-    address_line2: Optional[str] = None
     city: Optional[str] = None
-    postal_code: Optional[str] = None
     country: Optional[str] = None
 
 class ChangePasswordInput(BaseModel):
@@ -388,9 +384,7 @@ class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=1)
     phone: Optional[str] = None
     address_line1: str = Field(min_length=1)
-    address_line2: Optional[str] = None
     city: str = Field(min_length=1)
-    postal_code: str = Field(min_length=1)
     country: str = Field(min_length=1)
 
 class OrderCreate(BaseModel):
@@ -560,8 +554,7 @@ async def me(user: dict = Depends(get_current_user)):
     return UserOut(
         id=user["id"], email=user["email"], name=user["name"],
         phone=user.get("phone"), address_line1=user.get("address_line1"),
-        address_line2=user.get("address_line2"), city=user.get("city"),
-        postal_code=user.get("postal_code"), country=user.get("country"),
+        city=user.get("city"), country=user.get("country"),
     )
 
 @api_router.put("/auth/me", response_model=UserOut)
@@ -573,8 +566,7 @@ async def update_profile(data: ProfileUpdate, user: dict = Depends(get_current_u
     return UserOut(
         id=fresh["id"], email=fresh["email"], name=fresh["name"],
         phone=fresh.get("phone"), address_line1=fresh.get("address_line1"),
-        address_line2=fresh.get("address_line2"), city=fresh.get("city"),
-        postal_code=fresh.get("postal_code"), country=fresh.get("country"),
+        city=fresh.get("city"), country=fresh.get("country"),
     )
 
 @api_router.put("/auth/password")
