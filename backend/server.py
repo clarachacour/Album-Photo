@@ -1127,7 +1127,10 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
     # everything (this batch plus every other one) together, once.
     if uploaded and album.get("status") == "ready":
         await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
-        background_tasks.add_task(run_ai_processing_incremental, album_id, user["id"], [p["id"] for p in uploaded])
+        # Awaited, not background-tasked — same throttling issue as
+        # /albums/{id}/process (see its comment). Each batch is already
+        # small (~20 photos), so this stays quick even run inline.
+        await run_ai_processing_incremental(album_id, user["id"], [p["id"] for p in uploaded])
 
     return {"uploaded": len(uploaded), "total": len(data.items)}
 
@@ -1833,7 +1836,17 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
     if photo_count == 0:
         raise HTTPException(status_code=400, detail="Ajoutez des photos avant de lancer l'IA")
     await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
-    background_tasks.add_task(run_ai_processing, album_id, user["id"])
+    # Awaited directly, not dispatched via background_tasks — Cloud Run's
+    # request-based billing throttles CPU hard once a request is
+    # considered "done", and a fire-and-forget background task counts as
+    # done the moment this endpoint returns. For a few hundred photos of
+    # real curation work (dedup comparisons, sharpness scoring), that
+    # throttling was turning a job of a couple of minutes into 10+ minutes
+    # that never seemed to finish. Keeping the request open for the whole
+    # duration keeps it on full CPU the whole time — the frontend already
+    # awaits this call before navigating, so no polling logic needs to
+    # change.
+    await run_ai_processing(album_id, user["id"])
     return {"status": "processing", "photo_count": photo_count}
 
 @api_router.get("/albums/{album_id}/status")
@@ -1865,8 +1878,11 @@ async def add_more_photos(
         raise HTTPException(status_code=400, detail="Aucune photo valide n'a pu être ajoutée")
 
     await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
-    background_tasks.add_task(run_ai_processing_incremental, album_id, user["id"], new_ids)
-    return {"status": "processing", "added": len(new_ids)}
+    # Awaited, not background-tasked — same throttling issue as
+    # /albums/{id}/process (see its comment).
+    await run_ai_processing_incremental(album_id, user["id"], new_ids)
+    fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
+    return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(new_ids)}
 
 # ---------- PDF Export ----------
 def get_page_size(size: str, orientation: str):
