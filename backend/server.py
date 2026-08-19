@@ -127,6 +127,16 @@ AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "3"))
 # UPLOAD_CONCURRENCY caused Google to start dropping connections
 # (SSLEOFError / "Max retries exceeded") under load.
 GOOGLE_PHOTOS_CONCURRENCY = int(os.environ.get("GOOGLE_PHOTOS_CONCURRENCY", "4"))
+
+# Optional — the AI-assisted duplicate resolution in _curate_photos only
+# runs when this is set. Without it, curation stays 100% classical (phash +
+# sharpness), same as before. Get a key from Google AI Studio
+# (aistudio.google.com/apikey) and set GEMINI_API_KEY on Cloud Run to
+# enable it. Deliberately the cheapest current vision-capable model — this
+# is called on a handful of ambiguous clusters per album, not per photo, so
+# the extra reasoning power of a bigger model isn't worth the cost here.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 # Shared secret Cloud Scheduler must send to trigger the 30-day draft-album
 # purge (see /internal/cleanup-expired-albums) — without it, anyone who
 # finds the URL could wipe every never-ordered album on demand.
@@ -1436,9 +1446,27 @@ def cluster_by_location(photos: List[dict], threshold_km: float = 1.5) -> List[L
 
 LAYOUT_PATTERN = ["single_full", "dual_vertical", "hero_strip", "single_centered", "quad_grid", "triptych", "dual_horizontal"]
 
-def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx: int = 0) -> List[dict]:
+TEMPLATE_PHOTO_COUNT = {
+    "single_full": 1, "single_centered": 1,
+    "dual_vertical": 2, "dual_horizontal": 2,
+    "triptych": 3,
+    "quad_grid": 4, "hero_strip": 4,
+}
+
+def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx: int = 0, content_pages_budget: Optional[int] = None) -> List[dict]:
     """Distribute photos across pages with varied layouts.
     Returns a list of pages (each with items containing photo refs and positions in normalized 0-1 coordinates).
+
+    content_pages_budget, when given, is how many content pages (not
+    counting the title page) this call must land on exactly — the page
+    count the person chose and is being charged for. Without it, the
+    layout just cycles LAYOUT_PATTERN and produces however many pages the
+    photos happen to fill at that pattern's ~2.4 photos/page average,
+    which routinely undershot a much larger chosen page count with no way
+    to recover afterwards. With a budget, template picks are capped page
+    by page so there's always at least 1 photo left for every remaining
+    page, guaranteeing the exact target whenever there are at least as
+    many photos as pages to fill.
     """
     M = 0.05  # Marge globale de 5%
     usable = 1.0 - (2 * M)  # Espace utile de 0.9 (90% de la page)
@@ -1517,7 +1545,22 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
     remaining = list(photos)
     p_idx = pattern_start_idx
     while remaining:
+        if content_pages_budget is not None:
+            remaining_budget = content_pages_budget - len(pages)
+            if remaining_budget <= 0:
+                break  # target already reached — leftover photos stay unused rather than overshooting
+            max_template_size = max(1, len(remaining) - (remaining_budget - 1))
+        else:
+            max_template_size = 4
+
+        tries = 0
+        while TEMPLATE_PHOTO_COUNT[pattern[p_idx % len(pattern)]] > max_template_size and tries < len(pattern):
+            p_idx += 1
+            tries += 1
         layout_name = pattern[p_idx % len(pattern)]
+        if TEMPLATE_PHOTO_COUNT[layout_name] > max_template_size:
+            layout_name = "single_full"  # always fits — guarantees forward progress even at a 1-photo-per-page budget
+
         slots = layouts[layout_name]
         window_size = min(len(remaining), len(slots) + LOOKAHEAD_EXTRA)
         candidates = remaining[:window_size]
@@ -1552,6 +1595,77 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
         remaining = [p for p in remaining if p["id"] not in used_ids]
         p_idx += 1
     return pages
+
+AMBIGUOUS_CLUSTER_MIN_SIZE = 3  # below this, an AI call isn't worth the cost/latency — a 2-photo cluster splitting wrong loses at most 1 photo
+AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH = 4  # a cluster this pixel-close on its own is almost certainly a real duplicate — skip the AI call entirely rather than spend one confirming the obvious
+
+async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[dict]]:
+    """Asks Gemini whether the photos in a classically-merged cluster are
+    really the same photographed moment, or different photos that just
+    look similar to a crude pixel-hash — exactly where average-hash
+    comparison struggles: a wide sky, open sea, or a sunset can produce
+    near-identical hashes across genuinely different shots, since the hash
+    only sees a coarse 8x8 grayscale gradient, not color or real content.
+
+    Returns a list of sub-groups (each a list of photos to treat as one
+    duplicate cluster) — the classical cluster is split according to the
+    AI's grouping, so multiple representatives can survive out of what
+    classical matching treated as a single duplicate group. On any
+    failure (no API key, network error, malformed response), returns the
+    cluster unchanged as a single group — nothing about the classical
+    result depends on this succeeding."""
+    if not GEMINI_API_KEY or len(cluster) < 2:
+        return [cluster]
+    try:
+        loop = asyncio.get_event_loop()
+        parts = []
+        for p in cluster:
+            read_path = p.get("thumbnail_path") or p["storage_path"]
+            data, _ = await loop.run_in_executor(None, get_object, read_path)
+            parts.append({"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(data).decode("ascii")}})
+        prompt = (
+            f"These are {len(cluster)} photos, numbered 0 to {len(cluster) - 1} in the order given. "
+            "A simple image-similarity check flagged them as possible duplicates of each other. "
+            "Some may genuinely be near-identical shots of the exact same moment (e.g. burst-mode "
+            "frames, or the same subject photographed seconds apart). Others may just be visually "
+            "similar in a generic way — for example several different sunsets, or different patches "
+            "of open water or sky — without being the same photographed moment. "
+            "Group the photo numbers so photos in the same group are the same shot/moment, and "
+            "photos in different groups are genuinely different photos. "
+            "Respond with ONLY a JSON array of arrays of integers (every number 0.."
+            f"{len(cluster) - 1} must appear exactly once), e.g. [[0,1],[2],[3,4]]. No other text."
+        )
+        parts.append({"text": prompt})
+        resp = await loop.run_in_executor(
+            None,
+            lambda: requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+                headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+                json={"contents": [{"parts": parts}], "generationConfig": {"responseMimeType": "application/json"}},
+                timeout=20,
+            ),
+        )
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        groups_idx = json.loads(text)
+
+        seen = set()
+        groups: List[List[dict]] = []
+        for g in groups_idx:
+            sub = []
+            for idx in g:
+                if not isinstance(idx, int) or idx < 0 or idx >= len(cluster) or idx in seen:
+                    raise ValueError(f"Indice invalide ou dupliqué dans la réponse Gemini : {idx}")
+                seen.add(idx)
+                sub.append(cluster[idx])
+            if sub:
+                groups.append(sub)
+        if seen != set(range(len(cluster))):
+            raise ValueError("La réponse Gemini ne couvre pas toutes les photos du groupe")
+        return groups
+    except Exception as e:
+        logger.debug(f"Résolution IA d'un groupe ambigu échouée (on garde le regroupement classique) : {e}")
+        return [cluster]
 
 async def _curate_photos(new_photos: List[dict], existing_selected: Optional[List[dict]] = None) -> List[dict]:
     """Real duplicate/burst detection, fast local best-of-cluster selection,
@@ -1637,6 +1751,44 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
                 break
         if not placed:
             clusters.append([p])
+
+    # ---- 1b. AI-assisted resolution for ambiguous clusters — targeted,
+    # not universal. Only clusters where classical matching is genuinely
+    # uncertain (several photos merged, without being near-pixel-identical)
+    # get a single Gemini call each, asking specifically whether they're
+    # really the same shot or just visually similar in a generic way. Small
+    # clusters and confidently-identical ones are skipped entirely, so a
+    # 795-photo album gets a handful of AI calls, not one per photo — and
+    # with no GEMINI_API_KEY set, this whole step is a no-op and curation
+    # stays 100% classical, same as before. Only clusters made entirely of
+    # NEW photos are eligible — a cluster anchored by an already-existing
+    # photo (the incremental "add more photos" case) is left as-is, since
+    # splitting it would need re-deciding which split points to the
+    # existing anchor, which isn't worth the complexity for that rarer
+    # path. ----
+    ai_clusters_resolved = 0
+    ai_photos_recovered = 0
+    if GEMINI_API_KEY:
+        expanded_clusters: List[List[dict]] = []
+        for cluster in clusters:
+            new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
+            if cluster[0]["id"] in existing_ids or len(new_in_cluster) < AMBIGUOUS_CLUSTER_MIN_SIZE:
+                expanded_clusters.append(cluster)
+                continue
+            max_dist = max(
+                (hamming_distance(a.get("phash"), b.get("phash"))
+                 for i, a in enumerate(new_in_cluster) for b in new_in_cluster[i + 1:]),
+                default=0,
+            )
+            if max_dist <= AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH:
+                expanded_clusters.append(cluster)
+                continue
+            sub_groups = await _resolve_ambiguous_cluster_with_ai(new_in_cluster)
+            if len(sub_groups) > 1:
+                ai_clusters_resolved += 1
+                ai_photos_recovered += len(sub_groups) - 1
+            expanded_clusters.extend(sub_groups)
+        clusters = expanded_clusters
 
     # Diagnostic counters — surfaced via curation_stats on the album, so a
     # surprising outcome (a lot of photos going in, few pages coming out)
@@ -1810,6 +1962,8 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         "duplicates_removed": duplicates_removed,
         "low_sharpness_removed": low_sharpness_removed,
         "redundant_removed": redundant_removed,
+        "ai_clusters_resolved": ai_clusters_resolved,
+        "ai_photos_recovered": ai_photos_recovered,
         "selected": len(selected),
     }
     return selected, stats
@@ -1859,7 +2013,7 @@ async def run_ai_processing(album_id: str, user_id: str):
         selected, curation_stats = await _curate_photos(photos)
         orientation = album.get("orientation", "portrait") if album else "portrait"
         target_pages = album.get("target_pages", 50) if album else 50
-        pages = [title_page] + deterministic_layout(selected, orientation)
+        pages = [title_page] + deterministic_layout(selected, orientation, content_pages_budget=max(0, target_pages - 1))
         pages, fell_short = await _trim_pages_to_target(pages, target_pages)
 
         await db.albums.update_one(
@@ -1871,6 +2025,8 @@ async def run_ai_processing(album_id: str, user_id: str):
             f"→ {curation_stats['duplicates_removed']} duplicates removed, "
             f"{curation_stats['low_sharpness_removed']} rejected for low sharpness, "
             f"{curation_stats['redundant_removed']} thinned as visually redundant, "
+            f"{curation_stats['ai_clusters_resolved']} ambiguous clusters resolved by AI "
+            f"({curation_stats['ai_photos_recovered']} extra photos recovered), "
             f"{len(selected)} selected, {len(pages)} pages"
         )
     except Exception as e:
@@ -1903,7 +2059,7 @@ async def run_ai_processing_incremental(album_id: str, user_id: str, new_photo_i
         orientation = album.get("orientation", "portrait") if album else "portrait"
         existing_pages = (album.get("pages") or []) if album else []
         start_idx = len(existing_pages) % len(LAYOUT_PATTERN)
-        new_pages = deterministic_layout(newly_selected, orientation, pattern_start_idx=start_idx)
+        new_pages = deterministic_layout(newly_selected, orientation, pattern_start_idx=start_idx, content_pages_budget=max(0, (album.get("target_pages", 50) if album else 50) - 1 - max(0, len(existing_pages) - 1)))
         combined_pages = existing_pages + new_pages
         target_pages = album.get("target_pages", 50) if album else 50
         combined_pages, fell_short = await _trim_pages_to_target(combined_pages, target_pages)
@@ -1926,6 +2082,18 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
     photo_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
     if photo_count == 0:
         raise HTTPException(status_code=400, detail="Ajoutez des photos avant de lancer l'IA")
+    # Same hard floor the frontend already blocks on before letting the
+    # person click through — enforced here too since this endpoint is
+    # reachable directly. The layout always uses at least 1 photo per
+    # page, so filling target_pages is mathematically impossible below
+    # this count no matter how good the photos are.
+    target_pages = album.get("target_pages", 50)
+    minimum_required = max(0, target_pages - 1)
+    if photo_count < minimum_required:
+        raise HTTPException(
+            status_code=400,
+            detail=f"At least {minimum_required} photos are required for a {target_pages}-page album ({photo_count} uploaded)",
+        )
     await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
     # Awaited directly, not dispatched via background_tasks — Cloud Run's
     # request-based billing throttles CPU hard once a request is
