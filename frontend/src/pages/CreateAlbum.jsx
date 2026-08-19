@@ -172,7 +172,7 @@ export default function CreateAlbum() {
   const prev = () => setStep((s) => Math.max(s - 1, 0));
 
   const canProceed = () => {
-    if (step === 2) return serverPhotos.length > 0;
+    if (step === 2) return serverPhotos.length >= minimumRequiredPhotos(targetPages);
     return true;
   };
 
@@ -520,10 +520,22 @@ function recommendedMinPhotos(targetPages) {
   return Math.ceil(contentPages * AVG_PHOTOS_PER_PAGE * CURATION_SAFETY_MARGIN);
 }
 
+// The absolute floor: since the layout always uses at least 1 photo per
+// page, filling `targetPages` pages is mathematically impossible with
+// fewer than this many photos, no matter how good they are — unlike
+// recommendedMinPhotos (a soft heuristic accounting for expected curation
+// losses), this one is a hard guarantee and blocks proceeding rather than
+// just warning.
+function minimumRequiredPhotos(targetPages) {
+  return Math.max(0, (targetPages || 0) - 1);
+}
+
 function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages }) {
   const recommended = recommendedMinPhotos(targetPages);
+  const minimum = minimumRequiredPhotos(targetPages);
   const uploaded = serverPhotos.length;
   const enough = uploaded >= recommended;
+  const belowMinimum = uploaded < minimum;
 
   return (
     <section className="animate-fade-up">
@@ -533,12 +545,16 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages }
       </p>
       <div
         className={`text-sm border rounded px-4 py-3 mb-6 ${
-          enough
+          belowMinimum
+            ? "text-red-700 bg-red-50 border-red-200"
+            : enough
             ? "text-emerald-700 bg-emerald-50 border-emerald-200"
             : "text-amber-700 bg-amber-50 border-amber-200"
         }`}
       >
-        {enough
+        {belowMinimum
+          ? `${uploaded} of at least ${minimum} photos required for a ${targetPages}-page album — upload ${minimum - uploaded} more to continue, or choose a smaller page count.`
+          : enough
           ? `${uploaded} photos uploaded — that's enough for your ${targetPages}-page album.`
           : `${uploaded} of the ~${recommended} photos we recommend for a ${targetPages}-page album (some will be rejected as duplicates or too blurry — upload more to fill every page).`}
       </div>
