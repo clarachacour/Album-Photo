@@ -1596,8 +1596,8 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
         p_idx += 1
     return pages
 
-AMBIGUOUS_CLUSTER_MIN_SIZE = 3  # below this, an AI call isn't worth the cost/latency — a 2-photo cluster splitting wrong loses at most 1 photo
-AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH = 4  # a cluster this pixel-close on its own is almost certainly a real duplicate — skip the AI call entirely rather than spend one confirming the obvious
+AMBIGUOUS_CLUSTER_MIN_SIZE = 2  # even a 2-photo cluster is worth a check — low-detail scenes (water, sky, sunsets) can hash close enough to merge as "duplicates" while being genuinely different photos
+AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH = 2  # only near-pixel-identical skips the AI call now — 4 was letting genuinely-different low-detail scenes (water, sky) through as "obviously the same" unchecked
 
 async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[dict]]:
     """Asks Gemini whether the photos in a classically-merged cluster are
@@ -1642,7 +1642,7 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
                 f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
                 headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
                 json={"contents": [{"parts": parts}], "generationConfig": {"responseMimeType": "application/json"}},
-                timeout=20,
+                timeout=30,
             ),
         )
         resp.raise_for_status()
