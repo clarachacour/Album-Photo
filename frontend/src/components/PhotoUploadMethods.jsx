@@ -18,7 +18,7 @@ import { TID } from "@/constants/testIds";
  *   incremental AI processing — `onProcessingStarted` is called so the
  *   caller can show its processing/progress UI.
  */
-export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted }) {
+export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted, afterMethodsRow }) {
   const [drag, setDrag] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -138,6 +138,8 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         </button>
         {albumId && <GooglePhotosImportButton albumId={albumId} onImported={handlePhoneOrGoogleUpdate} />}
       </div>
+
+      {afterMethodsRow}
 
       {showQR && albumId && (
         <MobileUploadQR
