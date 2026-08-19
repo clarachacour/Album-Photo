@@ -1664,7 +1664,7 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
             raise ValueError("La réponse Gemini ne couvre pas toutes les photos du groupe")
         return groups
     except Exception as e:
-        logger.debug(f"Résolution IA d'un groupe ambigu échouée (on garde le regroupement classique) : {e}")
+        logger.warning(f"Résolution IA d'un groupe ambigu échouée (on garde le regroupement classique) : {e}")
         return [cluster]
 
 async def _curate_photos(new_photos: List[dict], existing_selected: Optional[List[dict]] = None) -> List[dict]:
@@ -1768,6 +1768,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     # path. ----
     ai_clusters_resolved = 0
     ai_photos_recovered = 0
+    ai_calls_attempted = 0
     if GEMINI_API_KEY:
         expanded_clusters: List[List[dict]] = []
         for cluster in clusters:
@@ -1783,6 +1784,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             if max_dist <= AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH:
                 expanded_clusters.append(cluster)
                 continue
+            ai_calls_attempted += 1
             sub_groups = await _resolve_ambiguous_cluster_with_ai(new_in_cluster)
             if len(sub_groups) > 1:
                 ai_clusters_resolved += 1
@@ -1963,6 +1965,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         "low_sharpness_removed": low_sharpness_removed,
         "redundant_removed": redundant_removed,
         "ai_clusters_resolved": ai_clusters_resolved,
+        "ai_calls_attempted": ai_calls_attempted,
         "ai_photos_recovered": ai_photos_recovered,
         "selected": len(selected),
     }
@@ -2025,7 +2028,8 @@ async def run_ai_processing(album_id: str, user_id: str):
             f"→ {curation_stats['duplicates_removed']} duplicates removed, "
             f"{curation_stats['low_sharpness_removed']} rejected for low sharpness, "
             f"{curation_stats['redundant_removed']} thinned as visually redundant, "
-            f"{curation_stats['ai_clusters_resolved']} ambiguous clusters resolved by AI "
+            f"{curation_stats['ai_calls_attempted']} ambiguous clusters sent to AI, "
+            f"{curation_stats['ai_clusters_resolved']} split by AI "
             f"({curation_stats['ai_photos_recovered']} extra photos recovered), "
             f"{len(selected)} selected, {len(pages)} pages"
         )
