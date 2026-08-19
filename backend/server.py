@@ -1789,6 +1789,19 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             if len(sub_groups) > 1:
                 ai_clusters_resolved += 1
                 ai_photos_recovered += len(sub_groups) - 1
+                # Step 3b (below) re-checks visual similarity with its own,
+                # cruder classical threshold — without this tag it would
+                # routinely re-merge exactly what the AI just spent a call
+                # confirming were genuinely different photos (e.g. two
+                # different sunsets), silently undoing the AI's judgment.
+                # Two photos only skip step 3b's check when they were both
+                # examined in *this* AI call but landed in *different*
+                # sub-groups — an AI call resolving some OTHER cluster
+                # doesn't affect them.
+                resolution_id = ai_calls_attempted
+                for group_idx, sg in enumerate(sub_groups):
+                    for p in sg:
+                        p["_ai_group"] = (resolution_id, group_idx)
             expanded_clusters.extend(sub_groups)
         clusters = expanded_clusters
 
@@ -1896,6 +1909,13 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     redundant_removed = 0
 
     def _moment_match(p, other):
+        # The AI already looked at these two together and explicitly said
+        # "different photos" — don't let this cruder classical check
+        # silently re-merge them regardless of how visually similar they
+        # look.
+        p_group, o_group = p.get("_ai_group"), other.get("_ai_group")
+        if p_group and o_group and p_group[0] == o_group[0] and p_group[1] != o_group[1]:
+            return False
         dist = hamming_distance(p.get("phash"), other.get("phash"))
         if dist > MOMENT_HASH_THRESHOLD:
             return False
