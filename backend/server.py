@@ -1576,10 +1576,25 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     # drifted a bit (someone stepping sideways, a slightly different crop of
     # the same scene), so those get a looser similarity threshold; photos
     # with no timing signal (or taken far apart) need to look genuinely
-    # closer to each other to be treated as the same shot. ----
+    # closer to each other to be treated as the same shot.
+    #
+    # NOTE: curation_stats from a real 796-photo batch showed this step
+    # responsible for 564 of 566 total removals (nearly all of them) —
+    # BURST_HASH_THRESHOLD=20 on a 64-bit hash means up to 31% of the hash
+    # could differ and two photos taken within 45s still got merged as
+    # "the same shot", which is loose enough to catch genuinely different
+    # framings/subjects photographed close together in time, not just true
+    # bursts. Tightened on both axes (hash distance and time window)
+    # pending a before/after comparison from curation_stats on the next
+    # real batch. ----
     HASH_THRESHOLD = 8
-    BURST_HASH_THRESHOLD = 20
-    BURST_SECONDS = 45
+    BURST_HASH_THRESHOLD = 12
+    BURST_SECONDS = 20
+    # ~50m — "standing in the same spot", a much tighter radius than
+    # cluster_by_location's 1.5km (which groups whole album SECTIONS, not
+    # individual shots) — used as a second anchor for the loose burst
+    # threshold when two photos have GPS but no usable timestamp gap.
+    MOMENT_GPS_KM = 0.05
 
     def _parse_taken_at(p):
         ts = p.get("taken_at")
@@ -1590,10 +1605,22 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         except Exception:
             return None
 
+    def _same_spot(p, other, radius_km):
+        lat1, lng1 = p.get("gps_lat"), p.get("gps_lng")
+        lat2, lng2 = other.get("gps_lat"), other.get("gps_lng")
+        if lat1 is None or lng1 is None or lat2 is None or lng2 is None:
+            return False
+        return haversine_km(lat1, lng1, lat2, lng2) <= radius_km
+
     def _is_match(p, other):
         dist = hamming_distance(p.get("phash"), other.get("phash"))
         t1, t2 = _parse_taken_at(p), _parse_taken_at(other)
         if t1 and t2 and abs((t1 - t2).total_seconds()) <= BURST_SECONDS:
+            return dist <= BURST_HASH_THRESHOLD
+        # No usable timestamp gap (one or both missing, or too far apart) —
+        # GPS is the next-best anchor: photographed from the same spot is
+        # almost as strong a same-subject signal as taken moments apart.
+        if _same_spot(p, other, MOMENT_GPS_KM):
             return dist <= BURST_HASH_THRESHOLD
         return dist <= HASH_THRESHOLD
 
@@ -1691,6 +1718,68 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": False, "is_selected": True}})
             selected.append(rep)
 
+    # ---- 3b. Visual diversity cap — catches near-identical FRAMING of the
+    # same subject that step 1's stricter duplicate check correctly leaves
+    # as distinct photos (different enough pixel-for-pixel to not be flagged
+    # as the "same shot"), but that still reads as repetitive to a person —
+    # e.g. several photos of the same wide view taken a few minutes apart
+    # while wandering around one spot. Only the sharpest photo per "moment"
+    # survives (MAX_PER_MOMENT=1) — the rest are dropped outright, not
+    # spread elsewhere in the album, so the final album doesn't carry
+    # several near-identical frames of the same subject. This also frees up
+    # page space for photos from OTHER moments that would otherwise have
+    # been squeezed out once the page budget ran low.
+    #
+    # Matching cascades through whatever signal two photos actually share —
+    # date, then GPS, then visual similarity alone — instead of requiring a
+    # date on both sides (the original version of this step did, which
+    # meant it silently did nothing at all for photos without EXIF dates,
+    # exactly the photos this cap most needed to cover). ----
+    MOMENT_HASH_THRESHOLD = 16
+    MOMENT_SECONDS = 300
+    MOMENT_HASH_THRESHOLD_NO_ANCHOR = 10  # tighter than MOMENT_HASH_THRESHOLD — no date or GPS to corroborate, so demand a closer visual match before treating two photos as the same moment
+    MAX_PER_MOMENT = 1
+    redundant_removed = 0
+
+    def _moment_match(p, other):
+        dist = hamming_distance(p.get("phash"), other.get("phash"))
+        if dist > MOMENT_HASH_THRESHOLD:
+            return False
+        t1, t2 = _parse_taken_at(p), _parse_taken_at(other)
+        if t1 and t2:
+            return abs((t1 - t2).total_seconds()) <= MOMENT_SECONDS
+        if _same_spot(p, other, MOMENT_GPS_KM):
+            return True
+        # Neither a shared date nor GPS to anchor on — fall back to visual
+        # similarity alone, at a tighter threshold since there's nothing
+        # else corroborating that these are really the same moment.
+        return dist <= MOMENT_HASH_THRESHOLD_NO_ANCHOR
+
+    if selected:
+        moment_clusters: List[List[dict]] = []
+        for p in selected:
+            placed = False
+            for mc in moment_clusters:
+                if any(_moment_match(p, m) for m in mc):
+                    mc.append(p)
+                    placed = True
+                    break
+            if not placed:
+                moment_clusters.append([p])
+
+        thinned = []
+        for mc in moment_clusters:
+            if len(mc) <= MAX_PER_MOMENT:
+                thinned.extend(mc)
+                continue
+            mc_sorted = sorted(mc, key=lambda x: -(x.get("ai_score") or 0))
+            keep, drop = mc_sorted[:MAX_PER_MOMENT], mc_sorted[MAX_PER_MOMENT:]
+            for d in drop:
+                await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+            redundant_removed += len(drop)
+            thinned.extend(keep)
+        selected = thinned
+
     # ---- 4. Group & sort (place / date priority, same rules as the initial pass) ----
     with_gps = [p for p in selected if p.get("gps_lat") is not None and p.get("gps_lng") is not None]
     with_gps_ids = {p["id"] for p in with_gps}
@@ -1720,6 +1809,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         "total_in": len(new_photos),
         "duplicates_removed": duplicates_removed,
         "low_sharpness_removed": low_sharpness_removed,
+        "redundant_removed": redundant_removed,
         "selected": len(selected),
     }
     return selected, stats
@@ -1780,6 +1870,7 @@ async def run_ai_processing(album_id: str, user_id: str):
             f"AI processing complete for album {album_id}: {curation_stats['total_in']} photos in "
             f"→ {curation_stats['duplicates_removed']} duplicates removed, "
             f"{curation_stats['low_sharpness_removed']} rejected for low sharpness, "
+            f"{curation_stats['redundant_removed']} thinned as visually redundant, "
             f"{len(selected)} selected, {len(pages)} pages"
         )
     except Exception as e:
