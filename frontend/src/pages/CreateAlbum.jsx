@@ -64,6 +64,45 @@ function defaultCoverPayload(chosenTemplate) {
   };
 }
 
+const CREATION_STAGES = [
+  "Analyzing images…",
+  "Detecting duplicates…",
+  "Grouping by scene…",
+  "Composing pages…",
+];
+
+function CreationProgressScreen({ progress }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setStage((s) => (s + 1) % CREATION_STAGES.length), 2200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="fixed inset-0 bg-[color:var(--paper)] flex items-center justify-center z-50">
+      <div className="absolute inset-0 grain pointer-events-none" />
+      <div className="text-center max-w-lg px-6 relative">
+        <Sparkles size={32} className="mx-auto text-[color:var(--coral)] mb-8 animate-slow-pulse" />
+        <div className="eyebrow mb-4">AI is composing your edition</div>
+        <div className="font-serif-display text-6xl md:text-7xl tracking-tight mb-6">
+          {Math.round(progress)}%
+        </div>
+        <div className="w-64 h-1 bg-[color:var(--border-soft)] mx-auto mb-8 overflow-hidden">
+          <div
+            className="h-full bg-[color:var(--coral)] transition-all duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="font-serif-display text-xl md:text-2xl text-[color:var(--muted)] italic">
+          {CREATION_STAGES[stage]}
+        </p>
+        <p className="text-sm text-[color:var(--muted)] mt-6">
+          This can take a few minutes for a large album — feel free to stay on this page.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function CreateAlbum() {
   const [params] = useSearchParams();
   const resumeAlbumId = params.get("albumId");
@@ -76,6 +115,7 @@ export default function CreateAlbum() {
   const [coverSel, setCoverSel] = useState(null);
   const [serverPhotos, setServerPhotos] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [creationProgress, setCreationProgress] = useState(0);
   const [resuming, setResuming] = useState(!!resumeAlbumId);
   const nav = useNavigate();
 
@@ -179,15 +219,32 @@ export default function CreateAlbum() {
   const createAndProcess = async () => {
     if (!album) return;
     setBusy(true);
+    setCreationProgress(0);
+    // There's no real progress to report back from a single blocking API
+    // call, so this eases toward 90% over time (asymptotically, never
+    // quite reaching it) — honest, reassuring movement during what can be
+    // a multi-minute wait for a large album, without pretending to know
+    // exactly how far along the AI actually is.
+    const interval = setInterval(() => {
+      setCreationProgress((p) => (p < 90 ? p + (90 - p) * 0.06 : p));
+    }, 400);
     try {
       await api.post(`/albums/${album.id}/process`);
+      clearInterval(interval);
+      setCreationProgress(100);
       toast.success("AI is composing your album...");
-      nav(`/editor/${album.id}?processing=1`);
+      setTimeout(() => nav(`/editor/${album.id}?processing=1`), 500);
     } catch (err) {
+      clearInterval(interval);
       toast.error(err?.response?.data?.detail || "Error during creation");
       setBusy(false);
+      setCreationProgress(0);
     }
   };
+
+  if (busy && step === 2) {
+    return <CreationProgressScreen progress={creationProgress} />;
+  }
 
   if (resuming) {
     return (
@@ -240,7 +297,16 @@ export default function CreateAlbum() {
         )}
 
         {step === 2 && (
-          <StepPhotos albumId={album?.id} serverPhotos={serverPhotos} onServerPhotosChange={setServerPhotos} targetPages={targetPages} />
+          <StepPhotos
+            albumId={album?.id}
+            serverPhotos={serverPhotos}
+            onServerPhotosChange={setServerPhotos}
+            targetPages={targetPages}
+            onBack={prev}
+            onCreate={createAndProcess}
+            canCreate={canProceed()}
+            busy={busy}
+          />
         )}
 
         {/* Nav buttons */}
@@ -530,7 +596,7 @@ function minimumRequiredPhotos(targetPages) {
   return Math.max(0, (targetPages || 0) - 1);
 }
 
-function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages }) {
+function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, onBack, onCreate, canCreate, busy }) {
   const recommended = recommendedMinPhotos(targetPages);
   const minimum = minimumRequiredPhotos(targetPages);
   const uploaded = serverPhotos.length;
@@ -557,6 +623,25 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages }
           : enough
           ? `${uploaded} photos uploaded — that's enough for your ${targetPages}-page album.`
           : `${uploaded} of the ~${recommended} photos we recommend for a ${targetPages}-page album (some will be rejected as duplicates or too blurry — upload more to fill every page).`}
+      </div>
+      {/* Duplicated at the top too — with hundreds of photos uploaded, the
+          grid below can get very tall, and the bottom nav bar (still there,
+          unchanged, for consistency) could end up a long scroll away. */}
+      <div className="mb-8 flex items-center justify-between border-b border-[color:var(--border-soft)] pb-6">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
+        >
+          <ArrowLeft size={16} /> Back
+        </button>
+        <button
+          onClick={onCreate}
+          disabled={!canCreate || busy}
+          className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
+        >
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          <span className="text-sm font-semibold tracking-widest uppercase">Create Album</span>
+        </button>
       </div>
       <PhotoUploadMethods
         albumId={albumId}
