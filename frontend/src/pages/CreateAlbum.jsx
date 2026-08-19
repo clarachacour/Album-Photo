@@ -309,16 +309,19 @@ export default function CreateAlbum() {
           />
         )}
 
-        {/* Nav buttons */}
-        <div className="mt-16 flex items-center justify-between">
-          <button
-            data-testid={TID.wizardBack}
-            onClick={step === 0 ? () => nav("/dashboard") : prev}
-            className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
-          >
-            <ArrowLeft size={16} /> {step === 0 ? "Cancel" : "Back"}
-          </button>
-          {step < STEPS.length - 1 ? (
+        {/* Nav buttons — hidden on the Photos step, where these same
+            actions are shown right under the upload buttons instead (see
+            StepPhotos' afterMethodsRow), so they're never a long scroll
+            away with hundreds of photos uploaded. */}
+        {step !== 2 && (
+          <div className="mt-16 flex items-center justify-between">
+            <button
+              data-testid={TID.wizardBack}
+              onClick={step === 0 ? () => nav("/dashboard") : prev}
+              className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
+            >
+              <ArrowLeft size={16} /> {step === 0 ? "Cancel" : "Back"}
+            </button>
             <button
               data-testid={TID.wizardNext}
               onClick={next}
@@ -328,18 +331,8 @@ export default function CreateAlbum() {
               {busy ? <Loader2 size={16} className="animate-spin" /> : <span className="text-sm font-semibold tracking-widest uppercase">Continue</span>}
               {!busy && <ArrowRight size={16} />}
             </button>
-          ) : (
-            <button
-              data-testid={TID.wizardStartAi}
-              onClick={createAndProcess}
-              disabled={!canProceed() || busy}
-              className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
-            >
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Create Album</span>
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -624,30 +617,29 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
           ? `${uploaded} photos uploaded — that's enough for your ${targetPages}-page album.`
           : `${uploaded} of the ~${recommended} photos we recommend for a ${targetPages}-page album (some will be rejected as duplicates or too blurry — upload more to fill every page).`}
       </div>
-      {/* Duplicated at the top too — with hundreds of photos uploaded, the
-          grid below can get very tall, and the bottom nav bar (still there,
-          unchanged, for consistency) could end up a long scroll away. */}
-      <div className="mb-8 flex items-center justify-between border-b border-[color:var(--border-soft)] pb-6">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-        <button
-          onClick={onCreate}
-          disabled={!canCreate || busy}
-          className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
-        >
-          {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          <span className="text-sm font-semibold tracking-widest uppercase">Create Album</span>
-        </button>
-      </div>
       <PhotoUploadMethods
         albumId={albumId}
         mode="wizard"
         photos={serverPhotos}
         onPhotosChange={onServerPhotosChange}
+        afterMethodsRow={
+          <div className="my-6 flex items-center justify-between border-y border-[color:var(--border-soft)] py-4">
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
+            >
+              <ArrowLeft size={16} /> Back
+            </button>
+            <button
+              onClick={onCreate}
+              disabled={!canCreate || busy}
+              className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
+            >
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              <span className="text-sm font-semibold tracking-widest uppercase">Create Album</span>
+            </button>
+          </div>
+        }
       />
     </section>
   );
