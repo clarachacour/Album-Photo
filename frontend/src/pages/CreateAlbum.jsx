@@ -281,6 +281,7 @@ export default function CreateAlbum() {
             album={album}
             size={size}
             orientation={orientation}
+            targetPages={targetPages}
             template={template}
             coverSel={coverSel}
             setCoverSel={setCoverSel}
@@ -462,6 +463,7 @@ function StepEdit({
   album,
   size,
   orientation,
+  targetPages,
   template,
   coverSel,
   setCoverSel,
@@ -477,10 +479,14 @@ function StepEdit({
 }) {
   const cover = album.cover || {};
   // No photos uploaded yet at this step (cover editing comes before the
-  // "Pictures" step), so there's no real page count to base the spine on —
-  // DEFAULT_PAGE_COUNT_ESTIMATE stands in until AlbumEditor.jsx picks up
-  // the real album.pages.length.
-  const spineFr = spineRatio(size, orientation, DEFAULT_PAGE_COUNT_ESTIMATE);
+  // "Pictures" step), so the *final* page count (after AI curation) isn't
+  // known yet — but the person's chosen target_pages already is (set back
+  // in the Format step), and is a much more accurate stand-in than a fixed
+  // generic estimate: a 200-page album now visibly gets a thicker spine
+  // than a 20-page one immediately, instead of both looking identical
+  // until the AI actually runs. AlbumEditor.jsx switches to the real,
+  // final album.pages.length once that's known.
+  const spineFr = spineRatio(size, orientation, targetPages || DEFAULT_PAGE_COUNT_ESTIMATE);
 
   return (
     <section className="animate-fade-up grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
