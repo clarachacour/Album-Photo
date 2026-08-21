@@ -424,7 +424,7 @@ export const COVER_THEMES = [
           spine_caption_size: 22,
           spine_caption_weight: "600",
           spine_caption_y: 0.52,
-          spine_caption_h: 0.3,
+          spine_caption_h: 0.42,
           extra_items: [
             textItem("definition", "Mom | noun", { x: 0.1, y: 0.5, w: 0.7, h: 0.06, font: CORMORANT, font_style: "italic", font_weight: "500", font_size: 16, color: "#EFE6DD" }),
             lineItem({ x: 0.1, y: 0.565, w: 0.55, h: 0.003 }, "#EFE6DD"),
@@ -461,7 +461,7 @@ export const COVER_THEMES = [
           spine_caption_size: 22,
           spine_caption_weight: "600",
           spine_caption_y: 0.52,
-          spine_caption_h: 0.3,
+          spine_caption_h: 0.42,
           extra_items: [
             textItem("definition", "Dad | noun", { x: 0.1, y: 0.5, w: 0.7, h: 0.06, font: CORMORANT, font_style: "italic", font_weight: "500", font_size: 16, color: "#D9C6A3" }),
             lineItem({ x: 0.1, y: 0.565, w: 0.55, h: 0.003 }, "#D9C6A3"),
@@ -504,7 +504,7 @@ export const COVER_THEMES = [
           spine_caption_size: 22,
           spine_caption_weight: "600",
           spine_caption_y: 0.47,
-          spine_caption_h: 0.3,
+          spine_caption_h: 0.42,
           extra_items: [
             textItem("definition", "Best friends | noun", { x: 0.1, y: 0.5, w: 0.75, h: 0.06, font: CORMORANT, font_style: "italic", font_weight: "500", font_size: 16, color: "#E8E3D8" }),
             lineItem({ x: 0.1, y: 0.565, w: 0.55, h: 0.003 }, "#E8E3D8"),
