@@ -524,9 +524,9 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             className="absolute left-1/2 top-1/2 pointer-events-none"
             style={{
               width: "1.6px",
-              height: "140%",
+              height: "100%",
               background: cover.spine_caption_color || text,
-              transform: "translate(-50%, -50%) rotate(-45deg)",
+              transform: "translate(-50%, -50%)",
             }}
           />
         </DraggableItem>
