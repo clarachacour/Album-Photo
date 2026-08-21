@@ -515,7 +515,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
               width: "1.6px",
               height: "140%",
               background: cover.spine_caption_color || text,
-              transform: "translate(-50%, -50%) rotate(45deg)",
+              transform: "translate(-50%, -50%) rotate(-45deg)",
             }}
           />
         </DraggableItem>
@@ -559,7 +559,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             />
           ) : (
           <div
-            className="w-full h-full flex items-center justify-center font-sans overflow-hidden pointer-events-none select-none"
+            className="w-full h-full flex items-start justify-center font-sans overflow-hidden pointer-events-none select-none"
             style={{
               color: cover.spine_caption_color || text,
               writingMode: "vertical-rl",
