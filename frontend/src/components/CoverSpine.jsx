@@ -134,13 +134,9 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const titleItem = {
     id: "spine-title",
     x: 0,
-    // With the rotation direction just flipped (no more extra 180° flip
-    // on top of vertical-rl), the visual top-to-bottom position now
-    // matches reading order again — title back on top, first to read.
-    // 0.26 centers the combined block (title_h + subtitle_h ≈ 0.48 by
-    // default) on the spine, rather than pinning it near the top with all
-    // the leftover space dumped at the bottom.
-    y: cover.spine_title_y ?? 0.26,
+    // Pinned near the very top of the spine, with just a small margin so
+    // it doesn't touch the edge — not centered.
+    y: cover.spine_title_y ?? 0.05,
     w: 1,
     // Generous enough that a long title word (e.g. "Barcelona",
     // "Thailand") is limited by the width-based max font size, not by
