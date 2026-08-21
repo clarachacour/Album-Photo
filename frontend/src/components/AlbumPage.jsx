@@ -733,14 +733,28 @@ export function CoverFrontPage({
   // the selection frame matches the title instead of leaving empty space
   // below it (the subtitle, positioned right at the box's bottom edge,
   // then sits right under the real text too). Manual resizing by the user
-  // still writes to title_h as before via onUpdateTitle. Skipped entirely
-  // for vertical-writing-mode titles ("Notre Rencontre", "Our Year") — a
-  // rotated title's real footprint isn't a simple line-height calculation,
-  // and hugging it the same way collapsed the box to a sliver, making the
-  // title effectively unselectable/undraggable.
+  // still writes to title_h as before via onUpdateTitle.
   const titleLineCount = (titleWritingMode || titleSingleLine) ? 1 : String(title || "").split(" ").length;
+  // Vertical-writing-mode titles ("Notre Rencontre", "Our Year") hug to
+  // their real rendered length too — inverts the same formula
+  // useFitTitleFontSize used to fit them, so the box always matches
+  // whatever the text actually rendered at, not the raw stored title_h.
+  const verticalTitleMeasured = containerWidth && titleWritingMode
+    ? Math.max(1, measureDomTextWidth(String(title || ""), {
+        fontPx: 100,
+        fontWeight: titleWeight,
+        fontFamily: titleFont,
+        letterSpacing: "-0.025em",
+        uppercase: titleUppercase,
+      }))
+    : 0;
   const visualTitleH =
-    containerWidth && !titleWritingMode
+    containerWidth && titleWritingMode
+      // Floor of 0.12 avoids regressing into an unusably thin selection
+      // target — a past attempt at hugging this box collapsed it to a
+      // sliver that was hard to click or drag.
+      ? Math.max(0.12, Math.min(titleH, (fittedTitleFontSizePx * verticalTitleMeasured / 100 / 0.92) / (containerWidth * pageAspect)))
+      : containerWidth && !titleWritingMode
       ? Math.min(titleH, (fittedTitleFontSizePx * 0.95 * titleLineCount) / (containerWidth * pageAspect))
       : titleH;
 
@@ -804,8 +818,9 @@ export function CoverFrontPage({
                 fontStyle: titleFontStyle,
                 textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
+                transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
                 writingMode: titleWritingMode || undefined,
-                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.1em" : undefined,
+                wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
               }}
               data-testid="cover-title-input"
             />
@@ -821,7 +836,7 @@ export function CoverFrontPage({
                 fontSize: titleFontSizeStyle,
                 transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
                 writingMode: titleWritingMode || undefined,
-                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.1em" : undefined,
+                wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
                 whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
               }}
             >
@@ -850,7 +865,7 @@ export function CoverFrontPage({
             fontSize: titleFontSizeStyle,
             transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
             writingMode: titleWritingMode || undefined,
-            wordSpacing: titleWritingMode === "vertical-rl" ? "-0.1em" : undefined,
+            wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
             whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
           }}
         >
