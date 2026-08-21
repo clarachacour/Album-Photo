@@ -43,10 +43,14 @@ function useElementWidth(ref) {
 // The spine column's width is now proportional (see printDims.js) instead
 // of a fixed 32px, so the safe max font size — the text's *thickness* in
 // vertical-rl — is computed from the spine's actual measured width instead
-// of a hardcoded constant. 0.9 mirrors the original 29px-for-32px-column
-// ratio (a little under the full column width, so text never brushes the
-// edges), and now simply scales with however wide the column actually is.
-const SPINE_MAX_FONT_RATIO = 0.9;
+// of a hardcoded constant. Above 1.0 lets letters use very slightly more
+// than the raw column width (a small, deliberate bit of bleed most printed
+// spines have anyway) — a shorter word (e.g. "Sicily") needs thicker
+// letters than a longer one (e.g. "Barcelona") to cover a similar share of
+// the spine's length, and 0.9 was clamping short words well below that,
+// even with a generous box height, since height stops mattering entirely
+// once a word's font size is capped by width.
+const SPINE_MAX_FONT_RATIO = 1.05;
 const SPINE_MAX_FONT_FALLBACK_PX = 29; // used only before the column's real width is known (first paint)
 
 function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, title, baseFontSize, fontFamily, fontWeight, upright }) {
@@ -130,18 +134,23 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const titleItem = {
     id: "spine-title",
     x: 0,
-    y: cover.spine_title_y ?? 0.08,
+    y: cover.spine_title_y ?? 0.06,
     w: 1,
-    h: cover.spine_title_h ?? 0.8,
+    // Generous enough that a long title word (e.g. "Barcelona",
+    // "Thailand") is limited by the width-based max font size, not by
+    // running out of box height first — height only sets a ceiling, the
+    // actual rendered size still can't exceed what the spine's real width
+    // allows.
+    h: cover.spine_title_h ?? 0.5,
   };
   const subtitleItem = {
     id: "spine-subtitle",
     x: 0,
-    // Defaults to right after the title box, roughly where the old inline
-    // rendering used to sit, so existing templates don't visually jump.
+    // Defaults to right after the title box, so title and subtitle always
+    // run one after the other with no gap, title first.
     y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
     w: 1,
-    h: cover.spine_subtitle_h ?? 0.12,
+    h: cover.spine_subtitle_h ?? 0.34,
   };
   const yearItem = {
     id: "spine-year",
