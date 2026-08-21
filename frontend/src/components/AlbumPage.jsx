@@ -805,7 +805,7 @@ export function CoverFrontPage({
                 textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
                 writingMode: titleWritingMode || undefined,
-                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.6em" : undefined,
+                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.1em" : undefined,
               }}
               data-testid="cover-title-input"
             />
@@ -821,7 +821,7 @@ export function CoverFrontPage({
                 fontSize: titleFontSizeStyle,
                 transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
                 writingMode: titleWritingMode || undefined,
-                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.6em" : undefined,
+                wordSpacing: titleWritingMode === "vertical-rl" ? "-0.1em" : undefined,
                 whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
               }}
             >
@@ -850,7 +850,7 @@ export function CoverFrontPage({
             fontSize: titleFontSizeStyle,
             transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
             writingMode: titleWritingMode || undefined,
-            wordSpacing: titleWritingMode === "vertical-rl" ? "-0.6em" : undefined,
+            wordSpacing: titleWritingMode === "vertical-rl" ? "-0.1em" : undefined,
             whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
           }}
         >
