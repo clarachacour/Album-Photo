@@ -131,23 +131,16 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const [subtitleEditing, setSubtitleEditing] = useState(false);
   const [captionEditing, setCaptionEditing] = useState(false);
 
-  const subtitleItem = {
-    id: "spine-subtitle",
-    x: 0,
-    // Comes first in the box order now — with the text rotated (not
-    // upright), the visual top-to-bottom position reads *last* once
-    // someone tilts their head to read it, so the subtitle needs to sit
-    // above the title in y-position for the title to actually read first.
-    y: cover.spine_subtitle_y ?? 0.06,
-    w: 1,
-    h: cover.spine_subtitle_h ?? 0.18,
-  };
   const titleItem = {
     id: "spine-title",
     x: 0,
-    // Defaults to right after the subtitle box, so the two always run one
-    // after the other with no gap.
-    y: cover.spine_title_y ?? (subtitleItem.y + subtitleItem.h),
+    // With the rotation direction just flipped (no more extra 180° flip
+    // on top of vertical-rl), the visual top-to-bottom position now
+    // matches reading order again — title back on top, first to read.
+    // 0.26 centers the combined block (title_h + subtitle_h ≈ 0.48 by
+    // default) on the spine, rather than pinning it near the top with all
+    // the leftover space dumped at the bottom.
+    y: cover.spine_title_y ?? 0.26,
     w: 1,
     // Generous enough that a long title word (e.g. "Barcelona",
     // "Thailand") is limited by the width-based max font size, not by
@@ -156,6 +149,15 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     // same cap (extra height beyond the cap threshold doesn't make the
     // text any bigger, it just adds dead space).
     h: cover.spine_title_h ?? 0.3,
+  };
+  const subtitleItem = {
+    id: "spine-subtitle",
+    x: 0,
+    // Defaults to right after the title box, so the two always run one
+    // after the other with no gap.
+    y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
+    w: 1,
+    h: cover.spine_subtitle_h ?? 0.18,
   };
   const yearItem = {
     id: "spine-year",
@@ -324,7 +326,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
                 color: cover.spine_title_color || text,
                 writingMode: "vertical-rl",
                 textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
-                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                transform: undefined,
                 fontSize: spineTitleFontSizeStyle,
                 fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
                 fontWeight: cover.spine_title_weight || "700",
@@ -339,7 +341,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
               color: cover.spine_title_color || text,
               writingMode: "vertical-rl",
               textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
-              transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+              transform: undefined,
               fontSize: spineTitleFontSizeStyle,
               fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
               fontWeight: cover.spine_title_weight || "700",
@@ -380,7 +382,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
                 color: cover.spine_subtitle_color || text,
                 writingMode: "vertical-rl",
                 textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
-                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                transform: undefined,
                 fontSize: spineSubtitleFontSizeStyle,
                 fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
                 fontWeight: cover.spine_subtitle_weight || "600",
@@ -395,7 +397,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
                 color: cover.spine_subtitle_color || text,
                 writingMode: "vertical-rl",
                 textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
-                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                transform: undefined,
                 fontSize: spineSubtitleFontSizeStyle,
                 fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
                 fontWeight: cover.spine_subtitle_weight || "600",
@@ -423,7 +425,6 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             style={{
               color: text,
               writingMode: "vertical-rl",
-              transform: "rotate(180deg)",
               fontSize: `${(((cover.spine_year_size || 9) / 608) * 100).toFixed(2)}cqh`,
               fontFamily: cover.spine_year_font || "'Manrope', sans-serif",
               fontWeight: cover.spine_year_weight || "700",
@@ -486,7 +487,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
                 color: cover.spine_caption_color || text,
                 writingMode: "vertical-rl",
                 textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
-                transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+                transform: undefined,
                 fontSize: spineCaptionFontSizeStyle,
                 fontFamily: cover.spine_caption_font || "'Manrope', sans-serif",
                 fontWeight: cover.spine_caption_weight || "600",
@@ -501,7 +502,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
               color: cover.spine_caption_color || text,
               writingMode: "vertical-rl",
               textOrientation: cover.spine_text_orientation === "upright" ? "upright" : "mixed",
-              transform: cover.spine_text_orientation === "upright" ? undefined : "rotate(180deg)",
+              transform: undefined,
               whiteSpace: "pre",
               fontSize: spineCaptionFontSizeStyle,
               fontFamily: cover.spine_caption_font || "'Manrope', sans-serif",
