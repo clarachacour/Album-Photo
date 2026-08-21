@@ -125,24 +125,50 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const containerHeight = useElementHeight(containerRef);
   const containerWidth = useElementWidth(containerRef);
   const spineMaxFontPx = containerWidth ? containerWidth * SPINE_MAX_FONT_RATIO : SPINE_MAX_FONT_FALLBACK_PX;
-  // The default box-height fractions below (0.3, 0.18) were calibrated for
-  // a moderately thin spine. A physically thicker spine (a higher chosen
-  // page count) has a bigger width-to-height ratio — this scales the box
-  // heights up proportionally with it, so the text's LENGTH along the
-  // spine grows along with a wider spine too, not just its thickness
-  // (which already scales on its own via the width-based font cap,
-  // spineMaxFontPx above). Without this, the same-length text just looks
-  // lost in the extra width on a thick book, even though nothing about it
-  // actually shrank. Clamped so a very thin or very thick spine doesn't
-  // produce an absurd box size.
-  const REFERENCE_SPINE_ASPECT = 0.054; // ≈ a 16mm-thick spine on an A4-portrait book — the thinnest normal case, and what the defaults below were tuned against
-  const spineAspect = containerWidth && containerHeight ? containerWidth / containerHeight : REFERENCE_SPINE_ASPECT;
-  const spineSizeScale = Math.max(1, Math.min(3, spineAspect / REFERENCE_SPINE_ASPECT));
   const bg = cover.bg_color || template.bg;
   const text = cover.text_color || template.text;
   const [titleEditing, setTitleEditing] = useState(false);
   const [subtitleEditing, setSubtitleEditing] = useState(false);
   const [captionEditing, setCaptionEditing] = useState(false);
+
+  // Exact box-height computation, instead of a fixed or scaled fraction:
+  // each box is sized to precisely match what its text needs to render at
+  // its target font size — title targets the full width-based cap
+  // (spineMaxFontPx); subtitle deliberately targets a fraction of it, so
+  // it reads as clearly secondary rather than matching the title 1:1.
+  // Sizing the box this way (inverting the same formula the fitting hook
+  // below uses) is what actually eliminates both overlap (a box too small
+  // for the size its text is entitled to render at) and dead gaps (a box
+  // too big for it) at once — and it adapts automatically to word length
+  // and to spine width, without a separately hand-tuned scale factor that
+  // can drift out of sync with the real font-fitting math.
+  const SUBTITLE_TO_TITLE_RATIO = 0.6; // subtitle renders at ~60% of the title's font size — "a little smaller", not tiny
+  const SPINE_SAFETY = 0.86; // mirrors the SAFETY margin used inside useFitSpineFontSize
+  const REF_PX = 100;
+  const titleText = String(cover.spine_title_text || title || "Album");
+  const subtitleText = String(cover.spine_subtitle || "");
+  const titleFontSpec = {
+    fontPx: REF_PX,
+    fontWeight: cover.spine_title_weight || 700,
+    fontFamily: cover.spine_title_font || "'Manrope', sans-serif",
+    letterSpacing: "-0.025em",
+    uppercase: true,
+  };
+  const subtitleFontSpec = {
+    fontPx: REF_PX,
+    fontWeight: cover.spine_subtitle_weight || 600,
+    fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
+    letterSpacing: "-0.025em",
+    uppercase: true,
+  };
+  const titleMeasuredRef = containerWidth && containerHeight ? measureDomTextWidth(titleText, titleFontSpec) : 0;
+  const subtitleMeasuredRef = containerWidth && containerHeight && subtitleText ? measureDomTextWidth(subtitleText, subtitleFontSpec) : 0;
+  const defaultTitleH = titleMeasuredRef
+    ? Math.min(0.6, (spineMaxFontPx * titleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
+    : 0.3;
+  const defaultSubtitleH = subtitleMeasuredRef
+    ? Math.min(0.4, (spineMaxFontPx * SUBTITLE_TO_TITLE_RATIO * subtitleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
+    : 0.18;
 
   const titleItem = {
     id: "spine-title",
@@ -151,13 +177,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     // it doesn't touch the edge — not centered.
     y: cover.spine_title_y ?? 0.05,
     w: 1,
-    // Generous enough that a long title word (e.g. "Barcelona",
-    // "Thailand") is limited by the width-based max font size, not by
-    // running out of box height first — but not so generous that it
-    // leaves a visible empty gap for shorter words once they hit that
-    // same cap (extra height beyond the cap threshold doesn't make the
-    // text any bigger, it just adds dead space).
-    h: cover.spine_title_h ?? 0.3 * spineSizeScale,
+    h: cover.spine_title_h ?? defaultTitleH,
   };
   const subtitleItem = {
     id: "spine-subtitle",
@@ -166,7 +186,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     // after the other with no gap.
     y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
     w: 1,
-    h: cover.spine_subtitle_h ?? 0.18 * spineSizeScale,
+    h: cover.spine_subtitle_h ?? defaultSubtitleH,
   };
   const yearItem = {
     id: "spine-year",
@@ -386,7 +406,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
                 if (e.key === "Escape" || e.key === "Enter") { e.currentTarget.blur(); }
                 e.stopPropagation();
               }}
-              className="w-full h-full bg-transparent border-0 outline-none resize-none text-center"
+              className="w-full h-full bg-transparent border-0 outline-none resize-none text-center uppercase"
               style={{
                 color: cover.spine_subtitle_color || text,
                 writingMode: "vertical-rl",
@@ -401,7 +421,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             />
           ) : (
             <div
-              className="w-full h-full flex items-center justify-center font-sans overflow-hidden pointer-events-none select-none whitespace-nowrap"
+              className="w-full h-full flex items-center justify-center font-sans uppercase overflow-hidden pointer-events-none select-none whitespace-nowrap"
               style={{
                 color: cover.spine_subtitle_color || text,
                 writingMode: "vertical-rl",
