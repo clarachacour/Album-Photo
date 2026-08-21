@@ -131,26 +131,31 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const [subtitleEditing, setSubtitleEditing] = useState(false);
   const [captionEditing, setCaptionEditing] = useState(false);
 
-  const titleItem = {
-    id: "spine-title",
-    x: 0,
-    y: cover.spine_title_y ?? 0.06,
-    w: 1,
-    // Generous enough that a long title word (e.g. "Barcelona",
-    // "Thailand") is limited by the width-based max font size, not by
-    // running out of box height first — height only sets a ceiling, the
-    // actual rendered size still can't exceed what the spine's real width
-    // allows.
-    h: cover.spine_title_h ?? 0.5,
-  };
   const subtitleItem = {
     id: "spine-subtitle",
     x: 0,
-    // Defaults to right after the title box, so title and subtitle always
-    // run one after the other with no gap, title first.
-    y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
+    // Comes first in the box order now — with the text rotated (not
+    // upright), the visual top-to-bottom position reads *last* once
+    // someone tilts their head to read it, so the subtitle needs to sit
+    // above the title in y-position for the title to actually read first.
+    y: cover.spine_subtitle_y ?? 0.06,
     w: 1,
-    h: cover.spine_subtitle_h ?? 0.34,
+    h: cover.spine_subtitle_h ?? 0.18,
+  };
+  const titleItem = {
+    id: "spine-title",
+    x: 0,
+    // Defaults to right after the subtitle box, so the two always run one
+    // after the other with no gap.
+    y: cover.spine_title_y ?? (subtitleItem.y + subtitleItem.h),
+    w: 1,
+    // Generous enough that a long title word (e.g. "Barcelona",
+    // "Thailand") is limited by the width-based max font size, not by
+    // running out of box height first — but not so generous that it
+    // leaves a visible empty gap for shorter words once they hit that
+    // same cap (extra height beyond the cap threshold doesn't make the
+    // text any bigger, it just adds dead space).
+    h: cover.spine_title_h ?? 0.3,
   };
   const yearItem = {
     id: "spine-year",
