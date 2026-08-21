@@ -204,14 +204,16 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     w: 1,
     h: cover.spine_year_h ?? 0.14,
   };
-  // Same exact-fit approach as title/subtitle above, aligned with the
-  // caption's own font-fitting effect further down (same 0.9 safety
-  // factor, same uppercase: false — the caption text is already typed in
-  // caps in the theme configs, there's no separate CSS transform on it).
-  // A fixed spine_caption_h was previously the only option, and no single
-  // fixed value worked at every spine width — too small on a wide (high
-  // page-count) spine where the width cap no longer masked it, too big on
-  // others, leaving a large gap after the divider.
+  // The caption's underlying box (captionItem.h) is kept generously sized
+  // — it only sets the *ceiling* the font-fitting effect below can grow
+  // into, up to the width-based cap. The *visual* frame the person
+  // actually sees (visualCaptionH, computed further down once the real
+  // fitted font size is known) hugs the text tightly instead — deriving
+  // the box size from a value computed independently, ahead of knowing
+  // the actual fitted result, was consistently a bit off from what
+  // actually rendered. This mirrors visualTitleH's approach for the front
+  // cover title (see AlbumPage.jsx) — always derive the visible box from
+  // the font size that was actually used, never a separate estimate of it.
   const captionMeasuredRef = containerWidth && containerHeight && cover.spine_caption
     ? measureDomTextWidth(String(cover.spine_caption), {
         fontPx: REF_PX,
@@ -221,15 +223,12 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
         uppercase: false,
       })
     : 0;
-  const defaultCaptionH = captionMeasuredRef
-    ? Math.min(0.7, (spineMaxFontPx * captionMeasuredRef / REF_PX / 0.9) / containerHeight)
-    : 0.16;
   const captionItem = {
     id: "spine-caption",
     x: 0,
     y: cover.spine_caption_y ?? 0.82,
     w: 1,
-    h: cover.spine_caption_h ?? defaultCaptionH,
+    h: cover.spine_caption_h ?? 0.5,
   };
   const dividerItem = {
     id: "spine-divider",
@@ -315,6 +314,18 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const spineCaptionFontSizeStyle = containerHeight
     ? `${captionIsMultiLine ? fittedCaptionFontSizePx : fittedSpineFontSizePx}px`
     : `${(((cover.spine_caption_size || 9) / 608) * 100).toFixed(2)}cqh`;
+  // Derived from whichever font size is *actually* rendered above (title's
+  // size for a single-line caption, the caption's own fit for a
+  // multi-line one) rather than a separate estimate computed ahead of
+  // time — that estimate routinely diverged from the real result,
+  // leaving a visible gap between a too-big box and the actual text.
+  const actualCaptionFontPx = containerHeight
+    ? (captionIsMultiLine ? fittedCaptionFontSizePx : fittedSpineFontSizePx)
+    : 0;
+  const visualCaptionH =
+    containerHeight && actualCaptionFontPx && captionMeasuredRef
+      ? Math.min(captionItem.h, (actualCaptionFontPx * captionMeasuredRef / REF_PX / 0.9) / containerHeight)
+      : captionItem.h;
   // The subtitle renders smaller than the title (0.72x, matching the ratio
   // the fit calculation above assumes) unless the template set its own
   // explicit spine_subtitle_size.
@@ -522,7 +533,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
       )}
       {cover.spine_caption && (
         <DraggableItem
-          item={captionItem}
+          item={{ ...captionItem, h: visualCaptionH }}
           onChange={(patch) => onUpdateCover && onUpdateCover({ spine_caption_y: patch.y ?? captionItem.y, spine_caption_h: patch.h ?? captionItem.h })}
           onSelect={() => onSelectCaption && onSelectCaption()}
           onDoubleClick={() => setCaptionEditing(true)}
@@ -559,7 +570,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             />
           ) : (
           <div
-            className="w-full h-full flex items-start justify-center font-sans overflow-hidden pointer-events-none select-none"
+            className="w-full h-full flex items-center justify-center font-sans overflow-hidden pointer-events-none select-none"
             style={{
               color: cover.spine_caption_color || text,
               writingMode: "vertical-rl",
