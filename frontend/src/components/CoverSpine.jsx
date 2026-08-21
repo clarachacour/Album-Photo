@@ -52,6 +52,7 @@ function useElementWidth(ref) {
 // once a word's font size is capped by width.
 const SPINE_MAX_FONT_RATIO = 1.05;
 const SPINE_MAX_FONT_FALLBACK_PX = 29; // used only before the column's real width is known (first paint)
+const SPINE_TITLE_SUBTITLE_GAP = 0.02; // small breathing room between the two, as a fraction of the spine's height
 
 function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, title, baseFontSize, fontFamily, fontWeight, upright }) {
   const [fontSize, setFontSize] = useState(baseFontSize || 9);
@@ -182,9 +183,11 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const subtitleItem = {
     id: "spine-subtitle",
     x: 0,
-    // Defaults to right after the title box, so the two always run one
-    // after the other with no gap.
-    y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
+    // A small gap after the title box — SPINE_TITLE_SUBTITLE_GAP is a
+    // fraction of the spine's height, not tied to either box's own size,
+    // so it stays a small, consistent breathing room regardless of word
+    // length or spine width.
+    y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h + SPINE_TITLE_SUBTITLE_GAP),
     w: 1,
     h: cover.spine_subtitle_h ?? defaultSubtitleH,
   };
