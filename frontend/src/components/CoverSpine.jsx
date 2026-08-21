@@ -125,6 +125,19 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const containerHeight = useElementHeight(containerRef);
   const containerWidth = useElementWidth(containerRef);
   const spineMaxFontPx = containerWidth ? containerWidth * SPINE_MAX_FONT_RATIO : SPINE_MAX_FONT_FALLBACK_PX;
+  // The default box-height fractions below (0.3, 0.18) were calibrated for
+  // a moderately thin spine. A physically thicker spine (a higher chosen
+  // page count) has a bigger width-to-height ratio — this scales the box
+  // heights up proportionally with it, so the text's LENGTH along the
+  // spine grows along with a wider spine too, not just its thickness
+  // (which already scales on its own via the width-based font cap,
+  // spineMaxFontPx above). Without this, the same-length text just looks
+  // lost in the extra width on a thick book, even though nothing about it
+  // actually shrank. Clamped so a very thin or very thick spine doesn't
+  // produce an absurd box size.
+  const REFERENCE_SPINE_ASPECT = 0.054; // ≈ a 16mm-thick spine on an A4-portrait book — the thinnest normal case, and what the defaults below were tuned against
+  const spineAspect = containerWidth && containerHeight ? containerWidth / containerHeight : REFERENCE_SPINE_ASPECT;
+  const spineSizeScale = Math.max(1, Math.min(3, spineAspect / REFERENCE_SPINE_ASPECT));
   const bg = cover.bg_color || template.bg;
   const text = cover.text_color || template.text;
   const [titleEditing, setTitleEditing] = useState(false);
@@ -144,7 +157,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     // leaves a visible empty gap for shorter words once they hit that
     // same cap (extra height beyond the cap threshold doesn't make the
     // text any bigger, it just adds dead space).
-    h: cover.spine_title_h ?? 0.3,
+    h: cover.spine_title_h ?? 0.3 * spineSizeScale,
   };
   const subtitleItem = {
     id: "spine-subtitle",
@@ -153,7 +166,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     // after the other with no gap.
     y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h),
     w: 1,
-    h: cover.spine_subtitle_h ?? 0.18,
+    h: cover.spine_subtitle_h ?? 0.18 * spineSizeScale,
   };
   const yearItem = {
     id: "spine-year",
