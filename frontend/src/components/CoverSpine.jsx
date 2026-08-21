@@ -312,7 +312,11 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             fontWeight: cover.spine_subtitle_weight || "600",
             fontFamily: cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif",
             letterSpacing: "-0.025em",
-            uppercase: false,
+            // Must match the actual rendered casing (the subtitle is
+            // forced uppercase via CSS) — measuring the un-uppercased text
+            // undershoots real letter width and made the fitted font size
+            // too big for what actually gets rendered, cropping it.
+            uppercase: true,
           });
       setFittedSubtitleFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / Math.max(1, measured)) * 0.86, spineMaxFontPx)));
     };
