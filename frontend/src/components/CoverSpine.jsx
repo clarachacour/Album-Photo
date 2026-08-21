@@ -164,11 +164,17 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   };
   const titleMeasuredRef = containerWidth && containerHeight ? measureDomTextWidth(titleText, titleFontSpec) : 0;
   const subtitleMeasuredRef = containerWidth && containerHeight && subtitleText ? measureDomTextWidth(subtitleText, subtitleFontSpec) : 0;
+  // The 0.75/0.55 ceilings here are only a last-resort safety net (e.g.
+  // against a stray measurement glitch before layout has settled) — they
+  // should essentially never be the thing determining a real word's box
+  // size. They were previously much tighter (0.6/0.4) and that was
+  // actively clipping legitimately long words (e.g. "Southeast Asia",
+  // "Africa") instead of just guarding against edge cases.
   const defaultTitleH = titleMeasuredRef
-    ? Math.min(0.6, (spineMaxFontPx * titleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
+    ? Math.min(0.75, (spineMaxFontPx * titleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
     : 0.3;
   const defaultSubtitleH = subtitleMeasuredRef
-    ? Math.min(0.4, (spineMaxFontPx * SUBTITLE_TO_TITLE_RATIO * subtitleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
+    ? Math.min(0.55, (spineMaxFontPx * SUBTITLE_TO_TITLE_RATIO * subtitleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
     : 0.18;
 
   const titleItem = {
