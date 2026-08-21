@@ -204,12 +204,32 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     w: 1,
     h: cover.spine_year_h ?? 0.14,
   };
+  // Same exact-fit approach as title/subtitle above, aligned with the
+  // caption's own font-fitting effect further down (same 0.9 safety
+  // factor, same uppercase: false — the caption text is already typed in
+  // caps in the theme configs, there's no separate CSS transform on it).
+  // A fixed spine_caption_h was previously the only option, and no single
+  // fixed value worked at every spine width — too small on a wide (high
+  // page-count) spine where the width cap no longer masked it, too big on
+  // others, leaving a large gap after the divider.
+  const captionMeasuredRef = containerWidth && containerHeight && cover.spine_caption
+    ? measureDomTextWidth(String(cover.spine_caption), {
+        fontPx: REF_PX,
+        fontWeight: cover.spine_caption_weight || 600,
+        fontFamily: cover.spine_caption_font || "'Manrope', sans-serif",
+        letterSpacing: "normal",
+        uppercase: false,
+      })
+    : 0;
+  const defaultCaptionH = captionMeasuredRef
+    ? Math.min(0.7, (spineMaxFontPx * captionMeasuredRef / REF_PX / 0.9) / containerHeight)
+    : 0.16;
   const captionItem = {
     id: "spine-caption",
     x: 0,
     y: cover.spine_caption_y ?? 0.82,
     w: 1,
-    h: cover.spine_caption_h ?? 0.16,
+    h: cover.spine_caption_h ?? defaultCaptionH,
   };
   const dividerItem = {
     id: "spine-divider",
