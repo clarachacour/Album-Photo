@@ -49,6 +49,8 @@ export default function AlbumEditor() {
   const bookRef = useRef();
   const coverInputRef = useRef();
   const [album, setAlbum, albumHistory] = useHistoryState(null);
+  const [showRepackForm, setShowRepackForm] = useState(false);
+  const [repacking, setRepacking] = useState(false);
   const albumRef = useRef(null);
   useEffect(() => {
     albumRef.current = album;
@@ -501,6 +503,29 @@ export default function AlbumEditor() {
       };
       return { ...prev, pages: [...prev.pages, newPage] };
     });
+  };
+
+  // Changes the album's total page count after the fact (e.g. 150 → 100)
+  // without re-running curation — the backend re-flows every photo already
+  // on the pages being touched into a denser or sparser layout, keeping
+  // the first `keepFirstPages` pages (title page, plus anything already
+  // hand-edited) completely untouched.
+  const handleRepackPages = async ({ targetPages, keepFirstPages }) => {
+    if (!album) return;
+    setRepacking(true);
+    try {
+      const { data } = await api.post(`/albums/${album.id}/repack-pages`, {
+        target_pages: targetPages,
+        keep_first_pages: keepFirstPages,
+      });
+      toast.success(`Album resized to ${data.pages} pages.`);
+      setShowRepackForm(false);
+      await loadAlbum();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not resize the album");
+    } finally {
+      setRepacking(false);
+    }
   };
 
   const applyLayoutToPage = (pageIdx, patternName) => {
@@ -958,6 +983,26 @@ export default function AlbumEditor() {
             </div>
           )}
 
+          <div className="mt-4">
+            {showRepackForm ? (
+              <RepackPagesForm
+                currentPageCount={(album.pages || []).length}
+                currentTargetPages={album.target_pages}
+                busy={repacking}
+                onCancel={() => setShowRepackForm(false)}
+                onSubmit={handleRepackPages}
+              />
+            ) : (
+              <button
+                onClick={() => setShowRepackForm(true)}
+                data-testid={TID.editorChangePageCount}
+                className="text-sm text-[color:var(--muted)] hover:text-[color:var(--ink)] underline underline-offset-2"
+              >
+                Change total page count…
+              </button>
+            )}
+          </div>
+
           {album.pages && album.pages.length > 0 && (
             <div className="w-full mt-12 max-w-4xl">
               <div className="eyebrow mb-3 text-center">Rearrange the photos · drag and drop</div>
@@ -1109,6 +1154,68 @@ export default function AlbumEditor() {
 // ==========================================
 // SOUS-COMPOSANTS DE L'ÉDITEUR
 // ==========================================
+
+// Lets the person shrink or grow an already-created album's total page
+// count without starting over — e.g. "this 150-page album is too much,
+// make it 100" — while keeping however many pages up front (title page,
+// plus anything already hand-edited) untouched. Every page holds at most 4
+// photos, so the backend refuses outright (rather than silently dropping
+// photos) if the requested page count is too small to physically fit
+// everything currently on the pages being touched.
+function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel, onSubmit }) {
+  const [targetPages, setTargetPages] = useState(currentTargetPages || currentPageCount);
+  const [keepFirstPages, setKeepFirstPages] = useState(0);
+
+  return (
+    <div className="border border-[color:var(--border-soft)] bg-[color:var(--editor-canvas)] p-4 max-w-md">
+      <div className="text-sm font-semibold mb-3">Change total page count</div>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="text-xs text-[color:var(--muted)] block mb-1">New total pages</label>
+          <input
+            type="number"
+            min={1}
+            value={targetPages}
+            onChange={(e) => setTargetPages(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-[color:var(--muted)] block mb-1">Keep the first N pages as-is</label>
+          <input
+            type="number"
+            min={0}
+            max={currentPageCount}
+            value={keepFirstPages}
+            onChange={(e) => setKeepFirstPages(Math.max(0, Math.min(currentPageCount, parseInt(e.target.value, 10) || 0)))}
+            className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-[color:var(--muted)] mb-4">
+        Pages after that get rebuilt to fit the new total — same photos, just re-arranged. Any manual edits on those
+        pages will be lost.
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          disabled={busy}
+          className="text-sm px-3 py-1.5 text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => onSubmit({ targetPages, keepFirstPages })}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 text-sm bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all disabled:opacity-60"
+        >
+          {busy && <Loader2 size={13} className="animate-spin" />}
+          {busy ? "Rebuilding…" : "Apply"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function BookRenderer({
   album,
