@@ -15,7 +15,7 @@ import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, ShoppingBag, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload, Undo2, Redo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload, Undo2, Redo2, Plus } from "lucide-react";
 
 const FONT_OPTIONS = [
   { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
@@ -459,6 +459,50 @@ export default function AlbumEditor() {
   // order, and any extra slots the pattern needs become empty frames. If the
   // page already has more photos than the pattern has slots, the extra ones
   // are left exactly where they were rather than dropped.
+  // Removes a whole page — any photos placed on it simply become
+  // unplaced again (they're still part of the curated set and reappear in
+  // "All your photos" below, since that gallery derives what's "placed"
+  // from album.pages at render time; nothing extra to clean up there).
+  // Page 0 (the very first interior page) isn't specially protected here —
+  // any interior page can go, since the actual cover/title lives in its
+  // own separate CoverFrontPage, not in this array.
+  const deletePage = (pageIdx) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = prev.pages.filter((_, i) => i !== pageIdx);
+      return { ...prev, pages: newPages };
+    });
+    setSelected(null);
+  };
+
+  // Appends one new, empty page (a single photo slot, ready to drag a
+  // photo from "All your photos" onto) — for when album.pages is shorter
+  // than the page count the person actually chose and paid for (e.g. after
+  // deleting some, or if the AI fell short — see pages_below_target).
+  const addBlankPage = () => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const slot = LAYOUT_PATTERNS.single_full.slots[0];
+      const newPage = {
+        id: cryptoRandom(),
+        layout: "single_full",
+        items: [
+          {
+            id: cryptoRandom(),
+            type: "photo",
+            photo_id: null,
+            focal_x: 0.5,
+            focal_y: 0.5,
+            scale: 1,
+            rotation: 0,
+            ...slot,
+          },
+        ],
+      };
+      return { ...prev, pages: [...prev.pages, newPage] };
+    });
+  };
+
   const applyLayoutToPage = (pageIdx, patternName) => {
     const pattern = LAYOUT_PATTERNS[patternName];
     if (!pattern) return;
@@ -851,6 +895,7 @@ export default function AlbumEditor() {
             onReplacePhoto={replacePhotoInItem}
             onReorderLayer={reorderItemLayer}
             onApplyLayout={applyLayoutToPage}
+            onDeletePage={deletePage}
             placingPhotoId={placingPhotoId}
             onPhotoPlaced={() => setPlacingPhotoId(null)}
             selectedId={selected?.item?.id}
@@ -896,6 +941,22 @@ export default function AlbumEditor() {
               <ChevronRight size={16} />
             </button>
           </div>
+
+          {album.target_pages && (album.pages || []).length < album.target_pages && (
+            <div className="mt-6 flex items-center gap-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-4 py-2.5">
+              <span>
+                {(album.pages || []).length} of {album.target_pages} pages — you're{" "}
+                {album.target_pages - (album.pages || []).length} short of what you chose.
+              </span>
+              <button
+                onClick={addBlankPage}
+                data-testid={TID.editorAddPage}
+                className="inline-flex items-center gap-1.5 whitespace-nowrap bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all"
+              >
+                <Plus size={13} /> Add a page
+              </button>
+            </div>
+          )}
 
           {album.pages && album.pages.length > 0 && (
             <div className="w-full mt-12 max-w-4xl">
@@ -1063,6 +1124,7 @@ function BookRenderer({
   onReplacePhoto,
   onReorderLayer,
   onApplyLayout,
+  onDeletePage,
   placingPhotoId,
   onPhotoPlaced,
   selectedId,
@@ -1162,6 +1224,7 @@ function BookRenderer({
         placingPhotoId={placingPhotoId}
         onPhotoPlaced={onPhotoPlaced}
         onApplyLayout={(patternName) => onApplyLayout(i, patternName)}
+        onDeletePage={() => onDeletePage(i)}
         cropMode={cropMode}
         onEnterCrop={onEnterCrop}
         onExitCrop={onExitCrop}
