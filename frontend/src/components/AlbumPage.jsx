@@ -645,7 +645,7 @@ export function AlbumPage({
                 }
               }}
               data-testid={`page-delete-btn-${pageIndex}`}
-              className="flex flex-col items-center gap-1 bg-[color:var(--ink)]/90 text-[color:var(--paper)] px-1.5 py-2 hover:bg-red-600 transition-colors shadow-md"
+              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
               title="Delete this whole page"
             >
               <Trash2 size={13} />
