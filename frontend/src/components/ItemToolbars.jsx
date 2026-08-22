@@ -186,21 +186,23 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
           </option>
         ))}
       </select>
-      <ToolbarButton
-        onClick={() => onChange({ font_size: Math.max(8, (item.font_size || 16) - 2) })}
-        title="Decrease font size"
-        tid="text-toolbar-size-down"
-      >
-        <span className="text-xs w-3 inline-block text-center">−</span>
-      </ToolbarButton>
-      <span className="text-xs w-6 text-center">{item.font_size || 16}</span>
-      <ToolbarButton
-        onClick={() => onChange({ font_size: Math.min(96, (item.font_size || 16) + 2) })}
-        title="Increase font size"
-        tid="text-toolbar-size-up"
-      >
-        <span className="text-xs w-3 inline-block text-center">+</span>
-      </ToolbarButton>
+      <div className="flex items-center gap-1 shrink-0">
+        <ToolbarButton
+          onClick={() => onChange({ font_size: Math.max(8, (item.font_size || 16) - 2) })}
+          title="Decrease font size"
+          tid="text-toolbar-size-down"
+        >
+          <span className="text-xs w-3 inline-block text-center">−</span>
+        </ToolbarButton>
+        <span className="text-xs w-6 text-center">{item.font_size || 16}</span>
+        <ToolbarButton
+          onClick={() => onChange({ font_size: Math.min(96, (item.font_size || 16) + 2) })}
+          title="Increase font size"
+          tid="text-toolbar-size-up"
+        >
+          <span className="text-xs w-3 inline-block text-center">+</span>
+        </ToolbarButton>
+      </div>
       <ToolbarButton
         onClick={() => onChange({ font_weight: (item.font_weight === "bold" || item.font_weight === "700") ? "normal" : "bold" })}
         title="Bold"
