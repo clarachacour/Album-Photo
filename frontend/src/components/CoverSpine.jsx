@@ -523,8 +523,8 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           <div
             className="absolute left-1/2 top-1/2 pointer-events-none"
             style={{
-              width: "1.6px",
-              height: "100%",
+              width: "100%",
+              height: "1.6px",
               background: cover.spine_caption_color || text,
               transform: "translate(-50%, -50%)",
             }}
