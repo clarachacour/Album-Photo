@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState, useLayoutEffect, useEffect } from
 import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 import LayoutPicker from "@/components/LayoutPicker";
-import { ImagePlus, LayoutGrid } from "lucide-react";
+import { ImagePlus, LayoutGrid, Type } from "lucide-react";
 
 // Same reference width the backend PDF export (server.py) scales
 // `title_font_size` / extra_items `font_size` against, so a value stored on
@@ -337,6 +337,7 @@ export function AlbumPage({
   onExitCrop,
   placingText = false,
   onPlaceText,
+  onStartAddText,
   autoEditItemId,
   onTextEditHandled,
 }) {
@@ -606,18 +607,35 @@ export function AlbumPage({
         guideX={page?.align_guide_x}
         guideY={page?.align_guide_y}
       />
-      {editable && onApplyLayout && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowLayoutPicker(true);
-          }}
-          data-testid={`page-layout-btn-${pageIndex}`}
-          className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "-right-9" : "-left-9"} z-30 flex flex-col items-center gap-1 bg-[color:var(--ink)]/90 text-[color:var(--paper)] px-1.5 py-2 hover:bg-[color:var(--ink)] transition-colors shadow-md`}
-          title="Choose layout"
-        >
-          <LayoutGrid size={13} />
-        </button>
+      {editable && (onApplyLayout || onStartAddText) && (
+        <div className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "-right-9" : "-left-9"} z-30 flex flex-col gap-2`}>
+          {onApplyLayout && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowLayoutPicker(true);
+              }}
+              data-testid={`page-layout-btn-${pageIndex}`}
+              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
+              title="Change this page's layout — how many photos it holds and how they're arranged"
+            >
+              <LayoutGrid size={13} />
+            </button>
+          )}
+          {onStartAddText && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartAddText();
+              }}
+              data-testid={`page-add-text-btn-${pageIndex}`}
+              className="flex flex-col items-center gap-1 bg-[color:var(--ink)]/90 text-[color:var(--paper)] px-1.5 py-2 hover:bg-[color:var(--ink)] transition-colors shadow-md"
+              title="Add a text box to this page — click where you want it to go"
+            >
+              <Type size={13} />
+            </button>
+          )}
+        </div>
       )}
       {showLayoutPicker && (
         <LayoutPicker
