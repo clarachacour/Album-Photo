@@ -19,9 +19,14 @@ RUN playwright install --with-deps chromium
 # mirror rather than the upstream opencv_zoo repo directly, since that
 # repo's own Git LFS bandwidth is currently exhausted; sha256sum below
 # pins it to the exact same file (verified against the official release).
-RUN curl -fsSL -o /app/face_detection_yunet.onnx \
-      https://files.kde.org/digikam/facesengine/yunet/face_detection_yunet_2023mar.onnx \
-    && echo "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4  /app/face_detection_yunet.onnx" | sha256sum -c -
+# Uses Python's own urllib (already present in this base image) instead of
+# curl, which python:3.11-slim doesn't include.
+RUN python3 -c "\
+import urllib.request, hashlib; \
+data = urllib.request.urlopen('https://files.kde.org/digikam/facesengine/yunet/face_detection_yunet_2023mar.onnx').read(); \
+h = hashlib.sha256(data).hexdigest(); \
+assert h == '8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4', f'checksum mismatch: {h}'; \
+open('/app/face_detection_yunet.onnx', 'wb').write(data)"
 
 COPY . .
 
