@@ -42,6 +42,35 @@ export function computeAlignSnap(pos, size, siblings, axis) {
   return findSnap(pos, size, siblings || [], axis);
 }
 
+// Same idea as findSnap, but for resizing (dragging the corner handle)
+// instead of moving. The item's top-left corner (pos) stays fixed during a
+// corner-handle resize — only the opposite edge (pos + size) actually
+// moves — so that's the only point worth snapping here, unlike a move
+// (which checks the item's start, center, AND end, since the whole item
+// shifts together).
+function findResizeSnap(pos, size, siblings, axis) {
+  const sizeKey = axis === "x" ? "w" : "h";
+  const candidates = [0.5];
+  for (const s of siblings) {
+    if (s[axis] == null || s[sizeKey] == null) continue;
+    candidates.push(s[axis], s[axis] + s[sizeKey] / 2, s[axis] + s[sizeKey]);
+  }
+  const end = pos + size;
+  let best = null;
+  for (const c of candidates) {
+    const diff = Math.abs(end - c);
+    if (diff < SNAP_THRESHOLD && (!best || diff < best.diff)) {
+      best = { diff, guide: c, newSize: Math.max(0.02, c - pos) };
+    }
+  }
+  if (best) return { value: best.newSize, guide: best.guide };
+  return { value: size, guide: null };
+}
+
+export function computeResizeAlignSnap(pos, size, siblings, axis) {
+  return findResizeSnap(pos, size, siblings || [], axis);
+}
+
 export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverSel }) {
   const updateCover = (patch) => {
     setAlbum((prev) => ({ ...prev, cover: { ...(prev.cover || {}), ...patch } }));
