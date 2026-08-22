@@ -6,7 +6,7 @@ import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { CoverSpine } from "@/components/CoverSpine";
 import { spineRatio } from "@/lib/printDims";
-import { makeCoverEditingActions, computeAlignSnap } from "@/lib/coverEditing";
+import { makeCoverEditingActions, computeAlignSnap, computeResizeAlignSnap } from "@/lib/coverEditing";
 import { LAYOUT_PATTERNS } from "@/lib/layoutPatterns";
 import { useHistoryState } from "@/lib/useHistoryState";
 import { AlbumPage, CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
@@ -335,6 +335,21 @@ export default function AlbumEditor() {
         if (updatedPatch.y !== undefined) {
           const s = computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
           updatedPatch.y = s.value;
+          guideY = s.guide;
+        }
+        // Resizing (dragging the corner handle) only ever changes w/h, not
+        // x/y — the item's top-left corner stays put, so this checks
+        // whether the *moving* edge (x+w or y+h) lines up with a sibling's
+        // edge/center instead, using the same guide-line mechanism as a
+        // move.
+        if (updatedPatch.w !== undefined && updatedPatch.x === undefined) {
+          const s = computeResizeAlignSnap(it.x ?? 0, updatedPatch.w, siblings, "x");
+          updatedPatch.w = s.value;
+          guideX = s.guide;
+        }
+        if (updatedPatch.h !== undefined && updatedPatch.y === undefined) {
+          const s = computeResizeAlignSnap(it.y ?? 0, updatedPatch.h, siblings, "y");
+          updatedPatch.h = s.value;
           guideY = s.guide;
         }
         return { ...it, ...updatedPatch };
