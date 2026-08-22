@@ -305,14 +305,23 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const spineTitleFontSizeStyle = containerHeight ? `${fittedSpineFontSizePx}px` : `${(((cover.spine_title_size || 9) / 608) * 100).toFixed(2)}cqh`;
 
   // A single-line caption (e.g. "MEMORIES") matches the title's font size
-  // directly instead of using its own independent word-length-based fit —
-  // two separate calculations made same-styled words like "FAMILY" and
-  // "MEMORIES" land on visibly different sizes for no real reason. Multi-
-  // line captions (e.g. names + date) keep their own fit, since they're a
-  // different shape of content the title's size wouldn't suit.
+  // when that size also fits the caption's own text — two separate
+  // calculations made same-styled words like "FAMILY" and "MEMORIES" land
+  // on visibly different sizes for no real reason. But blindly reusing
+  // the title's size broke down when the two words are very different
+  // lengths (e.g. title "Dad" vs caption "MEMORIES") — a short title can
+  // fit a much bigger font than a long caption word can, especially on a
+  // wide (high page-count) spine, so the shared size overflowed the
+  // caption's own space. Capped at the caption's own independent fit
+  // (fittedCaptionFontSizePx, computed the same way as the title's) so it
+  // only ever matches the title's size, never exceeds what the caption's
+  // own text can actually fit. Multi-line captions (e.g. names + date)
+  // keep their own fit outright, since they're a different shape of
+  // content the title's size wouldn't suit anyway.
   const captionIsMultiLine = String(cover.spine_caption || "").includes("\n");
+  const sharedCaptionFontPx = Math.min(fittedSpineFontSizePx, fittedCaptionFontSizePx);
   const spineCaptionFontSizeStyle = containerHeight
-    ? `${captionIsMultiLine ? fittedCaptionFontSizePx : fittedSpineFontSizePx}px`
+    ? `${captionIsMultiLine ? fittedCaptionFontSizePx : sharedCaptionFontPx}px`
     : `${(((cover.spine_caption_size || 9) / 608) * 100).toFixed(2)}cqh`;
   // Derived from whichever font size is *actually* rendered above (title's
   // size for a single-line caption, the caption's own fit for a
@@ -320,7 +329,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   // time — that estimate routinely diverged from the real result,
   // leaving a visible gap between a too-big box and the actual text.
   const actualCaptionFontPx = containerHeight
-    ? (captionIsMultiLine ? fittedCaptionFontSizePx : fittedSpineFontSizePx)
+    ? (captionIsMultiLine ? fittedCaptionFontSizePx : sharedCaptionFontPx)
     : 0;
   const visualCaptionH =
     containerHeight && actualCaptionFontPx && captionMeasuredRef
