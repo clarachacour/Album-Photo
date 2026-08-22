@@ -1162,9 +1162,22 @@ export default function AlbumEditor() {
 // photos, so the backend refuses outright (rather than silently dropping
 // photos) if the requested page count is too small to physically fit
 // everything currently on the pages being touched.
+// Converts a displayed "Double-page N" number (matching the flipbook's own
+// "Double-page {pageIndex+1}" label) into how many entries of album.pages
+// that actually corresponds to — NOT a simple divide-by-2, because the
+// front cover is shown alone as its own spread first (see buildViews in
+// Flipbook.jsx: [cover alone], [blank + page 0], [page 1 + page 2], [page 3
+// + page 4], ...). Asking directly for a raw page-array count here was
+// consistently off from what the person actually saw and meant.
+function spreadNumberToPageCount(spreadNumber) {
+  if (spreadNumber <= 1) return 0;
+  return Math.max(0, 2 * spreadNumber - 3);
+}
+
 function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel, onSubmit }) {
   const [targetPages, setTargetPages] = useState(currentTargetPages || currentPageCount);
-  const [keepFirstPages, setKeepFirstPages] = useState(0);
+  const [keepUpToSpread, setKeepUpToSpread] = useState(1);
+  const keepFirstPages = Math.min(currentPageCount, spreadNumberToPageCount(keepUpToSpread));
 
   return (
     <div className="border border-[color:var(--border-soft)] bg-[color:var(--editor-canvas)] p-4 max-w-md">
@@ -1181,20 +1194,20 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
           />
         </div>
         <div>
-          <label className="text-xs text-[color:var(--muted)] block mb-1">Keep the first N pages as-is</label>
+          <label className="text-xs text-[color:var(--muted)] block mb-1">Keep up to Double-page #</label>
           <input
             type="number"
-            min={0}
-            max={currentPageCount}
-            value={keepFirstPages}
-            onChange={(e) => setKeepFirstPages(Math.max(0, Math.min(currentPageCount, parseInt(e.target.value, 10) || 0)))}
+            min={1}
+            value={keepUpToSpread}
+            onChange={(e) => setKeepUpToSpread(Math.max(1, parseInt(e.target.value, 10) || 1))}
             className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
           />
         </div>
       </div>
       <p className="text-xs text-[color:var(--muted)] mb-4">
-        Pages after that get rebuilt to fit the new total — same photos, just re-arranged. Any manual edits on those
-        pages will be lost.
+        Same "Double-page N" number shown above the flipbook while you browse — find the last spread you want left
+        untouched, then use that number here. Everything after it gets rebuilt to fit the new total (same photos,
+        just re-arranged); any manual edits on those later pages will be lost.
       </p>
       <div className="flex gap-2">
         <button
