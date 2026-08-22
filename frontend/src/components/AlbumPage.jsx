@@ -629,7 +629,7 @@ export function AlbumPage({
                 onStartAddText();
               }}
               data-testid={`page-add-text-btn-${pageIndex}`}
-              className="flex flex-col items-center gap-1 bg-[color:var(--ink)]/90 text-[color:var(--paper)] px-1.5 py-2 hover:bg-[color:var(--ink)] transition-colors shadow-md"
+              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
               title="Add a text box to this page — click where you want it to go"
             >
               <Type size={13} />
