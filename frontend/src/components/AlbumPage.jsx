@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState, useLayoutEffect, useEffect } from
 import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 import LayoutPicker from "@/components/LayoutPicker";
-import { ImagePlus, LayoutGrid, Type } from "lucide-react";
+import { ImagePlus, LayoutGrid, Type, Trash2 } from "lucide-react";
 
 // Same reference width the backend PDF export (server.py) scales
 // `title_font_size` / extra_items `font_size` against, so a value stored on
@@ -329,6 +329,7 @@ export function AlbumPage({
   onReplacePhoto,
   onReorderLayer,
   onApplyLayout,
+  onDeletePage,
   placingPhotoId,
   onPhotoPlaced,
   selectedItemId,
@@ -607,7 +608,7 @@ export function AlbumPage({
         guideX={page?.align_guide_x}
         guideY={page?.align_guide_y}
       />
-      {editable && (onApplyLayout || onStartAddText) && (
+      {editable && (onApplyLayout || onStartAddText || onDeletePage) && (
         <div className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "-right-9" : "-left-9"} z-30 flex flex-col gap-2`}>
           {onApplyLayout && (
             <button
@@ -633,6 +634,21 @@ export function AlbumPage({
               title="Add a text box to this page — click where you want it to go"
             >
               <Type size={13} />
+            </button>
+          )}
+          {onDeletePage && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm("Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.")) {
+                  onDeletePage();
+                }
+              }}
+              data-testid={`page-delete-btn-${pageIndex}`}
+              className="flex flex-col items-center gap-1 bg-[color:var(--ink)]/90 text-[color:var(--paper)] px-1.5 py-2 hover:bg-red-600 transition-colors shadow-md"
+              title="Delete this whole page"
+            >
+              <Trash2 size={13} />
             </button>
           )}
         </div>
