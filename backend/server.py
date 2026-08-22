@@ -32,6 +32,7 @@ import jwt
 import requests
 import re
 import asyncio
+import threading
 from PIL import Image, ExifTags
 try:
     import pillow_heif
@@ -1413,6 +1414,18 @@ def compute_sharpness(data: bytes) -> float:
 # so we don't keep retrying a load that's never going to succeed.
 _face_detector = None
 _face_detector_load_failed = False
+# OpenCV's DNN backend (which FaceDetectorYN uses under the hood) is NOT
+# safe to call concurrently from multiple threads on the same network
+# object — doing so anyway (photos were being face-detected several at a
+# time via asyncio.gather + run_in_executor, i.e. real OS threads, all
+# sharing the one _face_detector instance above) caused a native memory
+# corruption crash ("double free or corruption", SIGABRT) that took down
+# the entire server process, not just the one request — a plain Python
+# try/except can't catch or contain that, since it happens below the
+# Python interpreter entirely. This lock serializes every detect() call
+# so only one ever runs at a time; YuNet is fast enough (milliseconds per
+# photo) that this isn't a meaningful bottleneck even for a large album.
+_face_detector_lock = threading.Lock()
 
 def _get_face_detector():
     global _face_detector, _face_detector_load_failed
@@ -1460,8 +1473,9 @@ def compute_face_focal_point(data: bytes):
         scale = min(1.0, MAX_DETECT_SIDE / max(h, w))
         detect_img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale)))) if scale < 1.0 else img
         dh, dw = detect_img.shape[:2]
-        detector.setInputSize((dw, dh))
-        _, faces = detector.detect(detect_img)
+        with _face_detector_lock:
+            detector.setInputSize((dw, dh))
+            _, faces = detector.detect(detect_img)
         if faces is None or len(faces) == 0:
             return None
         # Bounding-box centroid of every detected face, weighted by each
