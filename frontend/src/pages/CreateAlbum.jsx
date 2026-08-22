@@ -17,7 +17,6 @@ import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 const STEPS = ["Format", "Edit", "Pictures"];
 
 function defaultCoverPayload(chosenTemplate) {
-  const year = new Date().getFullYear();
   const tplCover = chosenTemplate?.cover || {};
   return {
     bg_color: DEFAULT_COVER.bg_color,
@@ -50,7 +49,7 @@ function defaultCoverPayload(chosenTemplate) {
         id: cryptoRandom(),
         type: "text",
         role: "year",
-        content: String(year),
+        content: "Everbook",
         x: 0.4,
         y: 0.86,
         w: 0.2,
