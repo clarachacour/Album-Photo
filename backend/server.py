@@ -1479,8 +1479,13 @@ def compute_face_focal_point(data: bytes):
             total_weight += weight
         if total_weight <= 0:
             return None
-        focal_x = min(1.0, max(0.0, (sum_x / total_weight) / dw))
-        focal_y = min(1.0, max(0.0, (sum_y / total_weight) / dh))
+        # OpenCV's detection results are numpy scalars (np.float32), not
+        # plain Python floats — MongoDB's BSON encoder has no idea how to
+        # store those and raises on the very first save, which was
+        # crashing the whole AI processing step (and leaving the album
+        # with no pages at all) any time a face was actually detected.
+        focal_x = float(min(1.0, max(0.0, (sum_x / total_weight) / dw)))
+        focal_y = float(min(1.0, max(0.0, (sum_y / total_weight) / dh)))
         return (focal_x, focal_y)
     except Exception as e:
         logger.debug(f"Détection de visages échouée pour une photo (on garde le centre par défaut) : {e}")
