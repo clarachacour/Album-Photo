@@ -60,10 +60,27 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   useEffect(() => {
     if (!phoneSession) return;
     setPhonePolling(true);
+    // No explicit "I'm done" signal comes from the phone side — this
+    // treats a stretch of polls with no new photo landing as "done", and
+    // frees up Create Album automatically instead of leaving it stuck on
+    // "Importing…" until the full 1-hour link lifetime runs out. Resets
+    // (and re-blocks Create Album, in case it had already gone idle) every
+    // time a new photo actually shows up, so someone pausing partway
+    // through selecting photos on their phone doesn't get cut off.
+    const IDLE_MS = 15000;
+    let lastCount = (photos || []).length;
+    let idleTimeout = setTimeout(() => setPhonePolling(false), IDLE_MS);
     const interval = setInterval(async () => {
       try {
         const { data } = await api.get(`/albums/${albumId}`);
-        onPhotosChange(data.photos || []);
+        const newPhotos = data.photos || [];
+        if (newPhotos.length > lastCount) {
+          lastCount = newPhotos.length;
+          setPhonePolling(true);
+          clearTimeout(idleTimeout);
+          idleTimeout = setTimeout(() => setPhonePolling(false), IDLE_MS);
+        }
+        onPhotosChange(newPhotos);
         if (mode === "editor" && data.status === "processing") {
           onProcessingStarted && onProcessingStarted();
         }
@@ -76,10 +93,12 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
     // have stopped accepting new uploads by then.
     const stopTimeout = setTimeout(() => {
       clearInterval(interval);
+      clearTimeout(idleTimeout);
       setPhonePolling(false);
     }, 60 * 60 * 1000);
     return () => {
       clearInterval(interval);
+      clearTimeout(idleTimeout);
       clearTimeout(stopTimeout);
       setPhonePolling(false);
     };
