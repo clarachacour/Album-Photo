@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { api, coverImageUrl, coverAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
@@ -53,6 +53,22 @@ export default function AlbumEditor() {
   useEffect(() => {
     albumRef.current = album;
   }, [album]);
+  // "All your photos" is otherwise in raw upload order — sorted here the
+  // same way the AI's own curation prioritizes: taken_at when a photo has
+  // one (undated photos pushed to the end, in their original relative
+  // order, rather than scattered throughout). This mirrors the AI's
+  // chronological ordering for browsing purposes; it doesn't replicate its
+  // fuller location-clustering logic, which is really about how photos
+  // land on album PAGES, not about sorting a flat browsing list.
+  const sortedAlbumPhotos = useMemo(() => {
+    const photos = album?.photos || [];
+    return [...photos].sort((a, b) => {
+      if (a.taken_at && b.taken_at) return new Date(a.taken_at) - new Date(b.taken_at);
+      if (a.taken_at) return -1;
+      if (b.taken_at) return 1;
+      return 0;
+    });
+  }, [album?.photos]);
   const [pageIndex, setPageIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [cropMode, setCropMode] = useState(false);
@@ -880,7 +896,7 @@ export default function AlbumEditor() {
             <div className="w-full mt-8 max-w-4xl">
               <div className="eyebrow mb-3 text-center">All your photos · click or drag onto a page</div>
               <PhotoGallery
-                photos={album.photos}
+                photos={sortedAlbumPhotos}
                 placedPhotoIds={new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo").map((it) => it.photo_id)))}
                 selectedPhotoId={placingPhotoId}
                 onSelectPhoto={setPlacingPhotoId}
