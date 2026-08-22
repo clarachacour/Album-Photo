@@ -828,6 +828,7 @@ export default function AlbumEditor() {
             onExitCrop={() => setCropMode(false)}
             placingText={placingText}
             onPlaceText={placeTextAt}
+            onStartAddText={() => setPlacingText(true)}
             autoEditItemId={autoEditItemId}
             onTextEditHandled={() => setAutoEditItemId(null)}
             onFlip={(p) => {
@@ -1039,6 +1040,7 @@ function BookRenderer({
   onExitCrop,
   placingText,
   onPlaceText,
+  onStartAddText,
   autoEditItemId,
   onTextEditHandled,
   onFlip,
@@ -1134,6 +1136,7 @@ function BookRenderer({
         onExitCrop={onExitCrop}
         placingText={placingText}
         onPlaceText={(box) => onPlaceText(i, box)}
+        onStartAddText={onStartAddText}
         autoEditItemId={autoEditItemId}
         onTextEditHandled={onTextEditHandled}
       />
