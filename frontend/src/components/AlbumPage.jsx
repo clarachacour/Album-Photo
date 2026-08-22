@@ -1118,7 +1118,7 @@ export function CoverBackPage({
       )}
       {extras.length === 0 && (
         <div className="font-sans text-xs tracking-widest" style={{ color: text }}>
-          {year || ""}
+          Everbook
         </div>
       )}
 
