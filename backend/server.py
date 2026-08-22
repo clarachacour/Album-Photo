@@ -1406,6 +1406,86 @@ def compute_sharpness(data: bytes) -> float:
     except Exception:
         return 0.0
 
+# Loaded once at first use, not per-photo — cv2's model loading has real
+# overhead, and this module-level cache means every subsequent photo just
+# reuses the already-loaded network. None means "not yet attempted";
+# False means "attempted and failed" (e.g. the model file is missing),
+# so we don't keep retrying a load that's never going to succeed.
+_face_detector = None
+_face_detector_load_failed = False
+
+def _get_face_detector():
+    global _face_detector, _face_detector_load_failed
+    if _face_detector is not None or _face_detector_load_failed:
+        return _face_detector
+    try:
+        import cv2
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "face_detection_yunet.onnx")
+        # input size is set per-image in compute_face_focal_point (it must
+        # match the actual decoded image dimensions), (0, 0) here is just a
+        # placeholder until the first real call.
+        _face_detector = cv2.FaceDetectorYN.create(model_path, "", (0, 0), score_threshold=0.7)
+    except Exception as e:
+        logger.warning(f"Détecteur de visages indisponible (le recadrage se rabattra sur le centre de l'image) : {e}")
+        _face_detector_load_failed = True
+    return _face_detector
+
+def compute_face_focal_point(data: bytes):
+    """Finds faces in a photo and returns a (focal_x, focal_y) point — in
+    the same 0-1, top-left-origin coordinate space the layout already uses
+    for ai_focal_x/ai_focal_y — positioned so a crop centered on it keeps
+    every detected face inside frame, rather than the raw geometric center
+    of the photo (which is what got people's heads cropped off when they
+    weren't centered in the original shot). Runs entirely locally via
+    OpenCV's YuNet model — no photo or photo data is sent anywhere outside
+    this server for this. Returns None (caller falls back to center) if no
+    faces are found, or if the model isn't available for any reason."""
+    detector = _get_face_detector()
+    if detector is None:
+        return None
+    try:
+        import cv2
+        arr = np.frombuffer(data, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return None
+        h, w = img.shape[:2]
+        if h == 0 or w == 0:
+            return None
+        # YuNet's accuracy/speed trade-off is tuned around a few hundred
+        # pixels on the long side — shrinking a large original down to that
+        # before detection costs nothing in the result (faces are still
+        # easily resolvable) and meaningfully cuts inference time.
+        MAX_DETECT_SIDE = 640
+        scale = min(1.0, MAX_DETECT_SIDE / max(h, w))
+        detect_img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale)))) if scale < 1.0 else img
+        dh, dw = detect_img.shape[:2]
+        detector.setInputSize((dw, dh))
+        _, faces = detector.detect(detect_img)
+        if faces is None or len(faces) == 0:
+            return None
+        # Bounding-box centroid of every detected face, weighted by each
+        # face's own area — a large, close/prominent face pulls the focal
+        # point more than a tiny, distant one in the background, which is
+        # usually the more important one to keep fully in frame.
+        total_weight = 0.0
+        sum_x, sum_y = 0.0, 0.0
+        for f in faces:
+            fx, fy, fw, fh = f[0], f[1], f[2], f[3]
+            cx, cy = fx + fw / 2, fy + fh / 2
+            weight = max(1.0, fw * fh)
+            sum_x += cx * weight
+            sum_y += cy * weight
+            total_weight += weight
+        if total_weight <= 0:
+            return None
+        focal_x = min(1.0, max(0.0, (sum_x / total_weight) / dw))
+        focal_y = min(1.0, max(0.0, (sum_y / total_weight) / dh))
+        return (focal_x, focal_y)
+    except Exception as e:
+        logger.debug(f"Détection de visages échouée pour une photo (on garde le centre par défaut) : {e}")
+        return None
+
 def hamming_distance(a, b) -> int:
     if a is None or b is None:
         return 64  # unknown hash → treat as "not the same photo"
@@ -1521,8 +1601,19 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
         """Greedily pairs each slot with whichever candidate photo's aspect
         ratio fits it best (smallest log-ratio mismatch), so a portrait photo
         doesn't end up forced into a wide landscape slot (and vice versa) —
-        that mismatch is what causes heavy, awkward cropping."""
+        that mismatch is what causes heavy, awkward cropping. Photos with a
+        detected face (ai_has_face, see _curate_photos) get an extra cost
+        penalty for a poorly-matching slot — the crop can be centered on the
+        face (see compute_face_focal_point), but that only helps if the
+        slot's own shape isn't wildly different from the photo's to begin
+        with; the slot CHOICE, not just where the crop is centered within
+        it, is what determines how much of the photo (and how much risk to
+        the face) has to be cropped away. This can mean a face photo "loses"
+        the closest-matching slot to a non-face photo that matched it even
+        better — an intentional trade, since the non-face photo has nothing
+        at risk from a so-so match."""
         import math
+        FACE_MISMATCH_PENALTY = 2.5
         slot_aspects = [(s["w"] / s["h"]) * page_aspect_wh for s in slots]
         remaining_slots = list(range(len(slots)))
         remaining_candidates = list(range(len(candidates)))
@@ -1532,6 +1623,8 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
             for si in remaining_slots:
                 for ci in remaining_candidates:
                     cost = abs(math.log(slot_aspects[si] / photo_aspect(candidates[ci])))
+                    if candidates[ci].get("ai_has_face"):
+                        cost *= FACE_MISMATCH_PENALTY
                     if best is None or cost < best[0]:
                         best = (cost, si, ci)
             _, si, ci = best
@@ -1865,25 +1958,57 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     # from curation_stats. ----
     SHARPNESS_FLOOR = 8.0
     selected = []
+    passing_reps = []
     for rep in representatives:
         score = rep_sharpness.get(rep["id"], 0.0)
-        update = {
-            "ai_score": score,
-            "ai_is_reject": score < SHARPNESS_FLOOR,
-            # No AI call means no suggested focal point — default to center,
-            # same as any manually-added photo; the user can still drag to
-            # reframe any photo in the editor same as always.
-            "ai_focal_x": 0.5,
-            "ai_focal_y": 0.5,
-        }
-        await db.photos.update_one({"id": rep["id"]}, {"$set": update})
-        rep.update(update)
-        if update["ai_is_reject"]:
-            await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+        is_reject = score < SHARPNESS_FLOOR
+        rep["ai_score"] = score
+        if is_reject:
+            await db.photos.update_one({"id": rep["id"]}, {"$set": {"ai_score": score, "ai_is_reject": True, "is_duplicate": True, "is_selected": False}})
             low_sharpness_removed += 1
         else:
-            await db.photos.update_one({"id": rep["id"]}, {"$set": {"is_duplicate": False, "is_selected": True}})
-            selected.append(rep)
+            passing_reps.append(rep)
+
+    # Face-aware focal point — finds where any people actually are in the
+    # photo (fully locally, via the OpenCV/YuNet model — nothing about the
+    # photo is sent anywhere for this) so the layout can center its crop on
+    # them instead of the raw geometric middle of the frame, which is what
+    # was cropping people out when they weren't centered in the original
+    # shot. Only computed for photos that passed the sharpness gate above —
+    # no point spending the time on ones that won't be used anyway. Falls
+    # back to dead center (the previous, only, behavior) for any photo with
+    # no detected face — a landscape or an object shot, say.
+    async def _focal_point_of(p):
+        try:
+            read_path = p.get("thumbnail_path") or p["storage_path"]
+            data, _ = await loop.run_in_executor(None, get_object, read_path)
+            return await loop.run_in_executor(None, compute_face_focal_point, data)
+        except Exception:
+            return None
+
+    focal_points = await asyncio.gather(*(_focal_point_of(p) for p in passing_reps))
+    faces_detected_count = sum(1 for f in focal_points if f)
+
+    for rep, focal in zip(passing_reps, focal_points):
+        focal_x, focal_y = focal if focal else (0.5, 0.5)
+        update = {
+            "ai_score": rep["ai_score"],
+            "ai_is_reject": False,
+            "ai_focal_x": focal_x,
+            "ai_focal_y": focal_y,
+            # Separate explicit flag rather than inferring "has a face" from
+            # the coordinates themselves — a genuinely centered face would
+            # also land on (0.5, 0.5) and be indistinguishable from "no
+            # face found" if we didn't. The layout step (deterministic_layout,
+            # see best_slot_assignment) uses this to prefer a well-matching
+            # slot for a photo with a face over a badly-mismatched one, since
+            # the slot choice itself — not just where within it the crop is
+            # centered — is what determines how much has to be cropped away.
+            "ai_has_face": bool(focal),
+        }
+        await db.photos.update_one({"id": rep["id"]}, {"$set": {**update, "is_duplicate": False, "is_selected": True}})
+        rep.update(update)
+        selected.append(rep)
 
     # ---- 3b. Visual diversity cap — catches near-identical FRAMING of the
     # same subject that step 1's stricter duplicate check correctly leaves
@@ -1987,6 +2112,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         "ai_clusters_resolved": ai_clusters_resolved,
         "ai_calls_attempted": ai_calls_attempted,
         "ai_photos_recovered": ai_photos_recovered,
+        "faces_detected": faces_detected_count,
         "selected": len(selected),
     }
     return selected, stats
@@ -2051,6 +2177,7 @@ async def run_ai_processing(album_id: str, user_id: str):
             f"{curation_stats['ai_calls_attempted']} ambiguous clusters sent to AI, "
             f"{curation_stats['ai_clusters_resolved']} split by AI "
             f"({curation_stats['ai_photos_recovered']} extra photos recovered), "
+            f"{curation_stats['faces_detected']} photos with a detected face (crop centered on it), "
             f"{len(selected)} selected, {len(pages)} pages"
         )
     except Exception as e:
