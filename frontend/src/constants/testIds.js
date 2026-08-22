@@ -41,6 +41,7 @@ export const TID = {
   editorSave: "editor-save",
   editorAddText: "editor-add-text",
   editorAddPage: "editor-add-page",
+  editorChangePageCount: "editor-change-page-count",
   editorFontSelect: "editor-font-select",
   editorColorInput: "editor-color-input",
   editorSizeInput: "editor-size-input",
