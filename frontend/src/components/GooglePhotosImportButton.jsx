@@ -40,9 +40,17 @@ function loadScript(src, id) {
  * its own (which ran with throttled CPU once the response had been sent,
  * making large imports far slower than they needed to be).
  */
-export default function GooglePhotosImportButton({ albumId, onImported, disabled }) {
+export default function GooglePhotosImportButton({ albumId, onImported, disabled, onBusyChange }) {
   const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusyState] = useState(false);
+  // Wraps setBusy so the parent (PhotoUploadMethods) always finds out about
+  // a busy-state change too — it needs this to show a single, method-
+  // agnostic "Importing…" state that covers all three ways of adding
+  // photos, not just this one.
+  const setBusy = (value) => {
+    setBusyState(value);
+    onBusyChange && onBusyChange(value);
+  };
   const tokenClientRef = useRef(null);
 
   useEffect(() => {
