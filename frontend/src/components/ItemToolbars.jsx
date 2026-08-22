@@ -71,7 +71,7 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
           </ToolbarButton>
         </>
       )}
-      <ToolbarButton onClick={onDelete} title="Supprimer ce cadre" tid="frame-delete-btn" danger>
+      <ToolbarButton onClick={onDelete} title="Delete this frame" tid="frame-delete-btn" danger>
         <Trash2 size={14} />
       </ToolbarButton>
     </ToolbarShell>
@@ -126,7 +126,7 @@ export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRo
             data-testid="frame-rotation-input"
           />
         </div>
-        <ToolbarButton onClick={onDone} title="Terminer" tid="frame-edit-done">
+        <ToolbarButton onClick={onDone} title="Done" tid="frame-edit-done">
           <Check size={14} />
         </ToolbarButton>
       </div>
@@ -188,7 +188,7 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
       </select>
       <ToolbarButton
         onClick={() => onChange({ font_size: Math.max(8, (item.font_size || 16) - 2) })}
-        title="Réduire"
+        title="Decrease font size"
         tid="text-toolbar-size-down"
       >
         <span className="text-xs w-3 inline-block text-center">−</span>
@@ -196,20 +196,20 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
       <span className="text-xs w-6 text-center">{item.font_size || 16}</span>
       <ToolbarButton
         onClick={() => onChange({ font_size: Math.min(96, (item.font_size || 16) + 2) })}
-        title="Agrandir"
+        title="Increase font size"
         tid="text-toolbar-size-up"
       >
         <span className="text-xs w-3 inline-block text-center">+</span>
       </ToolbarButton>
       <ToolbarButton
         onClick={() => onChange({ font_weight: (item.font_weight === "bold" || item.font_weight === "700") ? "normal" : "bold" })}
-        title="Gras"
+        title="Bold"
         tid="text-toolbar-bold"
       >
         <Bold size={13} />
       </ToolbarButton>
       <div className="relative">
-        <ToolbarButton onClick={() => setPickerOpen((v) => !v)} title="Couleur" tid="text-toolbar-color-toggle">
+        <ToolbarButton onClick={() => setPickerOpen((v) => !v)} title="Text color" tid="text-toolbar-color-toggle">
           <Palette size={13} />
         </ToolbarButton>
         {pickerOpen && (
@@ -245,7 +245,7 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
           </div>
         )}
       </div>
-      <ToolbarButton onClick={onDelete} title="Supprimer ce texte" tid="text-toolbar-delete" danger>
+      <ToolbarButton onClick={onDelete} title="Delete this text" tid="text-toolbar-delete" danger>
         <Trash2 size={14} />
       </ToolbarButton>
     </ToolbarShell>
