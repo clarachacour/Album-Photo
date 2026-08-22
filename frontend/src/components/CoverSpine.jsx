@@ -523,7 +523,11 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           <div
             className="absolute left-1/2 top-1/2 pointer-events-none"
             style={{
-              width: "100%",
+              // Matches the text's own rendered thickness (the title's
+              // fitted font size) rather than spanning the full spine
+              // width — the divider should read as part of the text's own
+              // width, not a full-width rule.
+              width: containerHeight ? `${fittedSpineFontSizePx}px` : "60%",
               height: "1.6px",
               background: cover.spine_caption_color || text,
               transform: "translate(-50%, -50%)",
