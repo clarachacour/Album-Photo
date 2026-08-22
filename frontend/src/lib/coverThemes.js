@@ -522,7 +522,7 @@ export const COVER_THEMES = [
           spine_title_font: CORMORANT,
           spine_title_size: 28,
           spine_title_weight: "600",
-          spine_title_y: 0.1,
+          spine_title_y: 0.32,
           spine_year_hidden: true,
           spine_logo_image: OURYEAR_RINGS_LOGO_DATA_URI,
           spine_logo_x: 0.12, spine_logo_y: 0.86, spine_logo_w: 0.76, spine_logo_h: 0.1,
