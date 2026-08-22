@@ -2244,6 +2244,86 @@ async def run_ai_processing_incremental(album_id: str, user_id: str, new_photo_i
         await db.albums.update_one({"id": album_id}, {"$set": {"status": "error"}})
 
 
+class RepackPagesInput(BaseModel):
+    target_pages: int = Field(gt=0)
+    keep_first_pages: int = Field(ge=0, default=0)  # e.g. 40 — pages the person already hand-edited and doesn't want touched
+
+@api_router.post("/albums/{album_id}/repack-pages")
+async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depends(get_current_user)):
+    """Changes an already-created album's total page count (e.g. 150 → 100)
+    without re-running curation — every photo already placed on the pages
+    being repacked gets a denser (or sparser) layout instead, using the
+    same exact-page-count algorithm as initial creation (deterministic_layout
+    + content_pages_budget). The first `keep_first_pages` pages (title page,
+    plus however many the person already hand-edited) are left completely
+    untouched — only pages after that are rebuilt.
+
+    Every page holds at most 4 photos (the densest template,
+    TEMPLATE_PHOTO_COUNT), so shrinking the page count too aggressively
+    relative to how many photos are actually in play can make it
+    mathematically impossible to place all of them — this refuses outright
+    rather than silently dropping photos in that case, same principle as
+    the minimum-photos-required check at album creation."""
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    pages = album.get("pages") or []
+    if not pages:
+        raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
+
+    keep_first_pages = max(0, min(data.keep_first_pages, len(pages)))
+    preserved_pages = pages[:keep_first_pages]
+    pages_to_repack = pages[keep_first_pages:]
+
+    photo_ids_in_order = [
+        it["photo_id"]
+        for pg in pages_to_repack
+        for it in (pg.get("items") or [])
+        if it.get("type") == "photo" and it.get("photo_id")
+    ]
+
+    remaining_budget = max(0, data.target_pages - keep_first_pages)
+
+    if not photo_ids_in_order:
+        # Nothing left to repack (every photo was on a preserved page) —
+        # just trim or the caller can add blank pages manually afterward.
+        final_pages, _ = await _trim_pages_to_target(pages, data.target_pages)
+        await db.albums.update_one(
+            {"id": album_id},
+            {"$set": {"pages": final_pages, "target_pages": data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return {"pages": len(final_pages), "photos_repacked": 0}
+
+    MAX_PER_PAGE = max(TEMPLATE_PHOTO_COUNT.values())
+    if remaining_budget > 0 and len(photo_ids_in_order) > remaining_budget * MAX_PER_PAGE:
+        max_fittable = remaining_budget * MAX_PER_PAGE
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{len(photo_ids_in_order)} photos are on the pages you're asking to repack, but "
+                f"{remaining_budget} pages can hold at most {max_fittable} photos ({MAX_PER_PAGE} per page). "
+                f"Choose a higher page count, or keep more of the existing pages as-is."
+            ),
+        )
+
+    photos_by_id = {}
+    cursor = db.photos.find({"id": {"$in": photo_ids_in_order}}, {"_id": 0})
+    async for p in cursor:
+        photos_by_id[p["id"]] = p
+    ordered_photos = [photos_by_id[pid] for pid in photo_ids_in_order if pid in photos_by_id]
+
+    orientation = album.get("orientation", "portrait")
+    start_idx = keep_first_pages % len(LAYOUT_PATTERN)
+    new_pages = deterministic_layout(ordered_photos, orientation, pattern_start_idx=start_idx, content_pages_budget=remaining_budget)
+
+    final_pages = preserved_pages + new_pages
+    await db.albums.update_one(
+        {"id": album_id},
+        {"$set": {"pages": final_pages, "target_pages": data.target_pages, "pages_below_target": len(final_pages) < data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"pages": len(final_pages), "photos_repacked": len(ordered_photos)}
+
+
 @api_router.post("/albums/{album_id}/process")
 async def start_processing(album_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
