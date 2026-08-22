@@ -501,7 +501,14 @@ export default function AlbumEditor() {
           },
         ],
       };
-      return { ...prev, pages: [...prev.pages, newPage] };
+      // Inserted right after whichever double-page spread is currently
+      // showing (same "Double-page N" → pages-array-index math used by
+      // "Change total page count" below), rather than always tacked onto
+      // the very end — so it lands right where the person's actually
+      // looking, not somewhere they have to go hunt for afterward.
+      const insertAt = Math.min(prev.pages.length, spreadNumberToPageCount(pageIndex + 1));
+      const newPages = [...prev.pages.slice(0, insertAt), newPage, ...prev.pages.slice(insertAt)];
+      return { ...prev, pages: newPages };
     });
   };
 
