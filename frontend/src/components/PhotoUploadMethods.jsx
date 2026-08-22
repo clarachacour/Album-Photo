@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { api, photoImageUrl } from "@/lib/api";
 import { toast } from "sonner";
 import MobileUploadQR from "@/components/MobileUploadQR";
@@ -18,11 +18,25 @@ import { TID } from "@/constants/testIds";
  *   incremental AI processing — `onProcessingStarted` is called so the
  *   caller can show its processing/progress UI.
  */
-export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted, afterMethodsRow }) {
+export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted, afterMethodsRow, onImportingChange }) {
   const [drag, setDrag] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [googleImporting, setGoogleImporting] = useState(false);
   const fileInput = React.useRef();
+
+  // A single, method-agnostic "something is still coming in" signal —
+  // device upload, phone/QR, and Google Photos each have their own
+  // internal progress state, but the caller (the wizard's Photos step)
+  // just needs to know whether it's safe to let the person move on yet,
+  // regardless of which method is active. The QR modal being open counts
+  // too: it polls for new photos the whole time it's up, so photos could
+  // still be landing even though there's no single boolean for that
+  // inside MobileUploadQR itself.
+  const importing = uploading || googleImporting || showQR;
+  useEffect(() => {
+    onImportingChange && onImportingChange(importing);
+  }, [importing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refreshAlbum = async () => {
     const { data } = await api.get(`/albums/${albumId}`);
@@ -136,7 +150,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           <Smartphone size={16} />
           <span className="text-sm font-semibold tracking-widest uppercase">From your phone</span>
         </button>
-        {albumId && <GooglePhotosImportButton albumId={albumId} onImported={handlePhoneOrGoogleUpdate} />}
+        {albumId && <GooglePhotosImportButton albumId={albumId} onImported={handlePhoneOrGoogleUpdate} onBusyChange={setGoogleImporting} />}
       </div>
 
       {afterMethodsRow}
