@@ -601,6 +601,7 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
   const uploaded = serverPhotos.length;
   const enough = uploaded >= recommended;
   const belowMinimum = uploaded < minimum;
+  const [importing, setImporting] = useState(false);
 
   return (
     <section className="animate-fade-up">
@@ -628,6 +629,7 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
         mode="wizard"
         photos={serverPhotos}
         onPhotosChange={onServerPhotosChange}
+        onImportingChange={setImporting}
         afterMethodsRow={
           <div className="my-6 flex items-center justify-between border-y border-[color:var(--border-soft)] py-4">
             <button
@@ -638,11 +640,12 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
             </button>
             <button
               onClick={onCreate}
-              disabled={!canCreate || busy}
+              disabled={!canCreate || busy || importing}
+              title={importing ? "Wait for your photos to finish importing" : undefined}
               className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
             >
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Create Album</span>
+              {busy || importing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              <span className="text-sm font-semibold tracking-widest uppercase">{importing ? "Importing…" : "Create Album"}</span>
             </button>
           </div>
         }
