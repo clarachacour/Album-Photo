@@ -16,7 +16,7 @@ import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { ChevronLeft, ChevronRight, ShoppingBag, Save, Sparkles, Type, Trash2, Loader2, ArrowLeft, Image as ImageIcon, X as XIcon, ZoomIn, Move, Bold, Italic, Square, Circle as CircleIcon, ClipboardPaste, Upload, Undo2, Redo2 } from "lucide-react";
-
+ 
 const FONT_OPTIONS = [
   { label: "Cormorant (serif)", value: "'Cormorant Garamond', serif" },
   { label: "Manrope (sans)", value: "'Manrope', sans-serif" },
