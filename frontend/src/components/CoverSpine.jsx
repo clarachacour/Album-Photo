@@ -121,7 +121,7 @@ function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, ti
  * cover — they can be dragged to reposition, resized, and restyled (font,
  * size), or hidden entirely.
  */
-export function CoverSpine({ title, year, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectYear, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
+export function CoverSpine({ title, year, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectSubtitle, onSelectYear, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
   const containerRef = useRef(null);
   const containerHeight = useElementHeight(containerRef);
   const containerWidth = useElementWidth(containerRef);
@@ -456,9 +456,9 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
         <DraggableItem
           item={subtitleItem}
           onChange={(patch) => onUpdateCover && onUpdateCover({ spine_subtitle_y: patch.y ?? subtitleItem.y, spine_subtitle_h: patch.h ?? subtitleItem.h })}
-          onSelect={() => onSelectTitle && onSelectTitle()}
+          onSelect={() => onSelectSubtitle && onSelectSubtitle()}
           onDoubleClick={() => setSubtitleEditing(true)}
-          selected={selectedZone === "spine-title"}
+          selected={selectedZone === "spine-subtitle"}
           containerRef={containerRef}
           editable={editable && !subtitleEditing}
           tid="spine-subtitle"
