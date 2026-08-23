@@ -16,6 +16,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
@@ -389,7 +390,22 @@ async def upsert_oauth_user(email: str, name: str, provider: str) -> dict:
         "auth_provider": provider,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.users.insert_one(user_doc)
+    try:
+        await db.users.insert_one(user_doc)
+    except DuplicateKeyError:
+        # The check above and this insert aren't atomic — two near-
+        # simultaneous sign-in attempts for the same brand-new email (seen
+        # in practice: a browser firing the OAuth callback twice) can both
+        # pass the find_one check before either has inserted, and the
+        # second one collides with the unique email index here instead of
+        # actually being a real conflict. The other request's insert
+        # already created the account we were about to, so just use that
+        # one instead of surfacing a 500 for what is, from the user's
+        # perspective, a completely normal sign-in.
+        existing = await db.users.find_one({"email": email})
+        if existing:
+            return existing
+        raise
     return user_doc
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
@@ -556,7 +572,19 @@ async def signup(data: SignupInput):
         "name": data.name,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.users.insert_one(user_doc)
+    try:
+        await db.users.insert_one(user_doc)
+    except DuplicateKeyError:
+        # The check above and this insert aren't atomic — two near-
+        # simultaneous submissions of the same signup form (a double-click,
+        # or the request firing twice) can both pass the find_one check
+        # before either has inserted. Unlike the OAuth version of this same
+        # race (see upsert_oauth_user), this always re-raises the same
+        # clean "already used" error rather than ever logging the request
+        # into the account that won the race — we have no way to confirm
+        # this request's password actually matches that account's, and
+        # silently issuing a token here would skip that check entirely.
+        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     token = create_token(user_id)
     return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name))
 
