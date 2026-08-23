@@ -1299,6 +1299,7 @@ function BookRenderer({
           editable
           selectedZone={coverSel?.mode}
           onSelectTitle={() => onSelectSpine && onSelectSpine("spine-title")}
+          onSelectSubtitle={() => onSelectSpine && onSelectSpine("spine-subtitle")}
           onSelectYear={() => onSelectSpine && onSelectSpine("spine-year")}
           onSelectCaption={() => onSelectSpine && onSelectSpine("spine-caption")}
           onSelectLogo={() => onSelectSpine && onSelectSpine("spine-logo")}
