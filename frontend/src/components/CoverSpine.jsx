@@ -126,6 +126,23 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   const containerHeight = useElementHeight(containerRef);
   const containerWidth = useElementWidth(containerRef);
   const spineMaxFontPx = containerWidth ? containerWidth * SPINE_MAX_FONT_RATIO : SPINE_MAX_FONT_FALLBACK_PX;
+  // Lets the person shrink spine text below its auto-fit size via the
+  // right panel's Size slider — clamped so it can only ever go SMALLER
+  // than the width-based cap, never bigger. Letting it exceed that cap
+  // would reintroduce exactly the kind of cropping this whole exact-fit
+  // system (see defaultTitleH/defaultSubtitleH below) was built to
+  // eliminate — the cap isn't a stylistic choice, it's the actual physical
+  // limit of how thick a letter can get before it doesn't fit the spine's
+  // real width. Below 1, the slider is a genuine, real control on the
+  // rendered size; the old spine_title_size/spine_subtitle_size/
+  // spine_caption_size fields it used to write to had no lasting effect
+  // once this auto-fit logic took over after the first render.
+  const titleScale = Math.min(1, Math.max(0.4, cover.spine_title_scale ?? 1));
+  const subtitleScale = Math.min(1, Math.max(0.4, cover.spine_subtitle_scale ?? 1));
+  const captionScale = Math.min(1, Math.max(0.4, cover.spine_caption_scale ?? 1));
+  const scaledTitleMaxFontPx = spineMaxFontPx * titleScale;
+  const scaledSubtitleMaxFontPx = spineMaxFontPx * subtitleScale;
+  const scaledCaptionMaxFontPx = spineMaxFontPx * captionScale;
   const bg = cover.bg_color || template.bg;
   const text = cover.text_color || template.text;
   const [titleEditing, setTitleEditing] = useState(false);
@@ -171,10 +188,10 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
   // actively clipping legitimately long words (e.g. "Southeast Asia",
   // "Africa") instead of just guarding against edge cases.
   const defaultTitleH = titleMeasuredRef
-    ? Math.min(0.75, (spineMaxFontPx * titleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
+    ? Math.min(0.75, (scaledTitleMaxFontPx * titleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
     : 0.3;
   const defaultSubtitleH = subtitleMeasuredRef
-    ? Math.min(0.55, (spineMaxFontPx * SUBTITLE_TO_TITLE_RATIO * subtitleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
+    ? Math.min(0.55, (scaledSubtitleMaxFontPx * SUBTITLE_TO_TITLE_RATIO * subtitleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
     : 0.18;
 
   const titleItem = {
@@ -277,7 +294,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
       // Each stacked line shares the same fixed-width column, so the safe
       // per-line thickness shrinks as more lines are stacked (2 lines means
       // each can only be about half as thick as a single line could be).
-      const maxPerLine = spineMaxFontPx / Math.max(1, lines.length);
+      const maxPerLine = scaledCaptionMaxFontPx / Math.max(1, lines.length);
       setFittedCaptionFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / widest) * 0.9, maxPerLine)));
     };
     compute();
@@ -291,10 +308,10 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     return () => {
       cancelled = true;
     };
-  }, [containerHeight, spineMaxFontPx, captionItem.h, cover.spine_caption, cover.spine_caption_font, cover.spine_caption_weight, cover.spine_text_orientation]);
+  }, [containerHeight, scaledCaptionMaxFontPx, captionItem.h, cover.spine_caption, cover.spine_caption_font, cover.spine_caption_weight, cover.spine_text_orientation]);
   const fittedSpineFontSizePx = useFitSpineFontSize({
     containerHeight,
-    maxFontPx: spineMaxFontPx,
+    maxFontPx: scaledTitleMaxFontPx,
     boxHeightFraction: titleItem.h,
     title: cover.spine_title_text || title || "Album",
     baseFontSize: cover.spine_title_size || 9,
@@ -358,7 +375,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             // too big for what actually gets rendered, cropping it.
             uppercase: true,
           });
-      setFittedSubtitleFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / Math.max(1, measured)) * 0.86, spineMaxFontPx)));
+      setFittedSubtitleFontSizePx(Math.max(6, Math.min(REF_PX * (boxHeightPx / Math.max(1, measured)) * 0.86, scaledSubtitleMaxFontPx)));
     };
     compute();
     let cancelled = false;
@@ -371,7 +388,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     return () => {
       cancelled = true;
     };
-  }, [containerHeight, spineMaxFontPx, subtitleItem.h, cover.spine_subtitle, cover.spine_subtitle_font, cover.spine_subtitle_weight, cover.spine_title_font, cover.spine_text_orientation]);
+  }, [containerHeight, scaledSubtitleMaxFontPx, subtitleItem.h, cover.spine_subtitle, cover.spine_subtitle_font, cover.spine_subtitle_weight, cover.spine_title_font, cover.spine_text_orientation]);
   const spineSubtitleFontSizeStyle = containerHeight
     ? `${fittedSubtitleFontSizePx}px`
     : `${(((cover.spine_subtitle_size || 9) / 608) * 100).toFixed(2)}cqh`;
@@ -505,7 +522,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           <div
             className="w-full h-full flex items-center justify-center font-sans tracking-widest overflow-hidden pointer-events-none select-none"
             style={{
-              color: text,
+              color: cover.spine_year_color || text,
               writingMode: "vertical-rl",
               fontSize: `${(((cover.spine_year_size || 9) / 608) * 100).toFixed(2)}cqh`,
               fontFamily: cover.spine_year_font || "'Manrope', sans-serif",
