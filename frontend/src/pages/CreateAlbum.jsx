@@ -45,20 +45,6 @@ function defaultCoverPayload(chosenTemplate) {
         text_align: "center",
         color: tplCover.text_color ?? DEFAULT_COVER.text_color,
       },
-      {
-        id: cryptoRandom(),
-        type: "text",
-        role: "year",
-        content: "Everbook",
-        x: 0.4,
-        y: 0.86,
-        w: 0.2,
-        h: 0.06,
-        font: "'Manrope', sans-serif",
-        font_size: 11,
-        text_align: "center",
-        color: tplCover.text_color ?? DEFAULT_COVER.text_color,
-      },
     ],
   };
 }
