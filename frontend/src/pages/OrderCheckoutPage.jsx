@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 // Kept in sync with the backend's ORDER_PRICE_CENTS / compute_order_price_cents
 // — shown here only for the live summary as the user picks a quantity; the
@@ -49,7 +49,16 @@ export default function OrderCheckoutPage() {
     city: user?.city || "",
     additional_info: user?.additional_info || "",
   });
-  const [placing, setPlacing] = useState(false);
+  // Shown the instant the person clicks "Place order" — the real POST
+  // request (which can legitimately take a while, since PDF generation is
+  // awaited synchronously within it — see backend create_order) keeps
+  // running in the background of this screen instead of behind a loading
+  // button, so nothing about the wait is visible. This component stays
+  // mounted (we don't navigate away) for exactly that reason — navigating
+  // immediately would risk the in-flight request being torn down along
+  // with the page. Once it actually resolves, THEN we move on to the real
+  // order page.
+  const [justPlaced, setJustPlaced] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,19 +83,20 @@ export default function OrderCheckoutPage() {
         return;
       }
     }
-    setPlacing(true);
+    setJustPlaced(true);
     try {
       const { data } = await api.post("/orders", {
         album_id: albumId,
         quantity,
         shipping_address: address,
       });
-      toast.success("Order placed! We're preparing your album.");
       nav(`/orders/${data.id}`);
     } catch (err) {
+      // The rare real failure (address rejected server-side, etc.) — drop
+      // back to the form rather than leaving them stuck on a confirmation
+      // screen for an order that didn't actually go through.
+      setJustPlaced(false);
       toast.error(err?.response?.data?.detail || "Failed to place order");
-    } finally {
-      setPlacing(false);
     }
   };
 
@@ -97,6 +107,19 @@ export default function OrderCheckoutPage() {
     return (
       <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
         <div className="max-w-[900px] mx-auto text-sm text-[color:var(--muted)]">Loading…</div>
+      </main>
+    );
+  }
+
+  if (justPlaced) {
+    return (
+      <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12 flex items-center justify-center">
+        <div className="max-w-[500px] mx-auto text-center animate-fade-up">
+          <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">Order placed.</h1>
+          <p className="text-[color:var(--ink)]/70">
+            Thank you — we're getting <span className="font-semibold">{album.title}</span> ready for print.
+          </p>
+        </div>
       </main>
     );
   }
@@ -186,12 +209,10 @@ export default function OrderCheckoutPage() {
             <button
               type="submit"
               form="checkout-form"
-              disabled={placing}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase"
               data-testid="place-order-btn"
             >
-              {placing ? <Loader2 size={14} className="animate-spin" /> : null}
-              {placing ? "Placing order…" : "Place order"}
+              Place order
             </button>
             <p className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed">
               Online payment isn't set up yet — placing an order saves it and starts preparing your album. We'll follow up to complete payment.
