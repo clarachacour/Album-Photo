@@ -42,7 +42,7 @@ export function CoverEditorPanel({
       {/* Entête du panneau */}
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
-          {coverSel.mode === "spine-title" || coverSel.mode === "spine-year" || coverSel.mode === "spine-caption"
+          {coverSel.mode === "spine-title" || coverSel.mode === "spine-subtitle" || coverSel.mode === "spine-year" || coverSel.mode === "spine-caption"
             ? "Cover — Spine"
             : `Cover — ${zoneLabel}`}
         </div>
@@ -142,6 +142,14 @@ export function CoverEditorPanel({
             )}
           </div>
 
+          <ColorField
+            label="Title color"
+            value={cover.title_color || ""}
+            onChange={(v) => updateCover({ title_color: v || null })}
+            tid="cover-title-color"
+            onReset={() => updateCover({ title_color: null })}
+          />
+
           <div className="flex items-center gap-2">
             <button
               data-testid="cover-title-bold"
@@ -189,11 +197,11 @@ export function CoverEditorPanel({
       )}
 
       {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / YEAR) */}
-      {(coverSel.mode === "spine-title" || coverSel.mode === "spine-year" || coverSel.mode === "spine-caption") && (() => {
-        const zone = coverSel.mode; // "spine-title" | "spine-year" | "spine-caption"
-        const prefix = zone === "spine-title" ? "spine_title" : zone === "spine-year" ? "spine_year" : "spine_caption";
-        const label = zone === "spine-title" ? "Spine title" : zone === "spine-year" ? "Spine year" : "Spine text";
-        const testidPrefix = zone === "spine-title" ? "spine-title" : zone === "spine-year" ? "spine-year" : "spine-caption";
+      {(coverSel.mode === "spine-title" || coverSel.mode === "spine-subtitle" || coverSel.mode === "spine-year" || coverSel.mode === "spine-caption") && (() => {
+        const zone = coverSel.mode; // "spine-title" | "spine-subtitle" | "spine-year" | "spine-caption"
+        const prefix = zone === "spine-title" ? "spine_title" : zone === "spine-subtitle" ? "spine_subtitle" : zone === "spine-year" ? "spine_year" : "spine_caption";
+        const label = zone === "spine-title" ? "Spine title" : zone === "spine-subtitle" ? "Spine subtitle" : zone === "spine-year" ? "Spine year" : "Spine text";
+        const testidPrefix = zone === "spine-title" ? "spine-title" : zone === "spine-subtitle" ? "spine-subtitle" : zone === "spine-year" ? "spine-year" : "spine-caption";
         return (
         <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
           <div className="eyebrow">{label}</div>
@@ -250,7 +258,7 @@ export function CoverEditorPanel({
             </div>
           )}
 
-          {zone === "spine-title" && (
+          {(zone === "spine-title" || zone === "spine-subtitle") && (
             <div>
               <label className="eyebrow block mb-2">Subtitle</label>
               <input
@@ -329,7 +337,7 @@ export function CoverEditorPanel({
             <span className="text-xs font-semibold tracking-widest uppercase">Bold</span>
           </button>
 
-          {zone !== "spine-caption" && (
+          {zone !== "spine-caption" && zone !== "spine-subtitle" && (
             <button
               onClick={() => updateCover({ [`${prefix}_hidden`]: !cover[`${prefix}_hidden`] })}
               className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
@@ -341,11 +349,11 @@ export function CoverEditorPanel({
               </span>
             </button>
           )}
-          {zone === "spine-caption" && cover.spine_caption && (
+          {(zone === "spine-caption" || zone === "spine-subtitle") && (cover.spine_caption || cover.spine_subtitle) && (
             <button
-              onClick={() => updateCover({ spine_caption: "" })}
+              onClick={() => updateCover(zone === "spine-caption" ? { spine_caption: "" } : { spine_subtitle: "" })}
               className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-              data-testid="spine-caption-clear"
+              data-testid={zone === "spine-caption" ? "spine-caption-clear" : "spine-subtitle-clear"}
             >
               <EyeOff size={14} />
               <span className="text-xs font-semibold tracking-widest uppercase">Clear</span>
