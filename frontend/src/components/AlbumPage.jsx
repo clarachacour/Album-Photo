@@ -924,8 +924,17 @@ export function CoverFrontPage({
         const SUBTITLE_RATIO = 0.58;
         const renderItem = (() => {
           if (item.role !== "subtitle") return item;
+          // Same reasoning as titleScale/spine's scale fields — the Size
+          // slider used to write to item.font_size, but that value was
+          // never actually read here (idealFontSize below is derived
+          // purely from the title's own fitted size, ignoring it
+          // entirely), so the slider had no visible effect. font_scale is
+          // the real, working control, clamped so it can only shrink
+          // below the auto-fit size, never risk pushing past the box the
+          // overflow cap further down protects.
+          const subtitleScale = Math.min(1, Math.max(0.4, item.font_scale ?? 1));
           const idealFontSize = containerWidth
-            ? (fittedTitleFontSizePx / containerWidth) * REFERENCE_PAGE_PX * SUBTITLE_RATIO
+            ? (fittedTitleFontSizePx / containerWidth) * REFERENCE_PAGE_PX * SUBTITLE_RATIO * subtitleScale
             : item.font_size;
           // idealFontSize above is derived purely from the title's own
           // fitted size, with no awareness of the subtitle's own box —
