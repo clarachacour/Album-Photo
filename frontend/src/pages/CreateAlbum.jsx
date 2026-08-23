@@ -507,6 +507,7 @@ function StepEdit({
             editable
             selectedZone={coverSel?.mode}
             onSelectTitle={() => setCoverSel({ mode: "spine-title" })}
+            onSelectSubtitle={() => setCoverSel({ mode: "spine-subtitle" })}
             onSelectYear={() => setCoverSel({ mode: "spine-year" })}
             onSelectCaption={() => setCoverSel({ mode: "spine-caption" })}
             onSelectLogo={() => setCoverSel({ mode: "spine-logo" })}
