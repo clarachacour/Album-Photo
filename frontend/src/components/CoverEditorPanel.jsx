@@ -284,16 +284,32 @@ export function CoverEditorPanel({
 
           <div>
             <label className="eyebrow block mb-2">Size</label>
+            {/* This scales the auto-fit result down (never up — see
+                titleScale/subtitleScale/captionScale in CoverSpine.jsx)
+                rather than setting a raw point size. Spine text always
+                auto-fits to the spine's real width/word length now, so a
+                raw size no longer has any lasting effect once the page
+                has rendered once — this is what actually still does
+                something. */}
             <input
               type="range"
-              min={6}
-              max={36}
-              value={cover[`${prefix}_size`] || 9}
-              onChange={(e) => updateCover({ [`${prefix}_size`]: Number(e.target.value) })}
+              min={0.4}
+              max={1}
+              step={0.02}
+              value={cover[`${prefix}_scale`] ?? 1}
+              onChange={(e) => updateCover({ [`${prefix}_scale`]: Number(e.target.value) })}
               className="w-full"
               data-testid={`${testidPrefix}-size`}
             />
           </div>
+
+          <ColorField
+            label={`${label} color`}
+            value={cover[`${prefix}_color`] || ""}
+            onChange={(v) => updateCover({ [`${prefix}_color`]: v || null })}
+            tid={`${testidPrefix}-color`}
+            onReset={() => updateCover({ [`${prefix}_color`]: null })}
+          />
 
           <button
             onClick={() => {
