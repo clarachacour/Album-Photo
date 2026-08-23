@@ -846,7 +846,7 @@ export function CoverFrontPage({
               }}
               className={`leading-[0.95] tracking-tight w-full h-full bg-transparent border-0 outline-none resize-none whitespace-pre-wrap ${titleUppercase ? "uppercase" : ""}`}
               style={{
-                color: text,
+                color: cover.title_color || text,
                 fontFamily: titleFont,
                 fontWeight: titleWeight,
                 fontStyle: titleFontStyle,
@@ -862,7 +862,7 @@ export function CoverFrontPage({
             <h1
               className="leading-[0.95] tracking-tight w-full h-full pointer-events-none select-none"
               style={{
-                color: text,
+                color: cover.title_color || text,
                 fontFamily: titleFont,
                 fontWeight: titleWeight,
                 fontStyle: titleFontStyle,
@@ -891,7 +891,7 @@ export function CoverFrontPage({
             left: `${titleX * 100}%`,
             top: `${titleY * 100}%`,
             width: `${titleW * 100}%`,
-            color: text,
+            color: cover.title_color || text,
             fontFamily: titleFont,
             fontWeight: titleWeight,
             fontStyle: titleFontStyle,
