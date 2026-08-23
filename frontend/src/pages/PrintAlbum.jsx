@@ -19,6 +19,15 @@ export default function PrintAlbum() {
   const [searchParams] = useSearchParams();
   const [album, setAlbum] = useState(null);
   const [error, setError] = useState(null);
+  // Set with a short delay after the album loads, rather than the instant
+  // it does — every page (title, subtitle, spine text, etc.) auto-fits its
+  // font size via its own layout effect, several of which wait on a web
+  // font to finish loading before recomputing a final value. Signaling
+  // "ready" the moment React's first render pass completes let Playwright
+  // occasionally capture a page mid-calculation — most visibly, a subtitle
+  // sized from a stale/incomplete measurement, clipped in the exported
+  // PDF despite looking correct in the flipbook (which has no such rush).
+  const [printReady, setPrintReady] = useState(false);
 
   useEffect(() => {
     const token = searchParams.get("auth");
@@ -38,6 +47,12 @@ export default function PrintAlbum() {
     })();
   }, [id, searchParams]);
 
+  useEffect(() => {
+    if (!album) return;
+    const t = setTimeout(() => setPrintReady(true), 1200);
+    return () => clearTimeout(t);
+  }, [album]);
+
   if (error) return <div data-print-error="true">{error}</div>;
   if (!album) return <div>Loading…</div>;
 
@@ -48,7 +63,7 @@ export default function PrintAlbum() {
   const cover = album.cover || {};
 
   return (
-    <div data-print-ready="true">
+    <div data-print-ready={printReady ? "true" : undefined}>
       <style>{`
         @page cover-sheet { size: ${pw + spineMm + seamMm}mm ${ph}mm; margin: 0; }
         @page content-sheet { size: ${pw}mm ${ph}mm; margin: 0; }
@@ -58,6 +73,13 @@ export default function PrintAlbum() {
           overflow: hidden;
           page-break-after: always;
           break-after: page;
+        }
+        /* The last sheet (back cover) shouldn't force a page break after
+           itself — there's nothing left to follow it, so doing so left a
+           trailing blank page at the end of every exported PDF. */
+        .print-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
         }
         .cover-sheet { page: cover-sheet; }
         .content-sheet { page: content-sheet; }
