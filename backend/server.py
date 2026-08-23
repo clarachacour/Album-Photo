@@ -3028,6 +3028,35 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     match what the customer saw in the flipbook. Never surfaced to the
     customer directly — this is purely for internal/printer use."""
     try:
+        # Pre-warm every used photo's "print" variant BEFORE launching the
+        # browser, one at a time. Without this, the headless browser (once
+        # it navigates to the print page) requests every photo's print
+        # variant at once — the first time any of them is needed, each of
+        # those ~dozens of concurrent requests triggers its own resize+R2
+        # upload, all competing for this same small instance's limited
+        # thread pool alongside the PDF task itself waiting on the whole
+        # page to finish loading. That self-inflicted contention was
+        # stalling the export badly enough to run into the request
+        # timeout with no clean error ever logged. Sequential and boring
+        # on purpose — by the time Playwright opens the page, every image
+        # it needs is already a fast, uncontended cache hit.
+        album_doc = await db.albums.find_one({"id": album_id}, {"pages": 1})
+        photo_ids = {
+            it["photo_id"]
+            for pg in (album_doc or {}).get("pages", [])
+            for it in (pg.get("items") or [])
+            if it.get("type") == "photo" and it.get("photo_id")
+        }
+        if photo_ids:
+            loop = asyncio.get_event_loop()
+            photos_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0})
+            async for photo in photos_cursor:
+                if photo.get("print_path"):
+                    continue  # already cached from an earlier order/preview
+                print_path, _ = await loop.run_in_executor(None, _generate_print_variant, photo)
+                if print_path:
+                    await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_path": print_path}})
+
         token = create_token(user_id)
         print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
         loop = asyncio.get_event_loop()
