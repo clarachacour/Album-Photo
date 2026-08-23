@@ -1150,11 +1150,17 @@ export function CoverBackPage({
           </div>
         </div>
       )}
-      {extras.length === 0 && (
-        <div className="font-sans text-xs tracking-widest" style={{ color: text }}>
-          Everbook
-        </div>
-      )}
+      {/* Brand mark — always shown, independent of extras entirely (not
+          gated by extras.length, unlike the country fallback above), and
+          never part of the extras array itself — it isn't a selectable,
+          editable, or deletable item the way everything else on this page
+          is. It used to be a regular (removable) back_extra_item with its
+          content just swapped to "Everbook" — that meant it could be
+          deleted like any other text, which defeats the point of a brand
+          mark that's supposed to always be there. */}
+      <div className="font-sans text-xs tracking-widest pointer-events-none select-none" style={{ color: text }}>
+        Everbook
+      </div>
 
       {extras.map((item) => {
         const isSel = selectedItemId === item.id;
