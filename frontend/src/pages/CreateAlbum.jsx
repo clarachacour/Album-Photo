@@ -595,10 +595,8 @@ function minimumRequiredPhotos(targetPages) {
 }
 
 function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, onBack, onCreate, canCreate, busy }) {
-  const recommended = recommendedMinPhotos(targetPages);
   const minimum = minimumRequiredPhotos(targetPages);
   const uploaded = serverPhotos.length;
-  const enough = uploaded >= recommended;
   const belowMinimum = uploaded < minimum;
   const [importing, setImporting] = useState(false);
 
@@ -608,21 +606,19 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
       <p className="text-[color:var(--ink)]/70 mb-4">
         All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.
       </p>
+      
       <div
         className={`text-sm border rounded px-4 py-3 mb-6 ${
           belowMinimum
             ? "text-red-700 bg-red-50 border-red-200"
-            : enough
-            ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-            : "text-amber-700 bg-amber-50 border-amber-200"
+            : "text-emerald-700 bg-emerald-50 border-emerald-200"
         }`}
       >
         {belowMinimum
-          ? `${uploaded} of at least ${minimum} photos required for a ${targetPages}-page album — upload ${minimum - uploaded} more to continue, or choose a smaller page count.`
-          : enough
-          ? `${uploaded} photos uploaded — that's enough for your ${targetPages}-page album.`
-          : `${uploaded} of the ~${recommended} photos we recommend for a ${targetPages}-page album (some will be rejected as duplicates or too blurry — upload more to fill every page).`}
+          ? `${uploaded} of at least ${minimum} photos required for a ${targetPages}-page album — upload ${minimum - uploaded} more to continue.`
+          : `${uploaded} photos uploaded (minimum ${minimum} reached). You can now create your album!`}
       </div>
+
       <PhotoUploadMethods
         albumId={albumId}
         mode="wizard"
