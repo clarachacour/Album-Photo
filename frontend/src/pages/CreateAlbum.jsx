@@ -29,23 +29,14 @@ function defaultCoverPayload(chosenTemplate) {
     // because this function wasn't updated to know about a new field name.
     ...tplCover,
     extra_items: tplCover.extra_items ? tplCover.extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [defaultLogoItem()],
-    back_extra_items: tplCover.back_extra_items ? tplCover.back_extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [
-      {
-        id: cryptoRandom(),
-        type: "text",
-        role: "country",
-        content: "",
-        x: 0.1,
-        y: 0.46,
-        w: 0.8,
-        h: 0.08,
-        font: "'Manrope', sans-serif",
-        font_weight: "600",
-        font_size: 16,
-        text_align: "center",
-        color: tplCover.text_color ?? DEFAULT_COVER.text_color,
-      },
-    ],
+    // No default back_extra_items — CoverBackPage already shows
+    // album.country automatically (and gracefully renders nothing if it's
+    // never been set) whenever there are no back_extra_items at all. A
+    // pre-added-but-empty "country" text item here used to block that
+    // automatic display without ever showing anything itself, and looked
+    // like a mystery empty box to select and delete before this display
+    // was even reachable.
+    back_extra_items: tplCover.back_extra_items ? tplCover.back_extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [],
   };
 }
 
