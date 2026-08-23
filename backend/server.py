@@ -856,6 +856,7 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
         delete_object(p.get("storage_path"))
         delete_object(p.get("thumbnail_path"))
         delete_object(p.get("medium_path"))
+        delete_object(p.get("print_path"))
     delete_object(album.get("cover_image_path"))
 
     result = await db.albums.delete_one({"id": album_id, "user_id": user["id"]})
@@ -945,6 +946,39 @@ def _generate_medium_variant(photo: dict):
         return medium_path, medium_bytes
     except Exception as e:
         logger.error(f"Impossible de générer la variante 'medium' pour la photo {photo.get('id')}: {e}")
+        return None, None
+
+# 3000px comfortably covers true 300 DPI print quality up to A4
+# (~3508px at 300dpi) and still ~250 DPI at A3 — visually indistinguishable
+# from 300dpi in a printed photo album, well beyond what the eye can
+# resolve at normal viewing distance. A raw phone/camera original is very
+# often 6000-8000px+ on the long side (or more), which the PDF export was
+# previously using directly (variant=original) — decoding dozens of those,
+# all at once, for one continuous Playwright-rendered PDF covering every
+# page of the whole album, is what pushed memory usage past the Cloud Run
+# instance's limit and crashed the whole export. This cuts each photo's
+# decoded memory footprint substantially without any visible cost to
+# actual print quality.
+PRINT_MAX_DIMENSION_PX = 3000
+
+def _generate_print_variant(photo: dict):
+    """Same idea as _generate_medium_variant, but sized for genuine print
+    quality (PRINT_MAX_DIMENSION_PX) rather than screen viewing — this is
+    what the PDF export (PrintAlbum.jsx, variant=print) uses instead of
+    the true original, to keep the whole-album render within memory."""
+    try:
+        data, _ = get_object(photo["storage_path"])
+        with Image.open(BytesIO(data)) as img:
+            img = img.convert("RGB") if img.mode not in ("RGB", "L") else img.copy()
+            img.thumbnail((PRINT_MAX_DIMENSION_PX, PRINT_MAX_DIMENSION_PX), Image.LANCZOS)
+            buf = BytesIO()
+            img.save(buf, format="JPEG", quality=95)  # higher quality than medium — this is what actually gets printed
+            print_bytes = buf.getvalue()
+        print_path = photo["storage_path"].rsplit(".", 1)[0] + "_print.jpg"
+        put_object(print_path, print_bytes, "image/jpeg")
+        return print_path, print_bytes
+    except Exception as e:
+        logger.error(f"Impossible de générer la variante 'print' pour la photo {photo.get('id')}: {e}")
         return None, None
 
 def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: str, album_id: str) -> dict:
@@ -1223,6 +1257,24 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
             # fallback so the page still renders something reasonable.
             if photo.get("thumbnail_path"):
                 path, served_content_type = photo["thumbnail_path"], "image/jpeg"
+    elif variant == "print":
+        # Used only by the PDF export (PrintAlbum.jsx) — sized for genuine
+        # print quality (PRINT_MAX_DIMENSION_PX) but not the raw original,
+        # which was pushing the whole-album Playwright render past the
+        # Cloud Run instance's memory limit. Same on-demand-then-cache
+        # pattern as medium above.
+        if photo.get("print_path"):
+            path = photo["print_path"]
+            served_content_type = "image/jpeg"
+        else:
+            loop = asyncio.get_event_loop()
+            print_path, print_bytes = await loop.run_in_executor(None, _generate_print_variant, photo)
+            if print_path:
+                await db.photos.update_one({"id": photo_id}, {"$set": {"print_path": print_path}})
+                data = print_bytes
+                return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})
+            # Resizing failed — fall back to the true original rather than
+            # silently omitting the photo from the printed album.
     data, ctype = get_object(path)
     return Response( content=data, media_type=served_content_type or ctype, headers={"Cache-Control": "private, max-age=31536000, immutable"}, )
 
@@ -3001,6 +3053,7 @@ async def _delete_unselected_photos(album_id: str):
             delete_object(p.get("storage_path"))
             delete_object(p.get("thumbnail_path"))
             delete_object(p.get("medium_path"))
+            delete_object(p.get("print_path"))
         ids = [p["id"] for p in unselected]
         if ids:
             await db.photos.update_many({"id": {"$in": ids}}, {"$set": {"is_deleted": True}})
@@ -3113,6 +3166,7 @@ async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
             delete_object(p.get("storage_path"))
             delete_object(p.get("thumbnail_path"))
             delete_object(p.get("medium_path"))
+            delete_object(p.get("print_path"))
         delete_object(album.get("cover_image_path"))
         await db.photos.update_many({"album_id": album["id"]}, {"$set": {"is_deleted": True}})
         await db.albums.update_one({"id": album["id"]}, {"$set": {"is_deleted": True}})
