@@ -2522,7 +2522,7 @@ def _render_pdf_via_browser_sync(print_url: str) -> bytes:
             error_text = error_el.inner_text()
             raise RuntimeError(f"print page reported an error: {error_text}")
         page.evaluate("document.fonts.ready")
-        page.wait_for_timeout(300)  # small buffer for images to finish painting after load
+        page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
         pdf_bytes = page.pdf(print_background=True, prefer_css_page_size=True)
         browser.close()
         return pdf_bytes
