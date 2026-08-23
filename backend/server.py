@@ -3010,10 +3010,24 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "updated_at": now,
     }
     await db.orders.insert_one(order_doc)
-    background_tasks.add_task(_generate_order_pdf, order_id, album["id"], user["id"])
+    # Awaited directly, not dispatched via background_tasks — same
+    # throttling issue as AI processing and the Google Photos import
+    # (see their comments): Cloud Run's request-based billing cuts CPU
+    # hard once a request is considered "done", and rendering the PDF via
+    # a real headless browser is exactly the kind of CPU-heavy work that
+    # got starved into never actually finishing. The frontend already
+    # awaits this call and shows a busy state on the Place Order button in
+    # the meantime, so no UI change was needed to accommodate the longer
+    # wait. _delete_unselected_photos stays backgrounded — it's just R2
+    # cleanup, not urgent, and not CPU-heavy the way PDF rendering is.
+    await _generate_order_pdf(order_id, album["id"], user["id"])
     background_tasks.add_task(_delete_unselected_photos, album["id"])
-    order_doc.pop("_id", None)
-    return order_doc
+    # order_doc still has the pdf_ready=False/pdf_path=None it was built
+    # with before _generate_order_pdf ran — re-fetch so the response
+    # actually reflects whether it succeeded, instead of always reporting
+    # "not ready" regardless of the real outcome.
+    fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return fresh_order or order_doc
 
 @api_router.get("/orders")
 async def list_orders(user: dict = Depends(get_current_user)):
