@@ -50,25 +50,46 @@ export default function PrintAlbum() {
   useEffect(() => {
     if (!album) return;
     let cancelled = false;
-    // document.fonts.ready is the actual signal that every font this page
-    // uses has finished loading — a fixed delay was a guess at how long
-    // that takes, and guessed wrong for this theme's spine/subtitle fonts
-    // specifically (still cropped in the exported PDF even with a 1.2s
-    // wait). The subtitle's own overflow-cap calculation (see
-    // CoverFrontPage's renderItem, role === "subtitle") measures its text
-    // with whatever font is available the instant it runs — if that's a
-    // fallback font because the real one hasn't loaded yet, the
-    // measurement (and the cap it's supposed to enforce) is simply wrong,
-    // in a way no fixed delay reliably outlasts. A short buffer after
-    // fonts.ready still runs on top, for the layout reflow that follows
-    // font loading to settle before Playwright captures anything.
+    // document.fonts.ready confirms every font is loaded, but that alone
+    // isn't enough — subtitle text (see AutoFitText in AlbumPage.jsx)
+    // corrects its own size by rendering, measuring the real result, and
+    // shrinking if it overflows, which can take a few render-and-remeasure
+    // cycles to settle. A fixed delay after fonts.ready (tried at 500ms,
+    // then 1.2s) kept guessing wrong about how long that takes — it isn't
+    // a fixed duration, it's however many cycles that particular text
+    // needs. This waits on window.__autoFitPending instead (see
+    // AutoFitText) — the actual count of subtitles still mid-correction —
+    // so "ready" means everything has genuinely settled, not "probably
+    // has by now".
     Promise.resolve(document.fonts && document.fonts.ready)
       .catch(() => {})
       .then(() => {
         if (cancelled) return;
-        setTimeout(() => {
-          if (!cancelled) setPrintReady(true);
-        }, 1200); // was 500 — subtitle text was still cropping in the exported PDF at 500ms, this gives more room for the extra subtitle-font-loading effect (AlbumPage.jsx, subtitleFontsReadyTick) to finish and re-render before Playwright captures
+        // Two animation frames first: AutoFitText's very first
+        // overflow check runs in a useLayoutEffect after the initial
+        // render, so window.__autoFitPending could still read as its
+        // default 0 — "nothing pending" — for a brief moment before any
+        // instance has had the chance to even take its first
+        // measurement. Waiting for a couple of paints guarantees that
+        // first check has actually run before we start trusting the
+        // counter.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (cancelled) return;
+            const startedAt = Date.now();
+            const MAX_WAIT_MS = 4000; // safety ceiling — never block the export forever over a case that never settles
+            const poll = () => {
+              if (cancelled) return;
+              const pending = typeof window !== "undefined" ? window.__autoFitPending || 0 : 0;
+              if (pending <= 0 || Date.now() - startedAt > MAX_WAIT_MS) {
+                setPrintReady(true);
+                return;
+              }
+              setTimeout(poll, 100);
+            };
+            poll();
+          });
+        });
       });
     return () => {
       cancelled = true;
