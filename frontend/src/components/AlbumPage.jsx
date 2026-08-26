@@ -989,7 +989,15 @@ export function CoverFrontPage({
               uppercase: true, // subtitle always renders uppercase (see textTransform below)
             });
             if (measuredAtIdeal > boxWidthPx) {
-              fontSize = idealFontSize * (boxWidthPx / measuredAtIdeal) * 0.96; // small safety margin
+              // 0.85 (was 0.96) — a wider safety margin against exactly
+              // this kind of edge case: this measurement is only as
+              // accurate as whatever font is actually loaded the instant
+              // it runs, and the PDF export (a fresh, fast headless
+              // browser render) has less natural time for that to happen
+              // than the flipbook does. A tighter margin here means the
+              // cap kicks in a bit sooner even if the measurement itself
+              // is slightly off, rather than needing it to be exact.
+              fontSize = idealFontSize * (boxWidthPx / measuredAtIdeal) * 0.85;
             }
           }
           // item.h is whatever was stored for this item — often calibrated
