@@ -104,21 +104,26 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
       const boxWidthPx = boxWidthFraction * containerWidth;
       const REF_PX = 100; // fixed reference size for measurement; only the ratio matters
 
-      // Single-line titles ("Our Forever Journey" on one row) measure the
-      // whole string at once; multi-line titles (one word per line) fit to
-      // whichever individual word is widest.
-      const words = singleLine ? [String(text)] : String(text).split(" ");
-      const widestAtRef = Math.max(
+      // Single-line titles measure the whole string at once. Multi-word
+      // titles used to size to whichever individual word was widest,
+      // forcing every word onto its own line no matter how short the
+      // title was — adding a second short word ("Notre" + "Voyage")
+      // always pushed it to a new line and shrank everything to make
+      // room, even with plenty of width left on the first line. Sizing
+      // to the whole title's width instead gives an ideal *starting*
+      // size for genuine natural wrapping (see the render below, which
+      // no longer forces one span per line) — the real-measurement
+      // correction pass afterward (titleOverflowScale) shrinks further
+      // only if the actual rendered result doesn't fit.
+      const measuredAtRef = Math.max(
         1,
-        ...words.map((w) =>
-          measureDomTextWidth(w, {
-            fontPx: REF_PX,
-            fontWeight,
-            fontFamily,
-            letterSpacing: "-0.025em", // matches the title's `tracking-tight` class
-            uppercase,
-          })
-        )
+        measureDomTextWidth(String(text), {
+          fontPx: REF_PX,
+          fontWeight,
+          fontFamily,
+          letterSpacing: "-0.025em", // matches the title's `tracking-tight` class
+          uppercase,
+        })
       );
 
       // SAFETY is the "fill 100% of the box" baseline; `scale` (1 = fill
@@ -128,17 +133,15 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
       // storedFontSize cancels out of this ratio algebraically — that's
       // the bug that made the slider look like it stopped doing anything.
       const SAFETY = 0.96 * (scale ?? 1);
-      let fitted = REF_PX * (boxWidthPx / widestAtRef) * SAFETY;
+      let fitted = REF_PX * (boxWidthPx / measuredAtRef) * SAFETY;
 
-      // Cap by the box's own height so a short word in a MULTI-line title
-      // (e.g. "Our" / "Forever" / "Journey") can't grow past what the box can
-      // actually hold once every line is stacked. A single-word title has no
-      // such risk — capping it too would silently override the width-fill
-      // goal using the stored title_h, which was sized for the old, smaller
-      // static font and is often too short for a true full-width fit.
-      if (boxHeightFraction && lineCount > 1) {
-        const boxHeightPx = boxHeightFraction * containerWidth * pageAspect; // height = width * (page height / page width)
-        const maxByHeight = (boxHeightPx / lineCount) * 0.92;
+      // A single long title sized to fit entirely on one line can end up
+      // enormous — cap it against the box height as a sane ceiling (a
+      // few lines' worth), while the real-measurement pass still does
+      // the precise, final fit against actual wrapping.
+      if (boxHeightFraction) {
+        const boxHeightPx = boxHeightFraction * containerWidth * pageAspect;
+        const maxByHeight = boxHeightPx * 0.6;
         fitted = Math.min(fitted, maxByHeight);
       }
 
@@ -876,7 +879,41 @@ export function CoverFrontPage({
     singleLine: titleSingleLine,
     scale: cover.title_scale ?? 1,
   });
-  const titleFontSizeStyle = containerWidth ? `${fittedTitleFontSizePx}px` : "clamp(18px, 9cqw, 56px)";
+  // Second pass on top of useFitTitleFontSize's initial estimate: that
+  // hook sizes the title assuming it *might* wrap onto more than one
+  // line, but can't know in advance exactly how many lines the browser's
+  // own natural wrapping will actually produce at that size — only the
+  // real rendered DOM knows that. This checks the title's real, painted
+  // result and shrinks further only if it's genuinely too tall/wide for
+  // its box, the same real-measurement approach AutoFitText already uses
+  // for subtitles. A ref per render path (editable / static) is needed
+  // since the title renders in two different places below.
+  const titleMeasureRefEditable = useRef(null);
+  const titleMeasureRefStatic = useRef(null);
+  const [titleOverflowScale, setTitleOverflowScale] = useState(1);
+  const titleOverflowAttemptsRef = useRef(0);
+
+  const titleFontSizeStyle = containerWidth
+    ? `${fittedTitleFontSizePx * titleOverflowScale}px`
+    : "clamp(18px, 9cqw, 56px)";
+
+  useLayoutEffect(() => {
+    titleOverflowAttemptsRef.current = 0;
+    setTitleOverflowScale(1);
+  }, [title, fittedTitleFontSizePx]);
+  useLayoutEffect(() => {
+    if (titleWritingMode) return; // vertical titles are fitted precisely by useFitTitleFontSize already
+    const el = titleMeasureRefEditable.current || titleMeasureRefStatic.current;
+    if (!el || !el.clientWidth || !el.clientHeight) return;
+    if (titleOverflowAttemptsRef.current > 6) return;
+    const overflowX = el.scrollWidth / el.clientWidth;
+    const overflowY = el.scrollHeight / el.clientHeight;
+    const overflow = Math.max(overflowX, overflowY);
+    if (overflow > 1.02) {
+      titleOverflowAttemptsRef.current += 1;
+      setTitleOverflowScale((s) => Math.max(0.3, (s / overflow) * 0.97));
+    }
+  });
 
   // The stored title_h was sized for the old fixed font_size and is often
   // taller than the text actually needs now that the font fills the box's
@@ -977,6 +1014,7 @@ export function CoverFrontPage({
             />
           ) : (
             <h1
+              ref={titleMeasureRefEditable}
               className="leading-[0.95] tracking-tight w-full h-full pointer-events-none select-none"
               style={{
                 color: cover.title_color || text,
@@ -988,21 +1026,17 @@ export function CoverFrontPage({
                 transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
                 writingMode: titleWritingMode || undefined,
                 wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
-                whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
+                whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : "normal",
+                overflowWrap: "break-word",
               }}
             >
-              {titleWritingMode || titleSingleLine ? (
-                <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
-              ) : (
-                title.split(" ").map((w, i) => (
-                  <span key={i} className={`block ${titleUppercase ? "uppercase" : ""}`}>{w}</span>
-                ))
-              )}
+              <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
             </h1>
           )}
         </DraggableItem>
       ) : (
         <h1
+          ref={titleMeasureRefStatic}
           className="absolute leading-[0.95] tracking-tight overflow-hidden"
           style={{
             left: `${titleX * 100}%`,
@@ -1017,16 +1051,11 @@ export function CoverFrontPage({
             transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
             writingMode: titleWritingMode || undefined,
             wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
-            whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
+            whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : "normal",
+            overflowWrap: "break-word",
           }}
         >
-          {titleWritingMode || titleSingleLine ? (
-            <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
-          ) : (
-            title.split(" ").map((w, i) => (
-              <span key={i} className={`block ${titleUppercase ? "uppercase" : ""}`}>{w}</span>
-            ))
-          )}
+          <span className={titleUppercase ? "uppercase" : ""}>{title}</span>
         </h1>
       )}
 
