@@ -68,7 +68,7 @@ export default function PrintAlbum() {
         if (cancelled) return;
         setTimeout(() => {
           if (!cancelled) setPrintReady(true);
-        }, 500);
+        }, 1200); // was 500 — subtitle text was still cropping in the exported PDF at 500ms, this gives more room for the extra subtitle-font-loading effect (AlbumPage.jsx, subtitleFontsReadyTick) to finish and re-render before Playwright captures
       });
     return () => {
       cancelled = true;
