@@ -134,12 +134,19 @@ export default function CreateAlbum() {
       if (isMod && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) {
         e.preventDefault();
         albumHistory.redo();
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (coverSel?.mode === "item") {
+          e.preventDefault();
+          removeCoverItem(coverSel.itemId, coverSel.side);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [coverSel]);
 
 
   // Format -> Edit: create the album the first time, or persist size/orientation if we're revisiting.
