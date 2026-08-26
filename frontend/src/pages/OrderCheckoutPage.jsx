@@ -76,7 +76,7 @@ export default function OrderCheckoutPage() {
 
   const placeOrder = async (e) => {
     e.preventDefault();
-    const required = ["full_name", "street", "city"];
+    const required = ["full_name", "phone", "street", "city"];
     for (const field of required) {
       if (!address[field]?.trim()) {
         toast.error("Please fill in all required shipping fields");
@@ -141,15 +141,15 @@ export default function OrderCheckoutPage() {
             <div className="eyebrow mb-6">Shipping address</div>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">Full name</label>
+                <label className="eyebrow block mb-2">Full name *</label>
                 <input className={inputClass} value={address.full_name} onChange={(e) => setAddress({ ...address, full_name: e.target.value })} required />
               </div>
               <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">Phone</label>
-                <input className={inputClass} value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
+                <label className="eyebrow block mb-2">Phone *</label>
+                <input className={inputClass} value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} required />
               </div>
               <div>
-                <label className="eyebrow block mb-2">Street</label>
+                <label className="eyebrow block mb-2">Street *</label>
                 <input className={inputClass} value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} required />
               </div>
               <div>
@@ -157,7 +157,7 @@ export default function OrderCheckoutPage() {
                 <input className={inputClass} value={address.building} onChange={(e) => setAddress({ ...address, building: e.target.value })} />
               </div>
               <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">City</label>
+                <label className="eyebrow block mb-2">City *</label>
                 <input className={inputClass} value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} required />
               </div>
               <div className="md:col-span-2">
@@ -165,6 +165,7 @@ export default function OrderCheckoutPage() {
                 <input className={inputClass} value={address.additional_info} onChange={(e) => setAddress({ ...address, additional_info: e.target.value })} placeholder="Floor, gate code, delivery notes..." />
               </div>
             </div>
+            <p className="text-xs text-[color:var(--muted)] mt-1">* Required</p>
           </form>
 
           <aside className="border border-[color:var(--border-soft)] p-6 h-fit">
