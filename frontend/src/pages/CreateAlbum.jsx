@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
@@ -120,6 +120,28 @@ export default function CreateAlbum() {
   const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
+  // Same clipboard used by AlbumEditor.jsx's cover editing (Ctrl+C/Ctrl+V
+  // duplicates the selected cover item) — kept here too so this earlier,
+  // pre-creation cover-editing step behaves identically to the later one
+  // instead of silently missing the shortcut.
+  const clipboardRef = useRef(null);
+
+  useEffect(() => {
+    if (!coverSel) return;
+    const onPaste = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      const text = e.clipboardData?.getData("text/plain");
+      if (text && text.trim()) {
+        e.preventDefault();
+        addCoverText(text.trim().slice(0, 500));
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coverSel]);
+
   useEffect(() => {
     const onKeyDown = (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase();
@@ -136,6 +158,35 @@ export default function CreateAlbum() {
         albumHistory.redo();
         return;
       }
+      if (isMod && e.key.toLowerCase() === "c") {
+        if (coverSel?.mode === "item") {
+          const cover = album?.cover || {};
+          const key = coverSel.side === "back" ? "back_extra_items" : "extra_items";
+          const found = (cover[key] || []).find((it) => it.id === coverSel.itemId);
+          if (found) clipboardRef.current = { side: coverSel.side, item: JSON.parse(JSON.stringify(found)) };
+        }
+        return;
+      }
+      if (isMod && e.key.toLowerCase() === "v") {
+        const clip = clipboardRef.current;
+        if (!clip) return;
+        e.preventDefault();
+        const newId = cryptoRandom();
+        const offset = 0.03;
+        const w = clip.item.w ?? 0.1;
+        const h = clip.item.h ?? 0.1;
+        const nx = Math.min((clip.item.x || 0) + offset, 1 - w);
+        const ny = Math.min((clip.item.y || 0) + offset, 1 - h);
+        const side = coverSel?.side || clip.side;
+        const key = side === "back" ? "back_extra_items" : "extra_items";
+        const newItem = { ...clip.item, id: newId, x: nx, y: ny };
+        setAlbum((prev) => {
+          const cover = prev.cover || {};
+          return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), newItem] } };
+        });
+        setCoverSel({ mode: "item", side, itemId: newId });
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (coverSel?.mode === "item") {
           e.preventDefault();
@@ -146,7 +197,7 @@ export default function CreateAlbum() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coverSel]);
+  }, [coverSel, album]);
 
 
   // Format -> Edit: create the album the first time, or persist size/orientation if we're revisiting.
