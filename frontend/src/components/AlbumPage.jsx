@@ -705,19 +705,54 @@ function AutoFitText({ baseFontSize, content }) {
   const ref = useRef(null);
   const [scale, setScale] = useState(1);
   const attemptsRef = useRef(0);
+  // Registers itself as "still possibly correcting" on window while it
+  // might need another overflow-correction pass, and un-registers once a
+  // render finds no overflow (or gives up at the attempt cap). This is
+  // what PrintAlbum.jsx now actually waits on before letting Playwright
+  // capture the page — a fixed delay (tried at 500ms, then 1.2s) kept
+  // guessing wrong about how long this takes, because it isn't a fixed
+  // amount of time: it's however many render-and-remeasure cycles this
+  // particular text needs, which varies by word and by how differently
+  // sized the print page's physical @page layout is from whatever
+  // context it was last measured in.
+  const registeredRef = useRef(false);
+  const markPending = () => {
+    if (registeredRef.current) return;
+    registeredRef.current = true;
+    if (typeof window !== "undefined") window.__autoFitPending = (window.__autoFitPending || 0) + 1;
+  };
+  const markSettled = () => {
+    if (!registeredRef.current) return;
+    registeredRef.current = false;
+    if (typeof window !== "undefined") window.__autoFitPending = Math.max(0, (window.__autoFitPending || 0) - 1);
+  };
 
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || !el.clientWidth || !el.clientHeight) return;
-    if (attemptsRef.current > 6) return; // safety cap — stops any pathological back-and-forth from ever looping forever
+    if (!el || !el.clientWidth || !el.clientHeight) {
+      markSettled();
+      return;
+    }
+    if (attemptsRef.current > 6) {
+      // safety cap — stops any pathological back-and-forth from ever
+      // looping forever, and releases the pending flag so a genuinely
+      // unfittable case can't block the print export indefinitely
+      markSettled();
+      return;
+    }
     const overflowX = el.scrollWidth / el.clientWidth;
     const overflowY = el.scrollHeight / el.clientHeight;
     const overflow = Math.max(overflowX, overflowY);
     if (overflow > 1.02 && scale > 0.3) {
+      markPending();
       attemptsRef.current += 1;
       setScale((s) => Math.max(0.3, (s / overflow) * 0.97));
+    } else {
+      markSettled();
     }
   });
+
+  useEffect(() => markSettled, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <span
