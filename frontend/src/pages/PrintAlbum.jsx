@@ -49,8 +49,30 @@ export default function PrintAlbum() {
 
   useEffect(() => {
     if (!album) return;
-    const t = setTimeout(() => setPrintReady(true), 1200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    // document.fonts.ready is the actual signal that every font this page
+    // uses has finished loading — a fixed delay was a guess at how long
+    // that takes, and guessed wrong for this theme's spine/subtitle fonts
+    // specifically (still cropped in the exported PDF even with a 1.2s
+    // wait). The subtitle's own overflow-cap calculation (see
+    // CoverFrontPage's renderItem, role === "subtitle") measures its text
+    // with whatever font is available the instant it runs — if that's a
+    // fallback font because the real one hasn't loaded yet, the
+    // measurement (and the cap it's supposed to enforce) is simply wrong,
+    // in a way no fixed delay reliably outlasts. A short buffer after
+    // fonts.ready still runs on top, for the layout reflow that follows
+    // font loading to settle before Playwright captures anything.
+    Promise.resolve(document.fonts && document.fonts.ready)
+      .catch(() => {})
+      .then(() => {
+        if (cancelled) return;
+        setTimeout(() => {
+          if (!cancelled) setPrintReady(true);
+        }, 500);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [album]);
 
   if (error) return <div data-print-error="true">{error}</div>;
