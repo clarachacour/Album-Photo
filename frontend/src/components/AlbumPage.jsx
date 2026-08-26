@@ -733,6 +733,41 @@ export function CoverFrontPage({
   const titleTextAlign = cover.title_text_align || "left";
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
+  // Bumped once every font actually used by a subtitle-role extra item is
+  // confirmed loaded — subtitle-role items measure their own text (see
+  // renderItem below) to decide whether the auto-fit size overflows their
+  // box, and that measurement is only as accurate as the font that's
+  // actually available at the moment it runs. The title's own font-ready
+  // effect (useFitTitleFontSize) already forces a re-render once ITS font
+  // loads, which re-runs this measurement too — but a subtitle using a
+  // different font than the title (not unusual, e.g. an italic accent
+  // font paired with a bold title) could still still not have finished
+  // loading by then, leaving the cap-check measurement wrong until
+  // *something* re-renders after it does. This explicitly loads every
+  // subtitle font in use and forces that re-render itself, rather than
+  // hoping the title's own effect happens to cover it.
+  const [subtitleFontsReadyTick, setSubtitleFontsReadyTick] = useState(0);
+  useEffect(() => {
+    if (typeof document === "undefined" || !document.fonts || !document.fonts.load) return;
+    const subtitleFonts = [
+      ...new Set(
+        extras
+          .filter((it) => it.role === "subtitle" && it.type === "text")
+          .map((it) => `${it.font_weight || "normal"} 16px ${it.font || titleFont}`)
+      ),
+    ];
+    if (subtitleFonts.length === 0) return;
+    let cancelled = false;
+    Promise.all([...subtitleFonts.map((spec) => document.fonts.load(spec)), document.fonts.ready])
+      .then(() => {
+        if (!cancelled) setSubtitleFontsReadyTick((t) => t + 1);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extras.map((it) => `${it.role}:${it.font}:${it.font_weight}`).join("|")]);
   // height = width * pageAspect. Was hardcoded to the portrait ratio
   // (1.414) everywhere, which silently broke every size/position
   // calculation below in landscape orientation (text and images
