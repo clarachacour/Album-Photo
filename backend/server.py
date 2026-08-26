@@ -459,7 +459,7 @@ class ContactInput(BaseModel):
 
 class ShippingAddress(BaseModel):
     full_name: str = Field(min_length=1)
-    phone: Optional[str] = None
+    phone: str = Field(min_length=1)
     street: str = Field(min_length=1)
     building: Optional[str] = None
     city: str = Field(min_length=1)
