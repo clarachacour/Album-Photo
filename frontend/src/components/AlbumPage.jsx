@@ -104,26 +104,30 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
       const boxWidthPx = boxWidthFraction * containerWidth;
       const REF_PX = 100; // fixed reference size for measurement; only the ratio matters
 
-      // Single-line titles measure the whole string at once. Multi-word
-      // titles used to size to whichever individual word was widest,
-      // forcing every word onto its own line no matter how short the
-      // title was — adding a second short word ("Notre" + "Voyage")
-      // always pushed it to a new line and shrank everything to make
-      // room, even with plenty of width left on the first line. Sizing
-      // to the whole title's width instead gives an ideal *starting*
-      // size for genuine natural wrapping (see the render below, which
-      // no longer forces one span per line) — the real-measurement
-      // correction pass afterward (titleOverflowScale) shrinks further
-      // only if the actual rendered result doesn't fit.
-      const measuredAtRef = Math.max(
+      // Single-line titles ("Our Forever Journey" on one row) measure the
+      // whole string at once; multi-word titles fit to whichever
+      // individual word is widest — this is what every existing template
+      // was sized and tuned against, so it's the source of truth for how
+      // big the title should look. (A version of this that sized to the
+      // whole string's width instead made every multi-word title
+      // noticeably smaller across every template — reverted.) Natural
+      // wrapping (see the render below, which no longer forces one word
+      // per line) plus the real-measurement correction pass afterward
+      // (titleOverflowScale) still let two short words share a line when
+      // there's room, without changing this baseline size for anything
+      // that already fit.
+      const words = singleLine ? [String(text)] : String(text).split(" ");
+      const widestAtRef = Math.max(
         1,
-        measureDomTextWidth(String(text), {
-          fontPx: REF_PX,
-          fontWeight,
-          fontFamily,
-          letterSpacing: "-0.025em", // matches the title's `tracking-tight` class
-          uppercase,
-        })
+        ...words.map((w) =>
+          measureDomTextWidth(w, {
+            fontPx: REF_PX,
+            fontWeight,
+            fontFamily,
+            letterSpacing: "-0.025em", // matches the title's `tracking-tight` class
+            uppercase,
+          })
+        )
       );
 
       // SAFETY is the "fill 100% of the box" baseline; `scale` (1 = fill
@@ -133,15 +137,17 @@ function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFracti
       // storedFontSize cancels out of this ratio algebraically — that's
       // the bug that made the slider look like it stopped doing anything.
       const SAFETY = 0.96 * (scale ?? 1);
-      let fitted = REF_PX * (boxWidthPx / measuredAtRef) * SAFETY;
+      let fitted = REF_PX * (boxWidthPx / widestAtRef) * SAFETY;
 
-      // A single long title sized to fit entirely on one line can end up
-      // enormous — cap it against the box height as a sane ceiling (a
-      // few lines' worth), while the real-measurement pass still does
-      // the precise, final fit against actual wrapping.
-      if (boxHeightFraction) {
-        const boxHeightPx = boxHeightFraction * containerWidth * pageAspect;
-        const maxByHeight = boxHeightPx * 0.6;
+      // Cap by the box's own height so a short word in a MULTI-line title
+      // (e.g. "Our" / "Forever" / "Journey") can't grow past what the box can
+      // actually hold once every line is stacked. A single-word title has no
+      // such risk — capping it too would silently override the width-fill
+      // goal using the stored title_h, which was sized for the old, smaller
+      // static font and is often too short for a true full-width fit.
+      if (boxHeightFraction && lineCount > 1) {
+        const boxHeightPx = boxHeightFraction * containerWidth * pageAspect; // height = width * (page height / page width)
+        const maxByHeight = (boxHeightPx / lineCount) * 0.92;
         fitted = Math.min(fitted, maxByHeight);
       }
 
