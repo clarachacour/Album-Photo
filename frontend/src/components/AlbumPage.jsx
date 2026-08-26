@@ -992,7 +992,19 @@ export function CoverFrontPage({
               fontSize = idealFontSize * (boxWidthPx / measuredAtIdeal) * 0.96; // small safety margin
             }
           }
-          return { ...item, y: titleY + visualTitleH, font_size: fontSize };
+          // item.h is whatever was stored for this item — often calibrated
+          // to a much smaller, static subtitle size from before this font
+          // size became dynamic (proportional to the title, which can
+          // render far bigger now). The box itself never grew to match,
+          // so a subtitle rendering near the top of its safe font-size
+          // range could be taller than the box that's supposed to contain
+          // it, clipped at the bottom by that box's own overflow:hidden.
+          // 1.25x is a standard line-height safety margin over the raw
+          // font size; never shrinks the box below whatever was stored,
+          // only grows it if the real text needs more room.
+          const requiredH = (fontSize / REFERENCE_PAGE_PX) * 1.25 / pageAspect;
+          const boxH = Math.max(item.h, requiredH);
+          return { ...item, y: titleY + visualTitleH, h: boxH, font_size: fontSize };
         })();
         if (item.type === "text") {
           const inTextEdit = isSel && extraTextEditId === item.id;
