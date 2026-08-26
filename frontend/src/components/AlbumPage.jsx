@@ -686,6 +686,51 @@ function CenterGuides({ show, guideX, guideY }) {
 }
 
 /**
+ * Renders a cover text item at a target font size, then checks the
+ * ACTUAL rendered element for overflow (scrollWidth/scrollHeight vs
+ * clientWidth/clientHeight) and shrinks it if it doesn't fit.
+ *
+ * This exists because every earlier attempt at this problem — measuring
+ * text in a hidden span ahead of time, waiting for document.fonts.ready
+ * before measuring, explicitly pre-loading specific fonts — was a
+ * *prediction* of what the real render would look like, made before that
+ * render happened. Each prediction turned out wrong at least once (a
+ * subtitle still clipped in the exported PDF despite every one of those
+ * safeguards). Checking the real, already-painted DOM node instead of
+ * predicting it can't be wrong the same way, because it isn't a
+ * prediction — it's the actual measurement of what's actually on screen,
+ * whatever font metrics or loading timing produced it.
+ */
+function AutoFitText({ baseFontSize, content }) {
+  const ref = useRef(null);
+  const [scale, setScale] = useState(1);
+  const attemptsRef = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !el.clientWidth || !el.clientHeight) return;
+    if (attemptsRef.current > 6) return; // safety cap — stops any pathological back-and-forth from ever looping forever
+    const overflowX = el.scrollWidth / el.clientWidth;
+    const overflowY = el.scrollHeight / el.clientHeight;
+    const overflow = Math.max(overflowX, overflowY);
+    if (overflow > 1.02 && scale > 0.3) {
+      attemptsRef.current += 1;
+      setScale((s) => Math.max(0.3, (s / overflow) * 0.97));
+    }
+  });
+
+  return (
+    <span
+      ref={ref}
+      className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none"
+      style={{ fontSize: `${(((baseFontSize * scale) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw` }}
+    >
+      {content}
+    </span>
+  );
+}
+
+/**
  * Cover front page — now fully editable: background/accent/text colors overridable,
  * title position movable, optional custom cover image, and extra_items support
  * (text pieces that can be added and moved on the cover).
@@ -733,30 +778,42 @@ export function CoverFrontPage({
   const titleTextAlign = cover.title_text_align || "left";
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
-  // Bumped exactly once, when document.fonts.ready first resolves —
-  // subtitle-role extras (see renderItem below) measure their own text to
-  // decide whether the auto-fit size overflows their box, and that
-  // measurement is only as accurate as whichever font is actually
-  // available the instant it runs. Confirmed by inspecting the real
-  // rendered PDF export: a subtitle's font-size came out at 17.04cqw in a
-  // box only 50% wide — nowhere near enough room for that text at that
-  // size — meaning the overflow-cap measurement had clearly run against a
-  // narrower fallback font before the real one (a custom web font) had
-  // loaded, letting an oversized value through uncapped. A single global
-  // "fonts are ready" wait (one promise, resolves once, no per-font
-  // work) is simpler and safer than the earlier per-subtitle-font-loading
-  // version, which was reverted on suspicion of adding memory pressure to
-  // the PDF export — this keeps the same fix with much less surface area.
+  // Bumped exactly once, after actively triggering every font this cover
+  // needs (title + all subtitle-role extras) to load. Confirmed by
+  // inspecting the real rendered PDF export: a subtitle's font-size came
+  // out at 17.04cqw in a box only 50% wide — nowhere near enough room for
+  // that text at that size — meaning the overflow-cap measurement (see
+  // renderItem below) had run against a narrower fallback font before the
+  // real one had loaded, letting an oversized value through uncapped.
+  // document.fonts.ready ALONE doesn't fix this: it only tracks fonts
+  // already in the process of loading, and does nothing to trigger
+  // loading a font that's only referenced in CSS but hasn't been used by
+  // any painted/measured text yet — which is exactly the situation the
+  // very first measurement of a subtitle is in. document.fonts.load()
+  // actively requests the font instead of passively waiting, then
+  // document.fonts.ready confirms it (and everything else) has actually
+  // finished. Runs once per mount ([] deps, not re-derived from extras on
+  // every render) specifically to avoid the repeated-firing risk
+  // suspected in an earlier, per-render version of this same fix.
   const [fontsSettled, setFontsSettled] = useState(false);
   useEffect(() => {
-    if (typeof document === "undefined" || !document.fonts || !document.fonts.ready) return;
+    if (typeof document === "undefined" || !document.fonts || !document.fonts.load) return;
     let cancelled = false;
-    document.fonts.ready.then(() => {
-      if (!cancelled) setFontsSettled(true);
-    });
+    const specs = new Set([`${titleWeight} 16px ${titleFont}`]);
+    for (const it of extras) {
+      if (it.type === "text") specs.add(`${it.font_weight || "normal"} 16px ${it.font || titleFont}`);
+    }
+    Promise.all([...specs].map((spec) => document.fonts.load(spec)))
+      .catch(() => {})
+      .then(() => document.fonts.ready)
+      .catch(() => {})
+      .then(() => {
+        if (!cancelled) setFontsSettled(true);
+      });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // height = width * pageAspect. Was hardcoded to the portrait ratio
   // (1.414) everywhere, which silently broke every size/position
@@ -1021,7 +1078,6 @@ export function CoverFrontPage({
               extraStyle={{
                 color: item.color || text,
                 fontFamily: item.font || titleFont,
-                fontSize: `${((( renderItem.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
                 lineHeight: 1.15,
@@ -1044,13 +1100,11 @@ export function CoverFrontPage({
                     e.stopPropagation();
                   }}
                   className="whitespace-pre-wrap block w-full h-full bg-transparent border-0 outline-none resize-none"
-                  style={{ color: "inherit", font: "inherit", lineHeight: "inherit" }}
+                  style={{ color: "inherit", font: "inherit", lineHeight: "inherit", fontSize: `${(((renderItem.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw` }}
                   data-testid={`cover-extra-input-${item.id}`}
                 />
               ) : (
-                <span className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none">
-                  {item.content}
-                </span>
+                <AutoFitText key={`${item.id}-${item.content}`} baseFontSize={renderItem.font_size || 20} content={item.content} />
               )}
             </DraggableItem>
           );
