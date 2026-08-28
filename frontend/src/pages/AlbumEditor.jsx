@@ -191,6 +191,9 @@ export default function AlbumEditor() {
         } else if (coverSel?.mode === "item") {
           e.preventDefault();
           removeCoverItem(coverSel.itemId, coverSel.side);
+        } else if (coverSel?.mode?.startsWith("spine-")) {
+          e.preventDefault();
+          clearSpineZone(coverSel.mode);
         }
       }
     };
@@ -362,7 +365,7 @@ export default function AlbumEditor() {
     setSelected((prev) => (prev && prev.item?.id === itemId ? { ...prev, item: { ...prev.item, ...patch } } : prev));
   };
 
-  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
     makeCoverEditingActions({ setAlbum, albumId: id, coverSel, setCoverSel });
 
   const deleteItemById = (pageIdx, itemId) => {
