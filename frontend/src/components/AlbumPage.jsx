@@ -1135,7 +1135,21 @@ export function CoverFrontPage({
                     e.stopPropagation();
                   }}
                   className="whitespace-pre-wrap block w-full h-full bg-transparent border-0 outline-none resize-none"
-                  style={{ color: "inherit", font: "inherit", lineHeight: "inherit", fontSize: `${(((renderItem.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw` }}
+                  style={{
+                    color: "inherit",
+                    font: "inherit",
+                    lineHeight: "inherit",
+                    // text-transform doesn't reliably inherit into a
+                    // <textarea> in every browser (a long-standing quirk
+                    // with form controls) — the parent's uppercase style
+                    // above only ever affected the read-only AutoFitText
+                    // display, never this editing field, so double-clicking
+                    // a subtitle like "GREECE" to edit it showed the raw
+                    // stored text ("Greece") instead of matching the
+                    // uppercase look it has everywhere else.
+                    textTransform: item.role === "subtitle" ? "uppercase" : "none",
+                    fontSize: `${(((renderItem.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
+                  }}
                   data-testid={`cover-extra-input-${item.id}`}
                 />
               ) : (
