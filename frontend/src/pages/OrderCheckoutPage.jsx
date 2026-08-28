@@ -169,7 +169,7 @@ export default function OrderCheckoutPage() {
                 <span className="text-[color:var(--muted)]">Pages</span>
                 <span>{album.pages?.length || album.target_pages} / {album.target_pages}</span>
               </div>
-              {album.pages_below_target && (
+              {(album.pages?.length || 0) < album.target_pages && (
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3 mt-1">
                   Your album has {album.pages?.length || 0} pages. You'll still be charged the {album.target_pages}-page price.
                 </div>
