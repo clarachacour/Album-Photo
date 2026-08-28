@@ -16,16 +16,6 @@ const PRICE_TABLE = {
 };
 const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45, A3: 0.7 };
 
-// Same formula as CreateAlbum.jsx's StepPhotos — kept in sync manually
-// since it's just a heuristic recommendation shown in two different
-// places, not something either page depends on for correctness.
-const AVG_PHOTOS_PER_PAGE = 17 / 7;
-const CURATION_SAFETY_MARGIN = 1.3;
-function recommendedMinPhotos(targetPages) {
-  const contentPages = Math.max(0, (targetPages || 0) - 1);
-  return Math.ceil(contentPages * AVG_PHOTOS_PER_PAGE * CURATION_SAFETY_MARGIN);
-}
-
 function computeUnitPrice(size, targetPages) {
   const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
   if (tierPrices[targetPages] != null) return tierPrices[targetPages];
@@ -181,7 +171,7 @@ export default function OrderCheckoutPage() {
               </div>
               {album.pages_below_target && (
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3 mt-1">
-                  This album has fewer pages than your chosen {album.target_pages}-page tier — there weren't enough good-quality photos to fill it (we recommend uploading around {recommendedMinPhotos(album.target_pages)} photos for this tier). Add more photos, or you'll still be charged the {album.target_pages}-page price.
+                  Your album has {album.pages?.length || 0} pages. You'll still be charged the {album.target_pages}-page price.
                 </div>
               )}
               <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
