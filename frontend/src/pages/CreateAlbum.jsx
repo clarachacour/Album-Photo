@@ -117,7 +117,7 @@ export default function CreateAlbum() {
   }, [resumeAlbumId]);
 
   const template = getTemplate();
-  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem } =
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
   // Same clipboard used by AlbumEditor.jsx's cover editing (Ctrl+C/Ctrl+V
@@ -191,6 +191,9 @@ export default function CreateAlbum() {
         if (coverSel?.mode === "item") {
           e.preventDefault();
           removeCoverItem(coverSel.itemId, coverSel.side);
+        } else if (coverSel?.mode?.startsWith("spine-")) {
+          e.preventDefault();
+          clearSpineZone(coverSel.mode);
         }
       }
     };
