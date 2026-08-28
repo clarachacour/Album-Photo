@@ -304,7 +304,15 @@ export default function AlbumEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [album?.id]);
 
-  const goToOrder = () => {
+  const goToOrder = async () => {
+    // Auto-save only runs every 2 minutes (or on a manual Save click) —
+    // without an explicit save here, a page deletion (or any other edit)
+    // made right before clicking "Order Album" was still sitting only in
+    // this component's local state, never sent to the server. The order
+    // page then fetched "fresh" data that was genuinely still the old,
+    // pre-edit version, since the edit itself had never been saved yet —
+    // showing as a stale page count that never seemed to update.
+    await save({ silent: true });
     nav(`/order/${id}`);
   };
 
@@ -1097,10 +1105,10 @@ export default function AlbumEditor() {
             <button
               data-testid={TID.editorExportPdf}
               onClick={goToOrder}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2.5 hover:bg-[color:var(--coral)] transition-colors"
-              data-testid={TID.editorExportPdf}
+              disabled={saving}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2.5 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
             >
-              <ShoppingBag size={14} />
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <ShoppingBag size={14} />}
               <span className="text-sm font-semibold tracking-widest uppercase">Order this album</span>
             </button>
             <button
