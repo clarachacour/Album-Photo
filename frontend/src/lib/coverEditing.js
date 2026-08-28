@@ -255,5 +255,34 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel(null);
   };
 
-  return { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem };
+  // Mirrors exactly what the "Clear" / "Hide" buttons in CoverEditorPanel's
+  // spine section already do — used so the Delete/Backspace keyboard
+  // shortcut works for the spine too, not just extra items and pages.
+  // Subtitle/caption have actual free-text content, so "delete" empties
+  // it (matching the panel's "Clear" button); title/year/logo/divider are
+  // structural pieces of the spine that can't become truly blank, so
+  // "delete" hides them instead (matching the panel's "Hide" button).
+  const clearSpineZone = (mode) => {
+    if (mode === "spine-subtitle") {
+      updateCover({ spine_subtitle: "" });
+      return;
+    }
+    if (mode === "spine-caption") {
+      updateCover({ spine_caption: "" });
+      return;
+    }
+    const hiddenField = {
+      "spine-title": "spine_title_hidden",
+      "spine-year": "spine_year_hidden",
+      "spine-logo": "spine_logo_hidden",
+      "spine-divider": "spine_divider_hidden",
+    }[mode];
+    if (!hiddenField) return;
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      return { ...prev, cover: { ...cover, [hiddenField]: !cover[hiddenField] } };
+    });
+  };
+
+  return { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };
 }
