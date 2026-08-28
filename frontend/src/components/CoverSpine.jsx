@@ -534,7 +534,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           </div>
         </DraggableItem>
       )}
-      {cover.spine_title_caption_divider && (
+      {cover.spine_title_caption_divider && !cover.spine_divider_hidden && (
         <DraggableItem
           item={dividerItem}
           onChange={(patch) => onUpdateCover && onUpdateCover({ spine_divider_y: patch.y ?? dividerItem.y, spine_divider_h: patch.h ?? dividerItem.h })}
@@ -619,7 +619,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           )}
         </DraggableItem>
       )}
-      {cover.spine_logo_image && (
+      {cover.spine_logo_image && !cover.spine_logo_hidden && (
         <DraggableItem
           item={logoItem}
           onChange={(patch) => onUpdateCover && onUpdateCover({ spine_logo_x: patch.x ?? logoItem.x, spine_logo_y: patch.y ?? logoItem.y, spine_logo_w: patch.w ?? logoItem.w, spine_logo_h: patch.h ?? logoItem.h })}
