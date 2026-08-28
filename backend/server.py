@@ -34,7 +34,7 @@ import requests
 import re
 import asyncio
 import threading
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, ImageOps
 try:
     import pillow_heif
     pillow_heif.register_heif_opener()  # lets Image.open() read iPhone HEIC/HEIF photos — plain Pillow can't decode them on its own
@@ -886,6 +886,26 @@ def _store_image_with_thumbnail(path: str, data: bytes, content_type: str):
     store_data, store_content_type = data, content_type
     try:
         with Image.open(BytesIO(data)) as _probe:
+            # Phone cameras very often save the raw sensor pixels in one
+            # orientation (frequently landscape, regardless of how the
+            # phone was actually held) plus an EXIF tag saying "rotate/
+            # flip this for correct display" — every viewer normally
+            # applies that tag invisibly, so a photo everyone SEES as
+            # portrait can have raw pixel dimensions that are actually
+            # wider than they are tall, and vice versa. Every downstream
+            # use of width/height (the AI layout's photo/slot aspect-ratio
+            # matching in particular) was reading those raw, pre-rotation
+            # dimensions — so a portrait-looking face photo could get
+            # measured as landscape, get placed in a landscape-shaped
+            # slot, and have the face cropped off. exif_transpose bakes
+            # the rotation into the actual pixels once, here, at the
+            # single shared entry point every image (photos, cover
+            # images, cover assets) already goes through — so everything
+            # downstream (the stored file, thumbnails, medium/print
+            # variants, and the width/height recorded below) is
+            # consistently already-correctly-oriented from this point on,
+            # with nothing else needing its own fix.
+            _probe = ImageOps.exif_transpose(_probe)
             orig_w, orig_h = _probe.size
             if max(orig_w, orig_h) > MAX_STORED_DIMENSION_PX:
                 scaled = _probe.copy()
@@ -896,6 +916,16 @@ def _store_image_with_thumbnail(path: str, data: bytes, content_type: str):
                 store_data = out_buf.getvalue()
                 img_w, img_h = scaled.size
             else:
+                # Even when no resize is needed, the re-oriented pixels
+                # must still replace store_data — otherwise the file
+                # actually uploaded would keep its original EXIF-rotation-
+                # pending orientation while img_w/img_h (used everywhere
+                # else) claim the corrected one, a mismatch worse than
+                # not fixing this at all.
+                out_buf = BytesIO()
+                save_kwargs = {"quality": 95} if (_probe.format or "").upper() == "JPEG" else {}
+                _probe.save(out_buf, format=_probe.format or "JPEG", **save_kwargs)
+                store_data = out_buf.getvalue()
                 img_w, img_h = orig_w, orig_h
     except Exception as e:
         logger.debug(f"Impossible de redimensionner l'image à l'upload (on garde l'originale) : {e}")
