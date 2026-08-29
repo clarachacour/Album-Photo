@@ -1,0 +1,199 @@
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { Download, ExternalLink } from "lucide-react";
+
+function formatPrice(cents, currency = "eur") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
+}
+
+const STATUS_COLORS = {
+  pending_payment: "text-[color:var(--muted)]",
+  paid: "text-[color:var(--coral)]",
+  processing: "text-[color:var(--coral)]",
+  printing: "text-[color:var(--coral)]",
+  ready_for_delivery: "text-[color:var(--coral)]",
+  shipped: "text-emerald-600",
+  delivered: "text-emerald-700",
+  cancelled: "text-red-500",
+};
+
+// Matches ORDER_STATUS_LABELS in server.py — kept in sync manually, same
+// as the pricing table used to be before it moved to a shared file.
+const STATUS_LABELS = {
+  pending_payment: "Payment pending",
+  paid: "Payment confirmed",
+  processing: "Preparing your album",
+  printing: "Printing",
+  ready_for_delivery: "Ready for delivery",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+const ALL_STATUSES = Object.keys(STATUS_LABELS);
+
+
+/**
+ * Admin-only view of every order across every customer — who ordered
+ * what, where it ships, and a one-click download of the exact PDF sent
+ * to the printer for that order. The customer-facing /orders only ever
+ * shows the logged-in person's own orders; this is the "who does
+ * orders/{id}.pdf in R2 actually belong to" lookup for the person running
+ * the business. The backend itself refuses this to anyone but the
+ * configured admin account, regardless of what this page shows or hides.
+ */
+export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/admin/orders");
+        setOrders(data);
+      } catch (err) {
+        if (err?.response?.status === 403) {
+          setForbidden(true);
+        } else {
+          toast.error("Failed to load orders");
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const downloadPdf = async (orderId) => {
+    setDownloadingId(orderId);
+    try {
+      const { data } = await api.get(`/admin/orders/${orderId}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${orderId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "PDF not ready yet for this order");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const updateStatus = async (orderId, status) => {
+    setUpdatingId(orderId);
+    try {
+      const { data } = await api.patch(`/admin/orders/${orderId}/status`, { status });
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
+      if (status === "shipped" || status === "delivered") {
+        toast.success(`Customer notified — order marked ${STATUS_LABELS[status].toLowerCase()}`);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  if (forbidden) {
+    return (
+      <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
+        <div className="max-w-[600px] mx-auto text-center">
+          <h1 className="font-serif-display text-3xl tracking-tight mb-3">Not available</h1>
+          <p className="text-[color:var(--ink)]/70">This page is only visible to the account running the business.</p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
+      <div className="max-w-[1400px] mx-auto">
+        <h1 className="font-serif-display text-4xl tracking-tight mb-8">All orders</h1>
+
+        {loading ? (
+          <p className="text-sm text-[color:var(--muted)]">Loading…</p>
+        ) : orders.length === 0 ? (
+          <p className="text-sm text-[color:var(--muted)]">No orders yet.</p>
+        ) : (
+          <div className="overflow-x-auto border border-[color:var(--border-soft)]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-[color:var(--border-soft)] text-xs uppercase tracking-widest text-[color:var(--muted)]">
+                  <th className="p-3">Date</th>
+                  <th className="p-3">Customer</th>
+                  <th className="p-3">Ship to</th>
+                  <th className="p-3">Album</th>
+                  <th className="p-3">Format</th>
+                  <th className="p-3">Qty</th>
+                  <th className="p-3">Total</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">PDF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => {
+                  const addr = o.shipping_address || {};
+                  return (
+                    <tr key={o.id} className="border-b border-[color:var(--border-soft)] align-top">
+                      <td className="p-3 whitespace-nowrap text-[color:var(--ink)]/70">
+                        {o.created_at ? new Date(o.created_at).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="p-3">
+                        <div className="font-medium">{addr.full_name || "—"}</div>
+                        <div className="text-xs text-[color:var(--ink)]/60">{addr.phone || ""}</div>
+                      </td>
+                      <td className="p-3 text-[color:var(--ink)]/70">
+                        {addr.street}{addr.building ? `, ${addr.building}` : ""}<br />
+                        {addr.city}
+                        {addr.additional_info && <div className="text-xs italic mt-0.5">{addr.additional_info}</div>}
+                      </td>
+                      <td className="p-3">
+                        <Link to={`/orders/${o.id}`} className="hover:text-[color:var(--coral)] inline-flex items-center gap-1">
+                          {o.album_title || "Album"} <ExternalLink size={12} />
+                        </Link>
+                      </td>
+                      <td className="p-3 whitespace-nowrap">{o.size} · {o.orientation}</td>
+                      <td className="p-3">{o.quantity}</td>
+                      <td className="p-3 whitespace-nowrap">{formatPrice(o.total_price_cents, o.currency)}</td>
+                      <td className="p-3">
+                        <select
+                          value={o.status}
+                          disabled={updatingId === o.id}
+                          onChange={(e) => updateStatus(o.id, e.target.value)}
+                          className={`text-xs font-semibold uppercase tracking-widest bg-transparent border border-[color:var(--border-soft)] px-2 py-1 disabled:opacity-60 ${STATUS_COLORS[o.status] || ""}`}
+                        >
+                          {ALL_STATUSES.map((s) => (
+                            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-3">
+                        {o.pdf_ready ? (
+                          <button
+                            onClick={() => downloadPdf(o.id)}
+                            disabled={downloadingId === o.id}
+                            className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                          >
+                            <Download size={12} />
+                            {downloadingId === o.id ? "…" : "Download"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-[color:var(--muted)]">Not ready</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
