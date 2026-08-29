@@ -22,6 +22,7 @@ import AccountPage from "@/pages/AccountPage";
 import OrdersPage from "@/pages/OrdersPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
 import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
+import AdminOrdersPage from "@/pages/AdminOrdersPage";
 import FAQPage from "@/pages/FAQPage";
 import ContactPage from "@/pages/ContactPage";
 
@@ -98,6 +99,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrderCheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/orders"
+              element={
+                <ProtectedRoute>
+                  <AdminOrdersPage />
                 </ProtectedRoute>
               }
             />
