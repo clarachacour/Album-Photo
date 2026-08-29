@@ -8,6 +8,7 @@ import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
 import { CoverFrontPage, CoverBackPage } from "@/components/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { spineRatio, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
+import { computeUnitPrice, PAGE_TIERS } from "@/lib/pricing";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
@@ -378,7 +379,7 @@ export default function CreateAlbum() {
 
 // -------------------- STEP COMPONENTS --------------------
 
-const PAGE_TIERS = [24, 50, 100, 150, 250];
+
 
 function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages }) {
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
@@ -449,7 +450,10 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                     : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
                 } transition-colors`}
               >
-                <span className="font-semibold tracking-widest text-sm">{t}p</span>
+                <span className="font-semibold tracking-widest text-sm block">{t}p</span>
+                <span className={`text-xs block mt-0.5 ${targetPages === t ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
+                  ${computeUnitPrice(size, t)}
+                </span>
               </button>
             ))}
             <button
@@ -475,6 +479,10 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
               <span className="text-sm text-[color:var(--ink)]/60 ml-3">pages — priced above the nearest standard tier</span>
             </div>
           )}
+          <p className="text-sm text-[color:var(--ink)]/70 mt-5">
+            {size} · {targetPages} pages: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
+            <span className="text-[color:var(--ink)]/50"> per copy</span>
+          </p>
         </div>
       </div>
       <div className="flex items-center justify-center">
