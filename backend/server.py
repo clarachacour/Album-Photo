@@ -11,7 +11,7 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Header, Query, BackgroundTasks
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse, HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -28,6 +28,8 @@ import uuid
 import json
 import math
 import base64
+import hmac
+import hashlib
 import bcrypt
 import jwt
 import requests
@@ -43,6 +45,7 @@ except ImportError:
 import numpy as np
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 import time as _time
@@ -115,6 +118,12 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'dev-secret')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXP_HOURS = 24 * 30
 APP_NAME = os.environ.get('APP_NAME', 'albumai')
+# The only account allowed to see every customer's orders (name, address,
+# phone, which album, the print-ready PDF, and now status changes) — set
+# this to your own account's email as a Cloud Run environment variable.
+# Left unset, the admin endpoints below refuse everyone rather than
+# silently exposing customer data to any logged-in user.
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
 # How many photos get processed at once (uploads) / analyzed at once (AI).
 # Each one held in memory means the *decoded* image, not just the file size
 # — a single 12MP JPEG can take 30-50MB once decoded. On a small instance
@@ -293,8 +302,17 @@ SMTP_USER = os.environ.get("SMTP_USER")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "no-reply@albumai.local")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+# The print shop and delivery company's own inboxes — neither is a user of
+# this app (no login), so every email they act on carries a signed link
+# instead (see _sign_order_action). One fixed address each, since this is
+# a single-operator business with one print partner and one courier; if
+# that ever changes, this would need to become per-order instead of a
+# flat constant.
+PRINTER_EMAIL = os.environ.get("PRINTER_EMAIL")
+DELIVERY_EMAIL = os.environ.get("DELIVERY_EMAIL")
 
-def send_email(to_email: str, subject: str, body: str):
+def send_email(to_email: str, subject: str, body: str, html_body: str = None):
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         # No email provider configured — log it so it's usable in local/dev
         # testing without silently failing. Set SMTP_HOST/SMTP_USER/
@@ -302,7 +320,16 @@ def send_email(to_email: str, subject: str, body: str):
         logger.warning(f"[DEV] SMTP non configuré — email non envoyé à {to_email} : {subject}\n{body}")
         return
     try:
-        msg = MIMEText(body)
+        if html_body:
+            # multipart/alternative: mail clients that render HTML show
+            # html_body (needed for an actual clickable button); anything
+            # that can't falls back to the plain-text part instead of
+            # showing broken markup.
+            msg = MIMEMultipart("alternative")
+            msg.attach(MIMEText(body, "plain"))
+            msg.attach(MIMEText(html_body, "html"))
+        else:
+            msg = MIMEText(body)
         msg["Subject"] = subject
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
@@ -358,6 +385,80 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
         f"Thank you for printing with Everbook."
     )
     send_email(to_email, subject, body)
+
+# ---------- Printer / delivery workflow ----------
+# The printer and delivery company aren't users of this app — they act on
+# a specific order purely by clicking a link in an email, with no login.
+# Each link is signed (HMAC, using the same secret as user auth tokens,
+# but a completely different, non-JWT format — never decodable as a user
+# session) so the action it grants (downloading one order's PDF, marking
+# one order ready) can't be guessed or reused for a different order.
+def _sign_order_action(order_id: str, action: str) -> str:
+    msg = f"{order_id}:{action}".encode()
+    sig = hmac.new(JWT_SECRET.encode(), msg, hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(sig).decode().rstrip("=")
+
+def _verify_order_action(order_id: str, action: str, token: str) -> bool:
+    if not token:
+        return False
+    expected = _sign_order_action(order_id, action)
+    return hmac.compare_digest(expected, token)
+
+def send_printer_order_email(order: dict):
+    """Sent automatically the moment an order's PDF finishes generating.
+    Carries a signed download link (not the file itself — a full-
+    resolution album PDF can easily be tens of MB, well past what many
+    inboxes accept as an attachment) and a signed "ready for delivery"
+    link the printer clicks once the physical book is done, which is what
+    actually notifies the delivery company — see send_delivery_pickup_email."""
+    if not PRINTER_EMAIL:
+        logger.warning(f"PRINTER_EMAIL non configuré — email d'impression non envoyé pour la commande {order['id']}")
+        return
+    download_token = _sign_order_action(order["id"], "download")
+    ready_token = _sign_order_action(order["id"], "ready")
+    download_url = f"{BACKEND_URL}/api/order-actions/{order['id']}/download?token={download_token}"
+    ready_url = f"{BACKEND_URL}/api/order-actions/{order['id']}/ready?token={ready_token}"
+    subject = f"New book to print — {order.get('album_title', 'Album')} (#{order['id'][:8]})"
+    body = (
+        f"New order to print.\n\n"
+        f"Album: {order.get('album_title', 'Album')}\n"
+        f"Format: {order.get('size')} · {order.get('orientation')}\n"
+        f"Quantity: {order.get('quantity', 1)}\n\n"
+        f"Download the print-ready PDF:\n{download_url}\n\n"
+        f"Once printed and ready for the courier to collect, click here:\n{ready_url}"
+    )
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="margin-bottom: 4px;">New book to print</h2>
+      <p style="color:#555;">{order.get('album_title', 'Album')} · {order.get('size')} {order.get('orientation')} · Qty {order.get('quantity', 1)}</p>
+      <p><a href="{download_url}" style="display:inline-block; background:#1A1A17; color:#fff; padding:12px 20px; text-decoration:none; border-radius:4px;">Download print-ready PDF</a></p>
+      <p style="margin-top:24px;">Once it's printed and ready for pickup:</p>
+      <p><a href="{ready_url}" style="display:inline-block; background:#E56B55; color:#fff; padding:12px 20px; text-decoration:none; border-radius:4px;">Mark ready for delivery</a></p>
+    </div>
+    """
+    send_email(PRINTER_EMAIL, subject, body, html_body=html_body)
+
+def send_delivery_pickup_email(order: dict):
+    """Sent the moment the printer clicks their "ready for delivery" link
+    — the delivery company only ever needs the shipping details, never the
+    PDF or any account/order-management access."""
+    if not DELIVERY_EMAIL:
+        logger.warning(f"DELIVERY_EMAIL non configuré — email de livraison non envoyé pour la commande {order['id']}")
+        return
+    addr = order.get("shipping_address") or {}
+    subject = f"Ready for pickup — {order.get('album_title', 'Album')} (#{order['id'][:8]})"
+    body = (
+        f"A book is ready for pickup and delivery.\n\n"
+        f"Deliver to:\n"
+        f"{addr.get('full_name', '')}\n"
+        f"{addr.get('street', '')}"
+        + (f", {addr.get('building')}" if addr.get("building") else "")
+        + f"\n{addr.get('city', '')}\n"
+        f"Phone: {addr.get('phone', '')}\n"
+        + (f"Notes: {addr.get('additional_info')}\n" if addr.get("additional_info") else "")
+        + f"\nQuantity: {order.get('quantity', 1)}"
+    )
+    send_email(DELIVERY_EMAIL, subject, body)
 
 # ---------- OAuth (Google / Apple) ----------
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
@@ -500,7 +601,7 @@ def compute_order_price_cents(size: str, target_pages: int) -> int:
     extra_pages = max(0, target_pages - base_tier)
     return tier_prices[base_tier] + extra_pages * OVERAGE_PER_PAGE_CENTS[size]
 
-ORDER_STATUSES = ["pending_payment", "paid", "processing", "printing", "shipped", "delivered", "cancelled"]
+ORDER_STATUSES = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered", "cancelled"]
 
 class AuthResponse(BaseModel):
     token: str
@@ -3074,13 +3175,14 @@ ORDER_STATUS_LABELS = {
     "paid": "Payment confirmed",
     "processing": "Preparing your album",
     "printing": "Printing",
+    "ready_for_delivery": "Ready for delivery",
     "shipped": "Shipped",
     "delivered": "Delivered",
     "cancelled": "Cancelled",
 }
 # The order in which a normal (non-cancelled) order is expected to progress —
 # drives the tracking timeline on the frontend.
-ORDER_STATUS_SEQUENCE = ["pending_payment", "paid", "processing", "printing", "shipped", "delivered"]
+ORDER_STATUS_SEQUENCE = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered"]
 
 async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     """Runs in the background right after an order is created. Reuses the
@@ -3198,7 +3300,59 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # actually reflects whether it succeeded, instead of always reporting
     # "not ready" regardless of the real outcome.
     fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if fresh_order and fresh_order.get("pdf_ready"):
+        # The PDF only exists once this succeeds — the printer email links
+        # to it directly, and there'd be nothing to print/deliver yet if
+        # generation had failed, so both emails wait on this specifically
+        # rather than firing the moment the order document is created.
+        now2 = datetime.now(timezone.utc).isoformat()
+        await db.orders.update_one(
+            {"id": order_id},
+            {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
+        )
+        fresh_order["status"] = "printing"
+        send_order_confirmation_email(user.get("email"), user.get("name"), fresh_order)
+        send_printer_order_email(fresh_order)
     return fresh_order or order_doc
+
+@api_router.get("/order-actions/{order_id}/download")
+async def order_action_download_pdf(order_id: str, token: str = Query(None)):
+    """The printer's download link — no login, just the signed token
+    mailed to them alongside it (see send_printer_order_email)."""
+    if not _verify_order_action(order_id, "download", token):
+        raise HTTPException(status_code=403, detail="Lien invalide ou expiré")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order or not order.get("pdf_path"):
+        raise HTTPException(status_code=404, detail="PDF introuvable pour cette commande")
+    data, ctype = get_object(order["pdf_path"])
+    return Response(
+        content=data,
+        media_type=ctype or "application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{order_id}.pdf"'},
+    )
+
+@api_router.get("/order-actions/{order_id}/ready")
+async def order_action_mark_ready(order_id: str, token: str = Query(None)):
+    """The printer's "ready for delivery" link — moves the order to
+    ready_for_delivery and, right then, notifies the delivery company
+    (see send_delivery_pickup_email). Returns a plain confirmation page
+    since a person at the print shop is the one clicking this in their
+    browser, not calling it as an API."""
+    if not _verify_order_action(order_id, "ready", token):
+        raise HTTPException(status_code=403, detail="Lien invalide ou expiré")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    if order["status"] != "ready_for_delivery":
+        now = datetime.now(timezone.utc).isoformat()
+        await db.orders.update_one(
+            {"id": order_id},
+            {"$set": {"status": "ready_for_delivery", "updated_at": now}, "$push": {"status_history": {"status": "ready_for_delivery", "at": now}}},
+        )
+        order["status"] = "ready_for_delivery"
+        send_delivery_pickup_email(order)
+    return HTMLResponse("<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
+                         "<h2>Thanks — the delivery company has been notified.</h2></body></html>")
 
 @api_router.get("/orders")
 async def list_orders(user: dict = Depends(get_current_user)):
@@ -3221,6 +3375,87 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     order["timeline"] = timeline
     order["status_label"] = ORDER_STATUS_LABELS.get(order["status"], order["status"])
     return order
+
+def require_admin(user: dict):
+    """Every admin endpoint below hand-checks this rather than something
+    reusable via Depends() — deliberately simple for a single-admin
+    business rather than building out a whole role system for one person's
+    account."""
+    if not ADMIN_EMAIL or user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Non autorisé")
+
+@api_router.get("/admin/orders")
+async def admin_list_orders(user: dict = Depends(get_current_user)):
+    """Every order across every customer, newest first — the shipping
+    name/address/phone and which album (title, id) are what you need to
+    know who a given order.pdf in R2 (orders/{order_id}.pdf) actually
+    belongs to and where it ships. Not scoped to user_id the way the
+    customer-facing /orders is — that's exactly the point of this one."""
+    require_admin(user)
+    orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return orders
+
+@api_router.get("/admin/orders/{order_id}/pdf")
+async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
+    """Streams the actual print-ready PDF straight from R2 — so finding
+    the right file to send to the printer is a click from this order's row
+    instead of hunting for order_id.pdf by hand in the R2 dashboard."""
+    require_admin(user)
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    if not order.get("pdf_path"):
+        raise HTTPException(status_code=404, detail="Le PDF de cette commande n'est pas encore prêt")
+    data, ctype = get_object(order["pdf_path"])
+    return Response(
+        content=data,
+        media_type=ctype or "application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{order_id}.pdf"'},
+    )
+
+class OrderStatusUpdate(BaseModel):
+    status: str
+    tracking_number: Optional[str] = None
+
+# Which customer email (if any) fires automatically when an order moves
+# INTO a given status — keeps "every status change tells the customer
+# what's going on" as one small table instead of scattered if/elif
+# branches that are easy to miss updating when a new status is added.
+STATUS_CUSTOMER_EMAIL = {
+    "shipped": send_order_shipped_email,
+    "delivered": send_order_delivered_feedback_email,
+}
+
+@api_router.patch("/admin/orders/{order_id}/status")
+async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user: dict = Depends(get_current_user)):
+    """Manual status moves the printer/delivery workflow doesn't cover on
+    its own — mainly marking an order "shipped" (with a tracking number)
+    once the delivery company has actually handed it off, and "delivered"
+    afterward. Whichever status this lands on, if it's one customers care
+    about hearing (see STATUS_CUSTOMER_EMAIL), that email goes out right
+    here — the same "every update tells the customer" guarantee the
+    printer/delivery links already give the rest of the flow."""
+    require_admin(user)
+    if data.status not in ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Statut inconnu : {data.status}")
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    now = datetime.now(timezone.utc).isoformat()
+    update = {"status": data.status, "updated_at": now}
+    if data.tracking_number is not None:
+        update["tracking_number"] = data.tracking_number
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": update, "$push": {"status_history": {"status": data.status, "at": now}}},
+    )
+    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    email_fn = STATUS_CUSTOMER_EMAIL.get(data.status)
+    if email_fn:
+        customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
+        if customer:
+            email_fn(customer.get("email"), customer.get("name"), fresh)
+    return fresh
 
 # ---------- Maintenance ----------
 @api_router.post("/internal/cleanup-expired-albums")
