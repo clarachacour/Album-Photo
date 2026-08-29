@@ -2395,12 +2395,43 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
     remaining_budget = max(0, data.target_pages - keep_first_pages)
 
     if not photo_ids_in_order:
-        # Nothing left to repack (every photo was on a preserved page) —
-        # just trim or the caller can add blank pages manually afterward.
-        final_pages, _ = await _trim_pages_to_target(pages, data.target_pages)
+        # Nothing left to repack — every remaining photo is on a preserved
+        # page. If the person is asking for MORE pages than exist (the
+        # common case now that the editor defaults to protecting the whole
+        # album), _trim_pages_to_target alone wouldn't actually add
+        # anything — it only ever shrinks, and silently leaves the album
+        # short of the count just requested. Append genuinely blank,
+        # single-photo-slot pages (same shape the editor's own "+" button
+        # creates) to make up the difference; only actually trim when
+        # target_pages calls for fewer than what's already here.
+        if data.target_pages > len(pages):
+            M = 0.05
+            usable = 1.0 - (2 * M)
+            blank_pages = [
+                {
+                    "id": str(uuid.uuid4()),
+                    "layout": "single_full",
+                    "items": [
+                        {
+                            "id": str(uuid.uuid4()),
+                            "type": "photo",
+                            "photo_id": None,
+                            "focal_x": 0.5,
+                            "focal_y": 0.5,
+                            "scale": 1,
+                            "rotation": 0,
+                            "x": M, "y": M, "w": usable, "h": usable,
+                        }
+                    ],
+                }
+                for _ in range(data.target_pages - len(pages))
+            ]
+            final_pages = pages + blank_pages
+        else:
+            final_pages, _ = await _trim_pages_to_target(pages, data.target_pages)
         await db.albums.update_one(
             {"id": album_id},
-            {"$set": {"pages": final_pages, "target_pages": data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {"pages": final_pages, "target_pages": data.target_pages, "pages_below_target": len(final_pages) < data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}},
         )
         return {"pages": len(final_pages), "photos_repacked": 0}
 
