@@ -4,26 +4,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-
-// Kept in sync with the backend's ORDER_PRICE_CENTS / compute_order_price_cents
-// — shown here only for the live summary as the user picks a quantity; the
-// backend always recomputes and owns the real charged price.
-const PAGE_TIERS = [24, 50, 100, 150, 250];
-const PRICE_TABLE = {
-  A5: { 24: 25, 50: 35, 100: 55, 150: 75, 250: 110 },
-  A4: { 24: 35, 50: 49, 100: 79, 150: 109, 250: 159 },
-  A3: { 24: 55, 50: 75, 100: 119, 150: 169, 250: 249 },
-};
-const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45, A3: 0.7 };
-
-function computeUnitPrice(size, targetPages) {
-  const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
-  if (tierPrices[targetPages] != null) return tierPrices[targetPages];
-  const lowerTiers = PAGE_TIERS.filter((t) => t <= targetPages);
-  const baseTier = lowerTiers.length ? Math.max(...lowerTiers) : Math.min(...PAGE_TIERS);
-  const extraPages = Math.max(0, targetPages - baseTier);
-  return tierPrices[baseTier] + extraPages * (OVERAGE_PER_PAGE[size] || OVERAGE_PER_PAGE.A4);
-}
+import { computeUnitPrice } from "@/lib/pricing";
 
 export default function OrderCheckoutPage() {
   const { albumId } = useParams();
