@@ -1222,7 +1222,7 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
           />
         </div>
         <div>
-          <label className="text-xs text-[color:var(--muted)] block mb-1">Keep up to Double-page #</label>
+          <label className="text-xs text-[color:var(--muted)] block mb-1">Rebuild pages after Double-page #</label>
           <input
             type="number"
             min={1}
@@ -1233,10 +1233,12 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
         </div>
       </div>
       <p className="text-xs text-[color:var(--muted)] mb-4">
-        By default your whole album is protected — raising the page count just adds blank pages at the end,
-        nothing existing is touched. Only lower this number if you're also lowering the page count and need
-        photos redistributed into fewer pages; anything after that spread gets rebuilt (same photos, re-arranged)
-        and any manual edits on those later pages will be lost.
+        Everything up to and including this double-page stays exactly as you left it. Only what comes after gets
+        rebuilt — same photos, automatically re-arranged into a fresh layout, so any manual edits on those later
+        pages are lost. You'll mainly need this when <span className="font-medium text-[color:var(--ink)]/80">lowering</span> the
+        page count (less room means something has to be redistributed), or if you'd like a section of the album
+        redone from scratch on purpose. Just adding pages doesn't need this — leave it as is and new blank pages
+        are added at the end, nothing existing is touched.
       </p>
       <div className="flex gap-2">
         <button
