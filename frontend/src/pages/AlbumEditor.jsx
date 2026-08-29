@@ -1194,7 +1194,17 @@ function spreadNumberToPageCount(spreadNumber) {
 
 function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel, onSubmit }) {
   const [targetPages, setTargetPages] = useState(currentTargetPages || currentPageCount);
-  const [keepUpToSpread, setKeepUpToSpread] = useState(1);
+  // Defaults to protecting the *entire* current album, not just the first
+  // spread — with the old default of 1, simply raising the page count
+  // (the single most common reason to open this form) silently rebuilt
+  // every spread after the very first one, discarding any reordering or
+  // layout changes already made. Redistributing content only makes sense
+  // when *lowering* the page count (there's less room, something has to
+  // move); adding pages never requires touching anything that already
+  // exists — new blank pages can simply be appended. The person can still
+  // lower this manually for the cases that do call for a reflow.
+  const currentLastSpread = Math.max(1, Math.ceil((currentPageCount + 3) / 2));
+  const [keepUpToSpread, setKeepUpToSpread] = useState(currentLastSpread);
   const keepFirstPages = Math.min(currentPageCount, spreadNumberToPageCount(keepUpToSpread));
 
   return (
@@ -1223,9 +1233,10 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
         </div>
       </div>
       <p className="text-xs text-[color:var(--muted)] mb-4">
-        Same "Double-page N" number shown above the flipbook while you browse — find the last spread you want left
-        untouched, then use that number here. Everything after it gets rebuilt to fit the new total (same photos,
-        just re-arranged); any manual edits on those later pages will be lost.
+        By default your whole album is protected — raising the page count just adds blank pages at the end,
+        nothing existing is touched. Only lower this number if you're also lowering the page count and need
+        photos redistributed into fewer pages; anything after that spread gets rebuilt (same photos, re-arranged)
+        and any manual edits on those later pages will be lost.
       </p>
       <div className="flex gap-2">
         <button
