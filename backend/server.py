@@ -3425,14 +3425,21 @@ def require_admin(user: dict):
 
 @api_router.get("/admin/albums/{album_id}/broken-photos")
 async def admin_list_broken_photos(album_id: str, user: dict = Depends(get_current_user)):
-    """For one specific album, finds every page slot whose photo_id points
-    to a photo that's now deleted (or never existed) — the exact "which
-    photos need re-uploading, and where do they go" list for recovering
-    from a photo that was wrongly cleaned up (see _delete_unselected_photos)
-    or otherwise went missing. original_filename and taken_at (whichever
-    the photo record still has) are included specifically to help
-    recognize which physical file on your own device to re-upload —
-    that's all that's left once the actual R2 file is gone."""
+    """For one specific album, finds every page slot whose photo is
+    actually missing — the exact "which photos need re-uploading, and
+    where do they go" list for recovering from photos that went missing
+    (see _delete_unselected_photos) or otherwise disappeared.
+
+    Checks the real file on R2 with a lightweight HEAD request for every
+    photo still on record as not deleted, rather than trusting is_deleted
+    alone — that flag is only ever set by our own code's own delete paths,
+    so a file that went missing some other way (deleted directly in the
+    R2 dashboard, a delete that updated R2 but failed to update Mongo
+    before crashing, anything outside this app's own bookkeeping) would
+    have looked perfectly fine to the DB-only version of this check while
+    still 404ing in the actual album. original_filename and taken_at
+    (whichever the photo record still has) are included specifically to
+    help recognize which physical file on your own device to re-upload."""
     require_admin(user)
     album = await db.albums.find_one({"id": album_id}, {"_id": 0})
     if not album:
@@ -3448,19 +3455,65 @@ async def admin_list_broken_photos(album_id: str, user: dict = Depends(get_curre
         found = await db.photos.find({"id": {"$in": list(all_photo_ids)}}, {"_id": 0}).to_list(5000)
         photos_by_id = {p["id"]: p for p in found}
 
+    def _exists_on_r2(path: str) -> bool:
+        if not path:
+            return False
+        try:
+            get_r2_client().head_object(Bucket=R2_BUCKET_NAME, Key=path)
+            return True
+        except Exception:
+            return False
+
+    loop = asyncio.get_event_loop()
+    # HEAD requests only (no download) — still one round-trip per distinct
+    # photo, so this checks each not-already-known-deleted photo exactly
+    # once even if it's used on multiple pages, rather than re-checking it
+    # per page slot.
+    r2_exists_cache = {}
+    for pid, photo in photos_by_id.items():
+        if photo.get("is_deleted"):
+            continue  # already known gone — no need to ask R2 too
+        r2_exists_cache[pid] = await loop.run_in_executor(None, _exists_on_r2, photo.get("storage_path"))
+
     broken = []
     for page_idx, pg in enumerate(album.get("pages") or []):
-        for item in pg.get("items") or []:
-            if item.get("type") != "photo" or not item.get("photo_id"):
+        page_items = pg.get("items") or []
+        for item_idx, item in enumerate(page_items):
+            if item.get("type") != "photo":
                 continue
-            photo = photos_by_id.get(item["photo_id"])
-            if photo is None:
-                broken.append({"page_index": page_idx, "photo_id": item["photo_id"], "reason": "no_record", "original_filename": None, "taken_at": None})
-            elif photo.get("is_deleted"):
+            pid = item.get("photo_id")
+            if not pid:
+                # A genuinely empty slot — no photo_id at all, so there's
+                # no filename/size trail left to match a re-upload against
+                # automatically (see admin_repair_missing_photos, which
+                # can only fill in slots that still point at *something*).
+                # The nearest dated neighbors on the same page are the
+                # best hint left for figuring out, by eye, roughly when
+                # this photo was taken — helpful context for finding it in
+                # "All your photos" to drag in by hand.
+                neighbor_dates = [
+                    photos_by_id.get(other.get("photo_id"), {}).get("taken_at")
+                    for j, other in enumerate(page_items)
+                    if j != item_idx and other.get("type") == "photo" and other.get("photo_id")
+                ]
+                neighbor_dates = [d for d in neighbor_dates if d]
                 broken.append({
                     "page_index": page_idx,
-                    "photo_id": item["photo_id"],
-                    "reason": "deleted",
+                    "photo_id": None,
+                    "reason": "empty_slot",
+                    "original_filename": None,
+                    "taken_at": None,
+                    "nearby_dates_on_same_page": neighbor_dates,
+                })
+                continue
+            photo = photos_by_id.get(pid)
+            if photo is None:
+                broken.append({"page_index": page_idx, "photo_id": pid, "reason": "no_record", "original_filename": None, "taken_at": None})
+            elif photo.get("is_deleted") or not r2_exists_cache.get(pid, True):
+                broken.append({
+                    "page_index": page_idx,
+                    "photo_id": pid,
+                    "reason": "deleted" if photo.get("is_deleted") else "file_missing_on_r2",
                     "original_filename": photo.get("original_filename"),
                     "taken_at": photo.get("taken_at"),
                 })
@@ -3504,6 +3557,26 @@ async def admin_repair_missing_photos(album_id: str, user: dict = Depends(get_cu
         found_any = await db.photos.find({"id": {"$in": list(used_photo_ids)}}, {"_id": 0}).to_list(5000)
         broken_photo_records = {p["id"]: p for p in found_any}
 
+    def _exists_on_r2(path: str) -> bool:
+        if not path:
+            return False
+        try:
+            get_r2_client().head_object(Bucket=R2_BUCKET_NAME, Key=path)
+            return True
+        except Exception:
+            return False
+
+    # Same real-R2-check as /broken-photos — is_deleted alone missed
+    # photos whose file was gone on R2 without that flag ever getting set,
+    # which meant this repair tool skipped them entirely (they never
+    # looked "broken" enough to attempt a match for).
+    loop = asyncio.get_event_loop()
+    r2_exists_cache = {}
+    for pid, photo in broken_photo_records.items():
+        if photo.get("is_deleted"):
+            continue
+        r2_exists_cache[pid] = await loop.run_in_executor(None, _exists_on_r2, photo.get("storage_path"))
+
     candidates = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
     unplaced_by_filename = {}
     unplaced_by_size = {}
@@ -3520,8 +3593,9 @@ async def admin_repair_missing_photos(album_id: str, user: dict = Depends(get_cu
         for item in pg.get("items") or []:
             if item.get("type") != "photo" or not item.get("photo_id"):
                 continue
-            photo = broken_photo_records.get(item["photo_id"])
-            is_broken = photo is None or photo.get("is_deleted")
+            pid = item["photo_id"]
+            photo = broken_photo_records.get(pid)
+            is_broken = photo is None or photo.get("is_deleted") or not r2_exists_cache.get(pid, True)
             if not is_broken:
                 continue
             filename = photo.get("original_filename") if photo else None
