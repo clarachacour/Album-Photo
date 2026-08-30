@@ -11,7 +11,7 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Header, Query, BackgroundTasks
-from fastapi.responses import Response, StreamingResponse, HTMLResponse
+from fastapi.responses import Response, StreamingResponse, HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -3503,18 +3503,27 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
 @api_router.get("/order-actions/{order_id}/download")
 async def order_action_download_pdf(order_id: str, token: str = Query(None)):
     """The printer's download link — no login, just the signed token
-    mailed to them alongside it (see send_printer_order_email)."""
+    mailed to them alongside it (see send_printer_order_email). A
+    presigned R2 URL rather than proxying the bytes here, same reasoning
+    as admin_download_order_pdf: a print-quality album PDF can easily
+    exceed Cloud Run's own response-size ceiling on this backend, well
+    separate from the render-time chunking concern."""
     if not _verify_order_action(order_id, "download", token):
         raise HTTPException(status_code=403, detail="Lien invalide ou expiré")
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order or not order.get("pdf_path"):
         raise HTTPException(status_code=404, detail="PDF introuvable pour cette commande")
-    data, ctype = get_object(order["pdf_path"])
-    return Response(
-        content=data,
-        media_type=ctype or "application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{order_id}.pdf"'},
+    url = get_r2_client().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": R2_BUCKET_NAME,
+            "Key": order["pdf_path"],
+            "ResponseContentDisposition": f'attachment; filename="{order_id}.pdf"',
+            "ResponseContentType": "application/pdf",
+        },
+        ExpiresIn=3600,
     )
+    return RedirectResponse(url)
 
 @api_router.get("/order-actions/{order_id}/ready")
 async def order_action_mark_ready(order_id: str, token: str = Query(None)):
@@ -3790,21 +3799,33 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
 
 @api_router.get("/admin/orders/{order_id}/pdf")
 async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
-    """Streams the actual print-ready PDF straight from R2 — so finding
-    the right file to send to the printer is a click from this order's row
-    instead of hunting for order_id.pdf by hand in the R2 dashboard."""
+    """Redirects straight to a short-lived, signed R2 URL rather than
+    proxying the file's bytes through this backend and back out again —
+    a print-quality album PDF easily runs past 100MB (24 pages, up to 4
+    photos each, was 110MB), and Cloud Run enforces its own hard cap on
+    how large a single HTTP response through the normal request/response
+    path can be, well under that ("Response size was too large") — a
+    completely different ceiling from the render-time V8 string-length
+    one chunking exists for. A presigned URL sidesteps it entirely: the
+    browser downloads directly from R2/Cloudflare, this backend is never
+    in the data path at all."""
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
     if not order.get("pdf_path"):
         raise HTTPException(status_code=404, detail="Le PDF de cette commande n'est pas encore prêt")
-    data, ctype = get_object(order["pdf_path"])
-    return Response(
-        content=data,
-        media_type=ctype or "application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{order_id}.pdf"'},
+    url = get_r2_client().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": R2_BUCKET_NAME,
+            "Key": order["pdf_path"],
+            "ResponseContentDisposition": f'attachment; filename="{order_id}.pdf"',
+            "ResponseContentType": "application/pdf",
+        },
+        ExpiresIn=3600,
     )
+    return RedirectResponse(url)
 
 @api_router.post("/admin/orders/{order_id}/regenerate-pdf")
 async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
