@@ -3239,21 +3239,36 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
 
 async def _delete_unselected_photos(album_id: str):
-    """Runs in the background right after an order is created. The photos
-    the AI didn't select (duplicates, blurry rejects) were never going to
-    appear in the printed book — once the album is actually ordered there's
-    no remaining reason to keep them on R2, so we delete the files and mark
-    them is_deleted so they stop showing up anywhere in the app."""
+    """Runs right after an order actually succeeds (never on a failed
+    attempt — see create_order, this used to fire unconditionally even
+    when PDF generation failed, deleting photos from an order that never
+    actually went anywhere). Deletes whichever of the album's photos
+    aren't placed on any page — freeing R2 space for what the printed
+    book genuinely never needed.
+
+    Checks the album's *current* pages for which photo_ids are actually
+    placed, rather than trusting each photo's stored is_selected flag —
+    that flag is set once, when the AI first curates the album, and goes
+    stale the moment someone manually drags a previously-rejected photo
+    into a page afterward (or removes a previously-selected one). Only
+    ever deletes a photo confirmed absent from every current page,
+    regardless of what is_selected happens to say."""
     try:
-        unselected = await db.photos.find(
-            {"album_id": album_id, "is_deleted": False, "is_selected": False}, {"_id": 0}
-        ).to_list(5000)
-        for p in unselected:
+        album = await db.albums.find_one({"id": album_id}, {"pages": 1})
+        used_photo_ids = {
+            it.get("photo_id")
+            for pg in (album or {}).get("pages", [])
+            for it in (pg.get("items") or [])
+            if it.get("type") == "photo" and it.get("photo_id")
+        }
+        all_photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
+        unused = [p for p in all_photos if p["id"] not in used_photo_ids]
+        for p in unused:
             delete_object(p.get("storage_path"))
             delete_object(p.get("thumbnail_path"))
             delete_object(p.get("medium_path"))
             delete_object(p.get("print_path"))
-        ids = [p["id"] for p in unselected]
+        ids = [p["id"] for p in unused]
         if ids:
             await db.photos.update_many({"id": {"$in": ids}}, {"$set": {"is_deleted": True}})
     except Exception as e:
@@ -3301,13 +3316,21 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # wait. _delete_unselected_photos stays backgrounded — it's just R2
     # cleanup, not urgent, and not CPU-heavy the way PDF rendering is.
     await _generate_order_pdf(order_id, album["id"], user["id"])
-    background_tasks.add_task(_delete_unselected_photos, album["id"])
     # order_doc still has the pdf_ready=False/pdf_path=None it was built
     # with before _generate_order_pdf ran — re-fetch so the response
     # actually reflects whether it succeeded, instead of always reporting
     # "not ready" regardless of the real outcome.
     fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if fresh_order and fresh_order.get("pdf_ready"):
+        # _delete_unselected_photos used to fire unconditionally, right
+        # here, regardless of whether _generate_order_pdf above actually
+        # succeeded — a failed attempt (a memory crash mid-render, say)
+        # still permanently deleted every photo the album's pages weren't
+        # using *at that moment*, even though nothing had actually been
+        # ordered yet. Only a genuinely successful order — a real PDF a
+        # printer will actually receive — has "the book is done, unused
+        # photos can go" become true.
+        background_tasks.add_task(_delete_unselected_photos, album["id"])
         # The PDF only exists once this succeeds — the printer email links
         # to it directly, and there'd be nothing to print/deliver yet if
         # generation had failed, so both emails wait on this specifically
