@@ -3214,6 +3214,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     PDF export, so the file the team sends to the printer is guaranteed to
     match what the customer saw in the flipbook. Never surfaced to the
     customer directly — this is purely for internal/printer use."""
+    t_start = _time.monotonic()
     try:
         # Pre-warm every used photo's "print" variant BEFORE launching the
         # browser, one at a time. Without this, the headless browser (once
@@ -3299,20 +3300,23 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
 
         def _render_chunk_recursive(start: int, end: int, depth: int = 0) -> bytes:
             chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
+            t0 = _time.monotonic()
             try:
                 chunk_bytes = _render_pdf_via_browser_sync(chunk_url)
-                logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio")
+                elapsed = _time.monotonic() - t0
+                logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
                 return chunk_bytes
             except Exception as e:
+                elapsed = _time.monotonic() - t0
                 if start == end:
                     # A single page alone is too large to render — nothing
                     # left to split, this is a genuine, unrecoverable
                     # problem (an extraordinarily photo-dense single page)
                     # worth surfacing clearly rather than looping forever.
-                    logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite, impossible de la découper davantage : {e}")
+                    logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite après {elapsed:.1f}s, impossible de la découper davantage : {e}")
                     raise
                 mid = (start + end) // 2
-                logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
+                logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué après {elapsed:.1f}s ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
                 first_half = _render_chunk_recursive(start, mid, depth + 1)
                 second_half = _render_chunk_recursive(mid + 1, end, depth + 1)
                 return _merge_pdf_bytes([first_half, second_half])
@@ -3365,6 +3369,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         put_object(path, pdf_bytes, "application/pdf")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True}})
+        logger.info(f"Commande {order_id} : PDF complet généré en {_time.monotonic() - t_start:.1f}s au total")
 
         # Moved in from create_order/admin_regenerate_order_pdf: this
         # function now runs as a genuine background task (see both
@@ -3461,22 +3466,25 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "updated_at": now,
     }
     await db.orders.insert_one(order_doc)
-    # Dispatched as a genuine background task rather than awaited directly
-    # — a customer placing an order on a very large album no longer sits
-    # waiting on their browser for however long PDF rendering takes (which
-    # could be many minutes, or — before the chunking/self-correction
-    # logic in _render_chunk_recursive — could hit a hard failure on a
-    # sufficiently large album regardless of how long they waited). The
-    # order is confirmed to exist immediately; _generate_order_pdf itself
-    # now handles updating the status and sending the confirmation/printer
-    # emails once the PDF genuinely finishes, since nothing here is still
-    # waiting around to do that afterward. This does depend on the Cloud
-    # Run service being on instance-based billing rather than
-    # request-based — request-based billing throttles CPU hard once a
-    # request is considered "done", which would starve this exact kind of
-    # background work instead of letting it actually finish.
-    background_tasks.add_task(_generate_order_pdf, order_id, album["id"], user["id"])
-    return order_doc
+    # Awaited directly, not dispatched via background_tasks. That was
+    # tried first (a customer no longer waiting on a slow response
+    # seemed clearly better) but turned out to be unreliable specifically
+    # on Cloud Run: the platform only considers an instance "busy" while
+    # an HTTP request is actively in flight — once this endpoint responds,
+    # a background_tasks job can get silently killed mid-render if Cloud
+    # Run decides to recycle the now-seemingly-idle instance, with no
+    # error logged at all (a real album stalled past 15 minutes with
+    # nothing wrong in the logs — this is almost certainly why). Keeping
+    # the request open for the whole render guarantees Cloud Run keeps the
+    # instance alive throughout, at the cost of a slower response — a
+    # trade worth making, since a request that's slow but reliably
+    # finishes beats a fast one that might silently never finish at all.
+    # Depends on the request timeout being raised well past its 900s
+    # default (Cloud Run allows up to 3600s) for a large album to have
+    # room to actually complete.
+    await _generate_order_pdf(order_id, album["id"], user["id"])
+    fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return fresh_order or order_doc
 
 @api_router.get("/order-actions/{order_id}/download")
 async def order_action_download_pdf(order_id: str, token: str = Query(None)):
@@ -3785,26 +3793,24 @@ async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_curre
     )
 
 @api_router.post("/admin/orders/{order_id}/regenerate-pdf")
-async def admin_regenerate_order_pdf(order_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
     """Re-runs the exact same PDF generation _generate_order_pdf already
     does for a brand-new order — for the day generation fails (memory
     limit, a stuck browser render, anything transient) and needs a retry.
-    Dispatched as a background task and returns immediately, same as
-    order creation — no admin-facing action should sit blocked on however
-    long a very large album's PDF takes to render, especially with
-    _render_chunk_recursive potentially retrying several times on a
-    genuinely huge one. _generate_order_pdf itself now handles the
-    status update and printer email once generation actually succeeds
-    (skipped automatically if the order had already advanced past
-    "printing" from an earlier, successful attempt) — nothing duplicated
-    here."""
+    Awaited directly rather than dispatched as a background task — see
+    create_order's comment on why: Cloud Run only guarantees an instance
+    stays alive while a request is actively in flight, and a
+    background_tasks job can get silently killed mid-render once this
+    endpoint has already responded, with no error logged at all. A slower
+    response that reliably finishes beats a fast one that might not."""
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
     await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
-    background_tasks.add_task(_generate_order_pdf, order_id, order["album_id"], order["user_id"])
-    return {"status": "started"}
+    await _generate_order_pdf(order_id, order["album_id"], order["user_id"])
+    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return fresh
 
 class OrderStatusUpdate(BaseModel):
     status: str
