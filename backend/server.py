@@ -3457,6 +3457,68 @@ async def admin_list_broken_photos(album_id: str, user: dict = Depends(get_curre
                 })
     return {"album_title": album.get("title"), "total_pages": len(album.get("pages") or []), "broken": broken}
 
+@api_router.post("/admin/albums/{album_id}/repair-missing-photos")
+async def admin_repair_missing_photos(album_id: str, user: dict = Depends(get_current_user)):
+    """One-off repair tool, not a general feature — matches freshly
+    re-uploaded photos (via the normal /albums/{id}/photos upload) back
+    into the exact page slots that were pointing at a now-deleted photo,
+    purely by original_filename. Only ever considers photos already
+    uploaded into this same album that aren't placed on any page yet —
+    a fresh re-upload, not something already in active use elsewhere in
+    the book. Matches once each: two broken slots can't both claim the
+    same re-uploaded file. Whatever it can't match (filename typo'd on
+    re-upload, or simply not re-uploaded yet) comes back in
+    still_missing, same shape as /broken-photos, to retry after fixing
+    the file name or uploading what's left."""
+    require_admin(user)
+    album = await db.albums.find_one({"id": album_id})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    pages = album.get("pages") or []
+    used_photo_ids = {
+        it.get("photo_id")
+        for pg in pages
+        for it in (pg.get("items") or [])
+        if it.get("type") == "photo" and it.get("photo_id")
+    }
+    all_photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
+    photos_by_id = {p["id"]: p for p in all_photos}
+    # Freshly re-uploaded candidates: exist, not deleted, not currently
+    # sitting in any page slot — grouped by filename since that's the only
+    # thing tying a re-upload back to what it's meant to replace.
+    unplaced_by_filename = {}
+    for p in all_photos:
+        if p["id"] in used_photo_ids:
+            continue
+        unplaced_by_filename.setdefault(p.get("original_filename"), []).append(p)
+
+    fixed = []
+    still_missing = []
+    changed = False
+    for page_idx, pg in enumerate(pages):
+        for item in pg.get("items") or []:
+            if item.get("type") != "photo" or not item.get("photo_id"):
+                continue
+            photo = photos_by_id.get(item["photo_id"])
+            is_broken = photo is None or photo.get("is_deleted")
+            if not is_broken:
+                continue
+            filename = photo.get("original_filename") if photo else None
+            candidates = unplaced_by_filename.get(filename) or []
+            if filename and candidates:
+                replacement = candidates.pop(0)  # each re-uploaded file only ever fills one slot
+                item["photo_id"] = replacement["id"]
+                used_photo_ids.add(replacement["id"])
+                changed = True
+                fixed.append({"page_index": page_idx, "original_filename": filename, "new_photo_id": replacement["id"]})
+            else:
+                still_missing.append({"page_index": page_idx, "original_filename": filename})
+
+    if changed:
+        await db.albums.update_one({"id": album_id}, {"$set": {"pages": pages, "updated_at": datetime.now(timezone.utc).isoformat()}})
+
+    return {"fixed": fixed, "still_missing": still_missing}
+
 @api_router.get("/admin/orders")
 async def admin_list_orders(user: dict = Depends(get_current_user)):
     """Every order across every customer, newest first — the shipping
