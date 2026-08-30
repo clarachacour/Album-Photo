@@ -3413,6 +3413,34 @@ async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_curre
         headers={"Content-Disposition": f'attachment; filename="{order_id}.pdf"'},
     )
 
+@api_router.post("/admin/orders/{order_id}/regenerate-pdf")
+async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
+    """Re-runs the exact same PDF generation _generate_order_pdf already
+    does for a brand-new order — for the day generation fails (memory
+    limit, a stuck browser render, anything transient) and needs a retry.
+    Nothing about the order changes from the customer's side; they never
+    even need to know it happened. Doesn't re-send the customer's "order
+    confirmed" email (they already got that when the order was placed) —
+    only the printer email goes out again, since a failed generation the
+    first time means the printer never actually got a usable link."""
+    require_admin(user)
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
+    await _generate_order_pdf(order_id, order["album_id"], order["user_id"])
+    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if fresh and fresh.get("pdf_ready"):
+        if fresh["status"] not in ("printing", "ready_for_delivery", "shipped", "delivered"):
+            now = datetime.now(timezone.utc).isoformat()
+            await db.orders.update_one(
+                {"id": order_id},
+                {"$set": {"status": "printing", "updated_at": now}, "$push": {"status_history": {"status": "printing", "at": now}}},
+            )
+            fresh["status"] = "printing"
+        send_printer_order_email(fresh)
+    return fresh
+
 class OrderStatusUpdate(BaseModel):
     status: str
     tracking_number: Optional[str] = None
