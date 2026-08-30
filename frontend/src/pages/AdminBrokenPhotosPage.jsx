@@ -1,19 +1,23 @@
 import React, { useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Search } from "lucide-react";
+import { Search, Wrench } from "lucide-react";
 
 /**
- * Admin-only diagnostic: for one album (typed in by id), lists every page
- * slot whose photo was deleted (or otherwise went missing) — with the
- * original filename and capture date still on record, since that's what's
- * actually useful for finding the right file to re-upload once the R2
- * file itself is gone for good.
+ * Admin-only diagnostic + one-off repair tool: for one album (typed in by
+ * id), lists every page slot whose photo was deleted (or otherwise went
+ * missing), and — once the same files have been re-uploaded into this
+ * album through the normal uploader — matches them back into place by
+ * original filename. Built for a specific incident, not meant to be a
+ * permanent fixture; safe to remove once this album (and any others hit
+ * by the same underlying bug) are repaired.
  */
 export default function AdminBrokenPhotosPage() {
   const [albumId, setAlbumId] = useState("");
   const [result, setResult] = useState(null);
+  const [repairResult, setRepairResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [repairing, setRepairing] = useState(false);
   const [forbidden, setForbidden] = useState(false);
 
   const check = async (e) => {
@@ -21,6 +25,7 @@ export default function AdminBrokenPhotosPage() {
     if (!albumId.trim()) return;
     setLoading(true);
     setResult(null);
+    setRepairResult(null);
     try {
       const { data } = await api.get(`/admin/albums/${albumId.trim()}/broken-photos`);
       setResult(data);
@@ -32,6 +37,26 @@ export default function AdminBrokenPhotosPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const repair = async () => {
+    setRepairing(true);
+    try {
+      const { data } = await api.post(`/admin/albums/${albumId.trim()}/repair-missing-photos`);
+      setRepairResult(data);
+      if (data.fixed.length > 0) {
+        toast.success(`${data.fixed.length} photo${data.fixed.length > 1 ? "s" : ""} put back in place`);
+      } else {
+        toast.error("No matching re-uploaded files found yet");
+      }
+      // Re-check so the table above reflects what's actually still broken.
+      const { data: fresh } = await api.get(`/admin/albums/${albumId.trim()}/broken-photos`);
+      setResult(fresh);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Repair failed");
+    } finally {
+      setRepairing(false);
     }
   };
 
@@ -78,28 +103,54 @@ export default function AdminBrokenPhotosPage() {
             {result.broken.length === 0 ? (
               <p className="text-sm text-emerald-700">Nothing missing — every photo in this album is intact.</p>
             ) : (
-              <div className="border border-[color:var(--border-soft)]">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left border-b border-[color:var(--border-soft)] text-xs uppercase tracking-widest text-[color:var(--muted)]">
-                      <th className="p-3">Page</th>
-                      <th className="p-3">Original filename</th>
-                      <th className="p-3">Taken on</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.broken.map((b, i) => (
-                      <tr key={i} className="border-b border-[color:var(--border-soft)] last:border-0">
-                        <td className="p-3 whitespace-nowrap">Page {b.page_index + 1}</td>
-                        <td className="p-3 font-mono">{b.original_filename || "— (no record at all)"}</td>
-                        <td className="p-3 text-[color:var(--ink)]/70">
-                          {b.taken_at ? new Date(b.taken_at).toLocaleDateString() : "—"}
-                        </td>
+              <>
+                <div className="border border-[color:var(--border-soft)] mb-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b border-[color:var(--border-soft)] text-xs uppercase tracking-widest text-[color:var(--muted)]">
+                        <th className="p-3">Page</th>
+                        <th className="p-3">Original filename</th>
+                        <th className="p-3">Taken on</th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {result.broken.map((b, i) => (
+                        <tr key={i} className="border-b border-[color:var(--border-soft)] last:border-0">
+                          <td className="p-3 whitespace-nowrap">Page {b.page_index + 1}</td>
+                          <td className="p-3 font-mono">{b.original_filename || "— (no record at all)"}</td>
+                          <td className="p-3 text-[color:var(--ink)]/70">
+                            {b.taken_at ? new Date(b.taken_at).toLocaleDateString() : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <p className="text-xs text-[color:var(--ink)]/60 mb-3">
+                  Once you've re-uploaded the matching files into this same album (through the normal "Add photos" uploader,
+                  keeping their original filenames), click below to put them back in the exact page slots they came from.
+                </p>
+                <button
+                  onClick={repair}
+                  disabled={repairing}
+                  className="inline-flex items-center gap-2 border border-[color:var(--ink)]/30 px-5 py-2.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60 text-sm font-semibold uppercase tracking-widest"
+                >
+                  <Wrench size={14} />
+                  {repairing ? "Matching…" : "Match re-uploaded photos back into place"}
+                </button>
+
+                {repairResult && (
+                  <div className="mt-4 text-sm space-y-1">
+                    {repairResult.fixed.map((f, i) => (
+                      <p key={i} className="text-emerald-700">✓ Page {f.page_index + 1} — {f.original_filename} put back in place</p>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                    {repairResult.still_missing.map((m, i) => (
+                      <p key={i} className="text-[color:var(--ink)]/50">Page {m.page_index + 1} — {m.original_filename || "(no filename on record)"} not found among re-uploads yet</p>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
