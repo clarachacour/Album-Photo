@@ -49,6 +49,7 @@ from email.mime.multipart import MIMEMultipart
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 import time as _time
+import gc
 
 # ReportLab for PDF export
 from reportlab.lib.pagesizes import A3, A4, A5, landscape, portrait
@@ -2685,6 +2686,22 @@ def decode_data_uri_image(data_uri: str):
         logger.error(f"decode_data_uri_image failed: {e}")
         return None
 
+def _render_pdf_with_page(page, print_url: str) -> bytes:
+    """The actual per-URL render, taking an already-open Playwright Page —
+    factored out of _render_pdf_via_browser_sync so a whole order's worth
+    of chunks can share one launched browser (see that function's
+    docstring for why relaunching Chromium per chunk was itself a real
+    chunk of the total generation time on a large album)."""
+    page.goto(print_url, wait_until="networkidle", timeout=30000)
+    page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=20000)
+    error_el = page.query_selector('[data-print-error="true"]')
+    if error_el:
+        error_text = error_el.inner_text()
+        raise RuntimeError(f"print page reported an error: {error_text}")
+    page.evaluate("document.fonts.ready")
+    page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
+    return page.pdf(print_background=True, prefer_css_page_size=True)
+
 def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     """Runs entirely with Playwright's sync API. Must be called off the main
     asyncio loop (via run_in_executor) since it blocks the calling thread —
@@ -2692,24 +2709,15 @@ def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     conflict: the sync API manages its own event loop internally, in its
     own thread, independent of whatever loop uvicorn is using.
 
-    print_url may include ?from=X&to=Y (see PrintAlbum.jsx) to render only
-    a slice of the album's interior pages — how _generate_order_pdf keeps
-    a very large album's PDF under the headless browser's own hard
-    string-length ceiling on a single page.pdf() call (see its own
-    docstring for what that limit actually is and why chunking is the fix,
-    not more memory)."""
+    Single-shot version — launches its own browser for one render. For a
+    whole order's worth of chunked renders, see _render_all_chunks below,
+    which reuses one browser across every chunk instead of paying
+    Chromium's ~1-2s launch cost per chunk (which alone added tens of
+    seconds on a large, many-chunk album)."""
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(print_url, wait_until="networkidle", timeout=30000)
-        page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=20000)
-        error_el = page.query_selector('[data-print-error="true"]')
-        if error_el:
-            error_text = error_el.inner_text()
-            raise RuntimeError(f"print page reported an error: {error_text}")
-        page.evaluate("document.fonts.ready")
-        page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
-        pdf_bytes = page.pdf(print_background=True, prefer_css_page_size=True)
+        pdf_bytes = _render_pdf_with_page(page, print_url)
         browser.close()
         return pdf_bytes
 
@@ -3258,23 +3266,24 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         # because it isn't a memory limit at all.
         #
         # Predicting the right chunk size from the source photos' own file
-        # weight (tried here first, twice) isn't reliable on its own —
-        # nothing confirms how large Chromium's actual PDF encoding of a
-        # given set of images comes out to, so a chunk sized only by that
-        # estimate can still land on the wrong side of the ceiling. Purely
-        # reactive splitting (start big, retry smaller only after an
-        # actual failure) fixed that, but for an album with enough weight
-        # that the very first guess is routinely too large, the repeated
-        # render-fail-retry cycles it takes to converge can themselves add
-        # up past the request timeout — exactly what happened on this
-        # same order (900s, no result either way).
+        # weight isn't reliable on its own — nothing confirms how large
+        # Chromium's actual PDF encoding of a given set of images comes
+        # out to. So this uses both: the print-variant byte weight already
+        # on each photo's own record picks a *starting* chunk size close
+        # to right, and a recursive split-and-retry remains as the safety
+        # net for whatever the estimate still gets wrong.
         #
-        # So this uses both: the print-variant byte weight already on
-        # each photo's own record picks a *starting* chunk size close to
-        # right (few or no failed attempts in the common case), and the
-        # same recursive split-and-retry as before remains as the safety
-        # net for whatever the estimate still gets wrong, rather than the
-        # only mechanism doing the work.
+        # With every page capped at 4 photos (a real product constraint,
+        # not an assumption) and this app's own observed print-variant
+        # weights (0.5-3.6MB/photo, ~1.5MB average), a 200MB target chunk
+        # holds roughly 20-30 pages on average — a meaningful drop from
+        # the 80MB first tried here, which forced a 300-page album into
+        # ~20+ separate chunks. Now that chunks are merged incrementally
+        # as they finish (see below) rather than all held in memory until
+        # the end, memory pressure is no longer the reason to keep chunks
+        # small — chunk *count* is now the main cost (each one is a fresh
+        # network round-trip through the print page), so the target
+        # should be as large as the render ceiling comfortably allows.
         FALLBACK_PHOTO_BYTES_ESTIMATE = 2 * 1024 * 1024
         photo_sizes = {}
         if photo_ids:
@@ -3282,14 +3291,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
             async for p in size_cursor:
                 photo_sizes[p["id"]] = p.get("print_size") or p.get("size") or FALLBACK_PHOTO_BYTES_ESTIMATE
 
-        # Aggressive on purpose — this only decides the *starting* point
-        # for each chunk, not a hard ceiling (the recursive retry below
-        # still corrects it either way), so erring toward smaller,
-        # more-numerous initial chunks costs a bit of extra round-trip
-        # time in the common case, in exchange for far fewer of the
-        # expensive render-fail-and-retry cycles that pushed the previous
-        # attempt past the request timeout.
-        TARGET_INITIAL_CHUNK_BYTES = 80 * 1024 * 1024
+        TARGET_INITIAL_CHUNK_BYTES = 200 * 1024 * 1024
 
         def _page_bytes(pg):
             return sum(
@@ -3298,43 +3300,13 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
                 if it.get("type") == "photo" and it.get("photo_id")
             )
 
-        def _render_chunk_recursive(start: int, end: int, depth: int = 0) -> bytes:
-            chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
-            t0 = _time.monotonic()
-            try:
-                chunk_bytes = _render_pdf_via_browser_sync(chunk_url)
-                elapsed = _time.monotonic() - t0
-                logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
-                return chunk_bytes
-            except Exception as e:
-                elapsed = _time.monotonic() - t0
-                if start == end:
-                    # A single page alone is too large to render — nothing
-                    # left to split, this is a genuine, unrecoverable
-                    # problem (an extraordinarily photo-dense single page)
-                    # worth surfacing clearly rather than looping forever.
-                    logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite après {elapsed:.1f}s, impossible de la découper davantage : {e}")
-                    raise
-                mid = (start + end) // 2
-                logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué après {elapsed:.1f}s ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
-                first_half = _render_chunk_recursive(start, mid, depth + 1)
-                second_half = _render_chunk_recursive(mid + 1, end, depth + 1)
-                return _merge_pdf_bytes([first_half, second_half])
-
-        def _merge_pdf_bytes(chunks: List[bytes]) -> bytes:
-            writer = PdfWriter()
-            for chunk in chunks:
-                reader = PdfReader(BytesIO(chunk))
-                for p in reader.pages:
-                    writer.add_page(p)
-            out = BytesIO()
-            writer.write(out)
-            return out.getvalue()
-
-        # Initial chunk boundaries from the byte estimate — same
-        # accumulate-until-the-target-then-cut logic as the very first
-        # version of this fix, just now paired with the recursive retry
-        # as a backstop instead of being trusted on its own.
+        # Initial chunk boundaries from the byte estimate — computed here
+        # (needs the async DB-backed photo_sizes above) but handed whole
+        # to _render_all_chunks below, which does the actual rendering
+        # entirely synchronously so every chunk (and every recursive
+        # split-retry) can share the one browser it launches once, instead
+        # of each chunk paying its own ~1-2s Chromium launch cost — on a
+        # 20+-chunk album that overhead alone was tens of seconds.
         initial_ranges = []
         interior_count = len(interior_pages)
         if interior_count:
@@ -3349,22 +3321,64 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
                 chunk_bytes_so_far += pg_bytes
             initial_ranges.append((chunk_start, interior_count - 1))
 
-        if not initial_ranges:
-            print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
-            pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
-        elif len(initial_ranges) == 1:
-            # Still routed through the recursive helper (not a plain
-            # single render) so a small-but-unexpectedly-heavy album still
-            # self-corrects instead of only ever trusting the estimate.
-            start, end = initial_ranges[0]
-            pdf_bytes = await loop.run_in_executor(None, _render_chunk_recursive, start, end, 0)
-        else:
+        def _render_all_chunks(ranges: List[tuple]) -> bytes:
+            """Everything from here down runs in one executor thread, on
+            one launched browser, reusing a single Page across every
+            chunk (and every recursive split-retry) via .goto() to a new
+            URL each time rather than a fresh browser.new_page() or
+            browser relaunch — Chromium's own launch overhead is real and
+            was adding up across a large album's many chunks."""
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                page = browser.new_page()
+
+                def render_recursive(start: int, end: int, depth: int = 0) -> bytes:
+                    chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
+                    t0 = _time.monotonic()
+                    try:
+                        chunk_bytes = _render_pdf_with_page(page, chunk_url)
+                        elapsed = _time.monotonic() - t0
+                        logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
+                        return chunk_bytes
+                    except Exception as e:
+                        elapsed = _time.monotonic() - t0
+                        if start == end:
+                            logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite après {elapsed:.1f}s, impossible de la découper davantage : {e}")
+                            raise
+                        mid = (start + end) // 2
+                        logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué après {elapsed:.1f}s ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
+                        first_half = render_recursive(start, mid, depth + 1)
+                        second_half = render_recursive(mid + 1, end, depth + 1)
+                        writer2 = PdfWriter()
+                        for half in (first_half, second_half):
+                            r = PdfReader(BytesIO(half))
+                            for pg2 in r.pages:
+                                writer2.add_page(pg2)
+                        out2 = BytesIO()
+                        writer2.write(out2)
+                        return out2.getvalue()
+
+                if not ranges:
+                    result = _render_pdf_with_page(page, f"{FRONTEND_URL}/print/{album_id}?auth={token}")
+                    browser.close()
+                    return result
+
+                writer = PdfWriter()
+                for start, end in ranges:
+                    chunk_bytes = render_recursive(start, end, 0)
+                    reader = PdfReader(BytesIO(chunk_bytes))
+                    for pg2 in reader.pages:
+                        writer.add_page(pg2)
+                    del chunk_bytes, reader
+                    gc.collect()
+                browser.close()
+                out = BytesIO()
+                writer.write(out)
+                return out.getvalue()
+
+        if len(initial_ranges) > 1:
             logger.info(f"Commande {order_id} : point de départ estimé — {len(initial_ranges)} morceaux ({initial_ranges})")
-            chunk_pdfs = []
-            for start, end in initial_ranges:
-                chunk_bytes = await loop.run_in_executor(None, _render_chunk_recursive, start, end, 0)
-                chunk_pdfs.append(chunk_bytes)
-            pdf_bytes = await loop.run_in_executor(None, _merge_pdf_bytes, chunk_pdfs)
+        pdf_bytes = await loop.run_in_executor(None, _render_all_chunks, initial_ranges)
 
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         put_object(path, pdf_bytes, "application/pdf")
