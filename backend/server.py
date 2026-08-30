@@ -3414,6 +3414,49 @@ def require_admin(user: dict):
     if not ADMIN_EMAIL or user.get("email") != ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="Non autorisé")
 
+@api_router.get("/admin/albums/{album_id}/broken-photos")
+async def admin_list_broken_photos(album_id: str, user: dict = Depends(get_current_user)):
+    """For one specific album, finds every page slot whose photo_id points
+    to a photo that's now deleted (or never existed) — the exact "which
+    photos need re-uploading, and where do they go" list for recovering
+    from a photo that was wrongly cleaned up (see _delete_unselected_photos)
+    or otherwise went missing. original_filename and taken_at (whichever
+    the photo record still has) are included specifically to help
+    recognize which physical file on your own device to re-upload —
+    that's all that's left once the actual R2 file is gone."""
+    require_admin(user)
+    album = await db.albums.find_one({"id": album_id}, {"_id": 0})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    all_photo_ids = {
+        it.get("photo_id")
+        for pg in (album.get("pages") or [])
+        for it in (pg.get("items") or [])
+        if it.get("type") == "photo" and it.get("photo_id")
+    }
+    photos_by_id = {}
+    if all_photo_ids:
+        found = await db.photos.find({"id": {"$in": list(all_photo_ids)}}, {"_id": 0}).to_list(5000)
+        photos_by_id = {p["id"]: p for p in found}
+
+    broken = []
+    for page_idx, pg in enumerate(album.get("pages") or []):
+        for item in pg.get("items") or []:
+            if item.get("type") != "photo" or not item.get("photo_id"):
+                continue
+            photo = photos_by_id.get(item["photo_id"])
+            if photo is None:
+                broken.append({"page_index": page_idx, "photo_id": item["photo_id"], "reason": "no_record", "original_filename": None, "taken_at": None})
+            elif photo.get("is_deleted"):
+                broken.append({
+                    "page_index": page_idx,
+                    "photo_id": item["photo_id"],
+                    "reason": "deleted",
+                    "original_filename": photo.get("original_filename"),
+                    "taken_at": photo.get("taken_at"),
+                })
+    return {"album_title": album.get("title"), "total_pages": len(album.get("pages") or []), "broken": broken}
+
 @api_router.get("/admin/orders")
 async def admin_list_orders(user: dict = Depends(get_current_user)):
     """Every order across every customer, newest first — the shipping
