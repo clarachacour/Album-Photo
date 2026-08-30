@@ -102,35 +102,24 @@ export default function AdminOrdersPage() {
 
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
+    toast.info("Regenerating — this stays open until it's actually done, which can take a while for a large album");
     try {
-      await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
-      toast.info("Regenerating in the background — this can take a while for a large album");
-      // The endpoint now returns immediately once the task is dispatched
-      // (see server.py) rather than waiting for however long a large
-      // album's PDF takes to render — polling here is what actually
-      // shows when it's done, the same "keep checking until it's no
-      // longer in progress" shape the album editor already uses for AI
-      // processing.
-      const poll = setInterval(async () => {
-        try {
-          const { data } = await api.get("/admin/orders");
-          const fresh = data.find((o) => o.id === orderId);
-          if (fresh && (fresh.pdf_ready || fresh.pdf_error)) {
-            clearInterval(poll);
-            setOrders(data);
-            setRegeneratingId(null);
-            if (fresh.pdf_ready) {
-              toast.success("PDF regenerated — the printer has been notified");
-            } else {
-              toast.error("Regeneration failed again — check the Cloud Run logs");
-            }
-          }
-        } catch {
-          /* keep trying on the next tick */
-        }
-      }, 5000);
+      // Awaited directly, not polled — the backend keeps this request
+      // open for the whole render now rather than returning immediately
+      // (see server.py's comment on admin_regenerate_order_pdf): Cloud
+      // Run can silently kill a background task once a request has
+      // already responded, so the reliable version is a slower response
+      // that's guaranteed to actually finish.
+      const { data } = await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
+      if (data.pdf_ready) {
+        toast.success("PDF regenerated — the printer has been notified");
+      } else {
+        toast.error("Regeneration failed again — check the Cloud Run logs");
+      }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Failed to start regeneration");
+      toast.error(err?.response?.data?.detail || "Failed to regenerate PDF");
+    } finally {
       setRegeneratingId(null);
     }
   };
