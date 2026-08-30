@@ -539,6 +539,12 @@ class UserOut(BaseModel):
     building: Optional[str] = None
     city: Optional[str] = None
     additional_info: Optional[str] = None
+    # Computed from ADMIN_EMAIL, never stored — lets the frontend show/hide
+    # the admin nav link without hardcoding the admin's address a second
+    # time in frontend code (which would just be one more place for it to
+    # drift out of sync with the real check, which always lives server-side
+    # in require_admin regardless of what this flag says).
+    is_admin: bool = False
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -687,7 +693,7 @@ async def signup(data: SignupInput):
         # silently issuing a token here would skip that check entirely.
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     token = create_token(user_id)
-    return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name))
+    return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL))
 
 @api_router.post("/auth/login", response_model=AuthResponse)
 async def login(data: LoginInput):
@@ -695,7 +701,7 @@ async def login(data: LoginInput):
     if not user or not user.get("password_hash") or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     token = create_token(user["id"])
-    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"]))
+    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordInput):
@@ -741,7 +747,7 @@ async def google_auth(data: GoogleAuthInput):
         raise HTTPException(status_code=400, detail="Impossible de récupérer l'email du compte Google")
     user = await upsert_oauth_user(email, idinfo.get("name"), "google")
     token = create_token(user["id"])
-    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"]))
+    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @api_router.post("/auth/apple", response_model=AuthResponse)
 async def apple_auth(data: AppleAuthInput):
@@ -765,7 +771,7 @@ async def apple_auth(data: AppleAuthInput):
         raise HTTPException(status_code=400, detail="Impossible de récupérer l'email du compte Apple")
     user = await upsert_oauth_user(email, data.name, "apple")
     token = create_token(user["id"])
-    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"]))
+    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @api_router.get("/auth/me", response_model=UserOut)
 async def me(user: dict = Depends(get_current_user)):
@@ -774,6 +780,7 @@ async def me(user: dict = Depends(get_current_user)):
         phone=user.get("phone"), street=user.get("street"),
         building=user.get("building"), city=user.get("city"),
         additional_info=user.get("additional_info"),
+        is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL,
     )
 
 @api_router.put("/auth/me", response_model=UserOut)
