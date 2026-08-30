@@ -3256,20 +3256,46 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         # characters" — a wall no amount of server memory gets past,
         # because it isn't a memory limit at all.
         #
-        # Two different byte-size *predictions* were tried here first
-        # (grouping by a fixed page count, then by each photo's own file
-        # size) and both still hit the ceiling on this same album — the
-        # underlying problem with predicting at all is that nothing here
-        # actually confirms how large Chromium's own PDF encoding of a
-        # given set of images comes out to; the source JPEG's byte size on
-        # R2 is not a reliable stand-in for that. So this stops predicting
-        # and instead verifies directly: render a candidate chunk, and if
-        # the browser itself reports the string-length error, split that
-        # exact chunk in half and retry each half — recursing until every
-        # actual chunk that gets merged into the final PDF is one that
-        # really did render successfully. Self-correcting against the
-        # real failure instead of a guess about what causes it.
-        INITIAL_CHUNK_PAGES = 40  # a reasonable starting guess for how many pages to try rendering together — recursion below corrects it if this was still too many
+        # Predicting the right chunk size from the source photos' own file
+        # weight (tried here first, twice) isn't reliable on its own —
+        # nothing confirms how large Chromium's actual PDF encoding of a
+        # given set of images comes out to, so a chunk sized only by that
+        # estimate can still land on the wrong side of the ceiling. Purely
+        # reactive splitting (start big, retry smaller only after an
+        # actual failure) fixed that, but for an album with enough weight
+        # that the very first guess is routinely too large, the repeated
+        # render-fail-retry cycles it takes to converge can themselves add
+        # up past the request timeout — exactly what happened on this
+        # same order (900s, no result either way).
+        #
+        # So this uses both: the print-variant byte weight already on
+        # each photo's own record picks a *starting* chunk size close to
+        # right (few or no failed attempts in the common case), and the
+        # same recursive split-and-retry as before remains as the safety
+        # net for whatever the estimate still gets wrong, rather than the
+        # only mechanism doing the work.
+        FALLBACK_PHOTO_BYTES_ESTIMATE = 2 * 1024 * 1024
+        photo_sizes = {}
+        if photo_ids:
+            size_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0, "id": 1, "print_size": 1, "size": 1})
+            async for p in size_cursor:
+                photo_sizes[p["id"]] = p.get("print_size") or p.get("size") or FALLBACK_PHOTO_BYTES_ESTIMATE
+
+        # Aggressive on purpose — this only decides the *starting* point
+        # for each chunk, not a hard ceiling (the recursive retry below
+        # still corrects it either way), so erring toward smaller,
+        # more-numerous initial chunks costs a bit of extra round-trip
+        # time in the common case, in exchange for far fewer of the
+        # expensive render-fail-and-retry cycles that pushed the previous
+        # attempt past the request timeout.
+        TARGET_INITIAL_CHUNK_BYTES = 80 * 1024 * 1024
+
+        def _page_bytes(pg):
+            return sum(
+                photo_sizes.get(it.get("photo_id"), 0)
+                for it in (pg.get("items") or [])
+                if it.get("type") == "photo" and it.get("photo_id")
+            )
 
         def _render_chunk_recursive(start: int, end: int, depth: int = 0) -> bytes:
             chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
@@ -3301,21 +3327,37 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
             writer.write(out)
             return out.getvalue()
 
-        total_interior_pages = len(interior_pages)
-        if total_interior_pages == 0:
+        # Initial chunk boundaries from the byte estimate — same
+        # accumulate-until-the-target-then-cut logic as the very first
+        # version of this fix, just now paired with the recursive retry
+        # as a backstop instead of being trusted on its own.
+        initial_ranges = []
+        interior_count = len(interior_pages)
+        if interior_count:
+            chunk_start = 0
+            chunk_bytes_so_far = 0
+            for i, pg in enumerate(interior_pages):
+                pg_bytes = _page_bytes(pg)
+                if chunk_bytes_so_far > 0 and chunk_bytes_so_far + pg_bytes > TARGET_INITIAL_CHUNK_BYTES:
+                    initial_ranges.append((chunk_start, i - 1))
+                    chunk_start = i
+                    chunk_bytes_so_far = 0
+                chunk_bytes_so_far += pg_bytes
+            initial_ranges.append((chunk_start, interior_count - 1))
+
+        if not initial_ranges:
             print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
             pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
-        elif total_interior_pages <= INITIAL_CHUNK_PAGES:
-            # Small enough albums render exactly as before — a single
-            # request, still through the recursive helper so it still
-            # self-corrects on the rare small-but-heavy album rather than
-            # only ever chunking based on a page count that turned out not
-            # to correlate with actual weight.
-            pdf_bytes = await loop.run_in_executor(None, _render_chunk_recursive, 0, total_interior_pages - 1, 0)
+        elif len(initial_ranges) == 1:
+            # Still routed through the recursive helper (not a plain
+            # single render) so a small-but-unexpectedly-heavy album still
+            # self-corrects instead of only ever trusting the estimate.
+            start, end = initial_ranges[0]
+            pdf_bytes = await loop.run_in_executor(None, _render_chunk_recursive, start, end, 0)
         else:
+            logger.info(f"Commande {order_id} : point de départ estimé — {len(initial_ranges)} morceaux ({initial_ranges})")
             chunk_pdfs = []
-            for start in range(0, total_interior_pages, INITIAL_CHUNK_PAGES):
-                end = min(start + INITIAL_CHUNK_PAGES, total_interior_pages) - 1
+            for start, end in initial_ranges:
                 chunk_bytes = await loop.run_in_executor(None, _render_chunk_recursive, start, end, 0)
                 chunk_pdfs.append(chunk_bytes)
             pdf_bytes = await loop.run_in_executor(None, _merge_pdf_bytes, chunk_pdfs)
@@ -3323,6 +3365,31 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         put_object(path, pdf_bytes, "application/pdf")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True}})
+
+        # Moved in from create_order/admin_regenerate_order_pdf: this
+        # function now runs as a genuine background task (see both
+        # callers), so nothing is left waiting around afterward to do
+        # this — it has to happen here, right after the PDF is confirmed
+        # ready, or it would never happen at all.
+        order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+        if order and order["status"] not in ("printing", "ready_for_delivery", "shipped", "delivered"):
+            now2 = datetime.now(timezone.utc).isoformat()
+            await db.orders.update_one(
+                {"id": order_id},
+                {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
+            )
+            order["status"] = "printing"
+            customer = await db.users.find_one({"id": user_id}, {"_id": 0})
+            if customer:
+                send_order_confirmation_email(customer.get("email"), customer.get("name"), order)
+            send_printer_order_email(order)
+            # Only a genuinely successful, first-time order — a real PDF a
+            # printer will actually receive — has "the book is done,
+            # unused photos can go" become true. Excluded from the status
+            # check above on purpose: an admin regenerate on an
+            # already-printing order shouldn't re-trigger this cleanup a
+            # second time.
+            await _delete_unselected_photos(album_id)
     except Exception as e:
         logger.error(f"Échec de la génération du PDF pour la commande {order_id}: {e}")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
@@ -3394,45 +3461,22 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "updated_at": now,
     }
     await db.orders.insert_one(order_doc)
-    # Awaited directly, not dispatched via background_tasks — same
-    # throttling issue as AI processing and the Google Photos import
-    # (see their comments): Cloud Run's request-based billing cuts CPU
-    # hard once a request is considered "done", and rendering the PDF via
-    # a real headless browser is exactly the kind of CPU-heavy work that
-    # got starved into never actually finishing. The frontend already
-    # awaits this call and shows a busy state on the Place Order button in
-    # the meantime, so no UI change was needed to accommodate the longer
-    # wait. _delete_unselected_photos stays backgrounded — it's just R2
-    # cleanup, not urgent, and not CPU-heavy the way PDF rendering is.
-    await _generate_order_pdf(order_id, album["id"], user["id"])
-    # order_doc still has the pdf_ready=False/pdf_path=None it was built
-    # with before _generate_order_pdf ran — re-fetch so the response
-    # actually reflects whether it succeeded, instead of always reporting
-    # "not ready" regardless of the real outcome.
-    fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if fresh_order and fresh_order.get("pdf_ready"):
-        # _delete_unselected_photos used to fire unconditionally, right
-        # here, regardless of whether _generate_order_pdf above actually
-        # succeeded — a failed attempt (a memory crash mid-render, say)
-        # still permanently deleted every photo the album's pages weren't
-        # using *at that moment*, even though nothing had actually been
-        # ordered yet. Only a genuinely successful order — a real PDF a
-        # printer will actually receive — has "the book is done, unused
-        # photos can go" become true.
-        background_tasks.add_task(_delete_unselected_photos, album["id"])
-        # The PDF only exists once this succeeds — the printer email links
-        # to it directly, and there'd be nothing to print/deliver yet if
-        # generation had failed, so both emails wait on this specifically
-        # rather than firing the moment the order document is created.
-        now2 = datetime.now(timezone.utc).isoformat()
-        await db.orders.update_one(
-            {"id": order_id},
-            {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
-        )
-        fresh_order["status"] = "printing"
-        send_order_confirmation_email(user.get("email"), user.get("name"), fresh_order)
-        send_printer_order_email(fresh_order)
-    return fresh_order or order_doc
+    # Dispatched as a genuine background task rather than awaited directly
+    # — a customer placing an order on a very large album no longer sits
+    # waiting on their browser for however long PDF rendering takes (which
+    # could be many minutes, or — before the chunking/self-correction
+    # logic in _render_chunk_recursive — could hit a hard failure on a
+    # sufficiently large album regardless of how long they waited). The
+    # order is confirmed to exist immediately; _generate_order_pdf itself
+    # now handles updating the status and sending the confirmation/printer
+    # emails once the PDF genuinely finishes, since nothing here is still
+    # waiting around to do that afterward. This does depend on the Cloud
+    # Run service being on instance-based billing rather than
+    # request-based — request-based billing throttles CPU hard once a
+    # request is considered "done", which would starve this exact kind of
+    # background work instead of letting it actually finish.
+    background_tasks.add_task(_generate_order_pdf, order_id, album["id"], user["id"])
+    return order_doc
 
 @api_router.get("/order-actions/{order_id}/download")
 async def order_action_download_pdf(order_id: str, token: str = Query(None)):
@@ -3741,32 +3785,26 @@ async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_curre
     )
 
 @api_router.post("/admin/orders/{order_id}/regenerate-pdf")
-async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
+async def admin_regenerate_order_pdf(order_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     """Re-runs the exact same PDF generation _generate_order_pdf already
     does for a brand-new order — for the day generation fails (memory
     limit, a stuck browser render, anything transient) and needs a retry.
-    Nothing about the order changes from the customer's side; they never
-    even need to know it happened. Doesn't re-send the customer's "order
-    confirmed" email (they already got that when the order was placed) —
-    only the printer email goes out again, since a failed generation the
-    first time means the printer never actually got a usable link."""
+    Dispatched as a background task and returns immediately, same as
+    order creation — no admin-facing action should sit blocked on however
+    long a very large album's PDF takes to render, especially with
+    _render_chunk_recursive potentially retrying several times on a
+    genuinely huge one. _generate_order_pdf itself now handles the
+    status update and printer email once generation actually succeeds
+    (skipped automatically if the order had already advanced past
+    "printing" from an earlier, successful attempt) — nothing duplicated
+    here."""
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
     await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
-    await _generate_order_pdf(order_id, order["album_id"], order["user_id"])
-    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if fresh and fresh.get("pdf_ready"):
-        if fresh["status"] not in ("printing", "ready_for_delivery", "shipped", "delivered"):
-            now = datetime.now(timezone.utc).isoformat()
-            await db.orders.update_one(
-                {"id": order_id},
-                {"$set": {"status": "printing", "updated_at": now}, "$push": {"status_history": {"status": "printing", "at": now}}},
-            )
-            fresh["status"] = "printing"
-        send_printer_order_email(fresh)
-    return fresh
+    background_tasks.add_task(_generate_order_pdf, order_id, order["album_id"], order["user_id"])
+    return {"status": "started"}
 
 class OrderStatusUpdate(BaseModel):
     status: str
