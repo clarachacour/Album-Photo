@@ -931,7 +931,16 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user)):
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
     # Also include photos
-    photos = await db.photos.find({"album_id": album_id}, {"_id": 0}).to_list(1000)
+    # is_deleted excluded — a deleted photo serves no purpose being sent to
+    # the frontend at all, and including them was eating into the list cap
+    # below for no reason. That cap itself used to be 1000 — comfortably
+    # enough for a normal album, but 796 original photos plus a further
+    # 796 re-uploaded (to recover from a batch of them going missing, for
+    # instance) adds up to more than that on its own, and the excess was
+    # getting silently cut off the response rather than erroring — every
+    # other large-list query in this file already uses 5000, so this one
+    # matches them instead of being the one exception.
+    photos = await db.photos.find({"album_id": album_id, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(5000)
     album["photos"] = _json_safe(photos)
     return album
 
@@ -2391,7 +2400,7 @@ async def run_ai_processing(album_id: str, user_id: str):
         existing_pages = (album.get("pages") or []) if album else []
         title_page = existing_pages[0] if existing_pages else make_title_page(album.get("title") if album else None)
 
-        photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(1000)
+        photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
         if not photos:
             await db.albums.update_one({"id": album_id}, {"$set": {"status": "ready", "pages": [title_page]}})
             return
@@ -3461,15 +3470,19 @@ async def admin_list_broken_photos(album_id: str, user: dict = Depends(get_curre
 async def admin_repair_missing_photos(album_id: str, user: dict = Depends(get_current_user)):
     """One-off repair tool, not a general feature — matches freshly
     re-uploaded photos (via the normal /albums/{id}/photos upload) back
-    into the exact page slots that were pointing at a now-deleted photo,
-    purely by original_filename. Only ever considers photos already
-    uploaded into this same album that aren't placed on any page yet —
-    a fresh re-upload, not something already in active use elsewhere in
-    the book. Matches once each: two broken slots can't both claim the
-    same re-uploaded file. Whatever it can't match (filename typo'd on
-    re-upload, or simply not re-uploaded yet) comes back in
-    still_missing, same shape as /broken-photos, to retry after fixing
-    the file name or uploading what's left."""
+    into the exact page slots that were pointing at a now-deleted photo.
+    Matches on original_filename first; Google Photos re-downloads of the
+    same photos don't reliably keep the same filename between two separate
+    export sessions (a known Google Photos quirk — batch numbering and
+    duplicate suffixes can differ), so this falls back to matching on
+    exact file size (in bytes) when the filename doesn't match anything,
+    since re-downloading the same photo at original quality produces an
+    identical file. Only ever considers photos already uploaded into this
+    same album that aren't placed on any page yet — a fresh re-upload, not
+    something already in active use elsewhere in the book. Matches once
+    each: two broken slots can't both claim the same re-uploaded file.
+    Whatever it still can't match comes back in still_missing, same shape
+    as /broken-photos, to retry after uploading what's left."""
     require_admin(user)
     album = await db.albums.find_one({"id": album_id})
     if not album:
@@ -3481,16 +3494,24 @@ async def admin_repair_missing_photos(album_id: str, user: dict = Depends(get_cu
         for it in (pg.get("items") or [])
         if it.get("type") == "photo" and it.get("photo_id")
     }
-    all_photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
-    photos_by_id = {p["id"]: p for p in all_photos}
-    # Freshly re-uploaded candidates: exist, not deleted, not currently
-    # sitting in any page slot — grouped by filename since that's the only
-    # thing tying a re-upload back to what it's meant to replace.
+    # Two different queries on purpose: broken_photo_records needs the
+    # DELETED photos too (that's the whole point — reading what a missing
+    # photo's original filename/size *was*), while candidates below must
+    # stay restricted to is_deleted: False (never resurrect a deleted
+    # photo's own file, only match it to a fresh re-upload).
+    broken_photo_records = {}
+    if used_photo_ids:
+        found_any = await db.photos.find({"id": {"$in": list(used_photo_ids)}}, {"_id": 0}).to_list(5000)
+        broken_photo_records = {p["id"]: p for p in found_any}
+
+    candidates = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
     unplaced_by_filename = {}
-    for p in all_photos:
+    unplaced_by_size = {}
+    for p in candidates:
         if p["id"] in used_photo_ids:
-            continue
+            continue  # already sitting in some page slot — not a fresh re-upload waiting to be placed
         unplaced_by_filename.setdefault(p.get("original_filename"), []).append(p)
+        unplaced_by_size.setdefault(p.get("size"), []).append(p)
 
     fixed = []
     still_missing = []
@@ -3499,18 +3520,35 @@ async def admin_repair_missing_photos(album_id: str, user: dict = Depends(get_cu
         for item in pg.get("items") or []:
             if item.get("type") != "photo" or not item.get("photo_id"):
                 continue
-            photo = photos_by_id.get(item["photo_id"])
+            photo = broken_photo_records.get(item["photo_id"])
             is_broken = photo is None or photo.get("is_deleted")
             if not is_broken:
                 continue
             filename = photo.get("original_filename") if photo else None
-            candidates = unplaced_by_filename.get(filename) or []
-            if filename and candidates:
-                replacement = candidates.pop(0)  # each re-uploaded file only ever fills one slot
+            size = photo.get("size") if photo else None
+            match_method = None
+            replacement = None
+            by_name = unplaced_by_filename.get(filename) or []
+            if filename and by_name:
+                replacement = by_name.pop(0)
+                match_method = "filename"
+            else:
+                by_size = unplaced_by_size.get(size) or []
+                if size and by_size:
+                    replacement = by_size.pop(0)
+                    match_method = "size"
+            if replacement:
+                # Keep both lookup tables in sync so the same re-uploaded
+                # file is never handed out twice, regardless of which one
+                # a later slot happens to match through.
+                other_list = unplaced_by_size if match_method == "filename" else unplaced_by_filename
+                other_key = replacement.get("size") if match_method == "filename" else replacement.get("original_filename")
+                if replacement in (other_list.get(other_key) or []):
+                    other_list[other_key].remove(replacement)
                 item["photo_id"] = replacement["id"]
                 used_photo_ids.add(replacement["id"])
                 changed = True
-                fixed.append({"page_index": page_idx, "original_filename": filename, "new_photo_id": replacement["id"]})
+                fixed.append({"page_index": page_idx, "original_filename": filename, "new_photo_id": replacement["id"], "matched_by": match_method})
             else:
                 still_missing.append({"page_index": page_idx, "original_filename": filename})
 
