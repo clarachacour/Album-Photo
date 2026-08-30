@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
-import { LogOut, LayoutGrid, User, Package, HelpCircle } from "lucide-react";
+import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield } from "lucide-react";
 
 export default function TopNav() {
   const { user, logout } = useAuth();
@@ -39,6 +39,14 @@ export default function TopNav() {
             >
               <HelpCircle size={14} /> FAQ
             </Link>
+            {user.is_admin && (
+              <Link
+                to="/admin/orders"
+                className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--coral)] hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              >
+                <Shield size={14} /> Admin
+              </Link>
+            )}
             <Link
               to="/account"
               className="inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
