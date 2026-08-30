@@ -104,6 +104,28 @@ export default function PrintAlbum() {
   const spineMm = spineWidthMm((album.pages || []).length);
   const seamMm = 0.8; // thin visible gap between spine and cover, matching the flipbook
   const cover = album.cover || {};
+  const allPages = album.pages || [];
+
+  // A very large album (many hundreds of print-quality photo pages) can
+  // produce a PDF whose base64 transfer over the browser's own debugging
+  // protocol exceeds a hard ~512MB string-length ceiling the JS engine
+  // itself enforces — nothing to do with server memory, a wall no amount
+  // of it gets past. The fix on the backend side (_generate_order_pdf) is
+  // to render the album in smaller chunks and merge the resulting PDFs
+  // afterward; this "from"/"to" pair (0-indexed, inclusive, interior
+  // pages only) is what lets it ask for just one chunk at a time. Neither
+  // being set renders the whole album in one go, same as before — every
+  // other caller of this page (a small album's export, the admin PDF
+  // check) is completely unaffected.
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+  const chunkFrom = fromParam != null ? parseInt(fromParam, 10) : 0;
+  const chunkTo = toParam != null ? parseInt(toParam, 10) : allPages.length - 1;
+  const includeCover = fromParam == null || chunkFrom <= 0;
+  const includeBackCover = toParam == null || chunkTo >= allPages.length - 1;
+  const chunkPages = allPages
+    .map((page, i) => ({ page, i }))
+    .filter(({ i }) => i >= chunkFrom && i <= chunkTo);
 
   return (
     <div data-print-ready={printReady ? "true" : undefined}>
@@ -130,42 +152,48 @@ export default function PrintAlbum() {
 
       {/* Front cover + spine, side by side on one sheet, with a thin seam
           between them (matching the flipbook) so it's clear they're two
-          distinct pieces rather than one continuous surface. */}
-      <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex" }}>
-        <div style={{ width: `${spineMm}mm`, height: `${ph}mm`, flexShrink: 0 }}>
-          <CoverSpine title={album.title} year={album.year} template={template} cover={cover} editable={false} />
+          distinct pieces rather than one continuous surface. Only the
+          chunk starting at page 0 (or an unchunked, whole-album render)
+          includes this — every later chunk picks up mid-album. */}
+      {includeCover && (
+        <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex" }}>
+          <div style={{ width: `${spineMm}mm`, height: `${ph}mm`, flexShrink: 0 }}>
+            <CoverSpine title={album.title} year={album.year} template={template} cover={cover} editable={false} />
+          </div>
+          <div style={{ width: `${seamMm}mm`, height: `${ph}mm`, flexShrink: 0, background: "rgba(26,26,23,0.7)" }} />
+          <div style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+            <CoverFrontPage
+              template={template}
+              title={album.title}
+              orientation={album.orientation}
+              coverImageUrl={album.cover_image_path ? coverImageUrl(album.id, 0, "original") : undefined}
+              cover={cover}
+              editable={false}
+            />
+          </div>
         </div>
-        <div style={{ width: `${seamMm}mm`, height: `${ph}mm`, flexShrink: 0, background: "rgba(26,26,23,0.7)" }} />
-        <div style={{ width: `${pw}mm`, height: `${ph}mm` }}>
-          <CoverFrontPage
-            template={template}
-            title={album.title}
-            orientation={album.orientation}
-            coverImageUrl={album.cover_image_path ? coverImageUrl(album.id, 0, "original") : undefined}
-            cover={cover}
-            editable={false}
-          />
-        </div>
-      </div>
+      )}
 
-      {/* Interior pages */}
-      {(album.pages || []).map((page, i) => (
+      {/* Interior pages — just this chunk's slice when chunked, every page otherwise. */}
+      {chunkPages.map(({ page, i }) => (
         <div key={page.id || i} className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes />
         </div>
       ))}
 
-      {/* Back cover */}
-      <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
-        <CoverBackPage
-          template={template}
-          country={album.country}
-          year={album.year}
-          orientation={album.orientation}
-          cover={cover}
-          editable={false}
-        />
-      </div>
+      {/* Back cover — only the chunk that reaches the real end of the album. */}
+      {includeBackCover && (
+        <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+          <CoverBackPage
+            template={template}
+            country={album.country}
+            year={album.year}
+            orientation={album.orientation}
+            cover={cover}
+            editable={false}
+          />
+        </div>
+      )}
     </div>
   );
 }
