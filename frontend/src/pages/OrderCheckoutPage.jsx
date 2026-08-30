@@ -20,15 +20,13 @@ export default function OrderCheckoutPage() {
     city: user?.city || "",
     additional_info: user?.additional_info || "",
   });
-  // Shown the instant the person clicks "Place order" — the real POST
-  // request (which can legitimately take a while, since PDF generation is
-  // awaited synchronously within it — see backend create_order) keeps
-  // running in the background of this screen instead of behind a loading
-  // button, so nothing about the wait is visible. This component stays
-  // mounted (we don't navigate away) for exactly that reason — navigating
-  // immediately would risk the in-flight request being torn down along
-  // with the page. Once it actually resolves, THEN we move on to the real
-  // order page.
+  // Shown the instant the person clicks "Place order". The POST itself
+  // now returns quickly — PDF generation runs as a background task on the
+  // server (see backend create_order) rather than being awaited inside
+  // the request, so a very large album's rendering time no longer has any
+  // bearing on how long this screen shows. This component stays mounted
+  // (we don't navigate away) mainly so a genuine failure (address
+  // rejected server-side, etc.) can still drop back to the form.
   const [justPlaced, setJustPlaced] = useState(false);
 
   useEffect(() => {
