@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, RefreshCw } from "lucide-react";
 
 function formatPrice(cents, currency = "eur") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -49,6 +49,7 @@ export default function AdminOrdersPage() {
   const [forbidden, setForbidden] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+  const [regeneratingId, setRegeneratingId] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -96,6 +97,23 @@ export default function AdminOrdersPage() {
       toast.error(err?.response?.data?.detail || "Failed to update status");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const regeneratePdf = async (orderId) => {
+    setRegeneratingId(orderId);
+    try {
+      const { data } = await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
+      if (data.pdf_ready) {
+        toast.success("PDF regenerated — the printer has been re-notified");
+      } else {
+        toast.error("Regeneration failed again — check the Cloud Run logs");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Failed to regenerate PDF");
+    } finally {
+      setRegeneratingId(null);
     }
   };
 
@@ -173,18 +191,28 @@ export default function AdminOrdersPage() {
                         </select>
                       </td>
                       <td className="p-3">
-                        {o.pdf_ready ? (
+                        <div className="flex items-center gap-1.5">
+                          {o.pdf_ready ? (
+                            <button
+                              onClick={() => downloadPdf(o.id)}
+                              disabled={downloadingId === o.id}
+                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                            >
+                              <Download size={12} />
+                              {downloadingId === o.id ? "…" : "Download"}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-red-500">Failed / not ready</span>
+                          )}
                           <button
-                            onClick={() => downloadPdf(o.id)}
-                            disabled={downloadingId === o.id}
+                            onClick={() => regeneratePdf(o.id)}
+                            disabled={regeneratingId === o.id}
+                            title="Regenerate PDF — re-runs generation and re-notifies the printer, nothing needed from the customer"
                             className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
                           >
-                            <Download size={12} />
-                            {downloadingId === o.id ? "…" : "Download"}
+                            <RefreshCw size={12} className={regeneratingId === o.id ? "animate-spin" : ""} />
                           </button>
-                        ) : (
-                          <span className="text-xs text-[color:var(--muted)]">Not ready</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
