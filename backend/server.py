@@ -57,6 +57,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors as rl_colors
 from reportlab.pdfbase import pdfmetrics
 from playwright.sync_api import sync_playwright
+from pypdf import PdfReader, PdfWriter
 from reportlab.pdfbase.ttfonts import TTFont
 
 # Register the same fonts the web editor uses, so PDF text isn't silently
@@ -2689,7 +2690,14 @@ def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     asyncio loop (via run_in_executor) since it blocks the calling thread —
     but that's exactly why it sidesteps the Windows subprocess/event-loop
     conflict: the sync API manages its own event loop internally, in its
-    own thread, independent of whatever loop uvicorn is using."""
+    own thread, independent of whatever loop uvicorn is using.
+
+    print_url may include ?from=X&to=Y (see PrintAlbum.jsx) to render only
+    a slice of the album's interior pages — how _generate_order_pdf keeps
+    a very large album's PDF under the headless browser's own hard
+    string-length ceiling on a single page.pdf() call (see its own
+    docstring for what that limit actually is and why chunking is the fix,
+    not more memory)."""
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
@@ -3220,9 +3228,10 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         # on purpose — by the time Playwright opens the page, every image
         # it needs is already a fast, uncontended cache hit.
         album_doc = await db.albums.find_one({"id": album_id}, {"pages": 1})
+        interior_pages = (album_doc or {}).get("pages", [])
         photo_ids = {
             it["photo_id"]
-            for pg in (album_doc or {}).get("pages", [])
+            for pg in interior_pages
             for it in (pg.get("items") or [])
             if it.get("type") == "photo" and it.get("photo_id")
         }
@@ -3237,9 +3246,46 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
                     await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_path": print_path}})
 
         token = create_token(user_id)
-        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
         loop = asyncio.get_event_loop()
-        pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
+
+        # A large album's print-quality PDF can be big enough (many
+        # hundreds of full-resolution photo pages) that transferring it
+        # out of the headless browser hits a hard ~512MB string-length
+        # ceiling the JS engine itself enforces on any single value —
+        # "Page.pdf: Cannot create a string longer than 0x1fffffe8
+        # characters" — a wall no amount of server memory gets past,
+        # because it isn't a memory limit at all. Rendering (and
+        # transferring) the album in smaller chunks keeps every individual
+        # page.pdf() call's output well under that ceiling; pypdf then
+        # concatenates the chunks back into the one PDF the printer
+        # actually receives. CHUNK_PAGES is deliberately conservative
+        # (not tuned to the ceiling exactly) since exactly how big a page
+        # renders varies with how photo-dense it is.
+        CHUNK_PAGES = 80
+        total_interior_pages = len(interior_pages)
+        if total_interior_pages <= CHUNK_PAGES:
+            print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
+            pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
+        else:
+            chunk_pdfs = []
+            for start in range(0, total_interior_pages, CHUNK_PAGES):
+                end = min(start + CHUNK_PAGES, total_interior_pages) - 1
+                chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
+                chunk_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, chunk_url)
+                chunk_pdfs.append(chunk_bytes)
+
+            def _merge_chunks(chunks: List[bytes]) -> bytes:
+                writer = PdfWriter()
+                for chunk in chunks:
+                    reader = PdfReader(BytesIO(chunk))
+                    for p in reader.pages:
+                        writer.add_page(p)
+                out = BytesIO()
+                writer.write(out)
+                return out.getvalue()
+
+            pdf_bytes = await loop.run_in_executor(None, _merge_chunks, chunk_pdfs)
+
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         put_object(path, pdf_bytes, "application/pdf")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True}})
