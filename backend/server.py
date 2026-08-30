@@ -3239,52 +3239,86 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
             loop = asyncio.get_event_loop()
             photos_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0})
             async for photo in photos_cursor:
-                if photo.get("print_path"):
-                    continue  # already cached from an earlier order/preview
-                print_path, _ = await loop.run_in_executor(None, _generate_print_variant, photo)
+                if photo.get("print_path") and photo.get("print_size"):
+                    continue  # already cached from an earlier order/preview, size already on record
+                print_path, print_bytes = await loop.run_in_executor(None, _generate_print_variant, photo)
                 if print_path:
-                    await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_path": print_path}})
+                    await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_path": print_path, "print_size": len(print_bytes)}})
 
         token = create_token(user_id)
         loop = asyncio.get_event_loop()
 
         # A large album's print-quality PDF can be big enough (many
-        # hundreds of full-resolution photo pages) that transferring it
-        # out of the headless browser hits a hard ~512MB string-length
-        # ceiling the JS engine itself enforces on any single value —
+        # hundreds of full-resolution photos) that transferring it out of
+        # the headless browser hits a hard ~512MB string-length ceiling
+        # the JS engine itself enforces on any single value —
         # "Page.pdf: Cannot create a string longer than 0x1fffffe8
         # characters" — a wall no amount of server memory gets past,
-        # because it isn't a memory limit at all. Rendering (and
-        # transferring) the album in smaller chunks keeps every individual
-        # page.pdf() call's output well under that ceiling; pypdf then
-        # concatenates the chunks back into the one PDF the printer
-        # actually receives. CHUNK_PAGES is deliberately conservative
-        # (not tuned to the ceiling exactly) since exactly how big a page
-        # renders varies with how photo-dense it is.
-        CHUNK_PAGES = 80
+        # because it isn't a memory limit at all.
+        #
+        # Two different byte-size *predictions* were tried here first
+        # (grouping by a fixed page count, then by each photo's own file
+        # size) and both still hit the ceiling on this same album — the
+        # underlying problem with predicting at all is that nothing here
+        # actually confirms how large Chromium's own PDF encoding of a
+        # given set of images comes out to; the source JPEG's byte size on
+        # R2 is not a reliable stand-in for that. So this stops predicting
+        # and instead verifies directly: render a candidate chunk, and if
+        # the browser itself reports the string-length error, split that
+        # exact chunk in half and retry each half — recursing until every
+        # actual chunk that gets merged into the final PDF is one that
+        # really did render successfully. Self-correcting against the
+        # real failure instead of a guess about what causes it.
+        INITIAL_CHUNK_PAGES = 40  # a reasonable starting guess for how many pages to try rendering together — recursion below corrects it if this was still too many
+
+        def _render_chunk_recursive(start: int, end: int, depth: int = 0) -> bytes:
+            chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
+            try:
+                chunk_bytes = _render_pdf_via_browser_sync(chunk_url)
+                logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio")
+                return chunk_bytes
+            except Exception as e:
+                if start == end:
+                    # A single page alone is too large to render — nothing
+                    # left to split, this is a genuine, unrecoverable
+                    # problem (an extraordinarily photo-dense single page)
+                    # worth surfacing clearly rather than looping forever.
+                    logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite, impossible de la découper davantage : {e}")
+                    raise
+                mid = (start + end) // 2
+                logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
+                first_half = _render_chunk_recursive(start, mid, depth + 1)
+                second_half = _render_chunk_recursive(mid + 1, end, depth + 1)
+                return _merge_pdf_bytes([first_half, second_half])
+
+        def _merge_pdf_bytes(chunks: List[bytes]) -> bytes:
+            writer = PdfWriter()
+            for chunk in chunks:
+                reader = PdfReader(BytesIO(chunk))
+                for p in reader.pages:
+                    writer.add_page(p)
+            out = BytesIO()
+            writer.write(out)
+            return out.getvalue()
+
         total_interior_pages = len(interior_pages)
-        if total_interior_pages <= CHUNK_PAGES:
+        if total_interior_pages == 0:
             print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
             pdf_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, print_url)
+        elif total_interior_pages <= INITIAL_CHUNK_PAGES:
+            # Small enough albums render exactly as before — a single
+            # request, still through the recursive helper so it still
+            # self-corrects on the rare small-but-heavy album rather than
+            # only ever chunking based on a page count that turned out not
+            # to correlate with actual weight.
+            pdf_bytes = await loop.run_in_executor(None, _render_chunk_recursive, 0, total_interior_pages - 1, 0)
         else:
             chunk_pdfs = []
-            for start in range(0, total_interior_pages, CHUNK_PAGES):
-                end = min(start + CHUNK_PAGES, total_interior_pages) - 1
-                chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
-                chunk_bytes = await loop.run_in_executor(None, _render_pdf_via_browser_sync, chunk_url)
+            for start in range(0, total_interior_pages, INITIAL_CHUNK_PAGES):
+                end = min(start + INITIAL_CHUNK_PAGES, total_interior_pages) - 1
+                chunk_bytes = await loop.run_in_executor(None, _render_chunk_recursive, start, end, 0)
                 chunk_pdfs.append(chunk_bytes)
-
-            def _merge_chunks(chunks: List[bytes]) -> bytes:
-                writer = PdfWriter()
-                for chunk in chunks:
-                    reader = PdfReader(BytesIO(chunk))
-                    for p in reader.pages:
-                        writer.add_page(p)
-                out = BytesIO()
-                writer.write(out)
-                return out.getvalue()
-
-            pdf_bytes = await loop.run_in_executor(None, _merge_chunks, chunk_pdfs)
+            pdf_bytes = await loop.run_in_executor(None, _merge_pdf_bytes, chunk_pdfs)
 
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         put_object(path, pdf_bytes, "application/pdf")
