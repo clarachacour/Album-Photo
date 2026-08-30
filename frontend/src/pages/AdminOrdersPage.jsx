@@ -103,16 +103,34 @@ export default function AdminOrdersPage() {
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
     try {
-      const { data } = await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
-      if (data.pdf_ready) {
-        toast.success("PDF regenerated — the printer has been re-notified");
-      } else {
-        toast.error("Regeneration failed again — check the Cloud Run logs");
-      }
+      await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
+      toast.info("Regenerating in the background — this can take a while for a large album");
+      // The endpoint now returns immediately once the task is dispatched
+      // (see server.py) rather than waiting for however long a large
+      // album's PDF takes to render — polling here is what actually
+      // shows when it's done, the same "keep checking until it's no
+      // longer in progress" shape the album editor already uses for AI
+      // processing.
+      const poll = setInterval(async () => {
+        try {
+          const { data } = await api.get("/admin/orders");
+          const fresh = data.find((o) => o.id === orderId);
+          if (fresh && (fresh.pdf_ready || fresh.pdf_error)) {
+            clearInterval(poll);
+            setOrders(data);
+            setRegeneratingId(null);
+            if (fresh.pdf_ready) {
+              toast.success("PDF regenerated — the printer has been notified");
+            } else {
+              toast.error("Regeneration failed again — check the Cloud Run logs");
+            }
+          }
+        } catch {
+          /* keep trying on the next tick */
+        }
+      }, 5000);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Failed to regenerate PDF");
-    } finally {
+      toast.error(err?.response?.data?.detail || "Failed to start regeneration");
       setRegeneratingId(null);
     }
   };
