@@ -47,3 +47,8 @@ export function coverAssetUrl(storagePath, variant = "thumb") {
   const t = getToken();
   return `${API}/cover-assets/image?path=${encodeURIComponent(storagePath)}&auth=${encodeURIComponent(t || "")}&variant=${variant}`;
 }
+
+export function adminOrderPdfUrl(orderId) {
+  const t = getToken();
+  return `${API}/admin/orders/${orderId}/pdf?auth=${encodeURIComponent(t || "")}`;
+}
