@@ -3798,7 +3798,7 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
     return orders
 
 @api_router.get("/admin/orders/{order_id}/pdf")
-async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
+async def admin_download_order_pdf(order_id: str, auth: str = Query(None), authorization: str = Header(None)):
     """Redirects straight to a short-lived, signed R2 URL rather than
     proxying the file's bytes through this backend and back out again —
     a print-quality album PDF easily runs past 100MB (24 pages, up to 4
@@ -3806,9 +3806,31 @@ async def admin_download_order_pdf(order_id: str, user: dict = Depends(get_curre
     how large a single HTTP response through the normal request/response
     path can be, well under that ("Response size was too large") — a
     completely different ceiling from the render-time V8 string-length
-    one chunking exists for. A presigned URL sidesteps it entirely: the
-    browser downloads directly from R2/Cloudflare, this backend is never
-    in the data path at all."""
+    one chunking exists for.
+
+    Accepts the auth token via query param (same pattern as
+    get_photo_image) in addition to the header, and the frontend now
+    navigates the browser straight to this URL rather than fetching it
+    through axios — a plain top-level navigation follows the redirect to
+    R2 with no CORS involved at all, where an XHR/fetch-based request
+    (axios's responseType: "blob", tried first) does still apply CORS to
+    the redirect's target, and the R2 bucket has no CORS policy allowing
+    this frontend's origin — the fetch was being silently blocked by the
+    browser, which is why downloads kept failing with a "not ready yet"
+    message despite the redirect itself working (that message is really
+    just this endpoint's generic error fallback, not a sign the PDF
+    itself was ever actually missing)."""
+    token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1]
+    elif auth:
+        token = auth
+    user_id = decode_token(token) if token else None
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
