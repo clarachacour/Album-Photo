@@ -3216,6 +3216,53 @@ ORDER_STATUS_LABELS = {
 # drives the tracking timeline on the frontend.
 ORDER_STATUS_SEQUENCE = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered"]
 
+# How many PDF generations are allowed to actually run at the same time,
+# across the whole service — not per instance, since Cloud Run can freely
+# route two different orders' generation requests to two different
+# instances (or the same one, depending on load), and there's no way to
+# know which from inside a single request. Kept low on purpose: each
+# generation's peak memory is already bounded by chunking and incremental
+# merging, but that bound is *per generation* — two or three running at
+# once on the same instance would still stack their peaks. A shared
+# MongoDB collection (rather than an in-process counter, which would only
+# ever see this one instance's own generations) makes the limit apply
+# service-wide regardless of which instance each request happens to land
+# on.
+MAX_CONCURRENT_PDF_GENERATIONS = int(os.environ.get("MAX_CONCURRENT_PDF_GENERATIONS", "2"))
+# If an instance ever crashes hard enough mid-generation that the
+# `finally` block releasing its slot never runs (an OOM kill, say), that
+# slot would otherwise sit "held" forever, permanently shrinking the
+# effective limit by one. Generous on purpose — real generations,
+# even a very large album needing many recursive retries, shouldn't
+# legitimately take this long — but the goal is only to eventually
+# self-heal from an abandoned slot, not to cut off a merely slow one.
+PDF_GENERATION_SLOT_STALE_MINUTES = 45
+
+async def _acquire_pdf_generation_slot(order_id: str):
+    """Blocks (polling, not busy-waiting) until fewer than
+    MAX_CONCURRENT_PDF_GENERATIONS are genuinely in progress service-wide,
+    then claims one for this order. No overall timeout on the wait itself
+    — a queued generation is expected to eventually get its turn rather
+    than fail outright, matching "reliability over speed" for this
+    specifically: a customer's order should never fail *just* because
+    other customers happened to be ordering at the same moment."""
+    while True:
+        stale_cutoff = (datetime.now(timezone.utc) - timedelta(minutes=PDF_GENERATION_SLOT_STALE_MINUTES)).isoformat()
+        await db.pdf_generation_slots.delete_many({"started_at": {"$lt": stale_cutoff}})
+        active_count = await db.pdf_generation_slots.count_documents({})
+        if active_count < MAX_CONCURRENT_PDF_GENERATIONS:
+            try:
+                await db.pdf_generation_slots.insert_one({"order_id": order_id, "started_at": datetime.now(timezone.utc).isoformat()})
+                return
+            except Exception:
+                pass  # another request claimed the slot first (or a duplicate order_id) — just retry the check
+        else:
+            logger.info(f"Commande {order_id} : {active_count} génération(s) déjà en cours, en attente d'une place disponible…")
+        await asyncio.sleep(15)
+
+async def _release_pdf_generation_slot(order_id: str):
+    await db.pdf_generation_slots.delete_many({"order_id": order_id})
+
 async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     """Runs in the background right after an order is created. Reuses the
     exact same browser-based renderer as the (now customer-facing-removed)
@@ -3223,6 +3270,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     match what the customer saw in the flipbook. Never surfaced to the
     customer directly — this is purely for internal/printer use."""
     t_start = _time.monotonic()
+    await _acquire_pdf_generation_slot(order_id)
     try:
         # Pre-warm every used photo's "print" variant BEFORE launching the
         # browser, one at a time. Without this, the headless browser (once
@@ -3322,59 +3370,60 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
             initial_ranges.append((chunk_start, interior_count - 1))
 
         def _render_all_chunks(ranges: List[tuple]) -> bytes:
-            """Everything from here down runs in one executor thread, on
-            one launched browser, reusing a single Page across every
-            chunk (and every recursive split-retry) via .goto() to a new
-            URL each time rather than a fresh browser.new_page() or
-            browser relaunch — Chromium's own launch overhead is real and
-            was adding up across a large album's many chunks."""
-            with sync_playwright() as p:
-                browser = p.chromium.launch()
-                page = browser.new_page()
+            """A fresh browser per chunk (and per recursive split-retry) —
+            reusing one browser/page across many chunks was tried first to
+            save Chromium's ~1-2s launch cost per chunk, but on a real
+            large-album test it caused every subsequent navigation to get
+            progressively slower (each chunk's images taking 40-50s+ to
+            load instead of under a second, eventually timing out the
+            30s networkidle wait outright) — almost certainly leftover
+            memory/state inside Chromium's own render process building up
+            across repeated heavy navigations in one page, never fully
+            reclaimed between them. A fresh browser per chunk costs a
+            couple of extra seconds each, in exchange for every chunk
+            starting from a clean, known-good state — reliability over
+            speed, by design."""
 
-                def render_recursive(start: int, end: int, depth: int = 0) -> bytes:
-                    chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
-                    t0 = _time.monotonic()
-                    try:
-                        chunk_bytes = _render_pdf_with_page(page, chunk_url)
-                        elapsed = _time.monotonic() - t0
-                        logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
-                        return chunk_bytes
-                    except Exception as e:
-                        elapsed = _time.monotonic() - t0
-                        if start == end:
-                            logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite après {elapsed:.1f}s, impossible de la découper davantage : {e}")
-                            raise
-                        mid = (start + end) // 2
-                        logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué après {elapsed:.1f}s ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
-                        first_half = render_recursive(start, mid, depth + 1)
-                        second_half = render_recursive(mid + 1, end, depth + 1)
-                        writer2 = PdfWriter()
-                        for half in (first_half, second_half):
-                            r = PdfReader(BytesIO(half))
-                            for pg2 in r.pages:
-                                writer2.add_page(pg2)
-                        out2 = BytesIO()
-                        writer2.write(out2)
-                        return out2.getvalue()
+            def render_recursive(start: int, end: int, depth: int = 0) -> bytes:
+                chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
+                t0 = _time.monotonic()
+                try:
+                    chunk_bytes = _render_pdf_via_browser_sync(chunk_url)
+                    elapsed = _time.monotonic() - t0
+                    logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
+                    return chunk_bytes
+                except Exception as e:
+                    elapsed = _time.monotonic() - t0
+                    if start == end:
+                        logger.error(f"Commande {order_id} : la page {start} seule dépasse la limite après {elapsed:.1f}s, impossible de la découper davantage : {e}")
+                        raise
+                    mid = (start + end) // 2
+                    logger.info(f"Commande {order_id} : pages {start}-{end} ont échoué après {elapsed:.1f}s ({e}) — nouveau découpage en {start}-{mid} et {mid+1}-{end}")
+                    first_half = render_recursive(start, mid, depth + 1)
+                    second_half = render_recursive(mid + 1, end, depth + 1)
+                    writer2 = PdfWriter()
+                    for half in (first_half, second_half):
+                        r = PdfReader(BytesIO(half))
+                        for pg2 in r.pages:
+                            writer2.add_page(pg2)
+                    out2 = BytesIO()
+                    writer2.write(out2)
+                    return out2.getvalue()
 
-                if not ranges:
-                    result = _render_pdf_with_page(page, f"{FRONTEND_URL}/print/{album_id}?auth={token}")
-                    browser.close()
-                    return result
+            if not ranges:
+                return _render_pdf_via_browser_sync(f"{FRONTEND_URL}/print/{album_id}?auth={token}")
 
-                writer = PdfWriter()
-                for start, end in ranges:
-                    chunk_bytes = render_recursive(start, end, 0)
-                    reader = PdfReader(BytesIO(chunk_bytes))
-                    for pg2 in reader.pages:
-                        writer.add_page(pg2)
-                    del chunk_bytes, reader
-                    gc.collect()
-                browser.close()
-                out = BytesIO()
-                writer.write(out)
-                return out.getvalue()
+            writer = PdfWriter()
+            for start, end in ranges:
+                chunk_bytes = render_recursive(start, end, 0)
+                reader = PdfReader(BytesIO(chunk_bytes))
+                for pg2 in reader.pages:
+                    writer.add_page(pg2)
+                del chunk_bytes, reader
+                gc.collect()
+            out = BytesIO()
+            writer.write(out)
+            return out.getvalue()
 
         if len(initial_ranges) > 1:
             logger.info(f"Commande {order_id} : point de départ estimé — {len(initial_ranges)} morceaux ({initial_ranges})")
@@ -3412,6 +3461,8 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     except Exception as e:
         logger.error(f"Échec de la génération du PDF pour la commande {order_id}: {e}")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
+    finally:
+        await _release_pdf_generation_slot(order_id)
 
 async def _delete_unselected_photos(album_id: str):
     """Runs right after an order actually succeeds (never on a failed
