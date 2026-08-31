@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { Download, ExternalLink, RefreshCw } from "lucide-react";
 
@@ -47,7 +47,6 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
-  const [downloadingId, setDownloadingId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [regeneratingId, setRegeneratingId] = useState(null);
 
@@ -68,21 +67,17 @@ export default function AdminOrdersPage() {
     })();
   }, []);
 
-  const downloadPdf = async (orderId) => {
-    setDownloadingId(orderId);
-    try {
-      const { data } = await api.get(`/admin/orders/${orderId}/pdf`, { responseType: "blob" });
-      const url = URL.createObjectURL(data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${orderId}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || "PDF not ready yet for this order");
-    } finally {
-      setDownloadingId(null);
-    }
+  const downloadPdf = (orderId) => {
+    // A plain top-level navigation (not axios/fetch) so the browser
+    // follows the redirect to R2 the same way it would any normal link —
+    // no CORS involved at all. The axios/blob version tried first DID
+    // follow the redirect technically, but as an XHR-based fetch it still
+    // subjects the redirect's *target* (R2) to CORS, and the bucket has
+    // no CORS policy allowing this frontend's origin — the browser was
+    // silently blocking the response from ever reaching JavaScript, which
+    // surfaced as this button's generic "not ready yet" error even though
+    // the PDF was genuinely ready every time.
+    window.open(adminOrderPdfUrl(orderId), "_blank");
   };
 
   const updateStatus = async (orderId, status) => {
@@ -202,11 +197,10 @@ export default function AdminOrdersPage() {
                           {o.pdf_ready ? (
                             <button
                               onClick={() => downloadPdf(o.id)}
-                              disabled={downloadingId === o.id}
-                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors"
                             >
                               <Download size={12} />
-                              {downloadingId === o.id ? "…" : "Download"}
+                              Download
                             </button>
                           ) : (
                             <span className="text-xs text-red-500">Failed / not ready</span>
