@@ -97,24 +97,44 @@ export default function AdminOrdersPage() {
 
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
-    toast.info("Regenerating — this stays open until it's actually done, which can take a while for a large album");
     try {
-      // Awaited directly, not polled — the backend keeps this request
-      // open for the whole render now rather than returning immediately
-      // (see server.py's comment on admin_regenerate_order_pdf): Cloud
-      // Run can silently kill a background task once a request has
-      // already responded, so the reliable version is a slower response
-      // that's guaranteed to actually finish.
-      const { data } = await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
-      if (data.pdf_ready) {
-        toast.success("PDF regenerated — the printer has been notified");
-      } else {
-        toast.error("Regeneration failed again — check the Cloud Run logs");
-      }
+      // Fire-and-return: the backend now dispatches generation as a
+      // background task and responds immediately (see server.py's
+      // comment on admin_regenerate_order_pdf for why this is reliable
+      // now — it wasn't when this was last tried, see git history on
+      // this file). Polling /admin/orders is what actually shows when
+      // it's done, the same "keep checking until it's no longer in
+      // progress" shape the album editor already uses for AI processing.
+      await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
+      toast.info("Regenerating in the background — this can take a while for a large album");
+      let ticks = 0;
+      const poll = setInterval(async () => {
+        ticks += 1;
+        try {
+          const { data } = await api.get("/admin/orders");
+          const fresh = data.find((o) => o.id === orderId);
+          if (fresh && !fresh.pdf_generating && (fresh.pdf_ready || fresh.pdf_error)) {
+            clearInterval(poll);
+            setOrders(data);
+            setRegeneratingId(null);
+            if (fresh.pdf_ready) {
+              toast.success("PDF regenerated — the printer has been notified");
+            } else {
+              toast.error("Regeneration failed again — check the Cloud Run logs");
+            }
+          } else if (ticks >= 720) {
+            // 720 * 5s = 1 hour — something's gone wrong well before this;
+            // stop polling forever rather than leaving a zombie interval.
+            clearInterval(poll);
+            setRegeneratingId(null);
+            toast.error("Still not done after an hour — check the Cloud Run logs");
+          }
+        } catch {
+          /* keep trying on the next tick */
+        }
+      }, 5000);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Failed to regenerate PDF");
-    } finally {
+      toast.error(err?.response?.data?.detail || "Failed to start regeneration");
       setRegeneratingId(null);
     }
   };
