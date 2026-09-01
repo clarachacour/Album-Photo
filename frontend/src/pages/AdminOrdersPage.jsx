@@ -202,8 +202,17 @@ export default function AdminOrdersPage() {
                               <Download size={12} />
                               Download
                             </button>
+                          ) : o.pdf_generating ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
+                              <RefreshCw size={12} className="animate-spin" />
+                              Generating…
+                            </span>
+                          ) : o.pdf_error ? (
+                            <span className="text-xs text-red-500" title={o.pdf_error}>
+                              Failed: {o.pdf_error.length > 60 ? `${o.pdf_error.slice(0, 60)}…` : o.pdf_error}
+                            </span>
                           ) : (
-                            <span className="text-xs text-red-500">Failed / not ready</span>
+                            <span className="text-xs text-[color:var(--muted)]">Not started yet</span>
                           )}
                           <button
                             onClick={() => regeneratePdf(o.id)}
