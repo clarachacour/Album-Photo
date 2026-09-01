@@ -3940,6 +3940,15 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
+    # The frontend already hides the regenerate button while pdf_generating
+    # is true, but that's a UI nicety, not a guarantee — a stale page, a
+    # second tab, or a direct API call all bypass it. This is the check
+    # that actually matters: refuse outright rather than letting a second
+    # _generate_order_pdf run concurrently for the same order_id, which
+    # would just have the second call sit blocked in
+    # _acquire_pdf_generation_slot behind the first for no benefit.
+    if await db.pdf_generation_slots.find_one({"order_id": order_id}):
+        raise HTTPException(status_code=409, detail="A generation is already in progress for this order")
     await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
     await _generate_order_pdf(order_id, order["album_id"], order["user_id"])
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
