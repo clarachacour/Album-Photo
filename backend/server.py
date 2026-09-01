@@ -3565,25 +3565,23 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "updated_at": now,
     }
     await db.orders.insert_one(order_doc)
-    # Awaited directly, not dispatched via background_tasks. That was
-    # tried first (a customer no longer waiting on a slow response
-    # seemed clearly better) but turned out to be unreliable specifically
-    # on Cloud Run: the platform only considers an instance "busy" while
-    # an HTTP request is actively in flight — once this endpoint responds,
-    # a background_tasks job can get silently killed mid-render if Cloud
-    # Run decides to recycle the now-seemingly-idle instance, with no
-    # error logged at all (a real album stalled past 15 minutes with
-    # nothing wrong in the logs — this is almost certainly why). Keeping
-    # the request open for the whole render guarantees Cloud Run keeps the
-    # instance alive throughout, at the cost of a slower response — a
-    # trade worth making, since a request that's slow but reliably
-    # finishes beats a fast one that might silently never finish at all.
-    # Depends on the request timeout being raised well past its 900s
-    # default (Cloud Run allows up to 3600s) for a large album to have
-    # room to actually complete.
-    await _generate_order_pdf(order_id, album["id"], user["id"])
-    fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    return fresh_order or order_doc
+    # Dispatched via background_tasks rather than awaited directly. This
+    # was tried before (commit 28e87cb, Aug 30) and reverted because a
+    # background_tasks job was getting silently killed mid-render with no
+    # error logged — traced back to the Cloud Run service being on
+    # request-based billing at the time, which throttles/recycles an
+    # instance once it looks idle (no request in flight), starving
+    # anything still running in the background. Since then: the service
+    # is confirmed on instance-based billing ("CPU always allocated"),
+    # min-instances is set to 1 (so there's always a live instance rather
+    # than a fresh cold one that could get scaled back down mid-job), R2
+    # calls no longer block the event loop, and the Chromium render has
+    # its own dedicated thread pool separate from R2 I/O — the specific
+    # failure mode from before shouldn't recur. _generate_order_pdf
+    # itself handles the status update and printer email once generation
+    # actually finishes; nothing here waits around to do that afterward.
+    background_tasks.add_task(_generate_order_pdf, order_id, album["id"], user["id"])
+    return order_doc
 
 @api_router.get("/order-actions/{order_id}/download")
 async def order_action_download_pdf(order_id: str, token: str = Query(None)):
@@ -3948,16 +3946,16 @@ async def admin_download_order_pdf(order_id: str, auth: str = Query(None), autho
     return RedirectResponse(url)
 
 @api_router.post("/admin/orders/{order_id}/regenerate-pdf")
-async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
+async def admin_regenerate_order_pdf(order_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     """Re-runs the exact same PDF generation _generate_order_pdf already
     does for a brand-new order — for the day generation fails (memory
     limit, a stuck browser render, anything transient) and needs a retry.
-    Awaited directly rather than dispatched as a background task — see
-    create_order's comment on why: Cloud Run only guarantees an instance
-    stays alive while a request is actively in flight, and a
-    background_tasks job can get silently killed mid-render once this
-    endpoint has already responded, with no error logged at all. A slower
-    response that reliably finishes beats a fast one that might not."""
+    Dispatched as a background task, same as create_order — see that
+    function's comment for why this is reliable now (instance-based
+    billing confirmed, min-instances=1, R2 I/O and the Chromium render on
+    separate thread pools) where it wasn't when this was last tried.
+    Returns immediately; the admin UI polls /admin/orders and reads
+    pdf_generating/pdf_ready/pdf_error to show progress."""
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
@@ -3972,9 +3970,8 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     if await db.pdf_generation_slots.find_one({"order_id": order_id}):
         raise HTTPException(status_code=409, detail="A generation is already in progress for this order")
     await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
-    await _generate_order_pdf(order_id, order["album_id"], order["user_id"])
-    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    return fresh
+    background_tasks.add_task(_generate_order_pdf, order_id, order["album_id"], order["user_id"])
+    return {"status": "started"}
 
 class OrderStatusUpdate(BaseModel):
     status: str
