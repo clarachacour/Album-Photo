@@ -260,6 +260,18 @@ def get_object(path: str) -> tuple:
     content_type = resp.get("ContentType") or "image/jpeg"
     return content, content_type
 
+def _run_blocking(fn, *args):
+    """Runs a blocking (sync) call — every get_object/put_object/
+    delete_object below is a synchronous boto3 call — in a thread pool
+    instead of directly on the asyncio event loop. Without this, a single
+    R2 round-trip stalls the *entire* Uvicorn worker (there's only one,
+    see Dockerfile) for its whole duration, queueing up every other
+    concurrent request behind it. That's what was turning sub-second R2
+    fetches into 10-90s waits under load and cascading into the PDF
+    export's Page.goto networkidle timeouts. Any async endpoint calling
+    get_object/put_object/delete_object should go through this."""
+    return asyncio.get_event_loop().run_in_executor(None, fn, *args)
+
 def delete_object(path: str) -> None:
     """Deletes one object from R2. Never raises — a missing/already-deleted
     object is not an error for a cleanup operation, and callers (order-time
@@ -1424,7 +1436,7 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
                 return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})
             # Resizing failed — fall back to the true original rather than
             # silently omitting the photo from the printed album.
-    data, ctype = get_object(path)
+    data, ctype = await _run_blocking(get_object, path)
     return Response( content=data, media_type=served_content_type or ctype, headers={"Cache-Control": "private, max-age=31536000, immutable"}, )
 
 # ---------- Cover image upload ----------
@@ -1489,7 +1501,7 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
     if variant == "thumb" and album.get("cover_image_thumbnail_path"):
         path = album["cover_image_thumbnail_path"]
         served_content_type = "image/jpeg"
-    data, ctype = get_object(path)
+    data, ctype = await _run_blocking(get_object, path)
     return Response(content=data, media_type=served_content_type or ctype)
 
 # ---------- Cover element assets (logo / added images on the cover) ----------
@@ -1531,11 +1543,11 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
     if variant == "thumb" and not path.endswith("_thumb.jpg"):
         candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
         try:
-            data, ctype = get_object(candidate)
+            data, ctype = await _run_blocking(get_object, candidate)
             return Response(content=data, media_type="image/jpeg")
         except Exception:
             pass  # no thumbnail on disk (asset predates this change, or generation failed) — fall back to original
-    data, ctype = get_object(served_path)
+    data, ctype = await _run_blocking(get_object, served_path)
     return Response(content=data, media_type=served_content_type or ctype)
 
 
@@ -3430,7 +3442,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         pdf_bytes = await loop.run_in_executor(None, _render_all_chunks, initial_ranges)
 
         path = f"{APP_NAME}/orders/{order_id}.pdf"
-        put_object(path, pdf_bytes, "application/pdf")
+        await _run_blocking(put_object, path, pdf_bytes, "application/pdf")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True}})
         logger.info(f"Commande {order_id} : PDF complet généré en {_time.monotonic() - t_start:.1f}s au total")
 
