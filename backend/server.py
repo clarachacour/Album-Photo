@@ -36,6 +36,7 @@ import requests
 import re
 import asyncio
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ExifTags, ImageOps
 try:
     import pillow_heif
@@ -260,6 +261,13 @@ def get_object(path: str) -> tuple:
     content_type = resp.get("ContentType") or "image/jpeg"
     return content, content_type
 
+# A dedicated pool for R2 (network I/O) calls, sized well above CPU count —
+# see _run_blocking's docstring for why this has to be separate from the
+# default executor that the Playwright render and other CPU-bound work use.
+# 32 concurrent R2 round-trips comfortably covers the number of photos
+# Chromium requests at once for a single print page.
+_r2_io_executor = ThreadPoolExecutor(max_workers=32, thread_name_prefix="r2-io")
+
 def _run_blocking(fn, *args):
     """Runs a blocking (sync) call — every get_object/put_object/
     delete_object below is a synchronous boto3 call — in a thread pool
@@ -269,8 +277,22 @@ def _run_blocking(fn, *args):
     concurrent request behind it. That's what was turning sub-second R2
     fetches into 10-90s waits under load and cascading into the PDF
     export's Page.goto networkidle timeouts. Any async endpoint calling
-    get_object/put_object/delete_object should go through this."""
-    return asyncio.get_event_loop().run_in_executor(None, fn, *args)
+    get_object/put_object/delete_object should go through this.
+
+    Deliberately runs on _r2_io_executor rather than the default executor
+    (the one every `loop.run_in_executor(None, ...)` call elsewhere in this
+    file uses, including the multi-minute Playwright render itself). The
+    default pool is sized off CPU count (min(32, cpu_count+4) — 8 threads
+    on a 4-vCPU instance), which is the right size for CPU-bound work but
+    starves I/O-bound R2 fetches: one thread sits occupied for the render's
+    entire duration, and the handful left have to serialize the dozens of
+    concurrent photo requests Chromium fires off for a single page — which
+    is exactly what was still producing multi-second waits on individual
+    photo fetches even after this function stopped blocking the event loop.
+    I/O-bound work like a network round-trip can support far more
+    concurrent threads than there are cores, since each one spends nearly
+    all its time waiting rather than computing."""
+    return asyncio.get_event_loop().run_in_executor(_r2_io_executor, fn, *args)
 
 def delete_object(path: str) -> None:
     """Deletes one object from R2. Never raises — a missing/already-deleted
