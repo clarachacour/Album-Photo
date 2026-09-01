@@ -3858,6 +3858,19 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
     customer-facing /orders is — that's exactly the point of this one."""
     require_admin(user)
     orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    # pdf_ready=False on its own is ambiguous — it's the same whether a
+    # generation is actively rendering right now, genuinely failed, or
+    # (rare) an instance was killed outright (e.g. an OOM kill from Cloud
+    # Run) before it ever reached the except/pdf_error assignment. The
+    # pdf_generation_slots collection has a live row for exactly the
+    # order(s) currently holding a generation slot, so cross-referencing
+    # it here lets the admin UI show "generating" instead of a flat
+    # "failed" for an order that's simply still running.
+    active_slot_order_ids = {
+        s["order_id"] async for s in db.pdf_generation_slots.find({}, {"order_id": 1})
+    }
+    for o in orders:
+        o["pdf_generating"] = o["id"] in active_slot_order_ids
     return orders
 
 @api_router.get("/admin/orders/{order_id}/pdf")
