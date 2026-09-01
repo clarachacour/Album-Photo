@@ -214,14 +214,16 @@ export default function AdminOrdersPage() {
                           ) : (
                             <span className="text-xs text-[color:var(--muted)]">Not started yet</span>
                           )}
-                          <button
-                            onClick={() => regeneratePdf(o.id)}
-                            disabled={regeneratingId === o.id}
-                            title="Regenerate PDF — re-runs generation and re-notifies the printer, nothing needed from the customer"
-                            className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
-                          >
-                            <RefreshCw size={12} className={regeneratingId === o.id ? "animate-spin" : ""} />
-                          </button>
+                          {!o.pdf_generating && (
+                            <button
+                              onClick={() => regeneratePdf(o.id)}
+                              disabled={regeneratingId === o.id}
+                              title="Regenerate PDF — re-runs generation and re-notifies the printer, nothing needed from the customer"
+                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                            >
+                              <RefreshCw size={12} className={regeneratingId === o.id ? "animate-spin" : ""} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
