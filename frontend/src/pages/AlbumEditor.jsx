@@ -284,8 +284,8 @@ export default function AlbumEditor() {
       await api.patch(`/albums/${id}`, { title: current.title, country: current.country, year: current.year, pages: current.pages, cover: current.cover || {} });
       setLastSavedAt(new Date());
       if (!silent) toast.success("Saved");
-    } catch {
-      toast.error("Failed to save");
+    } catch (err) {
+      toast.error(err?.response?.status === 403 ? "This album has already been ordered and can no longer be edited" : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -916,6 +916,11 @@ export default function AlbumEditor() {
             <h1 className="font-serif-display text-2xl truncate">{album.title}</h1>
             <div />
           </div>
+          {album.was_ordered && (
+            <div className="w-full max-w-2xl mb-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order.
+            </div>
+          )}
           <div className="w-full max-w-2xl mb-4 text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2">
             This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.
           </div>
@@ -1320,7 +1325,7 @@ function BookRenderer({
           year={album.year}
           template={template}
           cover={album.cover || {}}
-          editable
+          editable={!album.was_ordered}
           selectedZone={coverSel?.mode}
           onSelectTitle={() => onSelectSpine && onSelectSpine("spine-title")}
           onSelectSubtitle={() => onSelectSpine && onSelectSpine("spine-subtitle")}
@@ -1345,7 +1350,7 @@ function BookRenderer({
           orientation={orientation}
           coverImageUrl={coverImageUrl}
           cover={album.cover || {}}
-          editable
+          editable={!album.was_ordered}
           onSelectCover={() => onSelectCover("front")}
           onSelectTitle={onSelectCoverTitle}
           onSelectItem={(item) => onSelectCoverItem(item, "front")}
@@ -1363,7 +1368,7 @@ function BookRenderer({
         page={page}
         orientation={orientation}
         pageIndex={i}
-        editable
+        editable={!album.was_ordered}
         selectedItemId={selectedId}
         onSelectItem={(item) => onSelectItem(i, item)}
         onUpdateItem={(itemId, patch) => onUpdateItem(i, itemId, patch)}
@@ -1395,7 +1400,7 @@ function BookRenderer({
       year={album.year}
       orientation={orientation}
       cover={album.cover || {}}
-      editable
+      editable={!album.was_ordered}
       onSelectCover={() => onSelectCover("back")}
       onSelectItem={(item) => onSelectCoverItem(item, "back")}
       onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "back")}
