@@ -978,13 +978,33 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user)):
     # matches them instead of being the one exception.
     photos = await db.photos.find({"album_id": album_id, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(5000)
     album["photos"] = _json_safe(photos)
+    # Lets the editor show a clear "this album is locked" state and disable
+    # its controls up front, instead of the person only finding out via a
+    # 403 the moment they try to save an edit (see _reject_if_ordered,
+    # which is the actual enforcement — this is just so the UI can match).
+    album["was_ordered"] = await db.orders.find_one({"album_id": album_id}) is not None
     return album
+
+async def _reject_if_ordered(album_id: str):
+    """An order is a customer's paid, fixed record of what they'll
+    receive — nothing that changes what actually prints (text, fonts,
+    positions, photos, cover) should be editable once an album has been
+    ordered, or a customer could open their album later, move something,
+    and have a *future* regeneration silently print something different
+    from what they paid for (there's no per-order snapshot of album
+    content — _generate_order_pdf always renders whatever the live album
+    currently looks like). Matches delete_album's existing rule, and the
+    30-day draft purge's (see cleanup_expired_albums) — both already treat
+    "has an order" as the same bright line."""
+    if await db.orders.find_one({"album_id": album_id}):
+        raise HTTPException(status_code=403, detail="This album has already been ordered and can no longer be edited")
 
 @api_router.patch("/albums/{album_id}")
 async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.albums.update_one({"id": album_id}, {"$set": update})
@@ -1264,6 +1284,7 @@ async def upload_photos(
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     uploaded = await _store_many_photos(album_id, user["id"], files)
     return {"uploaded": len(uploaded), "photos": uploaded}
 
@@ -1281,6 +1302,7 @@ async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_c
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     token = str(uuid.uuid4())
     expires = datetime.now(timezone.utc) + timedelta(hours=MOBILE_UPLOAD_SESSION_HOURS)
     _mobile_sessions[token] = {"album_id": album_id, "user_id": user["id"], "expires": expires}
@@ -1330,6 +1352,7 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
 
     headers = {"Authorization": f"Bearer {data.access_token}"}
     # Bounded lower than UPLOAD_CONCURRENCY (a separate constant, see near
@@ -1471,6 +1494,7 @@ async def upload_cover_image(
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     content_type = file.content_type or "image/jpeg"
     if content_type not in ALLOWED_MIME:
         raise HTTPException(status_code=400, detail="Format d'image non supporté")
@@ -1499,6 +1523,7 @@ async def remove_cover_image(album_id: str, user: dict = Depends(get_current_use
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     await db.albums.update_one(
         {"id": album_id},
         {"$set": {"cover_image_path": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -1532,6 +1557,7 @@ async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: 
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     content_type = file.content_type or "image/png"
     if content_type not in ALLOWED_MIME:
         raise HTTPException(status_code=400, detail="Format d'image non supporté")
@@ -2530,6 +2556,7 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     pages = album.get("pages") or []
     if not pages:
         raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
@@ -2623,6 +2650,7 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
     photo_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
     if photo_count == 0:
         raise HTTPException(status_code=400, detail="Ajoutez des photos avant de lancer l'IA")
@@ -2673,6 +2701,7 @@ async def add_more_photos(
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
 
     uploaded = await _store_many_photos(album_id, user["id"], files)
     new_ids = [p["id"] for p in uploaded]
