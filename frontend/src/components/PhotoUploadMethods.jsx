@@ -26,6 +26,15 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   const [uploading, setUploading] = useState(false);
   const [googleImporting, setGoogleImporting] = useState(false);
   const fileInput = React.useRef();
+  // The polling effect below only re-runs when phoneSession/albumId
+  // change, not on every showQR toggle — reading showQR directly inside
+  // its setInterval callback would see whatever it was when the effect
+  // last (re)started, not whatever it currently is. This ref is kept in
+  // sync separately so the polling loop always sees the live value.
+  const showQRRef = React.useRef(showQR);
+  useEffect(() => {
+    showQRRef.current = showQR;
+  }, [showQR]);
 
   // A single, method-agnostic "something is still coming in" signal —
   // device upload, phone/QR, and Google Photos each have their own
@@ -79,6 +88,16 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           setPhonePolling(true);
           clearTimeout(idleTimeout);
           idleTimeout = setTimeout(() => setPhonePolling(false), IDLE_MS);
+          // The person is on their phone at this point, not looking at this
+          // screen — closing the QR modal once photos genuinely start
+          // arriving (rather than leaving it up for the full hour) gets it
+          // out of the way automatically. Polling itself is untouched by
+          // this (see the comment above the effect) — more photos keep
+          // landing after the modal closes.
+          if (showQRRef.current) {
+            setShowQR(false);
+            toast.success("Photos are coming in from your phone — keep adding more, or come back to this screen.");
+          }
         }
         onPhotosChange(newPhotos);
         if (mode === "editor" && data.status === "processing") {
