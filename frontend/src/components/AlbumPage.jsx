@@ -441,6 +441,7 @@ export function AlbumPage({
     <div
       ref={containerRef}
       className={`relative w-full ${aspect} bg-[color:var(--paper)] ${placingText ? "cursor-text" : ""} ${placingPhotoId ? "cursor-copy" : ""}`}
+      style={{ containerType: "inline-size" }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
