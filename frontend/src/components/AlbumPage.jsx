@@ -557,7 +557,22 @@ export function AlbumPage({
                 extraStyle={{
                   color: item.color || "#1A1A17",
                   fontFamily: item.font || "Cormorant Garamond, serif",
-                  fontSize: `${item.font_size || 16}px`,
+                  // Was a flat `${item.font_size}px` — a fixed pixel size
+                  // with no relationship to how wide the page is actually
+                  // being rendered. The live editor and the print export
+                  // render this same page at very different physical
+                  // pixel widths (the editor fits the book to the
+                  // viewport; the print export renders at full print
+                  // resolution), so a fixed px size looked completely
+                  // different — wrong size, and consequently wrong-looking
+                  // position once the text wrapped differently — between
+                  // the two. cqw (relative to the page's own container
+                  // width, see containerType on this component's root
+                  // div) is what the cover text and AutoFitText already
+                  // use for exactly this reason; this makes plain page
+                  // text consistent with them instead of being the one
+                  // text type still sized in absolute pixels.
+                  fontSize: `${(((item.font_size || 16) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
                   fontWeight: item.font_weight || "normal",
                   fontStyle: item.font_style || "normal",
                   lineHeight: 1.15,
