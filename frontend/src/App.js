@@ -23,7 +23,6 @@ import OrdersPage from "@/pages/OrdersPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
 import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
 import AdminOrdersPage from "@/pages/AdminOrdersPage";
-import AdminBrokenPhotosPage from "@/pages/AdminBrokenPhotosPage";
 import FAQPage from "@/pages/FAQPage";
 import ContactPage from "@/pages/ContactPage";
 
@@ -108,14 +107,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdminOrdersPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/missing-photos"
-              element={
-                <ProtectedRoute>
-                  <AdminBrokenPhotosPage />
                 </ProtectedRoute>
               }
             />
