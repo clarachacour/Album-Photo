@@ -1037,7 +1037,16 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
     return {"deleted": result.deleted_count}
 
 # ---------- Photo Upload ----------
-ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+# image/heic and image/heif were missing here despite pillow-heif being
+# installed and registered specifically to decode them (see the
+# register_heif_opener() call near the top of the file) — the processing
+# pipeline could handle an iPhone's default photo format perfectly well,
+# but every HEIC upload was being silently rejected right here, before it
+# ever reached that pipeline. iPhones only produce .jpg instead of HEIC
+# when "Most Compatible" is chosen in Settings > Camera > Formats, which
+# isn't the default — so this was quietly failing photos from most iPhones
+# on their default settings, not just an edge case.
+ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"}
 
 # A phone photo is often far larger than any of our page sizes need at
 # print quality (300 DPI) — even our biggest format, A3, only needs
