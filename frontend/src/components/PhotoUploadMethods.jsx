@@ -79,7 +79,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
     const IDLE_MS = 15000;
     let lastCount = (photos || []).length;
     let idleTimeout = setTimeout(() => setPhonePolling(false), IDLE_MS);
-    const interval = setInterval(async () => {
+    const doPoll = async () => {
       try {
         const { data } = await api.get(`/albums/${albumId}`);
         const newPhotos = data.photos || [];
@@ -106,7 +106,21 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       } catch {
         /* ignore transient poll errors */
       }
-    }, 3000);
+    };
+    const interval = setInterval(doPoll, 3000);
+    // Browsers throttle setInterval heavily in a background tab — and this
+    // tab is almost always backgrounded during a phone upload, since the
+    // person is looking at their phone, not this screen, the whole time.
+    // Without this, the 3s interval above could take a very long time to
+    // actually fire again once backgrounded, leaving the QR modal open (or
+    // this screen looking stale) long after photos have genuinely finished
+    // landing. Firing one poll immediately the moment the tab regains
+    // focus catches it up right away instead of waiting on the throttled
+    // interval.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") doPoll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     // Matches the upload link's own stated 1-hour validity (see
     // MobileUploadQR) — no point polling past that, the link itself will
     // have stopped accepting new uploads by then.
@@ -119,6 +133,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       clearInterval(interval);
       clearTimeout(idleTimeout);
       clearTimeout(stopTimeout);
+      document.removeEventListener("visibilitychange", onVisible);
       setPhonePolling(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
