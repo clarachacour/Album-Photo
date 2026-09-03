@@ -5,6 +5,7 @@ import MobileUploadQR from "@/components/MobileUploadQR";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import { Upload, Smartphone } from "lucide-react";
 import { TID } from "@/constants/testIds";
+import { isMobileDevice } from "@/lib/device";
 
 /**
  * The three ways to add photos to an album — drag & drop / file picker,
@@ -26,6 +27,13 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   const [uploading, setUploading] = useState(false);
   const [googleImporting, setGoogleImporting] = useState(false);
   const fileInput = React.useRef();
+  // Doesn't change for the lifetime of a page load, so no need for this to
+  // be reactive state — just computed once. "From your phone" (scan a QR
+  // code with your phone) only makes sense when the person is on a
+  // *different* device than the one in front of them right now; someone
+  // already on their phone tapping it would just be shown a QR code for
+  // the phone they're already holding.
+  const onPhone = React.useRef(isMobileDevice()).current;
   // The polling effect below only re-runs when phoneSession/albumId
   // change, not on every showQR toggle — reading showQR directly inside
   // its setInterval callback would see whatever it was when the effect
@@ -224,8 +232,10 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         }`}
       >
         <Upload size={32} className="mx-auto mb-4 text-[color:var(--muted)]" />
-        <p className="font-serif-display text-2xl mb-2">{uploading ? "Uploading…" : "Drag your images here"}</p>
-        <p className="text-[color:var(--muted)] text-sm">or click to browse · JPG, PNG, WEBP</p>
+        <p className="font-serif-display text-2xl mb-2">
+          {uploading ? "Uploading…" : onPhone ? "Tap to choose photos" : "Drag your images here"}
+        </p>
+        <p className="text-[color:var(--muted)] text-sm">{onPhone ? "from your camera roll · JPG, PNG, WEBP" : "or click to browse · JPG, PNG, WEBP"}</p>
         <input
           ref={fileInput}
           data-testid={TID.photoInput}
@@ -241,22 +251,24 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       </div>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={startPhoneUpload}
-          disabled={!albumId}
-          data-testid="add-from-phone-button"
-          className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
-        >
-          <Smartphone size={16} />
-          <span className="text-sm font-semibold tracking-widest uppercase">From your phone</span>
-        </button>
+        {!onPhone && (
+          <button
+            type="button"
+            onClick={startPhoneUpload}
+            disabled={!albumId}
+            data-testid="add-from-phone-button"
+            className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+          >
+            <Smartphone size={16} />
+            <span className="text-sm font-semibold tracking-widest uppercase">From your phone</span>
+          </button>
+        )}
         {albumId && <GooglePhotosImportButton albumId={albumId} onImported={handlePhoneOrGoogleUpdate} onBusyChange={setGoogleImporting} />}
       </div>
 
       {afterMethodsRow}
 
-      {showQR && albumId && (
+      {!onPhone && showQR && albumId && (
         <MobileUploadQR
           session={phoneSession}
           onClose={() => setShowQR(false)}
