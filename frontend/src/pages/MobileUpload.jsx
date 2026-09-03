@@ -27,29 +27,54 @@ export default function MobileUpload() {
     if (files.length === 0) return;
     setUploading(true);
     setUploadWarning(null);
-    const chunkSize = 6;
+    // Matches the desktop upload's own batching exactly (see handleFiles in
+    // PhotoUploadMethods.jsx) — this used to send fixed chunks of 6 files
+    // strictly one after another, which was both slower (no concurrency at
+    // all, versus desktop's 16 batches in flight at once — a meaningful
+    // difference on a phone's typically slower connection) and riskier (a
+    // fixed count ignores actual file size, so a handful of large modern
+    // phone photos in one chunk could exceed Cloud Run's ~32MB per-request
+    // limit and fail the whole chunk, which likely contributed to photos
+    // going missing).
+    const MAX_BATCH_BYTES = 20 * 1024 * 1024;
+    const MAX_BATCH_COUNT = 8;
+    const batches = [];
+    let i = 0;
+    while (i < files.length) {
+      const chunk = [];
+      let batchBytes = 0;
+      while (i < files.length && chunk.length < MAX_BATCH_COUNT && (chunk.length === 0 || batchBytes + files[i].size <= MAX_BATCH_BYTES)) {
+        chunk.push(files[i]);
+        batchBytes += files[i].size;
+        i++;
+      }
+      batches.push(chunk);
+    }
+    const BATCH_CONCURRENCY = 16;
+    let nextBatch = 0;
     let added = 0;
     let failed = 0;
-    for (let i = 0; i < files.length; i += chunkSize) {
-      const chunk = files.slice(i, i + chunkSize);
-      // Each chunk gets its own try/catch — this used to be one try/catch
-      // around the whole loop, so a single failed chunk (a network hiccup,
-      // a bad file in that chunk) threw and abandoned every chunk after
-      // it, silently losing photos the person had already picked with no
-      // indication which ones. Now a bad chunk just counts as failed and
-      // the loop keeps going.
-      try {
-        const form = new FormData();
-        chunk.forEach((f) => form.append("files", f));
-        const res = await fetch(`${API}/mobile-upload/${token}/photos`, { method: "POST", body: form });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        added += data.uploaded || 0;
-        failed += (data.failed || 0) + Math.max(0, chunk.length - (data.uploaded || 0) - (data.failed || 0));
-      } catch {
-        failed += chunk.length;
+    const runNext = async () => {
+      while (nextBatch < batches.length) {
+        const chunk = batches[nextBatch++];
+        // Each batch's failure is caught here, on its own — so one bad
+        // batch (a network hiccup, a bad file in that batch) never stops
+        // this worker from moving on to its next batch, and never affects
+        // the other concurrent workers at all.
+        try {
+          const form = new FormData();
+          chunk.forEach((f) => form.append("files", f));
+          const res = await fetch(`${API}/mobile-upload/${token}/photos`, { method: "POST", body: form });
+          if (!res.ok) throw new Error();
+          const data = await res.json();
+          added += data.uploaded || 0;
+          failed += (data.failed || 0) + Math.max(0, chunk.length - (data.uploaded || 0) - (data.failed || 0));
+        } catch {
+          failed += chunk.length;
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
     setAddedCount((c) => c + added);
     if (failed > 0) {
       setUploadWarning(
