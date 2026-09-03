@@ -1272,8 +1272,21 @@ async def _store_many_photos(album_id: str, user_id: str, files: List[UploadFile
         async with semaphore:
             return await _store_new_photo(album_id, user_id, filename, content_type, data)
 
-    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes))
-    return [p for p in results if p]
+    # return_exceptions=True is the point: without it, one bad file in the
+    # batch (a corrupt image, an unsupported format, a transient R2 hiccup)
+    # makes gather raise immediately, discarding every other file in the
+    # *same batch* that had already succeeded or was about to — the
+    # opposite of what this docstring promises. A mobile upload of e.g. 29
+    # photos, sent in chunks of 6, could genuinely lose an entire chunk to
+    # a single bad file this way while looking like nothing went wrong.
+    results = await asyncio.gather(*(store_one(fn, ct, d) for fn, ct, d in file_bytes), return_exceptions=True)
+    stored = []
+    for (filename, _, _), result in zip(file_bytes, results):
+        if isinstance(result, Exception):
+            logger.warning(f"Échec du stockage de la photo '{filename}' pour l'album {album_id}: {result}")
+        elif result:
+            stored.append(result)
+    return stored
 
 @api_router.post("/albums/{album_id}/photos")
 async def upload_photos(
@@ -1340,7 +1353,7 @@ async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, fi
             background_tasks.add_task(
                 run_ai_processing_incremental, session["album_id"], session["user_id"], [p["id"] for p in uploaded]
             )
-    return {"uploaded": len(uploaded)}
+    return {"uploaded": len(uploaded), "failed": len(files) - len(uploaded)}
 
 # ---------- Google Photos import (Photos Picker API) ----------
 class GooglePhotosImportInput(BaseModel):
