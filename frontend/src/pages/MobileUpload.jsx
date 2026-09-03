@@ -9,6 +9,7 @@ export default function MobileUpload() {
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
+  const [uploadWarning, setUploadWarning] = useState(null);
   const fileInput = useRef();
 
   useEffect(() => {
@@ -25,23 +26,37 @@ export default function MobileUpload() {
     const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
     if (files.length === 0) return;
     setUploading(true);
-    try {
-      const chunkSize = 6;
-      let added = 0;
-      for (let i = 0; i < files.length; i += chunkSize) {
-        const chunk = files.slice(i, i + chunkSize);
+    setUploadWarning(null);
+    const chunkSize = 6;
+    let added = 0;
+    let failed = 0;
+    for (let i = 0; i < files.length; i += chunkSize) {
+      const chunk = files.slice(i, i + chunkSize);
+      // Each chunk gets its own try/catch — this used to be one try/catch
+      // around the whole loop, so a single failed chunk (a network hiccup,
+      // a bad file in that chunk) threw and abandoned every chunk after
+      // it, silently losing photos the person had already picked with no
+      // indication which ones. Now a bad chunk just counts as failed and
+      // the loop keeps going.
+      try {
         const form = new FormData();
         chunk.forEach((f) => form.append("files", f));
         const res = await fetch(`${API}/mobile-upload/${token}/photos`, { method: "POST", body: form });
+        if (!res.ok) throw new Error();
         const data = await res.json();
         added += data.uploaded || 0;
+        failed += (data.failed || 0) + Math.max(0, chunk.length - (data.uploaded || 0) - (data.failed || 0));
+      } catch {
+        failed += chunk.length;
       }
-      setAddedCount((c) => c + added);
-    } catch {
-      setError("Upload failed — check your connection and try again.");
-    } finally {
-      setUploading(false);
     }
+    setAddedCount((c) => c + added);
+    if (failed > 0) {
+      setUploadWarning(
+        `${added} of ${added + failed} photo${added + failed > 1 ? "s" : ""} added — ${failed} didn't make it. Try selecting the rest again.`
+      );
+    }
+    setUploading(false);
   };
 
   if (error) {
@@ -84,6 +99,12 @@ export default function MobileUpload() {
             e.target.value = "";
           }}
         />
+
+        {uploadWarning && (
+          <p className="mt-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            {uploadWarning}
+          </p>
+        )}
 
         {addedCount > 0 && (
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-[color:var(--ink)]/80">
