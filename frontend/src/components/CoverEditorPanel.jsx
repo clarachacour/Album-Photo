@@ -492,7 +492,7 @@ export function CoverEditorPanel({
               <input
                 ref={replaceImageInput}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -548,7 +548,7 @@ export function CoverEditorPanel({
         <input
           ref={addImageInput}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
