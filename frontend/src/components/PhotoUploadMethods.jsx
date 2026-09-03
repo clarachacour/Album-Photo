@@ -241,7 +241,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           data-testid={TID.photoInput}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
           className="hidden"
           onChange={(e) => {
             handleFiles(e.target.files);
