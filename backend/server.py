@@ -1623,13 +1623,24 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
 
 # ---------- AI Processing ----------
 def _rational_to_float(r):
+    # A GPS EXIF rational with a zero denominator (some phones write this
+    # for an undefined/unlocked GPS component, e.g. altitude) doesn't raise
+    # here — float division by zero returns inf/nan silently in Python
+    # rather than throwing, so the except branch below never catches it.
+    # That poisoned inf/nan then flows straight through the lat/lng
+    # calculation into the stored photo doc, and later blows up
+    # `json.dumps` ("Out of range float values are not JSON compliant")
+    # the next time that photo is serialized in an API response — which
+    # is nearly always on a phone-camera photo specifically, since those
+    # are the ones far more likely to carry live GPS EXIF at all.
     try:
-        return float(r)
+        val = float(r)
     except Exception:
         try:
-            return r[0] / r[1]
+            val = 0.0 if r[1] == 0 else r[0] / r[1]
         except Exception:
             return 0.0
+    return val if math.isfinite(val) else 0.0
 
 
 def extract_exif_info(data: bytes) -> dict:
@@ -1663,8 +1674,12 @@ def extract_exif_info(data: bytes) -> dict:
                     lat_val = -lat_val
                 if lng_ref == "W":
                     lng_val = -lng_val
-                info["gps_lat"] = round(lat_val, 6)
-                info["gps_lng"] = round(lng_val, 6)
+                # Belt and suspenders on top of _rational_to_float's own
+                # finiteness check — nothing non-finite should ever reach
+                # json.dumps from here.
+                if math.isfinite(lat_val) and math.isfinite(lng_val):
+                    info["gps_lat"] = round(lat_val, 6)
+                    info["gps_lng"] = round(lng_val, 6)
     except Exception as e:
         logger.debug(f"EXIF extraction failed: {e}")
     return info
