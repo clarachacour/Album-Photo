@@ -982,7 +982,11 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user)):
     # its controls up front, instead of the person only finding out via a
     # 403 the moment they try to save an edit (see _reject_if_ordered,
     # which is the actual enforcement — this is just so the UI can match).
-    album["was_ordered"] = await db.orders.find_one({"album_id": album_id}) is not None
+    # admin_unlocked has to be factored in here too, or the UI would keep
+    # showing the album as locked even after _reject_if_ordered has been
+    # told to allow edits on it — the two would disagree.
+    has_order = await db.orders.find_one({"album_id": album_id}) is not None
+    album["was_ordered"] = has_order and not album.get("admin_unlocked")
     return album
 
 async def _reject_if_ordered(album_id: str, album: dict | None = None):
