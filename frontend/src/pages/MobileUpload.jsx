@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
+import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 
 export default function MobileUpload() {
   const { token } = useParams();
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [googleImporting, setGoogleImporting] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
   const [uploadWarning, setUploadWarning] = useState(null);
   const fileInput = useRef();
@@ -105,7 +107,7 @@ export default function MobileUpload() {
 
         <button
           onClick={() => fileInput.current?.click()}
-          disabled={uploading || !info}
+          disabled={uploading || googleImporting || !info}
           className="w-full inline-flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[color:var(--ink)]/30 py-12 hover:border-[color:var(--ink)]/60 transition-colors disabled:opacity-60"
         >
           {uploading ? <Loader2 size={28} className="animate-spin" /> : <Upload size={28} />}
@@ -124,6 +126,17 @@ export default function MobileUpload() {
             e.target.value = "";
           }}
         />
+
+        {info?.album_id && (
+          <div className="mt-4">
+            <GooglePhotosImportButton
+              mobileToken={token}
+              disabled={uploading || googleImporting || !info}
+              onBusyChange={setGoogleImporting}
+              onImported={(count) => setAddedCount((c) => c + (count || 0))}
+            />
+          </div>
+        )}
 
         {uploadWarning && (
           <p className="mt-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
