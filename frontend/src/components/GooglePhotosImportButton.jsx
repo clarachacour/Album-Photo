@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { api, API } from "@/lib/api";
 import { toast } from "sonner";
 import { ImageDown, Loader2 } from "lucide-react";
 
@@ -40,7 +40,7 @@ function loadScript(src, id) {
  * its own (which ran with throttled CPU once the response had been sent,
  * making large imports far slower than they needed to be).
  */
-export default function GooglePhotosImportButton({ albumId, onImported, disabled, onBusyChange }) {
+export default function GooglePhotosImportButton({ albumId, mobileToken, onImported, disabled, onBusyChange }) {
   const [ready, setReady] = useState(false);
   const [busy, setBusyState] = useState(false);
   // Wraps setBusy so the parent (PhotoUploadMethods) always finds out about
@@ -151,10 +151,25 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
           while (nextBatch < batches.length) {
             const batch = batches[nextBatch++];
             try {
-              const { data } = await api.post(`/albums/${albumId}/import/google-photos`, {
-                access_token: accessToken,
-                items: batch,
-              });
+              // Two ways to be authenticated here: a logged-in session
+              // (albumId, the normal desktop/editor case) or a mobile QR
+              // session (mobileToken, no login involved — see
+              // mobile_import_google_photos on the backend, the counterpart
+              // to import_google_photos).
+              let data;
+              if (mobileToken) {
+                const res = await fetch(`${API}/mobile-upload/${mobileToken}/import/google-photos`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ access_token: accessToken, items: batch }),
+                });
+                data = await res.json();
+              } else {
+                ({ data } = await api.post(`/albums/${albumId}/import/google-photos`, {
+                  access_token: accessToken,
+                  items: batch,
+                }));
+              }
               uploaded += data.uploaded || 0;
             } catch {
               // one batch failing (e.g. a transient backend error) shouldn't
@@ -172,7 +187,7 @@ export default function GooglePhotosImportButton({ albumId, onImported, disabled
         } else {
           toast.success(`${uploaded} photo${uploaded > 1 ? "s" : ""} imported from Google Photos`);
         }
-        onImported && onImported();
+        onImported && onImported(uploaded);
       } catch (err) {
         toast.error(err?.response?.data?.detail || "Google Photos import failed");
       } finally {
