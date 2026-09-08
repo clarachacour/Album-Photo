@@ -1360,7 +1360,7 @@ def _get_mobile_session(token: str) -> dict:
 async def mobile_upload_info(token: str):
     session = _get_mobile_session(token)
     album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "title": 1})
-    return {"album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat()}
+    return {"album_id": session["album_id"], "album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat()}
 
 @api_router.post("/mobile-upload/{token}/photos")
 async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
@@ -1385,14 +1385,12 @@ class GooglePhotosImportInput(BaseModel):
     access_token: str
     items: List[Dict[str, Any]]  # one batch of raw mediaItems from the Photos Picker API — the frontend now fetches the full selection itself and sends it here in small batches (same shape as regular multi-photo upload), instead of handing over a session_id and making the backend do everything (originals, potentially hundreds of them) inside a single background task. A background task only gets a fraction of its normal CPU once Cloud Run's request-based billing considers the request "done" — which made large imports far slower than an equivalent active request. Small batches processed as ordinary active requests never hit that throttling, exactly like regular device uploads already didn't.
 
-@api_router.post("/albums/{album_id}/import/google-photos")
-async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
-    if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
-    await _reject_if_ordered(album_id)
-
-    headers = {"Authorization": f"Bearer {data.access_token}"}
+async def _import_google_photos_items(album_id: str, user_id: str, items: list, access_token: str) -> list:
+    """Downloads and stores each Google Photos item chosen in the picker
+    session. Shared by both the regular (logged-in) import endpoint and the
+    mobile-QR-session one — the download/store logic is identical either
+    way, only how the caller is authenticated differs."""
+    headers = {"Authorization": f"Bearer {access_token}"}
     # Bounded lower than UPLOAD_CONCURRENCY (a separate constant, see near
     # the top of the file) — hammering Google's own servers with many
     # simultaneous connections is what caused SSLEOFError/"Max retries
@@ -1425,7 +1423,7 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
                     if img_resp.status_code != 200:
                         return None
                     content_type = img_resp.headers.get("Content-Type", "image/jpeg")
-                    return await _store_new_photo(album_id, user["id"], filename, content_type, img_resp.content)
+                    return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
                 except Exception as e:
                     last_error = e
             if attempt < 2:
@@ -1433,8 +1431,17 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         logger.error(f"Échec du téléchargement d'une photo Google Photos ({filename}) après 3 tentatives : {last_error}")
         return None
 
-    results = await asyncio.gather(*(fetch_one(it) for it in data.items))
-    uploaded = [p for p in results if p]
+    results = await asyncio.gather(*(fetch_one(it) for it in items))
+    return [p for p in results if p]
+
+@api_router.post("/albums/{album_id}/import/google-photos")
+async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album introuvable")
+    await _reject_if_ordered(album_id)
+
+    uploaded = await _import_google_photos_items(album_id, user["id"], data.items, data.access_token)
 
     # Mirrors the regular "add more photos" behavior exactly: only kick off
     # AI processing here if the album had already been through its first
@@ -1450,6 +1457,27 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         await run_ai_processing_incremental(album_id, user["id"], [p["id"] for p in uploaded])
 
     return {"uploaded": len(uploaded), "total": len(data.items)}
+
+@api_router.post("/mobile-upload/{token}/import/google-photos")
+async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput):
+    """Same Google Photos import as import_google_photos above, but reached
+    from the phone that scanned the QR code — authenticated by the mobile
+    session token rather than a login, exactly like mobile_upload_photos.
+    Lets someone on their phone pick straight from Google Photos (with
+    Google's own picker UI and its per-album "select all", which the phone's
+    generic OS file-source integration with the Google Photos app doesn't
+    offer) instead of only their camera roll."""
+    session = _get_mobile_session(token)
+    album_id = session["album_id"]
+    uploaded = await _import_google_photos_items(album_id, session["user_id"], data.items, data.access_token)
+
+    if uploaded:
+        album = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
+        if album and album.get("status") == "ready":
+            await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
+            await run_ai_processing_incremental(album_id, session["user_id"], [p["id"] for p in uploaded])
+
+    return {"uploaded": len(uploaded), "failed": len(data.items) - len(uploaded)}
 
 @api_router.get("/photos/{photo_id}/image")
 async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
