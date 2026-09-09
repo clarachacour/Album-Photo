@@ -174,12 +174,32 @@ export default function PrintAlbum() {
         </div>
       )}
 
+      {/* A real blank leaf right after the front cover and right before the
+          back cover — matching what the flipbook has always shown here
+          (see its own blankPage() helper and the "[cover, blank,
+          ...interior, blank, backCover]" comment in Flipbook.jsx) but,
+          until now, only as a *visual* effect of the flipbook viewer
+          itself: it was never a real entry in album.pages, so the actual
+          exported PDF silently skipped it — the album someone designed
+          around seeing this leaf in the editor didn't actually have it in
+          their printed book. Rendered as a plain empty content-sheet,
+          exactly like blankPage() does, gated on the same includeCover/
+          includeBackCover chunk flags as the covers themselves so it only
+          appears once even when the album is split across many chunks. */}
+      {includeCover && (
+        <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm`, background: "var(--paper)" }} />
+      )}
+
       {/* Interior pages — just this chunk's slice when chunked, every page otherwise. */}
       {chunkPages.map(({ page, i }) => (
         <div key={page.id || i} className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes />
         </div>
       ))}
+
+      {includeBackCover && (
+        <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm`, background: "var(--paper)" }} />
+      )}
 
       {/* Back cover — only the chunk that reaches the real end of the album. */}
       {includeBackCover && (
