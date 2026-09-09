@@ -183,15 +183,25 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       // backend being able to handle multiple requests at the same time.
       const BATCH_CONCURRENCY = 16;
       let nextBatch = 0;
+      let limitReached = false;
       const runNext = async () => {
-        while (nextBatch < batches.length) {
+        while (nextBatch < batches.length && !limitReached) {
           const chunk = batches[nextBatch++];
           const form = new FormData();
           chunk.forEach((f) => form.append("files", f));
-          await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" } });
+          const { data } = await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" } });
+          // The backend enforces a 5000-photo-per-album cap and trims
+          // whatever doesn't fit rather than silently ignoring it later —
+          // this just needs to stop sending further batches once it's hit
+          // (there's no point) and tell the person plainly why the rest
+          // of what they selected didn't make it in.
+          if (data?.limit_reached) limitReached = true;
         }
       };
       await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
+      if (limitReached) {
+        toast.warning("This album has reached the 5,000-photo limit — some of your selected photos weren't added. Remove some to add more.", { duration: 8000 });
+      }
       if (mode === "editor") {
         toast.success("Adding your new photos…");
         onProcessingStarted && onProcessingStarted();
