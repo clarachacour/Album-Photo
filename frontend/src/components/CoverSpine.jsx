@@ -288,8 +288,20 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
       cover.spine_logo_image && !cover.spine_logo_hidden ? logoItem.y + logoItem.h + SPINE_STACK_GAP : 0
     ),
     w: 1,
-    h: cover.spine_caption_h ?? 0.5,
+    // Was a flat 0.5 regardless of where y ended up — fine as long as y
+    // stayed at its configured spot, but once the clamp above pushes y
+    // down (to clear a taller-than-expected title/logo), keeping the same
+    // nominal height means the caption's box now reaches past the
+    // spine's own visible bottom edge. The auto-fit sizing below still
+    // sizes the text to fill that *nominal* height as if the room were
+    // really there, so the text itself ends up too long for what's
+    // actually visible and gets clipped (the trailing "S" in "MEMORIES",
+    // in the case that surfaced this). Anchoring the box's *bottom* edge
+    // at a fixed safe point and only shrinking it from there keeps the
+    // fit calculation honest about how much room genuinely remains.
   };
+  const SPINE_CAPTION_BOTTOM_SAFE = 0.97;
+  captionItem.h = cover.spine_caption_h ?? Math.max(0.15, SPINE_CAPTION_BOTTOM_SAFE - captionItem.y);
   const dividerItem = {
     id: "spine-divider",
     x: 0,
