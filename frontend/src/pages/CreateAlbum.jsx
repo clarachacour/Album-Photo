@@ -383,7 +383,12 @@ export default function CreateAlbum() {
 
 function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages }) {
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
-  const maxWidthBySize = { A3: 640, A4: 500, A5: 400 };
+  // A3 was removed — the printing office's max open (flat) size for a
+  // hardcover is 70×33cm, and A3 exceeds that in both orientations
+  // (portrait: 42cm open height, over the 33cm cap; landscape: 84cm open
+  // width, well over the 70cm cap) — see the size/hardcover-limit analysis
+  // this came from. A4 and A5 both stay comfortably within it.
+  const maxWidthBySize = { A4: 500, A5: 400 };
   const sizeContainerStyle = {
     maxWidth: `${orientation === "landscape" ? maxWidthBySize[size] : maxWidthBySize[size] * 0.72}px`,
   };
@@ -397,7 +402,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
         <div className="mb-10">
           <div className="eyebrow mb-4">Size</div>
           <div className="flex gap-3">
-            {["A3", "A4", "A5"].map((s) => (
+            {["A4", "A5"].map((s) => (
               <button
                 key={s}
                 data-testid={TID.sizeOption}
