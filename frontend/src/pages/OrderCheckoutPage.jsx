@@ -83,20 +83,33 @@ export default function OrderCheckoutPage() {
       });
       nav(`/orders/${data.id}`);
     } catch (err) {
-      // The rare real failure (address rejected server-side, etc.) — drop
-      // back to the form rather than leaving them stuck on a confirmation
-      // screen for an order that didn't actually go through. A 409 here
-      // means create_order's own duplicate guard caught a race the
-      // redirect-on-load above didn't (e.g. two tabs open before either
-      // order existed yet) — same message either way works for the
-      // person, since in both cases their real order already exists.
+      // create_order inserts the order into the database as its very
+      // first step, well before the (potentially hours-long) PDF
+      // generation — so by the time this catch block can even run, the
+      // order has almost always already been created and the
+      // confirmation email already sent, whatever went wrong afterwards.
+      // The only genuine "nothing was created" failures are the specific,
+      // known validation errors below (safe to show and let them fix on
+      // the form); everything else — a dropped connection during the long
+      // wait, a timeout, an unexpected server error — gets a calm message
+      // and a redirect to their orders list instead of an alarming
+      // "failed" toast and raw backend error text, since the real
+      // technical detail is never something the customer should be
+      // reading (admin has that in the logs) and the order is very likely
+      // already there waiting for them.
       setJustPlaced(false);
-      if (err?.response?.status === 409) {
+      const status = err?.response?.status;
+      if (status === 409) {
         toast.error("You've already placed an order for this album.");
         nav("/orders", { replace: true });
         return;
       }
-      toast.error(err?.response?.data?.detail || "Failed to place order");
+      if (status === 404 || status === 400) {
+        toast.error(err?.response?.data?.detail || "Please check your album and try again.");
+        return;
+      }
+      toast.info("This is taking a little longer than expected — check your orders, your order may already be placed.");
+      nav("/orders", { replace: true });
     }
   };
 
