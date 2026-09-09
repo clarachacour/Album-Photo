@@ -156,6 +156,11 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 # finds the URL could wipe every never-ordered album on demand.
 CLEANUP_SECRET = os.environ.get("CLEANUP_SECRET")
 DRAFT_ALBUM_RETENTION_DAYS = int(os.environ.get("DRAFT_ALBUM_RETENTION_DAYS", "30"))
+# First nudge once an album has sat untouched this many days; the second,
+# stronger warning fires this many days before the purge above actually
+# deletes it (see /internal/remind-unfinished-albums).
+UNFINISHED_ALBUM_REMINDER_DAYS = int(os.environ.get("UNFINISHED_ALBUM_REMINDER_DAYS", "3"))
+ALBUM_EXPIRING_WARNING_DAYS_BEFORE = int(os.environ.get("ALBUM_EXPIRING_WARNING_DAYS_BEFORE", "5"))
 
 # ---------- Mongo ----------
 # Explicitly point at certifi's CA bundle — on some fresh Python installs
@@ -376,6 +381,16 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None):
     except Exception as e:
         logger.error(f"Échec de l'envoi de l'email à {to_email} : {e}")
 
+def send_welcome_email(to_email: str, name: str):
+    subject = "Welcome to Everbook"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Welcome to Everbook — you're all set to start turning your photos into a printed book.\n\n"
+        f"Upload your photos, let us help lay them out, and order a copy whenever you're ready.\n\n"
+        f"{FRONTEND_URL}"
+    )
+    send_email(to_email, subject, body)
+
 def send_password_reset_email(to_email: str, name: str, reset_link: str):
     subject = "Reset your password"
     body = (
@@ -422,7 +437,30 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
     )
     send_email(to_email, subject, body)
 
-# ---------- Printer / delivery workflow ----------
+def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict):
+    album_url = f"{FRONTEND_URL}/editor/{album['id']}"
+    subject = f"Finish your Everbook album — {album.get('title', 'your album')}"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"You started \"{album.get('title', 'an album')}\" but haven't finished it yet.\n\n"
+        f"Pick up right where you left off:\n{album_url}\n\n"
+        f"It only takes a few minutes to finish laying it out and order your printed copy."
+    )
+    send_email(to_email, subject, body)
+
+def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_left: int):
+    album_url = f"{FRONTEND_URL}/editor/{album['id']}"
+    subject = f"\"{album.get('title', 'Your album')}\" will be deleted in {days_left} days"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"\"{album.get('title', 'Your album')}\" hasn't been touched in a while, and unfinished albums are "
+        f"automatically removed after {DRAFT_ALBUM_RETENTION_DAYS} days to free up space.\n\n"
+        f"It'll be deleted in {days_left} days unless you open it again before then:\n{album_url}\n\n"
+        f"If you're not planning to finish it, no action is needed."
+    )
+    send_email(to_email, subject, body)
+
+
 # The printer and delivery company aren't users of this app — they act on
 # a specific order purely by clicking a link in an email, with no login.
 # Each link is signed (HMAC, using the same secret as user auth tokens,
@@ -513,11 +551,14 @@ def get_apple_public_key(kid: str):
             return key
     return None
 
-async def upsert_oauth_user(email: str, name: str, provider: str) -> dict:
+async def upsert_oauth_user(email: str, name: str, provider: str) -> tuple:
+    """Returns (user, is_new) — is_new is what callers use to decide
+    whether to send the welcome email (only on a genuinely new account,
+    never on a routine sign-in to an existing one)."""
     email = email.lower()
     user = await db.users.find_one({"email": email})
     if user:
-        return user
+        return user, False
     user_id = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
@@ -541,9 +582,9 @@ async def upsert_oauth_user(email: str, name: str, provider: str) -> dict:
         # perspective, a completely normal sign-in.
         existing = await db.users.find_one({"email": email})
         if existing:
-            return existing
+            return existing, False
         raise
-    return user_doc
+    return user_doc, True
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     if not credentials:
@@ -729,6 +770,7 @@ async def signup(data: SignupInput):
         # silently issuing a token here would skip that check entirely.
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     token = create_token(user_id)
+    send_welcome_email(data.email.lower(), data.name)
     return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL))
 
 @api_router.post("/auth/login", response_model=AuthResponse)
@@ -781,8 +823,10 @@ async def google_auth(data: GoogleAuthInput):
     email = idinfo.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="Impossible de récupérer l'email du compte Google")
-    user = await upsert_oauth_user(email, idinfo.get("name"), "google")
+    user, is_new = await upsert_oauth_user(email, idinfo.get("name"), "google")
     token = create_token(user["id"])
+    if is_new:
+        send_welcome_email(user["email"], user["name"])
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @api_router.post("/auth/apple", response_model=AuthResponse)
@@ -805,8 +849,10 @@ async def apple_auth(data: AppleAuthInput):
     email = payload.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="Impossible de récupérer l'email du compte Apple")
-    user = await upsert_oauth_user(email, data.name, "apple")
+    user, is_new = await upsert_oauth_user(email, data.name, "apple")
     token = create_token(user["id"])
+    if is_new:
+        send_welcome_email(user["email"], user["name"])
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @api_router.get("/auth/me", response_model=UserOut)
@@ -1176,18 +1222,23 @@ def _generate_medium_variant(photo: dict):
         logger.error(f"Impossible de générer la variante 'medium' pour la photo {photo.get('id')}: {e}")
         return None, None
 
-# 3000px comfortably covers true 300 DPI print quality up to A4
-# (~3508px at 300dpi) and still ~250 DPI at A3 — visually indistinguishable
-# from 300dpi in a printed photo album, well beyond what the eye can
-# resolve at normal viewing distance. A raw phone/camera original is very
-# often 6000-8000px+ on the long side (or more), which the PDF export was
-# previously using directly (variant=original) — decoding dozens of those,
-# all at once, for one continuous Playwright-rendered PDF covering every
-# page of the whole album, is what pushed memory usage past the Cloud Run
-# instance's limit and crashed the whole export. This cuts each photo's
-# decoded memory footprint substantially without any visible cost to
-# actual print quality.
-PRINT_MAX_DIMENSION_PX = 3000
+# The printing office's stated minimum is 300 ppi (360 ppi is their
+# target, 300 the floor they'll actually accept). 3000px was short of that
+# for a full-bleed photo on our largest actually-relevant format — a photo
+# filling the full height of an A4 page (29.7cm / 11.69in) only reached
+# ~256 ppi at 3000px, below their 300 floor; A4's long side needs 3508px
+# to clear it. This only matters for a photo displayed large (a full-page
+# "hero" photo) — the same 3508px comfortably exceeds 300 ppi for any
+# photo occupying a smaller fraction of the page, e.g. one tile in a
+# multi-photo grid. A raw phone/camera original is very often 6000-8000px+
+# on the long side (or more), which the PDF export was previously using
+# directly (variant=original) — decoding dozens of those, all at once, for
+# one continuous Playwright-rendered PDF covering every page of the whole
+# album, is what pushed memory usage past the Cloud Run instance's limit
+# and crashed the whole export. This still cuts each photo's decoded
+# memory footprint substantially versus a raw original, just less
+# aggressively than the previous 3000px cap.
+PRINT_MAX_DIMENSION_PX = 3508
 
 def _generate_print_variant(photo: dict):
     """Same idea as _generate_medium_variant, but sized for genuine print
@@ -3382,6 +3433,24 @@ MAX_CONCURRENT_PDF_GENERATIONS = int(os.environ.get("MAX_CONCURRENT_PDF_GENERATI
 # self-heal from an abandoned slot, not to cut off a merely slow one.
 PDF_GENERATION_SLOT_STALE_MINUTES = 45
 
+async def _purge_stale_pdf_generation_slots():
+    """A slot only ever gets removed by _release_pdf_generation_slot, which
+    runs in _generate_order_pdf's finally block — fine for a normal
+    success or a caught exception, but Cloud Run's own hard request
+    timeout (3600s max) kills the process outright with no chance for any
+    Python-level cleanup to run, so a generation that hits that ceiling
+    leaves its slot behind forever otherwise. Previously this cleanup only
+    ran inside _acquire_pdf_generation_slot, which meant a stale slot sat
+    there — showing "Generating…" in the admin UI and, worse, still
+    counting against MAX_CONCURRENT_PDF_GENERATIONS and blocking every
+    other order from starting — until someone happened to attempt another
+    generation, which is what let a single dead slot from days earlier
+    quietly stall the whole queue. Called here too (from admin_list_orders)
+    so just loading the admin page self-heals it, not only starting a new
+    generation."""
+    stale_cutoff = (datetime.now(timezone.utc) - timedelta(minutes=PDF_GENERATION_SLOT_STALE_MINUTES)).isoformat()
+    await db.pdf_generation_slots.delete_many({"started_at": {"$lt": stale_cutoff}})
+
 async def _acquire_pdf_generation_slot(order_id: str):
     """Blocks (polling, not busy-waiting) until fewer than
     MAX_CONCURRENT_PDF_GENERATIONS are genuinely in progress service-wide,
@@ -3391,8 +3460,7 @@ async def _acquire_pdf_generation_slot(order_id: str):
     specifically: a customer's order should never fail *just* because
     other customers happened to be ordering at the same moment."""
     while True:
-        stale_cutoff = (datetime.now(timezone.utc) - timedelta(minutes=PDF_GENERATION_SLOT_STALE_MINUTES)).isoformat()
-        await db.pdf_generation_slots.delete_many({"started_at": {"$lt": stale_cutoff}})
+        await _purge_stale_pdf_generation_slots()
         active_count = await db.pdf_generation_slots.count_documents({})
         if active_count < MAX_CONCURRENT_PDF_GENERATIONS:
             try:
@@ -3591,9 +3659,6 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
                 {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
             )
             order["status"] = "printing"
-            customer = await db.users.find_one({"id": user_id}, {"_id": 0})
-            if customer:
-                send_order_confirmation_email(customer.get("email"), customer.get("name"), order)
             send_printer_order_email(order)
             # Only a genuinely successful, first-time order — a real PDF a
             # printer will actually receive — has "the book is done,
@@ -3675,6 +3740,16 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "updated_at": now,
     }
     await db.orders.insert_one(order_doc)
+    # Sent right here, before generation even starts — not once the PDF is
+    # ready (which used to be the trigger, tucked inside
+    # _generate_order_pdf's "printing" transition). Generation alone can
+    # take anywhere from minutes to a couple of hours (see the 100-page
+    # test album), and the customer shouldn't be left wondering whether
+    # their order even went through for that whole stretch. The email's
+    # own wording already fits this ("we've received it and will start
+    # preparing your book" — never claims the PDF is done), so only the
+    # trigger moved, not the text.
+    send_order_confirmation_email(user.get("email"), user.get("name"), order_doc)
     # Awaited directly, not dispatched via background_tasks. Background
     # dispatch was tried twice now (Aug 30, and again Sep 1 after
     # confirming instance-based billing + min-instances=1) and both times
@@ -3783,7 +3858,11 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
     # pdf_generation_slots collection has a live row for exactly the
     # order(s) currently holding a generation slot, so cross-referencing
     # it here lets the admin UI show "generating" instead of a flat
-    # "failed" for an order that's simply still running.
+    # "failed" for an order that's simply still running. Purge stale slots
+    # first (see _purge_stale_pdf_generation_slots) — otherwise a slot
+    # orphaned by a hard Cloud Run timeout would show "Generating…" here
+    # indefinitely, with nothing to ever clear it.
+    await _purge_stale_pdf_generation_slots()
     active_slot_order_ids = {
         s["order_id"] async for s in db.pdf_generation_slots.find({}, {"order_id": 1})
     }
@@ -3863,7 +3942,13 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     # that actually matters: refuse outright rather than letting a second
     # _generate_order_pdf run concurrently for the same order_id, which
     # would just have the second call sit blocked in
-    # _acquire_pdf_generation_slot behind the first for no benefit.
+    # _acquire_pdf_generation_slot behind the first for no benefit. Purged
+    # first so a slot orphaned by a hard Cloud Run timeout (see
+    # _purge_stale_pdf_generation_slots) can't itself be the reason this
+    # 409s — without it, a genuinely dead generation would block every
+    # future regenerate attempt on this order forever, not just the live
+    # one it was guarding against.
+    await _purge_stale_pdf_generation_slots()
     if await db.pdf_generation_slots.find_one({"order_id": order_id}):
         raise HTTPException(status_code=409, detail="A generation is already in progress for this order")
     await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
@@ -3916,6 +4001,75 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
     return fresh
 
 # ---------- Maintenance ----------
+@api_router.post("/internal/remind-unfinished-albums")
+async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
+    """Two-stage nudge for albums someone started and never finished,
+    meant to run daily on the same Cloud Scheduler job pattern as
+    /internal/cleanup-expired-albums (same secret, same "not reachable by
+    end users" shape) — ideally scheduled to run just before it, so a
+    freshly-sent final warning and the purge that makes it true stay a
+    predictable few days apart rather than landing the same day.
+
+    Stage 1 (reminder_stage 0 -> 1): album untouched for
+    UNFINISHED_ALBUM_REMINDER_DAYS, never reminded — a gentle "come finish
+    this" nudge.
+    Stage 2 (reminder_stage 1 -> 2): album now within
+    ALBUM_EXPIRING_WARNING_DAYS_BEFORE days of the purge cutoff, already
+    got stage 1 but not stage 2 yet — a stronger "this is about to be
+    deleted" warning. An album already at stage 1 is skipped for stage 2
+    until it's actually that close, so nobody gets both emails on the same
+    day.
+    Ordered albums are never touched here, matching the purge job.
+    """
+    if not CLEANUP_SECRET:
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET n'est pas configuré sur ce serveur")
+    if x_cleanup_secret != CLEANUP_SECRET:
+        raise HTTPException(status_code=401, detail="Non autorisé")
+
+    now = datetime.now(timezone.utc)
+    ordered_album_ids = set(await db.orders.distinct("album_id"))
+
+    stage1_cutoff = (now - timedelta(days=UNFINISHED_ALBUM_REMINDER_DAYS)).isoformat()
+    stage1_candidates = await db.albums.find(
+        # updated_at, not created_at — someone actively working on an album
+        # created a while ago but touched yesterday shouldn't get a "finish
+        # this" nudge; the purge cutoff (stage 2) is deliberately different,
+        # since that one has to match the purge job's own created_at basis
+        # exactly for "days_left" to be accurate.
+        {"is_deleted": {"$ne": True}, "updated_at": {"$lt": stage1_cutoff}, "reminder_stage": {"$exists": False}},
+        {"_id": 0},
+    ).to_list(2000)
+
+    stage2_cutoff = (now - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS - ALBUM_EXPIRING_WARNING_DAYS_BEFORE)).isoformat()
+    stage2_candidates = await db.albums.find(
+        {"is_deleted": {"$ne": True}, "created_at": {"$lt": stage2_cutoff}, "reminder_stage": 1},
+        {"_id": 0},
+    ).to_list(2000)
+
+    stage1_sent = 0
+    for album in stage1_candidates:
+        if album["id"] in ordered_album_ids:
+            continue
+        user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0})
+        if user and user.get("email"):
+            send_unfinished_album_reminder_email(user["email"], user.get("name"), album)
+        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 1}})
+        stage1_sent += 1
+
+    stage2_sent = 0
+    for album in stage2_candidates:
+        if album["id"] in ordered_album_ids:
+            continue
+        purge_at = datetime.fromisoformat(album["created_at"]) + timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)
+        days_left = max(1, (purge_at - now).days)
+        user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0})
+        if user and user.get("email"):
+            send_album_expiring_soon_email(user["email"], user.get("name"), album, days_left)
+        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 2}})
+        stage2_sent += 1
+
+    return {"stage1_sent": stage1_sent, "stage2_sent": stage2_sent}
+
 @api_router.post("/internal/cleanup-expired-albums")
 async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
     """Deletes albums that were never ordered and are older than
