@@ -21,12 +21,15 @@ export default function OrderCheckoutPage() {
     additional_info: user?.additional_info || "",
   });
   // Shown the instant the person clicks "Place order". The POST itself
-  // now returns quickly — PDF generation runs as a background task on the
-  // server (see backend create_order) rather than being awaited inside
-  // the request, so a very large album's rendering time no longer has any
-  // bearing on how long this screen shows. This component stays mounted
-  // (we don't navigate away) mainly so a genuine failure (address
-  // rejected server-side, etc.) can still drop back to the form.
+  // can take anywhere from a few minutes to a couple of hours — PDF
+  // generation is awaited synchronously on the server (see backend
+  // create_order), not dispatched as a background task; background
+  // dispatch was tried and reverted because Cloud Run could silently kill
+  // it mid-render with nothing in the logs. This screen replacing the
+  // form immediately is what stops a second click *in this tab* from
+  // placing a duplicate order — the actual guarantee against a duplicate
+  // (a reopened tab, the back button, a reload while the first request is
+  // still quietly pending) is server-side, in create_order.
   const [justPlaced, setJustPlaced] = useState(false);
 
   useEffect(() => {
@@ -34,6 +37,25 @@ export default function OrderCheckoutPage() {
       try {
         const { data } = await api.get(`/albums/${albumId}`);
         setAlbum(data);
+        // Reopening this page for an album that's already been ordered —
+        // a second tab, the back button, a reload while the first order's
+        // request was still quietly pending (it can take minutes to
+        // hours) — used to just show the form again, ready to place a
+        // genuine duplicate order. create_order now rejects that
+        // server-side regardless, but catching it here means they land on
+        // their actual order instead of hitting a confusing error.
+        if (data.was_ordered) {
+          try {
+            const { data: orders } = await api.get("/orders");
+            const existing = (orders || []).find((o) => o.album_id === albumId);
+            if (existing) {
+              nav(`/orders/${existing.id}`, { replace: true });
+              return;
+            }
+          } catch {
+            /* fall through to showing the form; create_order's own guard still applies */
+          }
+        }
       } catch {
         toast.error("Failed to load this album");
       }
@@ -63,8 +85,17 @@ export default function OrderCheckoutPage() {
     } catch (err) {
       // The rare real failure (address rejected server-side, etc.) — drop
       // back to the form rather than leaving them stuck on a confirmation
-      // screen for an order that didn't actually go through.
+      // screen for an order that didn't actually go through. A 409 here
+      // means create_order's own duplicate guard caught a race the
+      // redirect-on-load above didn't (e.g. two tabs open before either
+      // order existed yet) — same message either way works for the
+      // person, since in both cases their real order already exists.
       setJustPlaced(false);
+      if (err?.response?.status === 409) {
+        toast.error("You've already placed an order for this album.");
+        nav("/orders", { replace: true });
+        return;
+      }
       toast.error(err?.response?.data?.detail || "Failed to place order");
     }
   };
