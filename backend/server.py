@@ -282,6 +282,21 @@ def get_object(path: str) -> tuple:
 # Chromium requests at once for a single print page.
 _r2_io_executor = ThreadPoolExecutor(max_workers=32, thread_name_prefix="r2-io")
 
+# A dedicated pool for the Chromium PDF render specifically, separate from
+# the *default* executor (photo upload processing, AI curation's sharpness/
+# face-detection work — see run_ai_processing) — both used to share the
+# same default pool, so a PDF render in progress was competing for the
+# same handful of threads a customer's own upload/curation needed to get
+# back to them quickly. Generation is allowed to take however long it
+# takes (nobody's watching it happen — it's not the customer waiting on
+# this response, an order confirmation already went out immediately at
+# checkout), but it should never be the reason someone actively using the
+# editor right now waits longer than necessary. 2 workers, not 1: matches
+# MAX_CONCURRENT_PDF_GENERATIONS's own slot limit with a little headroom
+# for the rare moment a stale slot briefly allows two to overlap, without
+# handing the render any more threads than it actually needs.
+_pdf_render_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pdf-render")
+
 def _run_blocking(fn, *args):
     """Runs a blocking (sync) call — every get_object/put_object/
     delete_object below is a synchronous boto3 call — in a thread pool
@@ -1353,6 +1368,15 @@ async def _store_new_photo(album_id: str, user_id: str, filename: str, content_t
     photo_doc.pop("_id", None)
     return photo_doc
 
+# The AI curation step (_curate_photos, via run_ai_processing) queries with
+# .to_list(5000) — anything beyond that was previously silently invisible
+# to curation, with no indication to the person that some of what they
+# uploaded would never actually be considered. Enforced here instead, at
+# the point every upload path already funnels through, with a real error
+# telling them the limit outright rather than a batch that "succeeds" but
+# quietly does less than they asked.
+MAX_PHOTOS_PER_ALBUM = 5000
+
 async def _store_many_photos(album_id: str, user_id: str, files: List[UploadFile]) -> List[dict]:
     """Reads then stores a batch of uploaded files concurrently (bounded by
     UPLOAD_CONCURRENCY), skipping any that fail validation or processing.
@@ -1360,7 +1384,19 @@ async def _store_many_photos(album_id: str, user_id: str, files: List[UploadFile
     (must happen on the main loop — UploadFile isn't safe to touch from a
     worker thread), but everything CPU/disk-bound after that runs
     concurrently, bounded so a huge batch doesn't spawn hundreds of threads
-    at once."""
+    at once.
+
+    Raises HTTPException(400) outright if this album is already at (or this
+    batch would push it past) MAX_PHOTOS_PER_ALBUM — the caller doesn't need
+    its own check, and the person gets a real, specific reason rather than
+    photos that silently uploaded but were never actually usable."""
+    current_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
+    if current_count >= MAX_PHOTOS_PER_ALBUM:
+        raise HTTPException(status_code=400, detail=f"This album already has {current_count} photos, the maximum of {MAX_PHOTOS_PER_ALBUM} per album. Remove some before adding more.")
+    room_left = MAX_PHOTOS_PER_ALBUM - current_count
+    truncated = len(files) > room_left
+    files = files[:room_left]
+
     file_bytes = [(f.filename, f.content_type or "image/jpeg", await f.read()) for f in files]
     semaphore = asyncio.Semaphore(UPLOAD_CONCURRENCY)
 
@@ -1382,7 +1418,13 @@ async def _store_many_photos(album_id: str, user_id: str, files: List[UploadFile
             logger.warning(f"Échec du stockage de la photo '{filename}' pour l'album {album_id}: {result}")
         elif result:
             stored.append(result)
-    return stored
+    if truncated:
+        # Not raised as an exception — this batch is a genuine partial
+        # success (whatever fit under the cap really was stored), the
+        # caller just needs to know so it can tell the person the rest
+        # didn't make it in, and why.
+        logger.warning(f"Album {album_id}: lot tronqué à {room_left} photos pour respecter la limite de {MAX_PHOTOS_PER_ALBUM}")
+    return stored, truncated
 
 @api_router.post("/albums/{album_id}/photos")
 async def upload_photos(
@@ -1394,8 +1436,8 @@ async def upload_photos(
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
     await _reject_if_ordered(album_id)
-    uploaded = await _store_many_photos(album_id, user["id"], files)
-    return {"uploaded": len(uploaded), "photos": uploaded}
+    uploaded, truncated = await _store_many_photos(album_id, user["id"], files)
+    return {"uploaded": len(uploaded), "photos": uploaded, "limit_reached": truncated}
 
 # ---------- Mobile upload (QR code) ----------
 MOBILE_UPLOAD_SESSION_HOURS = 1
@@ -1434,9 +1476,9 @@ async def mobile_upload_info(token: str):
     return {"album_id": session["album_id"], "album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat()}
 
 @api_router.post("/mobile-upload/{token}/photos")
-async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
+async def mobile_upload_photos(token: str, files: List[UploadFile] = File(...)):
     session = _get_mobile_session(token)
-    uploaded = await _store_many_photos(session["album_id"], session["user_id"], files)
+    uploaded, limit_reached = await _store_many_photos(session["album_id"], session["user_id"], files)
 
     if uploaded:
         album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "status": 1})
@@ -1446,21 +1488,36 @@ async def mobile_upload_photos(token: str, background_tasks: BackgroundTasks, fi
         # wizard, photos just land in the pool until "Start AI" is clicked.
         if album and album.get("status") == "ready":
             await db.albums.update_one({"id": session["album_id"]}, {"$set": {"status": "processing"}})
-            background_tasks.add_task(
-                run_ai_processing_incremental, session["album_id"], session["user_id"], [p["id"] for p in uploaded]
-            )
-    return {"uploaded": len(uploaded), "failed": len(files) - len(uploaded)}
+            # Awaited directly, not background-tasked — this used to be
+            # background_tasks.add_task, the same pattern that Cloud Run
+            # was found to silently kill mid-run for PDF generation (see
+            # create_order's comment) — nothing here made it any safer just
+            # because the work is AI curation instead of a PDF. A slower
+            # response that reliably finishes beats a fast one that might
+            # quietly never finish at all.
+            await run_ai_processing_incremental(session["album_id"], session["user_id"], [p["id"] for p in uploaded])
+    return {"uploaded": len(uploaded), "failed": len(files) - len(uploaded), "limit_reached": limit_reached}
 
 # ---------- Google Photos import (Photos Picker API) ----------
 class GooglePhotosImportInput(BaseModel):
     access_token: str
     items: List[Dict[str, Any]]  # one batch of raw mediaItems from the Photos Picker API — the frontend now fetches the full selection itself and sends it here in small batches (same shape as regular multi-photo upload), instead of handing over a session_id and making the backend do everything (originals, potentially hundreds of them) inside a single background task. A background task only gets a fraction of its normal CPU once Cloud Run's request-based billing considers the request "done" — which made large imports far slower than an equivalent active request. Small batches processed as ordinary active requests never hit that throttling, exactly like regular device uploads already didn't.
 
-async def _import_google_photos_items(album_id: str, user_id: str, items: list, access_token: str) -> list:
+async def _import_google_photos_items(album_id: str, user_id: str, items: list, access_token: str) -> tuple:
     """Downloads and stores each Google Photos item chosen in the picker
     session. Shared by both the regular (logged-in) import endpoint and the
     mobile-QR-session one — the download/store logic is identical either
-    way, only how the caller is authenticated differs."""
+    way, only how the caller is authenticated differs. Returns
+    (stored, limit_reached) — same MAX_PHOTOS_PER_ALBUM enforcement as
+    _store_many_photos, since this is a separate path into the same
+    photos collection and would otherwise bypass the cap entirely."""
+    current_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
+    if current_count >= MAX_PHOTOS_PER_ALBUM:
+        raise HTTPException(status_code=400, detail=f"This album already has {current_count} photos, the maximum of {MAX_PHOTOS_PER_ALBUM} per album. Remove some before adding more.")
+    room_left = MAX_PHOTOS_PER_ALBUM - current_count
+    limit_reached = len(items) > room_left
+    items = items[:room_left]
+
     headers = {"Authorization": f"Bearer {access_token}"}
     # Bounded lower than UPLOAD_CONCURRENCY (a separate constant, see near
     # the top of the file) — hammering Google's own servers with many
@@ -1503,7 +1560,7 @@ async def _import_google_photos_items(album_id: str, user_id: str, items: list, 
         return None
 
     results = await asyncio.gather(*(fetch_one(it) for it in items))
-    return [p for p in results if p]
+    return [p for p in results if p], limit_reached
 
 @api_router.post("/albums/{album_id}/import/google-photos")
 async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
@@ -1512,7 +1569,7 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         raise HTTPException(status_code=404, detail="Album introuvable")
     await _reject_if_ordered(album_id)
 
-    uploaded = await _import_google_photos_items(album_id, user["id"], data.items, data.access_token)
+    uploaded, limit_reached = await _import_google_photos_items(album_id, user["id"], data.items, data.access_token)
 
     # Mirrors the regular "add more photos" behavior exactly: only kick off
     # AI processing here if the album had already been through its first
@@ -1527,7 +1584,7 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         # small (~20 photos), so this stays quick even run inline.
         await run_ai_processing_incremental(album_id, user["id"], [p["id"] for p in uploaded])
 
-    return {"uploaded": len(uploaded), "total": len(data.items)}
+    return {"uploaded": len(uploaded), "total": len(data.items), "limit_reached": limit_reached}
 
 @api_router.post("/mobile-upload/{token}/import/google-photos")
 async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput):
@@ -1540,7 +1597,7 @@ async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput)
     offer) instead of only their camera roll."""
     session = _get_mobile_session(token)
     album_id = session["album_id"]
-    uploaded = await _import_google_photos_items(album_id, session["user_id"], data.items, data.access_token)
+    uploaded, limit_reached = await _import_google_photos_items(album_id, session["user_id"], data.items, data.access_token)
 
     if uploaded:
         album = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
@@ -1548,7 +1605,7 @@ async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput)
             await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
             await run_ai_processing_incremental(album_id, session["user_id"], [p["id"] for p in uploaded])
 
-    return {"uploaded": len(uploaded), "failed": len(data.items) - len(uploaded)}
+    return {"uploaded": len(uploaded), "failed": len(data.items) - len(uploaded), "limit_reached": limit_reached}
 
 @api_router.get("/photos/{photo_id}/image")
 async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):
@@ -2263,6 +2320,15 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     # threshold when two photos have GPS but no usable timestamp gap.
     MOMENT_GPS_KM = 0.05
 
+    # Parsed once per photo up front, not on every pairwise comparison —
+    # _is_match previously called datetime.fromisoformat (via
+    # _parse_taken_at) twice per comparison, and the comparison count
+    # itself grows with the square of the photo count (see the clustering
+    # loop below), so for a large, mostly-unique batch (a well-shot travel
+    # album, few real duplicates) that parsing was being redone millions
+    # of times over on the exact same, unchanging string. Doesn't change
+    # which photos are considered a match — same parsed value either way —
+    # purely removes redundant repeated work.
     def _parse_taken_at(p):
         ts = p.get("taken_at")
         if not ts:
@@ -2271,6 +2337,10 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             return datetime.fromisoformat(ts.replace("Z", "+00:00"))
         except Exception:
             return None
+
+    taken_at_cache: Dict[str, Optional[datetime]] = {
+        p["id"]: _parse_taken_at(p) for p in list(existing_selected) + list(new_photos)
+    }
 
     def _same_spot(p, other, radius_km):
         lat1, lng1 = p.get("gps_lat"), p.get("gps_lng")
@@ -2281,7 +2351,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
 
     def _is_match(p, other):
         dist = hamming_distance(p.get("phash"), other.get("phash"))
-        t1, t2 = _parse_taken_at(p), _parse_taken_at(other)
+        t1, t2 = taken_at_cache.get(p["id"]), taken_at_cache.get(other["id"])
         if t1 and t2 and abs((t1 - t2).total_seconds()) <= BURST_SECONDS:
             return dist <= BURST_HASH_THRESHOLD
         # No usable timestamp gap (one or both missing, or too far apart) —
@@ -2380,6 +2450,19 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
 
     representatives: List[dict] = []  # one per cluster that has at least one new photo
     rep_sharpness: Dict[str, float] = {}
+    # Split first, so scoring can run across *every* cluster that needs it
+    # at once — the previous version processed one cluster fully (R2 fetch
+    # + sharpness compute for its photos) before even starting the next,
+    # which for a large, mostly-unique batch (mostly one photo per
+    # cluster) meant doing a genuinely parallelizable network+CPU workload
+    # entirely sequentially. This was consistently the single largest
+    # contributor to how long a big upload took to finish curating —
+    # bigger than the O(n²) clustering step above it. Doesn't change which
+    # photo wins each cluster or which get marked duplicate — same
+    # per-cluster comparison, same result, just no longer waiting on
+    # cluster A to finish before cluster B's fetch even starts.
+    anchored_duplicate_ids: List[str] = []
+    scoring_clusters: List[List[dict]] = []
     for cluster in clusters:
         new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
         if not new_in_cluster:
@@ -2387,18 +2470,31 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         if cluster[0]["id"] in existing_ids:
             # An existing photo anchors this cluster — every new photo here
             # is a duplicate of it, so none of them need scoring at all.
-            for d in new_in_cluster:
-                await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+            anchored_duplicate_ids.extend(d["id"] for d in new_in_cluster)
             duplicates_removed += len(new_in_cluster)
-            continue
-        sharpness_scores = await asyncio.gather(*(_sharpness_of(p) for p in new_in_cluster))
-        rep, rep_score = max(zip(new_in_cluster, sharpness_scores), key=lambda x: x[1])
-        for d, score in zip(new_in_cluster, sharpness_scores):
+        else:
+            scoring_clusters.append(new_in_cluster)
+
+    if anchored_duplicate_ids:
+        await db.photos.update_many({"id": {"$in": anchored_duplicate_ids}}, {"$set": {"is_duplicate": True, "is_selected": False}})
+
+    all_candidates = [p for cluster in scoring_clusters for p in cluster]
+    all_scores = await asyncio.gather(*(_sharpness_of(p) for p in all_candidates))
+    score_by_id = dict(zip((p["id"] for p in all_candidates), all_scores))
+
+    duplicate_ids_to_mark: List[str] = []
+    for new_in_cluster in scoring_clusters:
+        scores = [score_by_id[p["id"]] for p in new_in_cluster]
+        rep, rep_score = max(zip(new_in_cluster, scores), key=lambda x: x[1])
+        for d, score in zip(new_in_cluster, scores):
             if d["id"] != rep["id"]:
-                await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
+                duplicate_ids_to_mark.append(d["id"])
         duplicates_removed += len(new_in_cluster) - 1
         representatives.append(rep)
         rep_sharpness[rep["id"]] = rep_score
+
+    if duplicate_ids_to_mark:
+        await db.photos.update_many({"id": {"$in": duplicate_ids_to_mark}}, {"$set": {"is_duplicate": True, "is_selected": False}})
 
     # ---- 3. Quality gate — classical, no AI call. A genuinely broken shot
     # (severe motion blur, a finger over the lens, camera-shake) scores
@@ -2855,7 +2951,7 @@ async def add_more_photos(
         raise HTTPException(status_code=404, detail="Album introuvable")
     await _reject_if_ordered(album_id)
 
-    uploaded = await _store_many_photos(album_id, user["id"], files)
+    uploaded, limit_reached = await _store_many_photos(album_id, user["id"], files)
     new_ids = [p["id"] for p in uploaded]
 
     if not new_ids:
@@ -2866,7 +2962,7 @@ async def add_more_photos(
     # /albums/{id}/process (see its comment).
     await run_ai_processing_incremental(album_id, user["id"], new_ids)
     fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
-    return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(new_ids)}
+    return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(new_ids), "limit_reached": limit_reached}
 
 # ---------- PDF Export ----------
 def get_page_size(size: str, orientation: str):
@@ -3659,7 +3755,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
 
         if len(initial_ranges) > 1:
             logger.info(f"Commande {order_id} : point de départ estimé — {len(initial_ranges)} morceaux ({initial_ranges})")
-        pdf_bytes = await loop.run_in_executor(None, _render_all_chunks, initial_ranges)
+        pdf_bytes = await loop.run_in_executor(_pdf_render_executor, _render_all_chunks, initial_ranges)
 
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         await _run_blocking(put_object, path, pdf_bytes, "application/pdf")
