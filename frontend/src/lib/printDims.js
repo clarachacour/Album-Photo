@@ -6,9 +6,9 @@
 // math (PrintAlbum.jsx) — a real book's spine should scale with the cover
 // size and page count, not be a fixed pixel value.
 
-// Physical page sizes in mm, matching the backend's reportlab A3/A4/A5 tables.
+// Physical page sizes in mm, matching the backend's reportlab A4/A5 tables.
+// A3 removed — exceeded the printing office's max open hardcover size.
 const PAGE_SIZES_MM = {
-  A3: { w: 297, h: 420 },
   A4: { w: 210, h: 297 },
   A5: { w: 148, h: 210 },
 };
