@@ -69,7 +69,16 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
   }, []);
 
   const pollSession = async (accessToken, sessionId) => {
-    for (let i = 0; i < 60; i++) {
+    // Was 60 attempts * 2s = 2 minutes — fine for picking a handful of
+    // photos, but nowhere near enough time to actually scroll through and
+    // tap-select hundreds or thousands of them by hand in Google's own
+    // picker UI (or even to use its own "select all" and wait for that
+    // selection to register) — someone selecting 1000 photos legitimately
+    // needs more than 2 minutes, and was hitting this timeout not because
+    // anything had gone wrong, just because we stopped checking too soon.
+    // 20 minutes comfortably covers a very large manual selection without
+    // polling forever if the person genuinely abandoned the picker.
+    for (let i = 0; i < 600; i++) {
       const res = await fetch(`https://photospicker.googleapis.com/v1/sessions/${sessionId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
