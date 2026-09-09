@@ -53,7 +53,7 @@ import time as _time
 import gc
 
 # ReportLab for PDF export
-from reportlab.lib.pagesizes import A3, A4, A5, landscape, portrait
+from reportlab.lib.pagesizes import A4, A5, landscape, portrait
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors as rl_colors
@@ -672,15 +672,16 @@ PAGE_TIERS = [24, 50, 100, 150, 250]
 # never gets to set its own price. These are PLACEHOLDER values (Clara
 # hasn't finalized real pricing with the printer yet) — adjust freely, this
 # is the one place that needs to change once real prices are set.
+# A3 removed — exceeds the printing office's max open (flat) hardcover size
+# (70×33cm) in both orientations, so it was never actually printable.
 ORDER_PRICE_CENTS = {
     "A5": {24: 2500, 50: 3500, 100: 5500, 150: 7500, 250: 11000},
     "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 250: 15900},
-    "A3": {24: 5500, 50: 7500, 100: 11900, 150: 16900, 250: 24900},
 }
 
 # Per extra page beyond the nearest lower tier, in cents — also a
 # placeholder until real per-page economics are confirmed.
-OVERAGE_PER_PAGE_CENTS = {"A5": 30, "A4": 45, "A3": 70}
+OVERAGE_PER_PAGE_CENTS = {"A5": 30, "A4": 45}
 
 def compute_order_price_cents(size: str, target_pages: int) -> int:
     size = size if size in ORDER_PRICE_CENTS else "A4"
@@ -959,8 +960,16 @@ def make_title_page(title: str) -> dict:
         ],
     }
 
+ALLOWED_ALBUM_SIZES = {"A4", "A5"}
+
 @api_router.post("/albums")
 async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)):
+    if data.size not in ALLOWED_ALBUM_SIZES:
+        # A3 was removed — it exceeds the printing office's max open (flat)
+        # hardcover size in both orientations, so an A3 album could never
+        # actually be printed. This also catches any other unsupported
+        # value, not just A3 specifically.
+        raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
     album_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     album = {
@@ -1076,6 +1085,8 @@ async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(ge
     if not album:
         raise HTTPException(status_code=404, detail="Album introuvable")
     await _reject_if_ordered(album_id)
+    if data.size is not None and data.size not in ALLOWED_ALBUM_SIZES:
+        raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.albums.update_one({"id": album_id}, {"$set": update})
@@ -2859,7 +2870,7 @@ async def add_more_photos(
 
 # ---------- PDF Export ----------
 def get_page_size(size: str, orientation: str):
-    sizes = {"A3": A3, "A4": A4, "A5": A5}
+    sizes = {"A4": A4, "A5": A5}
     base = sizes.get(size.upper(), A4)
     if orientation == "landscape":
         return landscape(base)
