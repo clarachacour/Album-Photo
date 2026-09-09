@@ -208,7 +208,16 @@ def get_r2_client():
             endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
             aws_access_key_id=R2_ACCESS_KEY_ID,
             aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-            config=BotoConfig(signature_version="s3v4"),
+            # max_pool_connections defaults to 10, but _r2_io_executor (see
+            # below) runs up to 32 R2 calls concurrently — past 10 at once,
+            # urllib3 was opening a fresh connection per call and
+            # discarding it right after ("Connection pool is full,
+            # discarding connection" in the logs) instead of reusing a
+            # pooled one, paying a new TCP/TLS handshake every time for no
+            # reason. Not a functional bug — every request still completed
+            # — just wasted latency under real concurrent load (e.g. a
+            # large album's chunk render fetching many photos at once).
+            config=BotoConfig(signature_version="s3v4", max_pool_connections=32),
             region_name="auto",
         )
     return _r2_client
@@ -3716,6 +3725,19 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         raise HTTPException(status_code=404, detail="Album introuvable")
     if not album.get("pages"):
         raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
+    # Nothing previously stopped a second order for the same album — and
+    # since this whole endpoint is awaited synchronously (generation can
+    # run for hours; see the comment on _generate_order_pdf below for why
+    # that's deliberate), a customer who re-opened the checkout page while
+    # their first order's request was still silently pending — a second
+    # tab, the back button, a reload — could place a genuine duplicate
+    # with nothing telling them the first one had already gone through.
+    # _reject_if_ordered already stops them from editing the album at that
+    # point; this stops the same root cause from also producing two paid
+    # orders for one book.
+    existing_order = await db.orders.find_one({"album_id": data.album_id})
+    if existing_order:
+        raise HTTPException(status_code=409, detail="An order already exists for this album")
     unit_price = compute_order_price_cents(album.get("size", "A4"), album.get("target_pages", 50))
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
