@@ -14,10 +14,9 @@ export const PAGE_TIERS = [24, 50, 100, 150, 250];
 export const PRICE_TABLE = {
   A5: { 24: 25, 50: 35, 100: 55, 150: 75, 250: 110 },
   A4: { 24: 35, 50: 49, 100: 79, 150: 109, 250: 159 },
-  A3: { 24: 55, 50: 75, 100: 119, 150: 169, 250: 249 },
 };
 
-export const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45, A3: 0.7 };
+export const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45 };
 
 export function computeUnitPrice(size, targetPages) {
   const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
