@@ -97,13 +97,28 @@ function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, ti
 
     compute();
     let cancelled = false;
+    // Registers with the same window.__autoFitPending counter AlbumPage's
+    // AutoFitText uses (see its comment for the full reasoning) — without
+    // this, PrintAlbum.jsx's print-ready wait had no idea this hook might
+    // still correct itself once the custom spine font (often a display
+    // font like "Baloo 2", not a system font) finishes loading, so
+    // Playwright could capture the page mid-correction: the box height
+    // computed from an early, wrong measurement (see defaultTitleH above,
+    // measured with whatever font was available at that instant) baked
+    // into the actual exported PDF as visibly overlapping spine text —
+    // not just a transient flash the person would never see, since they
+    // aren't watching the print page render.
     if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
       const spec = `${fontWeight || 700} 16px ${fontFamily}`;
+      if (typeof window !== "undefined") window.__autoFitPending = (window.__autoFitPending || 0) + 1;
       Promise.all([document.fonts.load(spec), document.fonts.ready])
         .then(() => {
           if (!cancelled) compute();
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          if (typeof window !== "undefined") window.__autoFitPending = Math.max(0, (window.__autoFitPending || 0) - 1);
+        });
     }
     return () => {
       cancelled = true;
@@ -240,10 +255,38 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
         uppercase: false,
       })
     : 0;
+  // Small vertical breathing room enforced between stacked spine elements
+  // — mirrors SPINE_TITLE_SUBTITLE_GAP's role for title/subtitle.
+  const SPINE_STACK_GAP = 0.02;
+  const logoItem = {
+    id: "spine-logo",
+    x: cover.spine_logo_x ?? 0.28,
+    // Several templates hardcode this (e.g. 0.36) on the assumption the
+    // title above it never grows past a certain height — but titleItem.h
+    // is computed dynamically from the actual title text and font (see
+    // defaultTitleH above), and for some title/font combinations (a short
+    // word rendered at a large fitted size, e.g. "MOM") it genuinely does
+    // grow past what the template's author guessed, and the logo — a
+    // fixed position knowing nothing about the title's real height —
+    // ended up rendered right on top of it. Math.max only ever pushes the
+    // logo *down* from its configured/default spot, never up, so templates
+    // where the gap was already big enough are rendered identically to
+    // before; only the ones that would actually overlap are affected.
+    y: Math.max(cover.spine_logo_y ?? 0.86, titleItem.y + titleItem.h + SPINE_STACK_GAP),
+    w: cover.spine_logo_w ?? 0.44,
+    h: cover.spine_logo_h ?? 0.08,
+  };
   const captionItem = {
     id: "spine-caption",
     x: 0,
-    y: cover.spine_caption_y ?? 0.82,
+    // Same reasoning as logoItem's y above — clamped against whichever
+    // sits directly above it: the logo's real bottom edge when this
+    // template has one (spine_logo_image set), the title's otherwise.
+    y: Math.max(
+      cover.spine_caption_y ?? 0.82,
+      titleItem.y + titleItem.h + SPINE_STACK_GAP,
+      cover.spine_logo_image && !cover.spine_logo_hidden ? logoItem.y + logoItem.h + SPINE_STACK_GAP : 0
+    ),
     w: 1,
     h: cover.spine_caption_h ?? 0.5,
   };
@@ -256,13 +299,6 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     y: cover.spine_divider_y ?? captionItem.y - 0.02,
     w: 1,
     h: cover.spine_divider_h ?? 0.022,
-  };
-  const logoItem = {
-    id: "spine-logo",
-    x: cover.spine_logo_x ?? 0.28,
-    y: cover.spine_logo_y ?? 0.86,
-    w: cover.spine_logo_w ?? 0.44,
-    h: cover.spine_logo_h ?? 0.08,
   };
 
   // The caption can be any 2 lines the person types (e.g. names + date), so
@@ -301,9 +337,14 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     let cancelled = false;
     if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
       const spec = `${cover.spine_caption_weight || 600} 16px ${cover.spine_caption_font || "'Manrope', sans-serif"}`;
+      // Same reasoning as the title's and subtitle's registration — its
+      // own separate async font-load correction, so its own registration.
+      if (typeof window !== "undefined") window.__autoFitPending = (window.__autoFitPending || 0) + 1;
       Promise.all([document.fonts.load(spec), document.fonts.ready]).then(() => {
         if (!cancelled) compute();
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        if (typeof window !== "undefined") window.__autoFitPending = Math.max(0, (window.__autoFitPending || 0) - 1);
+      });
     }
     return () => {
       cancelled = true;
@@ -381,9 +422,17 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     let cancelled = false;
     if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
       const spec = `${cover.spine_subtitle_weight || 600} 16px ${cover.spine_subtitle_font || cover.spine_title_font || "'Manrope', sans-serif"}`;
+      // Same reasoning as useFitSpineFontSize's registration above — this
+      // effect has its own separate async font-load correction (subtitle
+      // isn't routed through that shared hook), so it needs its own
+      // registration or the same mid-correction capture can happen to the
+      // subtitle specifically even once the title is fixed.
+      if (typeof window !== "undefined") window.__autoFitPending = (window.__autoFitPending || 0) + 1;
       Promise.all([document.fonts.load(spec), document.fonts.ready]).then(() => {
         if (!cancelled) compute();
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        if (typeof window !== "undefined") window.__autoFitPending = Math.max(0, (window.__autoFitPending || 0) - 1);
+      });
     }
     return () => {
       cancelled = true;
