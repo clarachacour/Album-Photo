@@ -59,6 +59,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors as rl_colors
 from reportlab.pdfbase import pdfmetrics
 from playwright.sync_api import sync_playwright
+import psutil
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -296,6 +297,17 @@ _r2_io_executor = ThreadPoolExecutor(max_workers=32, thread_name_prefix="r2-io")
 # for the rare moment a stale slot briefly allows two to overlap, without
 # handing the render any more threads than it actually needs.
 _pdf_render_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pdf-render")
+
+# A dedicated pool for photo-upload processing (_process_photo_sync —
+# decode, resize into variants, EXIF/hash) — separate from the default
+# executor that AI curation's own sharpness/face-detection work also uses
+# (see run_ai_processing), so someone uploading photos isn't waiting behind
+# whatever curation work happens to be running at that moment, or vice
+# versa. Sized at UPLOAD_CONCURRENCY * 2: comfortably covers every batch's
+# own internal concurrency limit (see _store_many_photos) with headroom
+# for a couple of batches genuinely overlapping, without over-provisioning
+# threads relative to the 4 real CPU cores actually available.
+_photo_processing_executor = ThreadPoolExecutor(max_workers=UPLOAD_CONCURRENCY * 2, thread_name_prefix="photo-proc")
 
 def _run_blocking(fn, *args):
     """Runs a blocking (sync) call — every get_object/put_object/
@@ -1332,11 +1344,29 @@ async def _store_new_photo(album_id: str, user_id: str, filename: str, content_t
         return None
     if len(data) == 0:
         return None
-    try:
-        loop = asyncio.get_event_loop()
-        processed = await loop.run_in_executor(None, _process_photo_sync, data, content_type, filename, user_id, album_id)
-    except Exception as e:
-        logger.error(f"Upload failed for {filename}: {e}")
+    loop = asyncio.get_event_loop()
+    # Retried up to 3 times, same shape as the Google Photos import's own
+    # retry (see _import_google_photos_items) — a transient hiccup (an R2
+    # write that times out under load, especially the exact CPU contention
+    # this whole pool of fixes is about) is far more likely than a
+    # genuinely corrupt file, and a corrupt file fails fast here (no R2
+    # call even attempted) so retrying it costs almost nothing. Previously
+    # any single failure here — transient or not — silently dropped that
+    # one photo for good, which is very plausibly why "some photos just
+    # fail" got worse specifically when a PDF generation was also
+    # underway: more contention meant more of these transient failures,
+    # each with no second chance.
+    last_error = None
+    for attempt in range(3):
+        try:
+            processed = await loop.run_in_executor(_photo_processing_executor, _process_photo_sync, data, content_type, filename, user_id, album_id)
+            break
+        except Exception as e:
+            last_error = e
+            if attempt < 2:
+                await asyncio.sleep(1.0 * (attempt + 1))  # 1s, then 2s
+    else:
+        logger.error(f"Upload failed for {filename} after 3 attempts: {last_error}")
         return None
     photo_doc = {
         "id": processed["photo_id"],
@@ -3013,6 +3043,32 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
     return page.pdf(print_background=True, prefer_css_page_size=True)
 
+def _deprioritize_current_process_tree():
+    """Lowers the OS scheduling priority (Linux 'nice' value) of every
+    child process of the current one — in practice, the Chromium process
+    Playwright just launched and its own sub-processes (renderer, GPU
+    process, etc.). Separate executor pools (_pdf_render_executor,
+    _r2_io_executor) only control which *Python threads* get to start
+    work — they say nothing about how the underlying handful of real CPU
+    cores actually get split once photo-upload processing and a Chromium
+    render are BOTH genuinely running at the same time, since Chromium is
+    its own OS process, entirely outside Python's own thread scheduling.
+    A generation is allowed to take however long it takes — nobody's
+    watching it happen. Someone actively uploading photos or waiting on
+    AI curation right now IS watching, so under real contention the OS's
+    own scheduler should favor them, not a PDF nobody's staring at. Never
+    raises — a failure here should never be the reason a render doesn't
+    happen, just means this specific optimization didn't apply."""
+    try:
+        proc = psutil.Process()
+        for child in proc.children(recursive=True):
+            try:
+                child.nice(10)  # 0 is normal priority; positive is lower on Linux
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except Exception as e:
+        logger.warning(f"Impossible de déprioriser le process Chromium : {e}")
+
 def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     """Runs entirely with Playwright's sync API. Must be called off the main
     asyncio loop (via run_in_executor) since it blocks the calling thread —
@@ -3027,6 +3083,7 @@ def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     seconds on a large, many-chunk album)."""
     with sync_playwright() as p:
         browser = p.chromium.launch()
+        _deprioritize_current_process_tree()
         page = browser.new_page()
         pdf_bytes = _render_pdf_with_page(page, print_url)
         browser.close()
