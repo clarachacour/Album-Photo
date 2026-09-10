@@ -1347,8 +1347,19 @@ async def _store_new_photo(album_id: str, user_id: str, filename: str, content_t
     the Google Photos import, so all three go through the exact same
     EXIF/hash/storage pipeline."""
     if content_type not in ALLOWED_MIME:
+        # Previously a silent return — a photo rejected here (an
+        # unsupported format: a GIF, a video misselected alongside real
+        # photos, an unusual MIME type Google's Motion Photos sometimes
+        # report) left zero trace anywhere. Someone reporting "3 of 1102
+        # failed" had nothing to search the logs for — not "Échec du
+        # téléchargement" (that's a Google-fetch failure), not "Upload
+        # failed" (that's a processing failure after a successful
+        # download) — because neither of those code paths was the one
+        # that actually ran.
+        logger.warning(f"Photo '{filename}' ignorée : type MIME non supporté ({content_type})")
         return None
     if len(data) == 0:
+        logger.warning(f"Photo '{filename}' ignorée : fichier vide")
         return None
     loop = asyncio.get_event_loop()
     # Retried up to 3 times, same shape as the Google Photos import's own
@@ -1569,6 +1580,7 @@ async def _import_google_photos_items(album_id: str, user_id: str, items: list, 
         base_url = media_file.get("baseUrl")
         filename = media_file.get("filename", "photo.jpg")
         if not base_url:
+            logger.warning(f"Photo Google Photos '{filename}' ignorée : aucune URL fournie par l'API")
             return None
         # Google's servers occasionally drop the connection under
         # concurrent load (SSLEOFError / "Max retries exceeded") — this is
@@ -1585,9 +1597,20 @@ async def _import_google_photos_items(album_id: str, user_id: str, items: list, 
                         None, lambda: requests.get(f"{base_url}=d", headers=headers, timeout=20)
                     )
                     if img_resp.status_code != 200:
-                        return None
-                    content_type = img_resp.headers.get("Content-Type", "image/jpeg")
-                    return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
+                        # Previously returned immediately here — no retry,
+                        # no log line, just silently gone. A non-200 here
+                        # (429 rate-limited, 503, a transient 5xx) is
+                        # exactly the kind of thing raising concurrency
+                        # makes more likely to happen occasionally, and is
+                        # exactly the kind of thing a retry is likely to
+                        # recover from — so it now falls through to the
+                        # same backoff-and-retry the except block below
+                        # uses (outside the semaphore, same as that one),
+                        # instead of an instant, silent giveup.
+                        last_error = f"HTTP {img_resp.status_code}"
+                    else:
+                        content_type = img_resp.headers.get("Content-Type", "image/jpeg")
+                        return await _store_new_photo(album_id, user_id, filename, content_type, img_resp.content)
                 except Exception as e:
                     last_error = e
             if attempt < 2:
@@ -4305,7 +4328,7 @@ async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
     stage2_candidates = await db.albums.find(
         {"is_deleted": {"$ne": True}, "created_at": {"$lt": stage2_cutoff}, "reminder_stage": 1},
         {"_id": 0},
-    ).to_list(2000) 
+    ).to_list(2000)
 
     stage1_sent = 0
     for album in stage1_candidates:
