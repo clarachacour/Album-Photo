@@ -142,6 +142,12 @@ AI_CONCURRENCY = int(os.environ.get("AI_CONCURRENCY", "3"))
 # UPLOAD_CONCURRENCY caused Google to start dropping connections
 # (SSLEOFError / "Max retries exceeded") under load.
 GOOGLE_PHOTOS_CONCURRENCY = int(os.environ.get("GOOGLE_PHOTOS_CONCURRENCY", "4"))
+# How many ambiguous-duplicate-cluster resolutions (each a Gemini API call,
+# see _resolve_ambiguous_cluster_with_ai) run at once during curation.
+# Bounded, not unlimited — these are calls to an external API we don't
+# control the rate limits of, same reasoning as GOOGLE_PHOTOS_CONCURRENCY
+# above.
+GEMINI_CONCURRENCY = int(os.environ.get("GEMINI_CONCURRENCY", "8"))
 
 # Optional — the AI-assisted duplicate resolution in _curate_photos only
 # runs when this is set. Without it, curation stays 100% classical (phash +
@@ -2432,11 +2438,23 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     ai_photos_recovered = 0
     ai_calls_attempted = 0
     if GEMINI_API_KEY:
-        expanded_clusters: List[List[dict]] = []
+        # Two passes instead of one: first decide, for every cluster and
+        # with no awaiting at all, whether it actually needs a Gemini call
+        # (cheap, local hamming-distance check) or not — then fire every
+        # call that's actually needed at once, bounded by GEMINI_CONCURRENCY,
+        # instead of the previous single for-loop that awaited each
+        # cluster's Gemini call before even looking at the next cluster.
+        # This turned out to be the real dominant cost in curation once
+        # the sharpness/face-detection steps were fixed to use the R2 I/O
+        # pool: measured on a real 1006-photo batch, 125 ambiguous
+        # clusters took 222.6s of the 246.6s total — sequential Gemini
+        # calls, each paying its own full round-trip one after another.
+        needs_ai: List[List[dict]] = []
+        passthrough: List[List[dict]] = []
         for cluster in clusters:
             new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
             if cluster[0]["id"] in existing_ids or len(new_in_cluster) < AMBIGUOUS_CLUSTER_MIN_SIZE:
-                expanded_clusters.append(cluster)
+                passthrough.append(cluster)
                 continue
             max_dist = max(
                 (hamming_distance(a.get("phash"), b.get("phash"))
@@ -2444,10 +2462,22 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
                 default=0,
             )
             if max_dist <= AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH:
-                expanded_clusters.append(cluster)
+                passthrough.append(cluster)
                 continue
+            needs_ai.append(cluster)
+
+        gemini_semaphore = asyncio.Semaphore(GEMINI_CONCURRENCY)
+
+        async def _resolve_bounded(cluster):
+            new_in_cluster = [c for c in cluster if c["id"] not in existing_ids]
+            async with gemini_semaphore:
+                return await _resolve_ambiguous_cluster_with_ai(new_in_cluster)
+
+        all_sub_groups = await asyncio.gather(*(_resolve_bounded(c) for c in needs_ai))
+
+        expanded_clusters: List[List[dict]] = list(passthrough)
+        for sub_groups in all_sub_groups:
             ai_calls_attempted += 1
-            sub_groups = await _resolve_ambiguous_cluster_with_ai(new_in_cluster)
             if len(sub_groups) > 1:
                 ai_clusters_resolved += 1
                 ai_photos_recovered += len(sub_groups) - 1
