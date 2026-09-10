@@ -4305,7 +4305,7 @@ async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
     stage2_candidates = await db.albums.find(
         {"is_deleted": {"$ne": True}, "created_at": {"$lt": stage2_cutoff}, "reminder_stage": 1},
         {"_id": 0},
-    ).to_list(2000)
+    ).to_list(2000) 
 
     stage1_sent = 0
     for album in stage1_candidates:
