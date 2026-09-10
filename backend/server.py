@@ -1,6 +1,6 @@
 import sys
 import asyncio 
- 
+
 
 if sys.platform == "win32":
     # The default Windows event loop (Selector) can't spawn subprocesses,
@@ -2261,7 +2261,7 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
         parts = []
         for p in cluster:
             read_path = p.get("thumbnail_path") or p["storage_path"]
-            data, _ = await loop.run_in_executor(None, get_object, read_path)
+            data, _ = await loop.run_in_executor(_r2_io_executor, get_object, read_path)
             parts.append({"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(data).decode("ascii")}})
         prompt = (
             f"These are {len(cluster)} photos, numbered 0 to {len(cluster) - 1} in the order given. "
@@ -2321,6 +2321,15 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     surprising outcome after the fact."""
     existing_selected = existing_selected or []
     existing_ids = {e["id"] for e in existing_selected}
+    # Phase timings, logged at the end alongside the existing counts — added
+    # after a 1006-photo Google Photos import measured curation at 5m36s
+    # with nothing in the logs breaking down *where* that time actually
+    # went, which meant the R2-executor fix below could only be a
+    # reasoned guess, not something confirmed by real data. This settles
+    # that for every run from now on instead of needing to re-read code
+    # and re-guess the next time something looks slow.
+    _t0 = _time.monotonic()
+    _phase_times: Dict[str, float] = {}
 
     # ---- 1. Real duplicate/burst detection (new photos vs each other AND
     # vs what's already in the album) — done BEFORE any AI call, using only
@@ -2458,6 +2467,8 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
             expanded_clusters.extend(sub_groups)
         clusters = expanded_clusters
 
+    _phase_times["clustering"] = _time.monotonic() - _t0
+
     # Diagnostic counters — surfaced via curation_stats on the album, so a
     # surprising outcome (a lot of photos going in, few pages coming out)
     # can be traced to "mostly duplicates" vs "mostly failed the sharpness
@@ -2473,7 +2484,17 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     async def _sharpness_of(p):
         try:
             read_path = p.get("thumbnail_path") or p["storage_path"]
-            data, _ = await loop.run_in_executor(None, get_object, read_path)
+            # _r2_io_executor (32 workers), not the default pool — this is
+            # a network fetch, mostly spent waiting, not computing; parking
+            # it on the small ~8-thread default pool (shared with the CPU-
+            # bound sharpness computation right below, and with face
+            # detection's own fetch further down) meant the fetches
+            # themselves were still the bottleneck even after parallelizing
+            # this step across every cluster — same underlying pool, same
+            # ~8-way ceiling regardless. Measured on a real 1006-photo
+            # Google Photos import: curation alone took 5m36s with this
+            # still on the default pool.
+            data, _ = await loop.run_in_executor(_r2_io_executor, get_object, read_path)
             return await loop.run_in_executor(None, compute_sharpness, data)
         except Exception:
             return 0.0
@@ -2555,6 +2576,8 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         else:
             passing_reps.append(rep)
 
+    _phase_times["sharpness"] = _time.monotonic() - _t0 - _phase_times["clustering"]
+
     # Face-aware focal point — finds where any people actually are in the
     # photo (fully locally, via the OpenCV/YuNet model — nothing about the
     # photo is sent anywhere for this) so the layout can center its crop on
@@ -2567,13 +2590,15 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
     async def _focal_point_of(p):
         try:
             read_path = p.get("thumbnail_path") or p["storage_path"]
-            data, _ = await loop.run_in_executor(None, get_object, read_path)
+            # Same reasoning as _sharpness_of's fetch above.
+            data, _ = await loop.run_in_executor(_r2_io_executor, get_object, read_path)
             return await loop.run_in_executor(None, compute_face_focal_point, data)
         except Exception:
             return None
 
     focal_points = await asyncio.gather(*(_focal_point_of(p) for p in passing_reps))
     faces_detected_count = sum(1 for f in focal_points if f)
+    _phase_times["face_detection"] = _time.monotonic() - _t0 - _phase_times["clustering"] - _phase_times["sharpness"]
 
     for rep, focal in zip(passing_reps, focal_points):
         focal_x, focal_y = focal if focal else (0.5, 0.5)
@@ -2690,6 +2715,7 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         else:
             selected.sort(key=lambda x: (x.get("ai_group", "zzz"), -(x.get("ai_score") or 0)))
 
+    _phase_times["sorting_and_rest"] = _time.monotonic() - _t0 - sum(_phase_times.values())
     stats = {
         "total_in": len(new_photos),
         "duplicates_removed": duplicates_removed,
@@ -2700,7 +2726,15 @@ async def _curate_photos(new_photos: List[dict], existing_selected: Optional[Lis
         "ai_photos_recovered": ai_photos_recovered,
         "faces_detected": faces_detected_count,
         "selected": len(selected),
+        "phase_seconds": {k: round(v, 1) for k, v in _phase_times.items()},
     }
+    logger.info(
+        f"Curation de {len(new_photos)} photos en {_time.monotonic() - _t0:.1f}s — "
+        f"clustering: {_phase_times['clustering']:.1f}s, "
+        f"netteté: {_phase_times['sharpness']:.1f}s, "
+        f"détection visages: {_phase_times['face_detection']:.1f}s, "
+        f"reste: {_phase_times['sorting_and_rest']:.1f}s"
+    )
     return selected, stats
 
 
