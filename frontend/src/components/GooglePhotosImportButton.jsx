@@ -15,7 +15,15 @@ const PICKER_SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.re
 // simultaneous load; the backend adds its own additional per-request cap
 // (GOOGLE_PHOTOS_CONCURRENCY) on top of this.
 const BATCH_SIZE = 20;
-const BATCH_CONCURRENCY = 2;
+// Was 2 — raised to 3 alongside GOOGLE_PHOTOS_CONCURRENCY's own increase
+// (backend, see server.py) from 4 to 6, so both move together rather than
+// one becoming the bottleneck for the other. Both were originally set
+// conservatively after Google's servers dropped connections
+// (SSLEOFError) under heavier concurrent load — not a documented limit,
+// just where it broke last time — so there's real room to test higher,
+// one step at a time, backing off the moment connection errors reappear
+// in the logs.
+const BATCH_CONCURRENCY = 3;
 
 function loadScript(src, id) {
   return new Promise((resolve, reject) => {
