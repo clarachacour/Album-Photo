@@ -2293,7 +2293,18 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
         )
         resp.raise_for_status()
         text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-        groups_idx = json.loads(text)
+        # json.loads(text) was failing on roughly 6% of real calls with
+        # "Extra data" — despite responseMimeType already asking Gemini for
+        # strict JSON, it still occasionally appends something after the
+        # actual array (whitespace-only trailing content was never the
+        # issue; json.loads already tolerates that fine). raw_decode reads
+        # just the first valid JSON value and hands back where it stopped,
+        # instead of treating anything left over as an error — the
+        # validation right below (every index present exactly once, etc.)
+        # still catches a genuinely malformed or incomplete response either
+        # way, so this only recovers the specific case where the real
+        # answer was fine and something harmless came after it.
+        groups_idx, _ = json.JSONDecoder().raw_decode(text.strip())
 
         seen = set()
         groups: List[List[dict]] = []
