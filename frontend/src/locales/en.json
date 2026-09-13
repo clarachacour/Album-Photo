@@ -341,5 +341,35 @@
       "importing": "Importing…",
       "createAlbum": "Create Album"
     }
+  },
+  "photoUpload": {
+    "linkError": "Could not create an upload link — try again.",
+    "phoneComing": "Photos are coming in from your phone — keep adding more, or come back to this screen.",
+    "limitReached": "This album has reached the 5,000-photo limit — some of your selected photos weren't added. Remove some to add more.",
+    "addingNew": "Adding your new photos…",
+    "addError": "Could not add photos",
+    "uploading": "Uploading…",
+    "tapToChoose": "Tap to choose photos",
+    "dragHere": "Drag your images here",
+    "cameraRoll": "from your camera roll · JPG, PNG, WEBP",
+    "clickToBrowse": "or click to browse · JPG, PNG, WEBP",
+    "fromPhone": "From your phone",
+    "addedSoFar_one": "{{count}} photo added so far",
+    "addedSoFar_other": "{{count}} photos added so far"
+  },
+  "googlePhotos": {
+    "accessDenied": "Google Photos access was not granted",
+    "chooseInstructions": "Click below to choose your photos in Google Photos, then come back here.",
+    "openButton": "Open Google Photos",
+    "selectionTimeout": "Photo selection timed out",
+    "noneSelected": "No photos were selected",
+    "importing_one": "Importing {{count}} photo — this can take a few minutes for a large selection.",
+    "importing_other": "Importing {{count}} photos — this can take a few minutes for a large selection.",
+    "partialImport": "{{uploaded}} of {{total}} photos imported — {{failed}} failed and were skipped. You can try importing them again.",
+    "importSuccess_one": "{{count}} photo imported from Google Photos",
+    "importSuccess_other": "{{count}} photos imported from Google Photos",
+    "importFailed": "Google Photos import failed",
+    "importingLabel": "Importing…",
+    "buttonLabel": "From Google Photos"
   }
 }
