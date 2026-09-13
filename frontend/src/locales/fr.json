@@ -162,7 +162,7 @@
   },
   "chooseTemplate": {
     "back": "Retour",
-    "title": "Choisissez un point de départ.",
+    "title": "Choisissez un point de départ",
     "subtitle": "Partez d'un thème, ou commencez avec une page blanche pour créer votre propre style.",
     "scratch_title": "Partir de zéro",
     "scratch_subtitle": "Une page blanche — sans thème ni couleurs prédéfinis."
