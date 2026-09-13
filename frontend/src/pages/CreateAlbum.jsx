@@ -76,7 +76,7 @@ function CreationProgressScreen({ progress }) {
 }
 
 export default function CreateAlbum() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const STEPS = [t("createAlbum.steps.format"), t("createAlbum.steps.edit"), t("createAlbum.steps.pictures")];
   const [params] = useSearchParams();
   const resumeAlbumId = params.get("albumId");
@@ -213,6 +213,7 @@ export default function CreateAlbum() {
           title: chosenTemplate?.title || t("createAlbum.untitled"),
           cover_template_id: chosenTemplate?.id || "default",
           cover: defaultCoverPayload(chosenTemplate),
+          lang: i18n.language?.startsWith("fr") ? "fr" : "en",
         });
         albumHistory.resetState(data);
       } else {
