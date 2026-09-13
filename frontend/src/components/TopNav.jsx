@@ -1,11 +1,14 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
 import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield } from "lucide-react";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function TopNav() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const nav = useNavigate();
   const loc = useLocation();
   const isEditor = loc.pathname.includes("/editor");
@@ -25,26 +28,26 @@ export default function TopNav() {
               data-testid={TID.navDashboard}
               className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
-              <LayoutGrid size={14} /> My albums
+              <LayoutGrid size={14} /> {t("nav.myAlbums")}
             </Link>
             <Link
               to="/orders"
               className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
-              <Package size={14} /> Orders
+              <Package size={14} /> {t("nav.orders")}
             </Link>
             <Link
               to="/faq"
               className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
-              <HelpCircle size={14} /> FAQ
+              <HelpCircle size={14} /> {t("nav.faq")}
             </Link>
             {user.is_admin && (
               <Link
                 to="/admin/orders"
                 className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--coral)] hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
               >
-                <Shield size={14} /> Admin
+                <Shield size={14} /> {t("nav.admin")}
               </Link>
             )}
             <Link
@@ -62,15 +65,17 @@ export default function TopNav() {
               }}
               className="inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--coral)] px-3 py-2 transition-colors"
             >
-              <LogOut size={14} /> Logout
+              <LogOut size={14} /> {t("nav.logout")}
             </button>
+            <LanguageSwitcher className="ml-2 pl-2 border-l border-[color:var(--border-soft)]" />
           </nav>
         )}
         {!user && (
           <nav className="flex items-center gap-4">
             <Link to="/auth" className="text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
-              Sign in
+              {t("nav.signIn")}
             </Link>
+            <LanguageSwitcher />
           </nav>
         )}
       </div>
