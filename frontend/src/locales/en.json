@@ -92,20 +92,20 @@
     },
     "forgot": {
       "title": "Reset your password.",
-      "subtitle": "Enter your email and we'll send you a link to reset it.",
+      "subtitle": "We'll email you a link to set a new password.",
       "submit": "Send reset link",
-      "error": "Couldn't send the reset link. Please try again.",
-      "sentMessage": "If an account exists for <1>{{email}}</1>, we've sent a link to reset your password. Check your inbox."
+      "error": "Something went wrong",
+      "sentMessage": "If an account exists for <1>{{email}}</1>, we've sent a reset link — check your inbox."
     },
     "reset": {
-      "title": "Choose a new password.",
-      "subtitle": "Enter a new password for your account.",
+      "title": "Set a new password.",
+      "subtitle": "Choose a new password for your account.",
       "newPassword": "New password",
-      "submit": "Reset password",
-      "missingToken": "This link is missing or invalid. Please request a new one.",
-      "missingTokenToast": "This reset link is invalid.",
-      "successToast": "Your password has been reset. You can now sign in.",
-      "error": "Couldn't reset your password. The link may have expired."
+      "submit": "Update password",
+      "missingToken": "This link is missing its reset token. Please request a new one from the sign-in page.",
+      "missingTokenToast": "This reset link is missing its token — please request a new one.",
+      "successToast": "Password updated — you can sign in now.",
+      "error": "This link is invalid or has expired"
     },
     "social": {
       "googleFailed": "Google sign-in failed",
