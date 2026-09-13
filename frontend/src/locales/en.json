@@ -488,6 +488,7 @@
     "resize": "Resize",
     "changeLayout": "Change this page's layout — how many photos it holds and how they're arranged",
     "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",
-    "deletePage": "Delete this whole page"
+    "deletePage": "Delete this whole page",
+    "addTextBox": "Add a text box to this page — click where you want it to go"
   }
 }
