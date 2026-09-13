@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { api, photoImageUrl } from "@/lib/api";
 import { toast } from "sonner";
 import MobileUploadQR from "@/components/MobileUploadQR";
@@ -20,6 +21,7 @@ import { isMobileDevice } from "@/lib/device";
  *   caller can show its processing/progress UI.
  */
 export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted, afterMethodsRow, onImportingChange }) {
+  const { t } = useTranslation();
   const [drag, setDrag] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [phoneSession, setPhoneSession] = useState(null);
@@ -66,7 +68,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       const { data } = await api.post(`/albums/${albumId}/mobile-upload-session`);
       setPhoneSession(data);
     } catch {
-      toast.error("Could not create an upload link — try again.");
+      toast.error(t("photoUpload.linkError"));
     }
   };
 
@@ -104,7 +106,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           // landing after the modal closes.
           if (showQRRef.current) {
             setShowQR(false);
-            toast.success("Photos are coming in from your phone — keep adding more, or come back to this screen.");
+            toast.success(t("photoUpload.phoneComing"));
           }
         }
         onPhotosChange(newPhotos);
@@ -200,16 +202,16 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       };
       await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
       if (limitReached) {
-        toast.warning("This album has reached the 5,000-photo limit — some of your selected photos weren't added. Remove some to add more.", { duration: 8000 });
+        toast.warning(t("photoUpload.limitReached"), { duration: 8000 });
       }
       if (mode === "editor") {
-        toast.success("Adding your new photos…");
+        toast.success(t("photoUpload.addingNew"));
         onProcessingStarted && onProcessingStarted();
       } else {
         await refreshAlbum();
       }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Could not add photos");
+      toast.error(err?.response?.data?.detail || t("photoUpload.addError"));
     } finally {
       setUploading(false);
     }
@@ -243,9 +245,9 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       >
         <Upload size={32} className="mx-auto mb-4 text-[color:var(--muted)]" />
         <p className="font-serif-display text-2xl mb-2">
-          {uploading ? "Uploading…" : onPhone ? "Tap to choose photos" : "Drag your images here"}
+          {uploading ? t("photoUpload.uploading") : onPhone ? t("photoUpload.tapToChoose") : t("photoUpload.dragHere")}
         </p>
-        <p className="text-[color:var(--muted)] text-sm">{onPhone ? "from your camera roll · JPG, PNG, WEBP" : "or click to browse · JPG, PNG, WEBP"}</p>
+        <p className="text-[color:var(--muted)] text-sm">{onPhone ? t("photoUpload.cameraRoll") : t("photoUpload.clickToBrowse")}</p>
         <input
           ref={fileInput}
           data-testid={TID.photoInput}
@@ -270,7 +272,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
             className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
           >
             <Smartphone size={16} />
-            <span className="text-sm font-semibold tracking-widest uppercase">From your phone</span>
+            <span className="text-sm font-semibold tracking-widest uppercase">{t("photoUpload.fromPhone")}</span>
           </button>
         )}
         {albumId && <GooglePhotosImportButton albumId={albumId} onImported={handlePhoneOrGoogleUpdate} onBusyChange={setGoogleImporting} />}
@@ -287,7 +289,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
 
       {photos && photos.length > 0 && (
         <div className="mt-10">
-          <div className="eyebrow mb-4">{photos.length} photo{photos.length > 1 ? "s" : ""} added so far</div>
+          <div className="eyebrow mb-4">{t("photoUpload.addedSoFar", { count: photos.length })}</div>
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2">
             {photos.map((p) => (
               <div key={p.id} className="relative aspect-square bg-[color:var(--editor-canvas)] overflow-hidden">
