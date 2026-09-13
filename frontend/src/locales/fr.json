@@ -468,5 +468,26 @@
       "resetFraming": "Réinitialiser le cadrage",
       "removeFromPage": "Retirer de la page"
     }
+  },
+  "toolbars": {
+    "editPhoto": "Modifier la photo",
+    "clickToSwap": "Cliquez sur une autre photo pour l'échanger",
+    "swapWithAnother": "Échanger avec une autre photo",
+    "sendBackward": "Envoyer vers l'arrière",
+    "bringForward": "Amener vers l'avant",
+    "deleteFrame": "Supprimer ce cadre",
+    "done": "Terminé",
+    "decreaseFontSize": "Réduire la taille du texte",
+    "increaseFontSize": "Augmenter la taille du texte",
+    "bold": "Gras",
+    "textColor": "Couleur du texte",
+    "hexPlaceholder": "#RRVVBB",
+    "deleteText": "Supprimer ce texte"
+  },
+  "albumPage": {
+    "resize": "Redimensionner",
+    "changeLayout": "Changer la mise en page de cette page — combien de photos elle contient et comment elles sont disposées",
+    "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
+    "deletePage": "Supprimer toute cette page"
   }
 }
