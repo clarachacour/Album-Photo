@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { TID } from "@/constants/testIds";
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const nav = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const load = async () => {
     setLoading(true);
@@ -19,7 +21,7 @@ export default function Dashboard() {
       const { data } = await api.get("/albums");
       setAlbums(data);
     } catch {
-      toast.error("Failed to load your albums");
+      toast.error(t("dashboard.loadError"));
     } finally {
       setLoading(false);
     }
@@ -27,16 +29,41 @@ export default function Dashboard() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const remove = async (id, title) => {
-    if (!window.confirm(`Delete "${title}"?`)) return;
+    if (!window.confirm(t("dashboard.confirmDelete", { title }))) return;
     try {
       await api.delete(`/albums/${id}`);
-      toast.success("Album deleted");
+      toast.success(t("dashboard.deletedToast"));
       load();
     } catch {
-      toast.error("Deletion failed");
+      toast.error(t("dashboard.deleteError"));
+    }
+  };
+
+  const statusLabel = (s) => {
+    switch (s) {
+      case "draft":
+        return t("dashboard.status.draft");
+      case "processing":
+        return t("dashboard.status.processing");
+      case "ready":
+        return t("dashboard.status.ready");
+      case "error":
+        return t("dashboard.status.error");
+      default:
+        return s || "—";
+    }
+  };
+
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" });
+    } catch {
+      return "—";
     }
   };
 
@@ -45,8 +72,8 @@ export default function Dashboard() {
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
           <div>
-            <div className="eyebrow mb-3">Library</div>
-            <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">Your editions</h1>
+            <div className="eyebrow mb-3">{t("dashboard.eyebrow")}</div>
+            <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">{t("dashboard.title")}</h1>
           </div>
           <button
             data-testid={TID.dashCreate}
@@ -54,7 +81,7 @@ export default function Dashboard() {
             className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors self-start"
           >
             <Plus size={16} />
-            <span className="text-sm font-semibold tracking-widest uppercase">New album</span>
+            <span className="text-sm font-semibold tracking-widest uppercase">{t("dashboard.newAlbum")}</span>
           </button>
         </div>
 
@@ -66,13 +93,13 @@ export default function Dashboard() {
           </div>
         ) : albums.length === 0 ? (
           <div className="border border-dashed border-[color:var(--ink)]/20 py-24 px-8 text-center">
-            <p className="font-serif-display text-3xl mb-4">No albums yet.</p>
-            <p className="text-[color:var(--ink)]/70 mb-8">Create your first edition in a few minutes.</p>
+            <p className="font-serif-display text-3xl mb-4">{t("dashboard.empty.title")}</p>
+            <p className="text-[color:var(--ink)]/70 mb-8">{t("dashboard.empty.subtitle")}</p>
             <button
               onClick={() => nav("/choose-template")}
               className="bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 text-sm font-semibold tracking-widest uppercase hover:bg-[color:var(--coral)] transition-colors"
             >
-              Get started
+              {t("dashboard.empty.cta")}
             </button>
           </div>
         ) : (
@@ -88,7 +115,7 @@ export default function Dashboard() {
                     <CoverFrontPage
                       template={getTemplate()}
                       cover={cover}
-                      title={a.title || "Untitled"}
+                      title={a.title || t("dashboard.untitled")}
                       orientation={a.orientation || "portrait"}
                       coverImageUrl={uploadedCoverImageUrl}
                       editable={false}
@@ -101,20 +128,20 @@ export default function Dashboard() {
                     <div>
                       <div className="font-serif-display text-xl leading-tight">{a.title}</div>
                       <div className="eyebrow mt-1 text-[color:var(--muted)]">
-                        {a.country || "—"} · {a.year} · {a.size} {a.orientation === "landscape" ? "landscape" : "portrait"}
+                        {a.country || "—"} · {a.year} · {a.size} {a.orientation === "landscape" ? t("dashboard.landscape") : t("dashboard.portrait")}
                       </div>
                       <div className="text-xs mt-2 uppercase tracking-widest text-[color:var(--coral)]">
-                        {a.is_ordered ? "Ordered" : statusLabel(a.status)}
+                        {a.is_ordered ? t("dashboard.status.ordered") : statusLabel(a.status)}
                       </div>
                       <div className="text-xs mt-2 text-[color:var(--muted)] space-y-0.5">
-                        <div>Created {formatDate(a.created_at)}</div>
-                        <div>Last modified {formatDate(a.updated_at)}</div>
+                        <div>{t("dashboard.created", { date: formatDate(a.created_at) })}</div>
+                        <div>{t("dashboard.lastModified", { date: formatDate(a.updated_at) })}</div>
                       </div>
                       {!a.is_ordered && a.days_until_deletion != null && (
                         <div className="text-xs mt-2 font-medium text-red-600">
                           {a.days_until_deletion === 0
-                            ? "This album will be deleted today"
-                            : `This album will be deleted in ${a.days_until_deletion} day${a.days_until_deletion === 1 ? "" : "s"}`}
+                            ? t("dashboard.deletionToday")
+                            : t("dashboard.deletionInDays", { count: a.days_until_deletion })}
                         </div>
                       )}
                     </div>
@@ -123,7 +150,7 @@ export default function Dashboard() {
                         onClick={() => remove(a.id, a.title)}
                         className="text-[color:var(--muted)] hover:text-red-600 transition-colors"
                         data-testid={`album-delete-${a.id}`}
-                        aria-label="Delete"
+                        aria-label={t("dashboard.deleteAria")}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -137,28 +164,4 @@ export default function Dashboard() {
       </div>
     </main>
   );
-}
-
-function statusLabel(s) {
-  switch (s) {
-    case "draft":
-      return "Draft";
-    case "processing":
-      return "AI processing";
-    case "ready":
-      return "Ready";
-    case "error":
-      return "Error";
-    default:
-      return s || "—";
-  }
-}
-
-function formatDate(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return "—";
-  }
 }
