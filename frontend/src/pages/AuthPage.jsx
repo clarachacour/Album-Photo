@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
@@ -14,11 +15,9 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [busy, setBusy] = useState(false);
   const { login, signup } = useAuth();
+  const { t } = useTranslation();
   const nav = useNavigate();
 
-  // Pre-fill the email if the user previously checked "Remember me"
-  // (only the email is stored — never the password; the browser's own
-  // password manager handles the rest via the autoComplete attributes below).
   useEffect(() => {
     const savedEmail = localStorage.getItem("saved_user_email");
     if (savedEmail) {
@@ -41,14 +40,14 @@ export default function AuthPage() {
     try {
       if (mode === "signup") {
         await signup(name.trim(), email.trim().toLowerCase(), password);
-        toast.success("Welcome!");
+        toast.success(t("auth.welcomeToast"));
       } else {
         await login(email.trim().toLowerCase(), password);
-        toast.success("Welcome back!");
+        toast.success(t("auth.welcomeBackToast"));
       }
       nav("/dashboard");
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "An error occurred");
+      toast.error(err?.response?.data?.detail || t("auth.genericError"));
     } finally {
       setBusy(false);
     }
@@ -60,15 +59,13 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8 md:p-16 bg-[color:var(--paper)]">
         <div className="w-full max-w-md">
           <Link to="/" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
-            ← Back
+            ← {t("auth.back")}
           </Link>
           <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight mb-3">
-            {mode === "login" ? "Welcome back !" : "Create your first edition."}
+            {mode === "login" ? t("auth.login.title") : t("auth.signup.title")}
           </h1>
           <p className="text-[color:var(--ink)]/70 mb-8">
-            {mode === "login"
-              ? "Sign in to access your albums."
-              : "One account to create, save, and export."}
+            {mode === "login" ? t("auth.login.subtitle") : t("auth.signup.subtitle")}
           </p>
 
           {/* Google / Apple sign-in (hidden automatically if not configured) */}
@@ -77,7 +74,7 @@ export default function AuthPage() {
           <form onSubmit={submit} className="space-y-5">
             {mode === "signup" && (
               <div>
-                <label className="eyebrow block mb-2">Name</label>
+                <label className="eyebrow block mb-2">{t("auth.name")}</label>
                 <input
                   data-testid={TID.authNameInput}
                   value={name}
@@ -89,7 +86,7 @@ export default function AuthPage() {
               </div>
             )}
             <div>
-              <label className="eyebrow block mb-2">Email</label>
+              <label className="eyebrow block mb-2">{t("auth.email")}</label>
               <input
                 data-testid={TID.authEmailInput}
                 type="email"
@@ -101,7 +98,7 @@ export default function AuthPage() {
               />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Password</label>
+              <label className="eyebrow block mb-2">{t("auth.password")}</label>
               <input
                 data-testid={TID.authPasswordInput}
                 type="password"
@@ -124,7 +121,7 @@ export default function AuthPage() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="accent-[color:var(--ink)]"
                   />
-                  Remember me
+                  {t("auth.rememberMe")}
                 </label>
                 <button
                   type="button"
@@ -132,7 +129,7 @@ export default function AuthPage() {
                   data-testid={TID.authForgotPassword}
                   className="text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] underline transition-colors"
                 >
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </button>
               </div>
             )}
@@ -145,7 +142,7 @@ export default function AuthPage() {
             >
               {busy && <Loader2 size={16} className="animate-spin" />}
               <span className="text-sm font-semibold tracking-widest uppercase">
-                {mode === "login" ? "Sign in" : "Create account"}
+                {mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
               </span>
             </button>
           </form>
@@ -155,7 +152,7 @@ export default function AuthPage() {
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
             className="mt-8 text-sm text-[color:var(--muted)] hover:text-[color:var(--ink)] underline underline-offset-4 transition-colors"
           >
-            {mode === "login" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+            {mode === "login" ? t("auth.noAccount") : t("auth.hasAccount")}
           </button>
         </div>
       </div>
