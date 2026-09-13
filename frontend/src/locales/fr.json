@@ -488,6 +488,7 @@
     "resize": "Redimensionner",
     "changeLayout": "Changer la mise en page de cette page — combien de photos elle contient et comment elles sont disposées",
     "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
-    "deletePage": "Supprimer toute cette page"
+    "deletePage": "Supprimer toute cette page",
+    "addTextBox": "Ajouter une zone de texte à cette page — cliquez où vous voulez la placer"
   }
 }
