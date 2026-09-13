@@ -1,0 +1,291 @@
+{
+  "nav": {
+    "myAlbums": "Mes albums",
+    "orders": "Commandes",
+    "faq": "FAQ",
+    "admin": "Admin",
+    "logout": "Déconnexion",
+    "signIn": "Se connecter"
+  },
+  "landing": {
+    "hero": {
+      "title_line1": "Un album photo",
+      "title_highlight": "signé",
+      "title_line2": "par vos souvenirs.",
+      "subtitle": "Envoyez vos photos, et nous les transformerons en un album imprimé raffiné, pensé pour traverser le temps et être gardé précieusement.",
+      "cta": "Créer mon album"
+    },
+    "process": {
+      "steps": [
+        {
+          "title": "Vous envoyez",
+          "body": "Toutes vos photos, sans les trier — doublons, flous, HDR. On accepte tout."
+        },
+        {
+          "title": "On trie",
+          "body": "Gemini analyse chaque photo : composition, doublons, regroupement par scène."
+        },
+        {
+          "title": "Vous feuilletez",
+          "body": "Un aperçu 3D, des mises en page variées, et un export PDF haute résolution."
+        }
+      ]
+    },
+    "sorting": {
+      "eyebrow": "Comment fonctionne le tri",
+      "title_line1": "Ce qui arrive vraiment",
+      "title_highlight": "à vos photos.",
+      "intro": "Vous pouvez tout envoyer — des centaines de photos, des doublons, des rafales quasi identiques, quelques photos floues — sans avoir à faire le tri vous-même. Voici exactement ce qu'on fait pour transformer tout ça en album, étape par étape, sans jamais toucher à la résolution des images que vous imprimerez réellement.",
+      "steps": [
+        {
+          "title": "Repérer les quasi-doublons et les rafales",
+          "body": "Chaque photo reçoit une empreinte visuelle, et les photos prises à quelques instants d'intervalle sont comparées entre elles. Les images quasi identiques — le même instant photographié deux ou trois fois — sont regroupées automatiquement."
+        },
+        {
+          "title": "Choisir la plus nette",
+          "body": "Dans chaque groupe, on mesure directement la netteté et on garde la photo la plus nette. Les autres sont mises de côté discrètement, jamais supprimées."
+        },
+        {
+          "title": "Trier par date et par lieu",
+          "body": "Les photos distinctes restantes sont ensuite classées chronologiquement. Quand une photo porte une donnée de localisation, elle est regroupée avec les autres prises au même endroit avant d'être triée par heure — pour que votre album suive l'ordre réel des événements, lieu par lieu."
+        },
+        {
+          "title": "Écarter les ratés évidents",
+          "body": "Les photos manifestement floues — bougé important, doigt devant l'objectif — sont laissées de côté dans la mise en page automatique, sur la base du même test de netteté utilisé pour départager les quasi-doublons. Rien n'est jamais supprimé définitivement — tout ce qui est mis de côté pendant le tri reste disponible pour être rajouté dans l'éditeur si vous n'êtes pas d'accord."
+        }
+      ]
+    },
+    "templates": {
+      "eyebrow": "Modèles",
+      "title_line1": "Partez d'un thème.",
+      "title_highlight": "Faites-le vôtre.",
+      "intro": "Choisissez une base pour votre voyage, votre couple, votre famille, ou une célébration — puis personnalisez chaque détail dans l'éditeur : couleurs, titre, photos, mise en page."
+    },
+    "footer": {
+      "title_line1": "Prêt·e à concevoir",
+      "title_line2": "votre édition ?",
+      "cta": "Créer mon album photo"
+    }
+  },
+  "auth": {
+    "back": "Retour",
+    "backToSignIn": "Retour à la connexion",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "name": "Nom",
+    "rememberMe": "Se souvenir de moi",
+    "forgotPassword": "Mot de passe oublié ?",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "noAccount": "Pas encore de compte ? Inscrivez-vous",
+    "hasAccount": "Déjà un compte ? Connectez-vous",
+    "welcomeToast": "Bienvenue sur Everbook !",
+    "welcomeBackToast": "Content de vous revoir !",
+    "genericError": "Une erreur est survenue. Merci de réessayer.",
+    "login": {
+      "title": "Content de vous revoir.",
+      "subtitle": "Connectez-vous pour continuer à travailler sur vos albums."
+    },
+    "signup": {
+      "title": "Créez votre compte.",
+      "subtitle": "Un espace pour garder et imprimer vos souvenirs préférés."
+    },
+    "forgot": {
+      "title": "Réinitialisez votre mot de passe.",
+      "subtitle": "Entrez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+      "submit": "Envoyer le lien",
+      "error": "Impossible d'envoyer le lien. Merci de réessayer.",
+      "sentMessage": "Si un compte existe pour <1>{{email}}</1>, nous avons envoyé un lien pour réinitialiser le mot de passe. Vérifiez votre boîte de réception."
+    },
+    "reset": {
+      "title": "Choisissez un nouveau mot de passe.",
+      "subtitle": "Entrez un nouveau mot de passe pour votre compte.",
+      "newPassword": "Nouveau mot de passe",
+      "submit": "Réinitialiser le mot de passe",
+      "missingToken": "Ce lien est manquant ou invalide. Merci d'en demander un nouveau.",
+      "missingTokenToast": "Ce lien de réinitialisation est invalide.",
+      "successToast": "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.",
+      "error": "Impossible de réinitialiser le mot de passe. Le lien a peut-être expiré."
+    },
+    "social": {
+      "googleFailed": "Échec de la connexion Google",
+      "appleFailed": "Échec de la connexion Apple",
+      "continueWithApple": "Continuer avec Apple",
+      "or": "ou"
+    }
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Questions fréquentes.",
+    "cantFind": "Vous ne trouvez pas ce que vous cherchez ?",
+    "getInTouch": "Contactez-nous",
+    "items": [
+      {
+        "q": "Comment fonctionne le tri par IA ?",
+        "a": "Une fois vos photos envoyées, on analyse chacune d'elles pour la netteté et les doublons, on regroupe les prises quasi identiques, et on garde la meilleure de chaque groupe. Le reste est mis de côté, pas supprimé — vous pouvez toujours le récupérer dans l'éditeur."
+      },
+      {
+        "q": "Puis-je modifier l'album après le tri automatique ?",
+        "a": "Oui. Chaque page, photo et mise en page peut être déplacée, remplacée, redimensionnée ou supprimée dans l'éditeur avant de passer commande."
+      },
+      {
+        "q": "Quels formats et tailles sont disponibles ?",
+        "a": "Les albums Everbook sont disponibles en A4 et A5, en portrait ou paysage, avec une reliure rigide."
+      },
+      {
+        "q": "Combien de temps prennent l'impression et la livraison ?",
+        "a": "Une fois la commande passée, la production prend généralement quelques jours, suivie d'une livraison standard. Vous recevrez un numéro de suivi par e-mail une fois l'envoi expédié."
+      },
+      {
+        "q": "Puis-je encore modifier mon album après avoir commandé ?",
+        "a": "Une fois la commande passée, l'album part en production et ne peut plus être modifié."
+      },
+      {
+        "q": "Quels formats de photos puis-je envoyer ?",
+        "a": "JPEG, PNG, HEIC et HEIF sont tous acceptés, que vous les envoyiez depuis votre ordinateur, votre téléphone, ou en les important directement depuis Google Photos."
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Contact",
+    "title": "Contactez-nous.",
+    "thanks": "Merci !",
+    "willReply": "Nous avons bien reçu votre message et vous répondrons dès que possible.",
+    "name": "Nom",
+    "email": "E-mail",
+    "subject": "Sujet",
+    "message": "Message",
+    "sending": "Envoi…",
+    "send": "Envoyer le message",
+    "sentToast": "Votre message a été envoyé.",
+    "errorToast": "Impossible d'envoyer votre message. Merci de réessayer."
+  },
+  "chooseTemplate": {
+    "back": "Retour",
+    "title": "Choisissez un point de départ.",
+    "subtitle": "Partez d'un thème, ou commencez avec une page blanche pour créer votre propre style.",
+    "scratch_title": "Partir de zéro",
+    "scratch_subtitle": "Une page blanche — sans thème ni couleurs prédéfinis."
+  },
+  "dashboard": {
+    "eyebrow": "Bibliothèque",
+    "title": "Vos éditions",
+    "newAlbum": "Nouvel album",
+    "loadError": "Impossible de charger vos albums",
+    "confirmDelete": "Supprimer « {{title}} » ?",
+    "deletedToast": "Album supprimé",
+    "deleteError": "Échec de la suppression",
+    "deleteAria": "Supprimer",
+    "untitled": "Sans titre",
+    "landscape": "paysage",
+    "portrait": "portrait",
+    "created": "Créé le {{date}}",
+    "lastModified": "Modifié le {{date}}",
+    "deletionToday": "Cet album sera supprimé aujourd'hui",
+    "deletionInDays_one": "Cet album sera supprimé dans {{count}} jour",
+    "deletionInDays_other": "Cet album sera supprimé dans {{count}} jours",
+    "status": {
+      "draft": "Brouillon",
+      "processing": "Traitement IA",
+      "ready": "Prêt",
+      "error": "Erreur",
+      "ordered": "Commandé"
+    },
+    "empty": {
+      "title": "Aucun album pour l'instant.",
+      "subtitle": "Créez votre première édition en quelques minutes.",
+      "cta": "Commencer"
+    }
+  },
+  "orders": {
+    "eyebrow": "Compte",
+    "title": "Vos commandes",
+    "loading": "Chargement…",
+    "loadError": "Impossible de charger vos commandes",
+    "empty": "Vous n'avez encore commandé aucun album.",
+    "goToAlbums": "Voir vos albums",
+    "qty": "Qté",
+    "status": {
+      "pending_payment": "En attente de paiement",
+      "paid": "Payée",
+      "processing": "En traitement",
+      "printing": "En impression",
+      "ready_for_delivery": "Prête pour l'envoi",
+      "shipped": "Expédiée",
+      "delivered": "Livrée",
+      "cancelled": "Annulée"
+    }
+  },
+  "orderDetail": {
+    "loading": "Chargement…",
+    "loadError": "Impossible de charger cette commande",
+    "back": "Retour à vos commandes",
+    "orderNumber": "Commande n°{{id}}",
+    "paymentNotice": "Le paiement n'est pas encore configuré de notre côté — nous avons enregistré votre commande et commencé à préparer votre album. Nous vous recontacterons directement pour finaliser le paiement.",
+    "status": "Statut",
+    "cancelled": "Cette commande a été annulée.",
+    "trackingNumber": "Numéro de suivi :",
+    "orderDetails": "Détails de la commande",
+    "format": "Format",
+    "quantity": "Quantité",
+    "unitPrice": "Prix unitaire",
+    "total": "Total",
+    "placedOn": "Passée le {{date}}",
+    "shippingTo": "Livraison à"
+  },
+  "account": {
+    "eyebrow": "Compte",
+    "title": "Votre compte",
+    "myOrders": "Mes commandes",
+    "contactSupport": "Contacter le support",
+    "profileSection": "Profil et informations de livraison",
+    "name": "Nom",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "street": "Rue",
+    "building": "Bâtiment",
+    "city": "Ville",
+    "additionalInfo": "Informations complémentaires (facultatif)",
+    "additionalInfoPlaceholder": "Étage, code d'accès, consignes de livraison...",
+    "saving": "Enregistrement…",
+    "saveChanges": "Enregistrer les modifications",
+    "profileUpdated": "Profil mis à jour",
+    "profileUpdateError": "Impossible de mettre à jour le profil",
+    "changePassword": "Modifier le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
+    "updating": "Mise à jour…",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "passwordUpdated": "Mot de passe mis à jour",
+    "passwordUpdateError": "Impossible de mettre à jour le mot de passe",
+    "passwordMismatch": "Les nouveaux mots de passe ne correspondent pas"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé"
+  },
+  "mobileQr": {
+    "title": "Scannez avec votre téléphone.",
+    "instructions": "Ouvrez l'appareil photo de votre téléphone, scannez le code, et choisissez vos photos — elles apparaîtront ici automatiquement, même après avoir fermé cette fenêtre.",
+    "error": "Impossible de créer un lien d'envoi — réessayez.",
+    "expiry": "Ce lien reste actif pendant 1 heure."
+  },
+  "photoGallery": {
+    "clickToPlace": "Cliquez sur un emplacement de n'importe quelle page pour y placer cette photo",
+    "clickToCancel": "Cliquez sur une page pour la placer — cliquez ici à nouveau pour annuler",
+    "dragOrClick": "Cliquez pour la placer sur une page, ou glissez-la"
+  },
+  "layoutPicker": {
+    "title": "Choisir une mise en page",
+    "instructions": "Vos photos existantes sont réorganisées dans la nouvelle disposition, et les emplacements supplémentaires nécessaires apparaissent vides — glissez vos photos dessus, chaque cadre reste redimensionnable ou déplaçable ensuite.",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos"
+  }
+}
