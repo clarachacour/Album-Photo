@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useState, useLayoutEffect, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 import LayoutPicker from "@/components/LayoutPicker";
@@ -200,6 +201,7 @@ function useElementWidth(ref) {
  *   editable     - bool
  */
 export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick }) {
+  const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
 
@@ -304,7 +306,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           data-testid={`${tid}-resize`}
-          title="Redimensionner"
+          title={t("albumPage.resize")}
         />
       )}
     </div>
@@ -342,6 +344,7 @@ export function AlbumPage({
   autoEditItemId,
   onTextEditHandled,
 }) {
+  const { t } = useTranslation();
   const containerRef = useRef(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const items = page?.items || [];
@@ -634,7 +637,7 @@ export function AlbumPage({
               }}
               data-testid={`page-layout-btn-${pageIndex}`}
               className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
-              title="Change this page's layout — how many photos it holds and how they're arranged"
+              title={t("albumPage.changeLayout")}
             >
               <LayoutGrid size={13} />
             </button>
@@ -656,13 +659,13 @@ export function AlbumPage({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.")) {
+                if (window.confirm(t("albumPage.confirmDeletePage"))) {
                   onDeletePage();
                 }
               }}
               data-testid={`page-delete-btn-${pageIndex}`}
               className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
-              title="Delete this whole page"
+              title={t("albumPage.deletePage")}
             >
               <Trash2 size={13} />
             </button>
