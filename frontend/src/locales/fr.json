@@ -341,5 +341,35 @@
       "importing": "Import en cours…",
       "createAlbum": "Créer l'album"
     }
+  },
+  "photoUpload": {
+    "linkError": "Impossible de créer un lien d'envoi — réessayez.",
+    "phoneComing": "Des photos arrivent depuis votre téléphone — continuez à en ajouter, ou revenez sur cet écran.",
+    "limitReached": "Cet album a atteint la limite de 5000 photos — certaines de vos photos sélectionnées n'ont pas été ajoutées. Supprimez-en pour pouvoir en ajouter d'autres.",
+    "addingNew": "Ajout de vos nouvelles photos…",
+    "addError": "Impossible d'ajouter les photos",
+    "uploading": "Envoi en cours…",
+    "tapToChoose": "Touchez pour choisir des photos",
+    "dragHere": "Glissez vos images ici",
+    "cameraRoll": "depuis votre pellicule · JPG, PNG, WEBP",
+    "clickToBrowse": "ou cliquez pour parcourir · JPG, PNG, WEBP",
+    "fromPhone": "Depuis votre téléphone",
+    "addedSoFar_one": "{{count}} photo ajoutée pour l'instant",
+    "addedSoFar_other": "{{count}} photos ajoutées pour l'instant"
+  },
+  "googlePhotos": {
+    "accessDenied": "L'accès à Google Photos n'a pas été accordé",
+    "chooseInstructions": "Cliquez ci-dessous pour choisir vos photos dans Google Photos, puis revenez ici.",
+    "openButton": "Ouvrir Google Photos",
+    "selectionTimeout": "Le délai de sélection des photos a expiré",
+    "noneSelected": "Aucune photo n'a été sélectionnée",
+    "importing_one": "Import de {{count}} photo en cours — ça peut prendre quelques minutes pour une grande sélection.",
+    "importing_other": "Import de {{count}} photos en cours — ça peut prendre quelques minutes pour une grande sélection.",
+    "partialImport": "{{uploaded}} sur {{total}} photos importées — {{failed}} ont échoué et ont été ignorées. Vous pouvez réessayer de les importer.",
+    "importSuccess_one": "{{count}} photo importée depuis Google Photos",
+    "importSuccess_other": "{{count}} photos importées depuis Google Photos",
+    "importFailed": "Échec de l'import depuis Google Photos",
+    "importingLabel": "Import en cours…",
+    "buttonLabel": "Depuis Google Photos"
   }
 }
