@@ -92,20 +92,20 @@
     },
     "forgot": {
       "title": "Réinitialisez votre mot de passe.",
-      "subtitle": "Entrez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+      "subtitle": "Nous vous enverrons un e-mail avec un lien pour définir un nouveau mot de passe.",
       "submit": "Envoyer le lien",
-      "error": "Impossible d'envoyer le lien. Merci de réessayer.",
-      "sentMessage": "Si un compte existe pour <1>{{email}}</1>, nous avons envoyé un lien pour réinitialiser le mot de passe. Vérifiez votre boîte de réception."
+      "error": "Une erreur est survenue",
+      "sentMessage": "Si un compte existe pour <1>{{email}}</1>, nous avons envoyé un lien de réinitialisation — vérifiez votre boîte de réception."
     },
     "reset": {
-      "title": "Choisissez un nouveau mot de passe.",
-      "subtitle": "Entrez un nouveau mot de passe pour votre compte.",
+      "title": "Définissez un nouveau mot de passe.",
+      "subtitle": "Choisissez un nouveau mot de passe pour votre compte.",
       "newPassword": "Nouveau mot de passe",
-      "submit": "Réinitialiser le mot de passe",
-      "missingToken": "Ce lien est manquant ou invalide. Merci d'en demander un nouveau.",
-      "missingTokenToast": "Ce lien de réinitialisation est invalide.",
-      "successToast": "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.",
-      "error": "Impossible de réinitialiser le mot de passe. Le lien a peut-être expiré."
+      "submit": "Mettre à jour le mot de passe",
+      "missingToken": "Ce lien n'a pas de jeton de réinitialisation. Merci d'en demander un nouveau depuis la page de connexion.",
+      "missingTokenToast": "Ce lien de réinitialisation n'a pas de jeton — merci d'en demander un nouveau.",
+      "successToast": "Mot de passe mis à jour — vous pouvez maintenant vous connecter.",
+      "error": "Ce lien est invalide ou a expiré"
     },
     "social": {
       "googleFailed": "Échec de la connexion Google",
