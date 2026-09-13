@@ -32,7 +32,7 @@ export default function AlbumEditor() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const isCreating = !id || id === "new";
 
@@ -256,6 +256,7 @@ export default function AlbumEditor() {
         year: Number(year) || new Date().getFullYear(),
         size,
         orientation,
+        lang: i18n.language?.startsWith("fr") ? "fr" : "en",
       });
 
       const chunkSize = 8;
