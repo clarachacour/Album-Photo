@@ -23,14 +23,24 @@ function loadScript(src, id) {
 
 export default function SocialAuthButtons() {
   const { loginWithGoogle, loginWithApple } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const googleBtnRef = useRef(null);
   const [appleReady, setAppleReady] = useState(false);
   const nav = useNavigate();
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
-    loadScript("https://accounts.google.com/gsi/client", "google-identity-script")
+    // Google's own button ("Continuer avec Google" / "Continue with
+    // Google") is rendered entirely by Google's SDK, not by us — i18next
+    // has no influence over it. Google's script reads its display language
+    // from the `hl` query param on the script URL itself, so it has to be
+    // set at load time, matching whatever language is active right now.
+    // A language switch *after* this script has already loaded won't
+    // retroactively re-render the button in the new language (Google's
+    // SDK doesn't expose a way to do that without reloading the script) —
+    // an honest limitation of relying on Google's own widget, not
+    // something fixable from our side without reloading the page.
+    loadScript(`https://accounts.google.com/gsi/client?hl=${i18n.language}`, "google-identity-script")
       .then(() => {
         if (!window.google || !googleBtnRef.current) return;
         window.google.accounts.id.initialize({
