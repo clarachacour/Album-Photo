@@ -650,7 +650,7 @@ export function AlbumPage({
               }}
               data-testid={`page-add-text-btn-${pageIndex}`}
               className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
-              title="Add a text box to this page — click where you want it to go"
+              title={t("albumPage.addTextBox")}
             >
               <Type size={13} />
             </button>
