@@ -81,14 +81,14 @@
     "hasAccount": "Already have an account? Sign in",
     "welcomeToast": "Welcome to Everbook!",
     "welcomeBackToast": "Welcome back!",
-    "genericError": "Something went wrong. Please try again.",
+    "genericError": "An error occurred",
     "login": {
-      "title": "Welcome back.",
-      "subtitle": "Sign in to keep working on your albums."
+      "title": "Welcome back !",
+      "subtitle": "Sign in to access your albums."
     },
     "signup": {
-      "title": "Create your account.",
-      "subtitle": "A place to keep and print your favorite memories."
+      "title": "Create your first edition.",
+      "subtitle": "One account to create, save, and export."
     },
     "forgot": {
       "title": "Reset your password.",
@@ -115,50 +115,50 @@
     }
   },
   "faq": {
-    "eyebrow": "FAQ",
-    "title": "Frequently asked questions.",
+    "eyebrow": "Support",
+    "title": "Frequently asked questions",
     "cantFind": "Can't find what you're looking for?",
     "getInTouch": "Get in touch",
     "items": [
       {
-        "q": "How does the AI sorting work?",
-        "a": "Once you upload your photos, we analyze each one for sharpness and duplicates, group near-identical shots together, and keep the best one from each group. The rest are set aside, not deleted — you can always bring them back in the editor."
+        "q": "How long does it take to receive my album?",
+        "a": "Once your order is placed, we prepare and print your album, then ship it to you. You can follow every step from your Orders page."
       },
       {
-        "q": "Can I edit the album after the AI has sorted it?",
-        "a": "Yes. Every page, photo, and layout can be moved, swapped, resized, or removed in the editor before you place your order."
+        "q": "What formats are available?",
+        "a": "A5, A4 and A3, in either portrait or landscape orientation. You choose the format when you create your album, and can see it reflected live in the editor."
       },
       {
-        "q": "What formats and sizes are available?",
-        "a": "Everbook albums are available in A4 and A5, in portrait or landscape, with a hardcover binding."
+        "q": "Can I edit my album after placing an order?",
+        "a": "Once an order is placed, your album is sent into production shortly after, so further edits won't be reflected in that particular order. If you need a change, contact us as soon as possible and we'll do our best to help."
       },
       {
-        "q": "How long does printing and delivery take?",
-        "a": "Once your order is placed, production typically takes a few days, followed by standard shipping. You'll get tracking details by email once it ships."
+        "q": "How does the AI photo selection work?",
+        "a": "When you import a large batch of photos, we automatically detect near-duplicates and bursts, keep the sharpest shot from each, and use AI to help group and describe the best of what's left — so you spend less time sorting and more time enjoying the result."
       },
       {
-        "q": "Can I still make changes once I've placed an order?",
-        "a": "Once an order is placed, the album is sent to production and can no longer be edited."
+        "q": "Can I order more than one copy?",
+        "a": "Yes — you can choose a quantity when placing your order, for example to give copies as gifts."
       },
       {
-        "q": "What photo formats can I upload?",
-        "a": "JPEG, PNG, HEIC, and HEIF are all supported, whether uploaded from your computer, your phone, or imported directly from Google Photos."
+        "q": "What if something arrives damaged or wrong?",
+        "a": "Reach out through our Contact page with your order number and we'll sort it out."
       }
     ]
   },
   "contact": {
-    "eyebrow": "Contact",
-    "title": "Get in touch.",
-    "thanks": "Thank you!",
-    "willReply": "We've received your message and will reply as soon as we can.",
+    "eyebrow": "Support",
+    "title": "Contact us",
+    "thanks": "Thanks for reaching out",
+    "willReply": "We'll get back to you as soon as we can.",
     "name": "Name",
     "email": "Email",
     "subject": "Subject",
     "message": "Message",
     "sending": "Sending…",
     "send": "Send message",
-    "sentToast": "Your message has been sent.",
-    "errorToast": "Couldn't send your message. Please try again."
+    "sentToast": "Message sent",
+    "errorToast": "Failed to send your message"
   },
   "chooseTemplate": {
     "back": "Back",
@@ -287,5 +287,59 @@
     "instructions": "Your existing photos move into the new arrangement, and any extra slots the layout needs appear empty — drag your photos onto them, and you can still resize or move any frame afterward.",
     "photoCount_one": "{{count}} photo",
     "photoCount_other": "{{count}} photos"
+  },
+  "createAlbum": {
+    "steps": {
+      "format": "Format",
+      "edit": "Edit",
+      "pictures": "Pictures"
+    },
+    "composing": "AI is composing your edition",
+    "composingNote": "This can take a few minutes for a large album — feel free to stay on this page.",
+    "composingToast": "AI is composing your album...",
+    "creationStages": [
+      "Analyzing images…",
+      "Detecting duplicates…",
+      "Grouping by scene…",
+      "Composing pages…"
+    ],
+    "loadError": "Could not load this album",
+    "untitled": "Untitled",
+    "createError": "Error while creating the album",
+    "saveError": "Could not save",
+    "creationError": "Error during creation",
+    "cancel": "Cancel",
+    "back": "Back",
+    "continue": "Continue",
+    "format": {
+      "title": "Format & orientation.",
+      "subtitle": "The final printable output. You'll design your cover right after.",
+      "size": "Size",
+      "orientation": "Orientation",
+      "portrait": "Portrait",
+      "landscape": "Landscape",
+      "portraitLower": "portrait",
+      "landscapeLower": "landscape",
+      "pageCount": "Number of pages",
+      "custom": "Custom",
+      "customPagesNote": "pages — priced above the nearest standard tier",
+      "pagesCount_one": "{{count}} page",
+      "pagesCount_other": "{{count}} pages",
+      "perCopy": "per copy"
+    },
+    "edit": {
+      "title": "Make it yours.",
+      "subtitle": "Click the title, the logo, or the text on the back to edit them directly. Drag to move or resize. Add your own image or text anywhere on the cover.",
+      "hint": "Click any element on the cover — the title, the logo, the text on the back — to edit, move, or remove it."
+    },
+    "photos": {
+      "title": "Drop your photos.",
+      "subtitle": "All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.",
+      "belowMinimum": "{{uploaded}} of at least {{minimum}} photos required for a {{targetPages}}-page album — upload {{remaining}} more to continue.",
+      "aboveMinimum": "{{uploaded}} photos uploaded (minimum {{minimum}} reached). You can now create your album!",
+      "waitForImport": "Wait for your photos to finish importing",
+      "importing": "Importing…",
+      "createAlbum": "Create Album"
+    }
   }
 }
