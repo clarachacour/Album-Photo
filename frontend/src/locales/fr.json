@@ -81,14 +81,14 @@
     "hasAccount": "Déjà un compte ? Connectez-vous",
     "welcomeToast": "Bienvenue sur Everbook !",
     "welcomeBackToast": "Content de vous revoir !",
-    "genericError": "Une erreur est survenue. Merci de réessayer.",
+    "genericError": "Une erreur est survenue",
     "login": {
-      "title": "Content de vous revoir.",
-      "subtitle": "Connectez-vous pour continuer à travailler sur vos albums."
+      "title": "Content de vous revoir !",
+      "subtitle": "Connectez-vous pour accéder à vos albums."
     },
     "signup": {
-      "title": "Créez votre compte.",
-      "subtitle": "Un espace pour garder et imprimer vos souvenirs préférés."
+      "title": "Créez votre première édition.",
+      "subtitle": "Un seul compte pour créer, enregistrer et exporter."
     },
     "forgot": {
       "title": "Réinitialisez votre mot de passe.",
@@ -115,54 +115,54 @@
     }
   },
   "faq": {
-    "eyebrow": "FAQ",
-    "title": "Questions fréquentes.",
+    "eyebrow": "Support",
+    "title": "Questions fréquentes",
     "cantFind": "Vous ne trouvez pas ce que vous cherchez ?",
     "getInTouch": "Contactez-nous",
     "items": [
       {
-        "q": "Comment fonctionne le tri par IA ?",
-        "a": "Une fois vos photos envoyées, on analyse chacune d'elles pour la netteté et les doublons, on regroupe les prises quasi identiques, et on garde la meilleure de chaque groupe. Le reste est mis de côté, pas supprimé — vous pouvez toujours le récupérer dans l'éditeur."
+        "q": "Combien de temps faut-il pour recevoir mon album ?",
+        "a": "Une fois votre commande passée, nous préparons et imprimons votre album, puis vous l'expédions. Vous pouvez suivre chaque étape depuis votre page Commandes."
       },
       {
-        "q": "Puis-je modifier l'album après le tri automatique ?",
-        "a": "Oui. Chaque page, photo et mise en page peut être déplacée, remplacée, redimensionnée ou supprimée dans l'éditeur avant de passer commande."
+        "q": "Quels formats sont disponibles ?",
+        "a": "A5, A4 et A3, en orientation portrait ou paysage. Vous choisissez le format à la création de votre album, et le voyez reflété en direct dans l'éditeur."
       },
       {
-        "q": "Quels formats et tailles sont disponibles ?",
-        "a": "Les albums Everbook sont disponibles en A4 et A5, en portrait ou paysage, avec une reliure rigide."
+        "q": "Puis-je modifier mon album après avoir passé commande ?",
+        "a": "Une fois la commande passée, votre album part en production peu après, donc toute modification ultérieure ne sera pas prise en compte pour cette commande précise. Si vous avez besoin d'un changement, contactez-nous au plus vite et nous ferons de notre mieux pour vous aider."
       },
       {
-        "q": "Combien de temps prennent l'impression et la livraison ?",
-        "a": "Une fois la commande passée, la production prend généralement quelques jours, suivie d'une livraison standard. Vous recevrez un numéro de suivi par e-mail une fois l'envoi expédié."
+        "q": "Comment fonctionne la sélection des photos par IA ?",
+        "a": "Quand vous importez un grand nombre de photos, on détecte automatiquement les quasi-doublons et les rafales, on garde la photo la plus nette de chaque groupe, et l'IA aide à regrouper et décrire le meilleur de ce qui reste — pour que vous passiez moins de temps à trier et plus de temps à profiter du résultat."
       },
       {
-        "q": "Puis-je encore modifier mon album après avoir commandé ?",
-        "a": "Une fois la commande passée, l'album part en production et ne peut plus être modifié."
+        "q": "Puis-je commander plusieurs exemplaires ?",
+        "a": "Oui — vous pouvez choisir une quantité au moment de la commande, par exemple pour offrir des exemplaires en cadeau."
       },
       {
-        "q": "Quels formats de photos puis-je envoyer ?",
-        "a": "JPEG, PNG, HEIC et HEIF sont tous acceptés, que vous les envoyiez depuis votre ordinateur, votre téléphone, ou en les important directement depuis Google Photos."
+        "q": "Que faire si quelque chose arrive endommagé ou incorrect ?",
+        "a": "Contactez-nous via notre page Contact avec votre numéro de commande, et nous réglerons ça."
       }
     ]
   },
   "contact": {
-    "eyebrow": "Contact",
-    "title": "Contactez-nous.",
-    "thanks": "Merci !",
-    "willReply": "Nous avons bien reçu votre message et vous répondrons dès que possible.",
+    "eyebrow": "Support",
+    "title": "Nous contacter",
+    "thanks": "Merci de nous avoir contactés",
+    "willReply": "Nous vous répondrons dès que possible.",
     "name": "Nom",
     "email": "E-mail",
     "subject": "Sujet",
     "message": "Message",
     "sending": "Envoi…",
     "send": "Envoyer le message",
-    "sentToast": "Votre message a été envoyé.",
-    "errorToast": "Impossible d'envoyer votre message. Merci de réessayer."
+    "sentToast": "Message envoyé",
+    "errorToast": "Impossible d'envoyer votre message"
   },
   "chooseTemplate": {
     "back": "Retour",
-    "title": "Choisissez un point de départ",
+    "title": "Choisissez un point de départ.",
     "subtitle": "Partez d'un thème, ou commencez avec une page blanche pour créer votre propre style.",
     "scratch_title": "Partir de zéro",
     "scratch_subtitle": "Une page blanche — sans thème ni couleurs prédéfinis."
@@ -287,5 +287,59 @@
     "instructions": "Vos photos existantes sont réorganisées dans la nouvelle disposition, et les emplacements supplémentaires nécessaires apparaissent vides — glissez vos photos dessus, chaque cadre reste redimensionnable ou déplaçable ensuite.",
     "photoCount_one": "{{count}} photo",
     "photoCount_other": "{{count}} photos"
+  },
+  "createAlbum": {
+    "steps": {
+      "format": "Format",
+      "edit": "Édition",
+      "pictures": "Photos"
+    },
+    "composing": "L'IA compose votre édition",
+    "composingNote": "Ça peut prendre quelques minutes pour un grand album — n'hésitez pas à rester sur cette page.",
+    "composingToast": "L'IA compose votre album...",
+    "creationStages": [
+      "Analyse des images…",
+      "Détection des doublons…",
+      "Regroupement par scène…",
+      "Composition des pages…"
+    ],
+    "loadError": "Impossible de charger cet album",
+    "untitled": "Sans titre",
+    "createError": "Erreur lors de la création de l'album",
+    "saveError": "Enregistrement impossible",
+    "creationError": "Erreur pendant la création",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "continue": "Continuer",
+    "format": {
+      "title": "Format et orientation.",
+      "subtitle": "Le rendu imprimable final. Vous concevrez votre couverture juste après.",
+      "size": "Taille",
+      "orientation": "Orientation",
+      "portrait": "Portrait",
+      "landscape": "Paysage",
+      "portraitLower": "portrait",
+      "landscapeLower": "paysage",
+      "pageCount": "Nombre de pages",
+      "custom": "Personnalisé",
+      "customPagesNote": "pages — tarifé au-dessus du palier standard le plus proche",
+      "pagesCount_one": "{{count}} page",
+      "pagesCount_other": "{{count}} pages",
+      "perCopy": "par exemplaire"
+    },
+    "edit": {
+      "title": "Faites-le vôtre.",
+      "subtitle": "Cliquez sur le titre, le logo, ou le texte au dos pour les modifier directement. Glissez pour déplacer ou redimensionner. Ajoutez votre propre image ou texte n'importe où sur la couverture.",
+      "hint": "Cliquez sur n'importe quel élément de la couverture — le titre, le logo, le texte au dos — pour le modifier, le déplacer ou le supprimer."
+    },
+    "photos": {
+      "title": "Déposez vos photos.",
+      "subtitle": "Toutes vos photos, dans n'importe quel ordre. L'IA se charge du reste : tri, doublons, mise en page.",
+      "belowMinimum": "{{uploaded}} sur au moins {{minimum}} photos nécessaires pour un album de {{targetPages}} pages — envoyez {{remaining}} de plus pour continuer.",
+      "aboveMinimum": "{{uploaded}} photos envoyées (minimum {{minimum}} atteint). Vous pouvez maintenant créer votre album !",
+      "waitForImport": "Attendez la fin de l'import de vos photos",
+      "importing": "Import en cours…",
+      "createAlbum": "Créer l'album"
+    }
   }
 }
