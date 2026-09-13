@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api, API } from "@/lib/api";
 import { toast } from "sonner";
 import { ImageDown, Loader2 } from "lucide-react";
@@ -49,6 +50,7 @@ function loadScript(src, id) {
  * making large imports far slower than they needed to be).
  */
 export default function GooglePhotosImportButton({ albumId, mobileToken, onImported, disabled, onBusyChange }) {
+  const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const [busy, setBusyState] = useState(false);
   // Wraps setBusy so the parent (PhotoUploadMethods) always finds out about
@@ -118,7 +120,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
     if (!tokenClientRef.current || busy) return;
     tokenClientRef.current.callback = async (tokenResponse) => {
       if (tokenResponse.error) {
-        toast.error("Google Photos access was not granted");
+        toast.error(t("googlePhotos.accessDenied"));
         return;
       }
       const accessToken = tokenResponse.access_token;
@@ -135,23 +137,23 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
         // Google's own consent flow and worked inconsistently. A button
         // click is always a trusted user gesture, so this opens reliably
         // every time, at the cost of one extra click.
-        toast.info("Click below to choose your photos in Google Photos, then come back here.", {
+        toast.info(t("googlePhotos.chooseInstructions"), {
           duration: 15000,
           action: {
-            label: "Open Google Photos",
+            label: t("googlePhotos.openButton"),
             onClick: () => window.open(session.pickerUri, "_blank", "width=500,height=700"),
           },
         });
 
         const done = await pollSession(accessToken, session.id);
         if (!done) {
-          toast.error("Photo selection timed out");
+          toast.error(t("googlePhotos.selectionTimeout"));
           return;
         }
 
         const items = await fetchAllItems(accessToken, session.id);
         if (items.length === 0) {
-          toast.error("No photos were selected");
+          toast.error(t("googlePhotos.noneSelected"));
           return;
         }
 
@@ -160,7 +162,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
           batches.push(items.slice(i, i + BATCH_SIZE));
         }
 
-        toast.info(`Importing ${items.length} photo${items.length > 1 ? "s" : ""} — this can take a few minutes for a large selection.`);
+        toast.info(t("googlePhotos.importing", { count: items.length }));
 
         let uploaded = 0;
         let nextBatch = 0;
@@ -200,13 +202,13 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
 
         const failed = items.length - uploaded;
         if (failed > 0) {
-          toast.warning(`${uploaded} of ${items.length} photos imported — ${failed} failed and were skipped. You can try importing them again.`, { duration: 8000 });
+          toast.warning(t("googlePhotos.partialImport", { uploaded, total: items.length, failed }), { duration: 8000 });
         } else {
-          toast.success(`${uploaded} photo${uploaded > 1 ? "s" : ""} imported from Google Photos`);
+          toast.success(t("googlePhotos.importSuccess", { count: uploaded }));
         }
         onImported && onImported(uploaded);
       } catch (err) {
-        toast.error(err?.response?.data?.detail || "Google Photos import failed");
+        toast.error(err?.response?.data?.detail || t("googlePhotos.importFailed"));
       } finally {
         setBusy(false);
       }
@@ -226,7 +228,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
     >
       {busy ? <Loader2 size={16} className="animate-spin" /> : <ImageDown size={16} />}
       <span className="text-sm font-semibold tracking-widest uppercase">
-        {busy ? "Importing…" : "From Google Photos"}
+        {busy ? t("googlePhotos.importingLabel") : t("googlePhotos.buttonLabel")}
       </span>
     </button>
   );
