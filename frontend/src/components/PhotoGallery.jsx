@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { photoImageUrl } from "@/lib/api";
 import { Check } from "lucide-react";
 
@@ -11,6 +12,7 @@ import { Check } from "lucide-react";
  * the book being out of reach while scrolling.
  */
 export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, onSelectPhoto }) {
+  const { t } = useTranslation();
   const visible = (photos || []).filter((p) => !p.is_deleted);
   if (visible.length === 0) return null;
 
@@ -18,7 +20,7 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
     <div>
       {selectedPhotoId && (
         <p className="text-xs text-[color:var(--coral)] text-center mb-2 uppercase tracking-widest font-semibold">
-          Click a spot on any page to place this photo
+          {t("photoGallery.clickToPlace")}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2 justify-center" data-testid="photo-gallery">
@@ -35,7 +37,7 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
               }}
               onClick={() => onSelectPhoto && onSelectPhoto(isSelected ? null : p.id)}
               data-testid={`gallery-photo-${p.id}`}
-              title={isSelected ? "Click a page to place it — click here again to cancel" : "Click to place on a page, or drag it there"}
+              title={isSelected ? t("photoGallery.clickToCancel") : t("photoGallery.dragOrClick")}
               className={`relative w-16 h-16 md:w-20 md:h-20 bg-white border overflow-hidden shrink-0 cursor-pointer active:cursor-grabbing transition-shadow ${
                 isSelected ? "outline outline-2 outline-[color:var(--coral)] outline-offset-2" : "border-[color:var(--border-soft)]"
               }`}
