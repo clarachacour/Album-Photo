@@ -148,6 +148,18 @@ GOOGLE_PHOTOS_CONCURRENCY = int(os.environ.get("GOOGLE_PHOTOS_CONCURRENCY", "4")
 # control the rate limits of, same reasoning as GOOGLE_PHOTOS_CONCURRENCY
 # above.
 GEMINI_CONCURRENCY = int(os.environ.get("GEMINI_CONCURRENCY", "8"))
+# How many PDF generations can genuinely run at once, service-wide (see
+# _acquire_pdf_generation_slot, which enforces this via a shared MongoDB
+# collection rather than an in-process counter, so it applies regardless of
+# which Cloud Run instance each request lands on). Each generation's peak
+# memory is bounded *per generation* by chunking and incremental merging,
+# but that bound doesn't prevent two or three running at once on the same
+# instance from stacking their peaks — this instance's memory was already
+# raised once specifically because a single 100-page album's render came
+# close to OOM-killing it, so raising this past a small number without also
+# watching real memory usage under actual overlap risks recreating that
+# exact problem, just with concurrent generations instead of one large one.
+MAX_CONCURRENT_PDF_GENERATIONS = int(os.environ.get("MAX_CONCURRENT_PDF_GENERATIONS", "2"))
 
 # Optional — the AI-assisted duplicate resolution in _curate_photos only
 # runs when this is set. Without it, curation stays 100% classical (phash +
@@ -298,11 +310,14 @@ _r2_io_executor = ThreadPoolExecutor(max_workers=32, thread_name_prefix="r2-io")
 # takes (nobody's watching it happen — it's not the customer waiting on
 # this response, an order confirmation already went out immediately at
 # checkout), but it should never be the reason someone actively using the
-# editor right now waits longer than necessary. 2 workers, not 1: matches
-# MAX_CONCURRENT_PDF_GENERATIONS's own slot limit with a little headroom
-# for the rare moment a stale slot briefly allows two to overlap, without
-# handing the render any more threads than it actually needs.
-_pdf_render_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pdf-render")
+# editor right now waits longer than necessary. Sized directly off
+# MAX_CONCURRENT_PDF_GENERATIONS (+1 for headroom) rather than a separate
+# hardcoded number — raising the slot limit without also raising this
+# would let more generations be "in progress" (holding a database slot)
+# than the pool can actually run at once, queueing the extra ones inside
+# the executor instead of anywhere visible, silently capping real
+# concurrency below what the slot count implies.
+_pdf_render_executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_PDF_GENERATIONS + 1, thread_name_prefix="pdf-render")
 
 # A dedicated pool for photo-upload processing (_process_photo_sync —
 # decode, resize into variants, EXIF/hash) — separate from the default
@@ -756,6 +771,12 @@ class AlbumCreate(BaseModel):
     size: str = "A4"  # A3, A4 or A5
     orientation: str = "portrait"  # portrait or landscape
     target_pages: int = 50  # one of PAGE_TIERS, or any custom page count
+    # The site's current UI language (see i18n.js on the frontend) at the
+    # moment of creation — used only to pick which language the title
+    # page's pre-filled hint text is written in (see make_title_page).
+    # Never stored anywhere or used again after that; the person can still
+    # freely edit or delete the hint afterward regardless of language.
+    lang: str = "en"
 
 class AlbumUpdate(BaseModel):
     title: Optional[str] = None
@@ -953,11 +974,22 @@ async def submit_contact(data: ContactInput):
     return {"message": "Message envoyé, nous vous répondrons rapidement."}
 
 # ---------- Album Routes ----------
-def make_title_page(title: str) -> dict:
+def make_title_page(title: str, lang: str = "en") -> dict:
     """The first interior page every album starts with — right after the
     cover, always right-hand (the left page of that spread stays blank), and
     pre-filled with the album's title plus a friendly hint. The user is free
-    to add or remove anything on it afterward, hint included."""
+    to add or remove anything on it afterward, hint included.
+
+    lang picks which language that hint is written in — it's the site's
+    current UI language at the moment of creation (see AlbumCreate.lang),
+    not something stored or revisited afterward; the person can freely
+    edit or delete the hint regardless. Anything other than "fr" falls
+    back to English, matching the frontend's own fallbackLng."""
+    hint_text = (
+        "Voici votre première page — faites-la vôtre. Ajoutez des photos, du texte, ou tout ce que vous voulez."
+        if lang == "fr"
+        else "This is your first page — make it yours. Add photos, text, or anything else you'd like."
+    )
     return {
         "id": str(uuid.uuid4()),
         "layout": "title_page",
@@ -978,7 +1010,7 @@ def make_title_page(title: str) -> dict:
             {
                 "id": str(uuid.uuid4()),
                 "type": "text",
-                "content": "This is your first page — make it yours. Add photos, text, or anything else you'd like.",
+                "content": hint_text,
                 "x": 0.15,
                 "y": 0.56,
                 "w": 0.7,
@@ -1016,7 +1048,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "orientation": data.orientation,
         "target_pages": data.target_pages,
         "status": "draft",
-        "pages": [make_title_page(data.title)],
+        "pages": [make_title_page(data.title, data.lang)],
         "cover_image_path": None,
         "cover": data.cover or {},
         "created_at": now,
@@ -3130,9 +3162,26 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     factored out of _render_pdf_via_browser_sync so a whole order's worth
     of chunks can share one launched browser (see that function's
     docstring for why relaunching Chromium per chunk was itself a real
-    chunk of the total generation time on a large album)."""
-    page.goto(print_url, wait_until="networkidle", timeout=30000)
-    page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=20000)
+    chunk of the total generation time on a large album).
+
+    Both timeouts below were raised from their original 30s/20s after a
+    real generation genuinely failed under this: _deprioritize_current_
+    process_tree deliberately lowers Chromium's OS scheduling priority so
+    a customer actively using the editor always wins any real CPU
+    contention — exactly as intended — but with a fixed 30s ceiling, that
+    intentional slowdown could tip an otherwise-fine page over into an
+    outright failure rather than just taking longer, on an album with
+    someone actively editing throughout (auto-save alone hits this
+    backend every couple of minutes). One later attempt failed at page 1
+    and a different one at page 52, on the same album — no single broken
+    photo could explain two different pages failing on two different
+    runs, but genuine CPU contention explains both equally well. The
+    recursive split-and-retry in _render_all_chunks is a different
+    safety net — for a chunk that's too heavy to fit under the string-
+    length ceiling — not a substitute for giving a single ordinary page
+    enough real time to finish under deliberately-lowered priority."""
+    page.goto(print_url, wait_until="networkidle", timeout=120000)
+    page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=90000)
     error_el = page.query_selector('[data-print-error="true"]')
     if error_el:
         error_text = error_el.inner_text()
@@ -3682,19 +3731,9 @@ ORDER_STATUS_LABELS = {
 # drives the tracking timeline on the frontend.
 ORDER_STATUS_SEQUENCE = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered"]
 
-# How many PDF generations are allowed to actually run at the same time,
-# across the whole service — not per instance, since Cloud Run can freely
-# route two different orders' generation requests to two different
-# instances (or the same one, depending on load), and there's no way to
-# know which from inside a single request. Kept low on purpose: each
-# generation's peak memory is already bounded by chunking and incremental
-# merging, but that bound is *per generation* — two or three running at
-# once on the same instance would still stack their peaks. A shared
-# MongoDB collection (rather than an in-process counter, which would only
-# ever see this one instance's own generations) makes the limit apply
-# service-wide regardless of which instance each request happens to land
-# on.
-MAX_CONCURRENT_PDF_GENERATIONS = int(os.environ.get("MAX_CONCURRENT_PDF_GENERATIONS", "2"))
+# (MAX_CONCURRENT_PDF_GENERATIONS is defined earlier, alongside the other
+# concurrency constants, so _pdf_render_executor's own worker count can be
+# derived from it — see that definition's comment for the full reasoning.)
 # If an instance ever crashes hard enough mid-generation that the
 # `finally` block releasing its slot never runs (an OOM kill, say), that
 # slot would otherwise sit "held" forever, permanently shrinking the
