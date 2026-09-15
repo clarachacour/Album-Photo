@@ -3216,7 +3216,7 @@ def _deprioritize_current_process_tree():
     except Exception as e:
         logger.warning(f"Impossible de déprioriser le process Chromium : {e}")
 
-def _render_pdf_via_browser_sync(print_url: str) -> bytes:
+def _render_pdf_via_browser_sync(print_url: str, log_label: str = "") -> bytes:
     """Runs entirely with Playwright's sync API. Must be called off the main
     asyncio loop (via run_in_executor) since it blocks the calling thread —
     but that's exactly why it sidesteps the Windows subprocess/event-loop
@@ -3227,11 +3227,29 @@ def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     whole order's worth of chunked renders, see _render_all_chunks below,
     which reuses one browser across every chunk instead of paying
     Chromium's ~1-2s launch cost per chunk (which alone added tens of
-    seconds on a large, many-chunk album)."""
+    seconds on a large, many-chunk album).
+
+    The step-by-step logging below (log_label lets a caller like
+    render_recursive tag these with the order/chunk they belong to) exists
+    because a real generation once ran the full 3600s Cloud Run ceiling and
+    got killed with *zero* log output in between "point de départ estimé"
+    and the timeout — no chunk succeeded, none logged a failure-and-split
+    either, meaning whatever hung did so somewhere between those two
+    existing checkpoints with nothing in between to narrow it down. Every
+    step Playwright takes before the render itself (spinning up its own
+    driver process, launching Chromium, opening a page) had no logging of
+    its own — any one of them could have been the actual hang, and there
+    was no way to tell which from the logs alone."""
+    prefix = f"{log_label} : " if log_label else ""
+    logger.info(f"{prefix}ouverture de sync_playwright()")
     with sync_playwright() as p:
+        logger.info(f"{prefix}sync_playwright() ouvert, lancement de Chromium…")
         browser = p.chromium.launch()
+        logger.info(f"{prefix}Chromium lancé, dépriorisation du process…")
         _deprioritize_current_process_tree()
+        logger.info(f"{prefix}ouverture d'une nouvelle page…")
         page = browser.new_page()
+        logger.info(f"{prefix}page ouverte, d\u00e9but du rendu…")
         pdf_bytes = _render_pdf_with_page(page, print_url)
         browser.close()
         return pdf_bytes
@@ -3929,7 +3947,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
                 chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
                 t0 = _time.monotonic()
                 try:
-                    chunk_bytes = _render_pdf_via_browser_sync(chunk_url)
+                    chunk_bytes = _render_pdf_via_browser_sync(chunk_url, log_label=f"Commande {order_id} : pages {start}-{end} (profondeur {depth})")
                     elapsed = _time.monotonic() - t0
                     logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
                     return chunk_bytes
@@ -4297,6 +4315,24 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     await _generate_order_pdf(order_id, order["album_id"], order["user_id"])
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
     return fresh
+
+@api_router.post("/admin/orders/{order_id}/resend-printer-email")
+async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_current_user)):
+    """Re-sends the printer notification email for an order whose PDF is
+    already generated — for exactly the situation that comes up while
+    still testing/fixing email delivery (a wrong BACKEND_URL, SMTP not
+    yet configured, etc.): the PDF itself is already correct and doesn't
+    need regenerating, only the email carrying its download link does.
+    Refuses if there's no PDF yet — regenerate the PDF first in that
+    case, which sends this same email itself once generation succeeds."""
+    require_admin(user)
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    if not order.get("pdf_ready") or not order.get("pdf_path"):
+        raise HTTPException(status_code=400, detail="Le PDF de cette commande n'est pas encore prêt — régénérez-le d'abord")
+    send_printer_order_email(order)
+    return {"sent": True}
 
 class OrderStatusUpdate(BaseModel):
     status: str
