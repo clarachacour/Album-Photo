@@ -988,7 +988,7 @@ def make_title_page(title: str, lang: str = "en") -> dict:
     hint_text = (
         "Voici votre première page — faites-la vôtre. Ajoutez des photos, du texte, ou tout ce que vous voulez."
         if lang == "fr"
-        else "TESTMARKER999 This is your first page — make it yours. Add photos, text, or anything else you'd like."
+        else "This is your first page — make it yours. Add photos, text, or anything else you'd like."
     )
     return {
         "id": str(uuid.uuid4()),
