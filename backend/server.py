@@ -3795,17 +3795,30 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     await _acquire_pdf_generation_slot(order_id)
     try:
         # Pre-warm every used photo's "print" variant BEFORE launching the
-        # browser, one at a time. Without this, the headless browser (once
-        # it navigates to the print page) requests every photo's print
-        # variant at once — the first time any of them is needed, each of
-        # those ~dozens of concurrent requests triggers its own resize+R2
+        # browser. Without this, the headless browser (once it navigates
+        # to the print page) requests every photo's print variant at
+        # once — the first time any of them is needed, each of those
+        # ~dozens of concurrent requests triggers its own resize+R2
         # upload, all competing for this same small instance's limited
         # thread pool alongside the PDF task itself waiting on the whole
         # page to finish loading. That self-inflicted contention was
         # stalling the export badly enough to run into the request
-        # timeout with no clean error ever logged. Sequential and boring
-        # on purpose — by the time Playwright opens the page, every image
-        # it needs is already a fast, uncontended cache hit.
+        # timeout with no clean error ever logged.
+        #
+        # Was strictly one photo at a time on the default pool — safe, but
+        # needlessly slow: a large album (150-200+ used photos) pre-warming
+        # sequentially, each paying its own full R2-fetch + resize +
+        # R2-upload round trip, could easily take several minutes on its
+        # own before Chromium even launches — and a generation that
+        # measurably needed over an hour total for one real album makes
+        # every one of those minutes matter. Bounded concurrency still
+        # avoids the original problem this was written to prevent (every
+        # photo hitting R2/CPU at once, all colliding with Chromium's own
+        # page-load) — it's just a wider "one at a time" than literally 1
+        # — and moved off the default pool onto the same dedicated one
+        # regular photo processing already uses, so this doesn't compete
+        # with AI curation's own default-pool work either.
+        PDF_PREWARM_CONCURRENCY = 8
         album_doc = await db.albums.find_one({"id": album_id}, {"pages": 1})
         interior_pages = (album_doc or {}).get("pages", [])
         photo_ids = {
@@ -3816,13 +3829,19 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         }
         if photo_ids:
             loop = asyncio.get_event_loop()
-            photos_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0})
-            async for photo in photos_cursor:
+            prewarm_semaphore = asyncio.Semaphore(PDF_PREWARM_CONCURRENCY)
+
+            async def _prewarm_one(photo):
                 if photo.get("print_path") and photo.get("print_size"):
-                    continue  # already cached from an earlier order/preview, size already on record
-                print_path, print_bytes = await loop.run_in_executor(None, _generate_print_variant, photo)
+                    return  # already cached from an earlier order/preview, size already on record
+                async with prewarm_semaphore:
+                    print_path, print_bytes = await loop.run_in_executor(_photo_processing_executor, _generate_print_variant, photo)
                 if print_path:
                     await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_path": print_path, "print_size": len(print_bytes)}})
+
+            photos_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0})
+            photos_list = await photos_cursor.to_list(len(photo_ids))
+            await asyncio.gather(*(_prewarm_one(photo) for photo in photos_list))
 
         token = create_token(user_id)
         loop = asyncio.get_event_loop()
