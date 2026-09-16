@@ -83,8 +83,17 @@ export function AuthProvider({ children }) {
     setUser(nextUser);
   };
 
+  // Only ever meaningful for a classic (email/password) signup that
+  // hasn't verified yet — the backend itself is a no-op for anyone
+  // already verified (Google/Apple accounts included), so this is safe
+  // to call without checking user.email_verified first.
+  const resendVerification = async () => {
+    const { data } = await api.post("/auth/resend-verification");
+    return data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle, loginWithApple, forgotPassword, resetPassword, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle, loginWithApple, forgotPassword, resetPassword, updateUser, resendVerification }}>
       {children}
     </AuthContext.Provider>
   );
