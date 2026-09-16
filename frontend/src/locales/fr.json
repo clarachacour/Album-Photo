@@ -501,5 +501,16 @@
     "resentToast": "E-mail de confirmation envoyé — vérifiez votre boîte de réception.",
     "resendError": "Impossible de renvoyer l'e-mail. Merci de réessayer.",
     "signOut": "Se déconnecter"
+  },
+  "orderFeedback": {
+    "loadError": "Impossible de charger cette commande",
+    "title": "Partagez votre avis",
+    "subtitle": "Dites-nous ce que vous avez pensé de votre album imprimé — ça reste dans nos notes pour cette commande, sans réponse attendue de notre part.",
+    "placeholder": "Qu'en avez-vous pensé ?",
+    "submit": "Envoyer mon avis",
+    "sending": "Envoi…",
+    "sentToast": "Merci pour votre avis !",
+    "sendError": "Impossible d'envoyer votre avis. Merci de réessayer.",
+    "thanks": "Merci pour votre avis !"
   }
 }
