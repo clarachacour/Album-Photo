@@ -25,6 +25,7 @@ import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
 import AdminOrdersPage from "@/pages/AdminOrdersPage";
 import FAQPage from "@/pages/FAQPage";
 import ContactPage from "@/pages/ContactPage";
+import VerifyEmailPending from "@/pages/VerifyEmailPending";
 
 function AppChrome({ children }) {
   const location = useLocation();
@@ -69,6 +70,12 @@ function App() {
             <Route path="/print/:id" element={<PrintAlbum />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            {/* Not wrapped in ProtectedRoute — it IS the destination
+                ProtectedRoute redirects an unverified account to, and
+                wrapping it would just redirect straight back here. The
+                page checks for a session itself and redirects to /auth
+                if there isn't one. */}
+            <Route path="/verify-email" element={<VerifyEmailPending />} />
 
             <Route
               path="/account"
