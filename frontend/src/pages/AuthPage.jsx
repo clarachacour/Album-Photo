@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
+import PasswordInput from "@/components/PasswordInput";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
@@ -99,9 +100,8 @@ export default function AuthPage() {
             </div>
             <div>
               <label className="eyebrow block mb-2">{t("auth.password")}</label>
-              <input
+              <PasswordInput
                 data-testid={TID.authPasswordInput}
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
