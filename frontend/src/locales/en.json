@@ -501,5 +501,16 @@
     "resentToast": "Confirmation email sent — check your inbox.",
     "resendError": "Couldn't resend the email. Please try again.",
     "signOut": "Sign out"
+  },
+  "orderFeedback": {
+    "loadError": "Failed to load this order",
+    "title": "Share your feedback",
+    "subtitle": "Tell us what you thought of your printed album — this goes straight into our notes for this order, no reply expected.",
+    "placeholder": "What did you think?",
+    "submit": "Send feedback",
+    "sending": "Sending…",
+    "sentToast": "Thanks for your feedback!",
+    "sendError": "Couldn't send your feedback. Please try again.",
+    "thanks": "Thanks for your feedback!"
   }
 }
