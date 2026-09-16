@@ -271,7 +271,9 @@
     "next": "Suivant",
     "done": "Terminé",
     "saved": "Enregistré",
-    "uploadFailed": "Échec de l'envoi"
+    "uploadFailed": "Échec de l'envoi",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe"
   },
   "mobileQr": {
     "title": "Scannez avec votre téléphone.",
