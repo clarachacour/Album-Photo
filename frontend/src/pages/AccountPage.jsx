@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import PasswordInput from "@/components/PasswordInput";
 import { Package, LifeBuoy } from "lucide-react";
 
 export default function AccountPage() {
@@ -129,8 +130,7 @@ export default function AccountPage() {
           <div className="grid md:grid-cols-3 gap-4 mb-4 max-w-2xl">
             <div>
               <label className="eyebrow block mb-2">{t("account.currentPassword")}</label>
-              <input
-                type="password"
+              <PasswordInput
                 className={inputClass}
                 value={pwForm.current_password}
                 onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })}
@@ -138,8 +138,7 @@ export default function AccountPage() {
             </div>
             <div>
               <label className="eyebrow block mb-2">{t("account.newPassword")}</label>
-              <input
-                type="password"
+              <PasswordInput
                 className={inputClass}
                 value={pwForm.new_password}
                 onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
@@ -147,8 +146,7 @@ export default function AccountPage() {
             </div>
             <div>
               <label className="eyebrow block mb-2">{t("account.confirmNewPassword")}</label>
-              <input
-                type="password"
+              <PasswordInput
                 className={inputClass}
                 value={pwForm.confirm}
                 onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
