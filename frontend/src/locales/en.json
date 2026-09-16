@@ -271,7 +271,9 @@
     "next": "Next",
     "done": "Done",
     "saved": "Saved",
-    "uploadFailed": "Upload failed"
+    "uploadFailed": "Upload failed",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "mobileQr": {
     "title": "Scan with your phone.",
