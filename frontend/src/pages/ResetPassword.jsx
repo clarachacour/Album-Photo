@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
+import PasswordInput from "@/components/PasswordInput";
 import { Loader2 } from "lucide-react";
 
 export default function ResetPassword() {
@@ -51,10 +52,9 @@ export default function ResetPassword() {
         <form onSubmit={submit} className="space-y-5">
           <div>
             <label className="eyebrow block mb-2">{t("auth.reset.newPassword")}</label>
-            <input
+            <PasswordInput
               id="reset-password"
               name="new-password"
-              type="password"
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
