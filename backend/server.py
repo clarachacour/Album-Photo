@@ -675,7 +675,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     body = (
         f"Hi {name or ''},\n\n"
         f"Thanks for your order! We've received it and will start preparing your book.\n\n"
-        f"Order total: {total:.2f} {order.get('currency', 'eur').upper()}\n"
+        f"Order total: {total:.2f} {order.get('currency', 'usd').upper()}\n"
         f"Quantity: {order.get('quantity', 1)}\n\n"
         f"You can follow its status here:\n{order_url}\n\n"
         f"We'll email you again once it ships."
@@ -686,7 +686,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         body_html=(
             f"<p>Hi {name or ''},</p>"
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
-            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'eur').upper()}<br>"
+            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()}<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
             f"<p>We'll email you again once it ships.</p>"
         ),
@@ -4488,7 +4488,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "quantity": data.quantity,
         "unit_price_cents": unit_price,
         "total_price_cents": unit_price * data.quantity,
-        "currency": "eur",
+        "currency": "usd",
         "shipping_address": data.shipping_address.dict(),
         "status": "pending_payment",
         "status_history": [{"status": "pending_payment", "at": now}],
