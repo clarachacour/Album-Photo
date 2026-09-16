@@ -438,6 +438,79 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None):
     except Exception as e:
         logger.error(f"Échec de l'envoi de l'email à {to_email} : {e}")
 
+# Everbook's on-site color tokens (frontend/src/index.css :root) — kept as
+# the single source of truth for every branded email built with
+# _email_wrapper below, rather than each send_*_email guessing its own
+# approximate hex values that would drift from the site over time.
+_EMAIL_INK = "#1A1A17"
+_EMAIL_PAPER = "#F9F8F6"
+_EMAIL_CANVAS = "#EAE9E4"
+_EMAIL_CORAL = "#E56B55"
+_EMAIL_MUTED = "#73716A"
+_EMAIL_BORDER = "#E2DFD8"
+# Georgia is the closest widely-installed serif to the site's actual
+# display font (Cormorant Garamond / Baloo 2, both web fonts email clients
+# won't load) — email clients render almost nothing else reliably, so
+# this is the honest ceiling for matching the site's look here, not a
+# placeholder waiting to be swapped for the real thing.
+_EMAIL_SERIF = "Georgia, 'Times New Roman', serif"
+_EMAIL_SANS = "Helvetica, Arial, sans-serif"
+
+def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = None, cta_url: str = None) -> str:
+    """Wraps any email's content in Everbook's branded shell — the same
+    wordmark, paper background, ink text, and coral call-to-action button
+    used across every automated email (welcome, verification, password,
+    order status, printer/delivery notices, admin alerts). A single
+    shared wrapper means every email stays visually consistent and only
+    has to change in one place if the site's own colors ever do, instead
+    of each send_*_email function hand-rolling its own HTML (as
+    send_printer_order_email used to, before this existed).
+
+    There's no actual logo image file anywhere in this codebase — the
+    site's own header (TopNav.jsx) doesn't render one either, just this
+    same styled text wordmark, so recreating that exactly here (rather
+    than inventing a graphical logo that doesn't exist on the site
+    itself) is what "matching the site" actually means.
+
+    body_html is trusted content assembled by the functions below from
+    fixed strings and already-escaped data (order/album titles, names) —
+    never raw user input passed straight through."""
+    cta_html = ""
+    if cta_label and cta_url:
+        cta_html = f"""
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 32px auto 0;">
+          <tr><td style="background-color:{_EMAIL_CORAL}; border-radius:2px;">
+            <a href="{cta_url}" style="display:inline-block; padding:14px 32px; color:{_EMAIL_PAPER}; text-decoration:none; font-family:{_EMAIL_SANS}; font-size:13px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">{cta_label}</a>
+          </td></tr>
+        </table>
+        """
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; background-color:{_EMAIL_CANVAS};">
+  <span style="display:none; max-height:0; overflow:hidden; font-size:1px; color:{_EMAIL_CANVAS};">{preheader}</span>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:{_EMAIL_CANVAS};">
+    <tr><td align="center" style="padding: 40px 20px;">
+      <table role="presentation" width="100%" style="max-width:520px; background-color:{_EMAIL_PAPER}; border:1px solid {_EMAIL_BORDER};">
+        <tr><td style="padding: 36px 40px 24px; text-align:center; border-bottom:1px solid {_EMAIL_BORDER};">
+          <span style="font-family:{_EMAIL_SERIF}; font-size:26px; font-weight:500; color:{_EMAIL_INK}; letter-spacing:0.5px;">Everbook</span>
+        </td></tr>
+        <tr><td style="padding: 40px;">
+          <h1 style="font-family:{_EMAIL_SERIF}; font-size:23px; font-weight:500; color:{_EMAIL_INK}; margin:0 0 18px; line-height:1.3;">{title}</h1>
+          <div style="font-family:{_EMAIL_SANS}; font-size:15px; line-height:1.65; color:{_EMAIL_INK};">
+            {body_html}
+          </div>
+          {cta_html}
+        </td></tr>
+        <tr><td style="padding: 22px 40px; border-top:1px solid {_EMAIL_BORDER}; text-align:center;">
+          <p style="font-family:{_EMAIL_SANS}; font-size:12px; color:{_EMAIL_MUTED}; margin:0;">Everbook · <a href="{FRONTEND_URL}" style="color:{_EMAIL_MUTED};">{FRONTEND_URL.replace("https://", "").replace("http://", "")}</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
 def send_welcome_email(to_email: str, name: str):
     subject = "Welcome to Everbook"
     body = (
@@ -446,7 +519,18 @@ def send_welcome_email(to_email: str, name: str):
         f"Upload your photos, let us help lay them out, and order a copy whenever you're ready.\n\n"
         f"{FRONTEND_URL}"
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="You're all set to start turning your photos into a printed book.",
+        title="Welcome to Everbook.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>You're all set to start turning your photos into a printed book. "
+            f"Upload your photos, let us help lay them out, and order a copy whenever you're ready.</p>"
+        ),
+        cta_label="Get started",
+        cta_url=FRONTEND_URL,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_verification_email(to_email: str, name: str, verify_token: str):
     """Sent once, right at signup (see signup) — never for Google/Apple
@@ -465,7 +549,19 @@ def send_verification_email(to_email: str, name: str, verify_token: str):
         f"Please confirm this is your email address by clicking the link below:\n{verify_link}\n\n"
         f"If you didn't create an Everbook account, you can safely ignore this email."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="Please confirm your email address to finish setting up your account.",
+        title="Confirm your email address.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>Please confirm this is your email address to finish setting up your account.</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't create an Everbook account, "
+            f"you can safely ignore this email.</p>"
+        ),
+        cta_label="Confirm email address",
+        cta_url=verify_link,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_pdf_generation_failed_email(order: dict, error: str):
     """Sent to the admin (reusing ADMIN_EMAIL — the same address that
@@ -490,7 +586,20 @@ def send_pdf_generation_failed_email(order: dict, error: str):
         f"Error: {error}\n\n"
         f"Regenerate or investigate here:\n{admin_url}"
     )
-    send_email(ADMIN_EMAIL, subject, body)
+    html_body = _email_wrapper(
+        preheader=f"PDF generation failed for order #{order['id'][:8]}",
+        title="PDF generation failed.",
+        body_html=(
+            f"<p>An order's PDF generation attempt failed and needs attention.</p>"
+            f"<p><strong>Album:</strong> {order.get('album_title', 'Album')}<br>"
+            f"<strong>Order ID:</strong> {order['id']}<br>"
+            f"<strong>Format:</strong> {order.get('size')} · {order.get('orientation')}</p>"
+            f"<p><strong>Error:</strong><br><span style=\"font-family:monospace; font-size:13px;\">{error}</span></p>"
+        ),
+        cta_label="Open admin orders",
+        cta_url=admin_url,
+    )
+    send_email(ADMIN_EMAIL, subject, body, html_body=html_body)
 
 def send_password_reset_email(to_email: str, name: str, reset_link: str):
     subject = "Reset your password"
@@ -499,7 +608,19 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str):
         f"Click the link below to reset your password (valid for 1 hour):\n{reset_link}\n\n"
         f"If you didn't request this, you can safely ignore this email."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="Click below to reset your Everbook password.",
+        title="Reset your password.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>Click the button below to reset your password. This link is valid for 1 hour.</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't request this, "
+            f"you can safely ignore this email.</p>"
+        ),
+        cta_label="Reset password",
+        cta_url=reset_link,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_password_changed_email(to_email: str, name: str):
     """A simple security notice, sent after a password change goes through
@@ -518,7 +639,17 @@ def send_password_changed_email(to_email: str, name: str):
         f"If this was you, no action is needed. If you didn't make this change, "
         f"please contact us right away so we can help secure your account."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="Your Everbook account password was just changed.",
+        title="Your password was changed.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>This is a confirmation that your Everbook account password was just changed.</p>"
+            f"<p>If this was you, no action is needed. If you didn't make this change, "
+            f"please contact us right away so we can help secure your account.</p>"
+        ),
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_order_confirmation_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
@@ -532,7 +663,20 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         f"You can follow its status here:\n{order_url}\n\n"
         f"We'll email you again once it ships."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="Thanks for your order! We've received it and will start preparing your book.",
+        title="Your order is confirmed.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
+            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'eur').upper()}<br>"
+            f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
+            f"<p>We'll email you again once it ships.</p>"
+        ),
+        cta_label="Track your order",
+        cta_url=order_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_order_shipped_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
@@ -544,7 +688,18 @@ def send_order_shipped_email(to_email: str, name: str, order: dict):
         + (f"Tracking number: {tracking}\n\n" if tracking else "")
         + f"You can follow its status here:\n{order_url}"
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="Good news — your book has shipped!",
+        title="Your order has shipped.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>Good news — your book has shipped!</p>"
+            + (f"<p><strong>Tracking number:</strong> {tracking}</p>" if tracking else "")
+        ),
+        cta_label="Track your order",
+        cta_url=order_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
     contact_url = f"{FRONTEND_URL}/contact"
@@ -555,7 +710,19 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
         f"We'd love to hear what you thought, or know right away if anything wasn't right:\n{contact_url}\n\n"
         f"Thank you for printing with Everbook."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader="Your book should have arrived by now — we hope you love it!",
+        title="How did your book turn out?",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>Your book should have arrived by now — we hope you love it!</p>"
+            f"<p>We'd love to hear what you thought, or know right away if anything wasn't right.</p>"
+            f"<p>Thank you for printing with Everbook.</p>"
+        ),
+        cta_label="Share your feedback",
+        cta_url=contact_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict):
     album_url = f"{FRONTEND_URL}/editor/{album['id']}"
@@ -566,7 +733,18 @@ def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict):
         f"Pick up right where you left off:\n{album_url}\n\n"
         f"It only takes a few minutes to finish laying it out and order your printed copy."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader=f"You started \"{album.get('title', 'an album')}\" but haven't finished it yet.",
+        title="Finish your album.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>You started \"{album.get('title', 'an album')}\" but haven't finished it yet.</p>"
+            f"<p>It only takes a few minutes to finish laying it out and order your printed copy.</p>"
+        ),
+        cta_label="Pick up where you left off",
+        cta_url=album_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_left: int):
     album_url = f"{FRONTEND_URL}/editor/{album['id']}"
@@ -578,7 +756,20 @@ def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_l
         f"It'll be deleted in {days_left} days unless you open it again before then:\n{album_url}\n\n"
         f"If you're not planning to finish it, no action is needed."
     )
-    send_email(to_email, subject, body)
+    html_body = _email_wrapper(
+        preheader=f"\"{album.get('title', 'Your album')}\" will be deleted in {days_left} days unless you open it again.",
+        title="Your album will be deleted soon.",
+        body_html=(
+            f"<p>Hi {name or ''},</p>"
+            f"<p>\"{album.get('title', 'Your album')}\" hasn't been touched in a while, and unfinished albums "
+            f"are automatically removed after {DRAFT_ALBUM_RETENTION_DAYS} days to free up space.</p>"
+            f"<p>It'll be deleted in {days_left} day{'s' if days_left != 1 else ''} unless you open it again before then. "
+            f"If you're not planning to finish it, no action is needed.</p>"
+        ),
+        cta_label="Open my album",
+        cta_url=album_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
 
 
 # The printer and delivery company aren't users of this app — they act on
@@ -621,15 +812,33 @@ def send_printer_order_email(order: dict):
         f"Download the print-ready PDF:\n{download_url}\n\n"
         f"Once printed and ready for the courier to collect, click here:\n{ready_url}"
     )
-    html_body = f"""
-    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-      <h2 style="margin-bottom: 4px;">New book to print</h2>
-      <p style="color:#555;">{order.get('album_title', 'Album')} · {order.get('size')} {order.get('orientation')} · Qty {order.get('quantity', 1)}</p>
-      <p><a href="{download_url}" style="display:inline-block; background:#1A1A17; color:#fff; padding:12px 20px; text-decoration:none; border-radius:4px;">Download print-ready PDF</a></p>
-      <p style="margin-top:24px;">Once it's printed and ready for pickup:</p>
-      <p><a href="{ready_url}" style="display:inline-block; background:#E56B55; color:#fff; padding:12px 20px; text-decoration:none; border-radius:4px;">Mark ready for delivery</a></p>
-    </div>
+    # Two calls to action here, not one — the shared wrapper's single
+    # cta_label/cta_url slot only fits one, so both buttons are built by
+    # hand instead, matching the wrapper's own button styling (same
+    # colors, same shape) for visual consistency rather than passing a
+    # cta to the wrapper and losing the second action.
+    two_button_html = f"""
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px 0 0;">
+          <tr><td style="background-color:{_EMAIL_INK}; border-radius:2px;">
+            <a href="{download_url}" style="display:inline-block; padding:14px 28px; color:{_EMAIL_PAPER}; text-decoration:none; font-family:{_EMAIL_SANS}; font-size:13px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">Download print-ready PDF</a>
+          </td></tr>
+        </table>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 14px 0 0;">
+          <tr><td style="background-color:{_EMAIL_CORAL}; border-radius:2px;">
+            <a href="{ready_url}" style="display:inline-block; padding:14px 28px; color:{_EMAIL_PAPER}; text-decoration:none; font-family:{_EMAIL_SANS}; font-size:13px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">Mark ready for delivery</a>
+          </td></tr>
+        </table>
     """
+    html_body = _email_wrapper(
+        preheader=f"New book to print — {order.get('album_title', 'Album')}",
+        title="New book to print.",
+        body_html=(
+            f"<p><strong>Album:</strong> {order.get('album_title', 'Album')}<br>"
+            f"<strong>Format:</strong> {order.get('size')} · {order.get('orientation')}<br>"
+            f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
+            f"{two_button_html}"
+        ),
+    )
     send_email(PRINTER_EMAIL, subject, body, html_body=html_body)
 
 def send_delivery_pickup_email(order: dict):
@@ -652,7 +861,22 @@ def send_delivery_pickup_email(order: dict):
         + (f"Notes: {addr.get('additional_info')}\n" if addr.get("additional_info") else "")
         + f"\nQuantity: {order.get('quantity', 1)}"
     )
-    send_email(DELIVERY_EMAIL, subject, body)
+    html_body = _email_wrapper(
+        preheader=f"Ready for pickup — {order.get('album_title', 'Album')}",
+        title="Ready for pickup.",
+        body_html=(
+            f"<p>A book is ready for pickup and delivery.</p>"
+            f"<p><strong>Deliver to:</strong><br>"
+            f"{addr.get('full_name', '')}<br>"
+            f"{addr.get('street', '')}" + (f", {addr.get('building')}" if addr.get("building") else "") + f"<br>"
+            f"{addr.get('city', '')}<br>"
+            f"Phone: {addr.get('phone', '')}</p>"
+            + (f"<p><strong>Notes:</strong> {addr.get('additional_info')}</p>" if addr.get("additional_info") else "")
+            + f"<p><strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
+        ),
+    )
+    send_email(DELIVERY_EMAIL, subject, body, html_body=html_body)
+
 
 # ---------- OAuth (Google / Apple) ----------
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
