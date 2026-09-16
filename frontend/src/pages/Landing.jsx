@@ -1,16 +1,18 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { COVER_THEMES } from "@/lib/coverThemes";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleCreateAlbumClick = () => {
     // On vérifie la présence de 'album_token' ou 'album_user'
-    const isAuthenticated = 
-      localStorage.getItem("album_token") || 
+    const isAuthenticated =
+      localStorage.getItem("album_token") ||
       localStorage.getItem("album_user");
 
     if (isAuthenticated) {
@@ -22,6 +24,9 @@ export default function Landing() {
     }
   };
 
+  const processIcons = [<Wand2 size={22} />, <Sparkles size={22} />, <BookOpen size={22} />];
+  const sortingIcons = [<Images size={20} />, <ScanEye size={20} />, <Sparkles size={20} />, <ListChecks size={20} />];
+
   return (
     <main className="min-h-screen bg-[color:var(--paper)]">
       {/* Hero — editorial asymmetry */}
@@ -32,12 +37,12 @@ export default function Landing() {
               className="font-serif-display leading-[0.92] tracking-tight text-[color:var(--ink)]"
               style={{ fontSize: "clamp(48px, 8vw, 128px)", fontWeight: 500 }}
             >
-              A photo book
+              {t("landing.hero.title_line1")}
               <br />
-              <span className="italic text-[color:var(--coral)]">signed</span> by your memories.
+              <span className="italic text-[color:var(--coral)]">{t("landing.hero.title_highlight")}</span> {t("landing.hero.title_line2")}
             </h1>
             <p className="mt-8 text-lg md:text-xl text-[color:var(--ink)]/70 max-w-xl leading-relaxed font-sans">
-              Upload your photos, and we'll turn them into a refined printed album, crafted to feel timeless and made to be kept
+              {t("landing.hero.subtitle")}
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <button
@@ -45,7 +50,7 @@ export default function Landing() {
                 data-testid={TID.landingCta}
                 className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors duration-300"
               >
-                <span className="text-sm font-semibold tracking-widest uppercase">Create my album</span>
+                <span className="text-sm font-semibold tracking-widest uppercase">{t("landing.hero.cta")}</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -66,31 +71,12 @@ export default function Landing() {
       {/* Process strip */}
       <section className="border-y border-[color:var(--border-soft)] py-16 md:py-24 bg-white">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-12">
-          {[
-            {
-              icon: <Wand2 size={22} />,
-              title: "You upload",
-              body: "All your photos, unorganized — duplicates, blurry shots, HDR. We accept everything.",
-              n: "01",
-            },
-            {
-              icon: <Sparkles size={22} />,
-              title: "We sort",
-              body: "Gemini analyzes each shot: composition, duplicates, and grouping by scene.",
-              n: "02",
-            },
-            {
-              icon: <BookOpen size={22} />,
-              title: "You flip",
-              body: "A 3D preview, varied layouts, and a high-resolution PDF export.",
-              n: "03",
-            },
-          ].map((s, i) => (
+          {t("landing.process.steps", { returnObjects: true }).map((s, i) => (
             <div key={i} className="flex gap-6 items-start">
-              <div className="font-serif-display text-4xl text-[color:var(--coral)]">{s.n}</div>
+              <div className="font-serif-display text-4xl text-[color:var(--coral)]">{String(i + 1).padStart(2, "0")}</div>
               <div>
                 <div className="flex items-center gap-2 text-[color:var(--ink)] mb-2">
-                  {s.icon}
+                  {processIcons[i]}
                   <h3 className="font-serif-display text-2xl">{s.title}</h3>
                 </div>
                 <p className="text-[color:var(--ink)]/70 leading-relaxed">{s.body}</p>
@@ -104,44 +90,20 @@ export default function Landing() {
       <section className="py-24 md:py-32 px-6 md:px-12">
         <div className="max-w-[1400px] mx-auto">
           <div className="max-w-2xl mb-16">
-            <div className="eyebrow mb-4">How the sorting works</div>
+            <div className="eyebrow mb-4">{t("landing.sorting.eyebrow")}</div>
             <h2 className="font-serif-display text-4xl md:text-6xl tracking-tight leading-[1] mb-6">
-              What actually happens<br />
-              <em className="not-italic text-[color:var(--muted)]">to your photos.</em>
+              {t("landing.sorting.title_line1")}<br />
+              <em className="not-italic text-[color:var(--muted)]">{t("landing.sorting.title_highlight")}</em>
             </h2>
             <p className="text-[color:var(--ink)]/70 leading-relaxed">
-              You can upload everything — hundreds of photos, duplicates, near-identical
-              bursts, the odd blurry shot — and skip the sorting yourself. Here's exactly
-              what we do to turn that into a book, step by step, without ever touching the
-              resolution of the images you'll actually print.
+              {t("landing.sorting.intro")}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-14">
-            {[
-              {
-                icon: <Images size={20} />,
-                title: "Finding near-duplicates and bursts",
-                body: "Every photo gets a visual fingerprint, and shots taken close together in time are compared to each other. Near-identical frames — the same moment shot two or three times — are grouped together automatically.",
-              },
-              {
-                icon: <ScanEye size={20} />,
-                title: "Picking the sharpest one",
-                body: "Within each group, we measure focus and clarity directly and keep the sharpest frame. The rest are quietly set aside rather than deleted.",
-              },
-              {
-                icon: <Sparkles size={20} />,
-                title: "Sorting by date and place",
-                body: "The surviving, distinct photos are then ordered chronologically. Where a photo carries location data, it's grouped with others taken at the same place before sorting by time — so your book follows the order things actually happened, place by place.",
-              },
-              {
-                icon: <ListChecks size={20} />,
-                title: "Filtering out clear misses",
-                body: "Shots that are dramatically out of focus — severe motion blur, a finger over the lens — are left out of the automatic layout, based on the same sharpness check used to pick between near-duplicates. Nothing is ever permanently deleted — everything set aside during sorting stays available for you to add back in the editor if you disagree.",
-              },
-            ].map((s, i) => (
+            {t("landing.sorting.steps", { returnObjects: true }).map((s, i) => (
               <div key={i} className="flex gap-5 items-start">
-                <div className="mt-1 text-[color:var(--coral)] shrink-0">{s.icon}</div>
+                <div className="mt-1 text-[color:var(--coral)] shrink-0">{sortingIcons[i]}</div>
                 <div>
                   <h3 className="font-serif-display text-xl mb-2">{s.title}</h3>
                   <p className="text-[color:var(--ink)]/70 leading-relaxed text-sm">{s.body}</p>
@@ -156,14 +118,13 @@ export default function Landing() {
       <section id="templates" className="py-24 md:py-32 px-6 md:px-12">
         <div className="max-w-[1400px] mx-auto">
           <div className="max-w-2xl mb-16">
-            <div className="eyebrow mb-4">Templates</div>
+            <div className="eyebrow mb-4">{t("landing.templates.eyebrow")}</div>
             <h2 className="font-serif-display text-4xl md:text-6xl tracking-tight leading-[1] mb-6">
-              Start from a theme.<br />
-              <em className="not-italic text-[color:var(--muted)]">Make it yours.</em>
+              {t("landing.templates.title_line1")}<br />
+              <em className="not-italic text-[color:var(--muted)]">{t("landing.templates.title_highlight")}</em>
             </h2>
             <p className="text-[color:var(--ink)]/70">
-              Pick a starting look for your trip, your couple, your family, or a celebration —
-              then customize every detail in the book editor: colors, title, photos, layout.
+              {t("landing.templates.intro")}
             </p>
           </div>
 
@@ -189,14 +150,14 @@ export default function Landing() {
       <section className="py-24 md:py-32 px-6 md:px-12 bg-[color:var(--ink)] text-[color:var(--paper)]">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-end justify-between gap-8">
           <h2 className="font-serif-display text-5xl md:text-7xl leading-[0.95] max-w-2xl">
-            Ready to design<br />your edition?
+            {t("landing.footer.title_line1")}<br />{t("landing.footer.title_line2")}
           </h2>
           <button
             onClick={handleCreateAlbumClick}
             className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)] transition-colors duration-300"
             data-testid="footer-cta"
           >
-            <span className="text-sm font-semibold tracking-widest uppercase">Create my photo album</span>
+            <span className="text-sm font-semibold tracking-widest uppercase">{t("landing.footer.cta")}</span>
             <ArrowRight size={16} />
           </button>
         </div>

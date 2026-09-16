@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown } from "lucide-react";
 
 const TOOLBAR_FONTS = [
@@ -43,17 +44,18 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
 export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, emptyFrame, hideSwap, hideReorder }) {
+  const { t } = useTranslation();
   return (
     <ToolbarShell x={x} y={y} w={w}>
       {!emptyFrame && (
         <>
-          <ToolbarButton onClick={onEdit} title="Edit photo" tid="frame-edit-btn">
+          <ToolbarButton onClick={onEdit} title={t("toolbars.editPhoto")} tid="frame-edit-btn">
             <Pencil size={14} />
           </ToolbarButton>
           {!hideSwap && (
             <ToolbarButton
               onClick={onSwap}
-              title={isSwapping ? "Click another photo to swap" : "Swap with another photo"}
+              title={isSwapping ? t("toolbars.clickToSwap") : t("toolbars.swapWithAnother")}
               tid="frame-swap-btn"
             >
               <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
@@ -63,15 +65,15 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
       )}
       {!hideReorder && (
         <>
-          <ToolbarButton onClick={onSendBackward} title="Send backward" tid="frame-layer-back-btn">
+          <ToolbarButton onClick={onSendBackward} title={t("toolbars.sendBackward")} tid="frame-layer-back-btn">
             <ChevronDown size={14} />
           </ToolbarButton>
-          <ToolbarButton onClick={onBringForward} title="Bring forward" tid="frame-layer-front-btn">
+          <ToolbarButton onClick={onBringForward} title={t("toolbars.bringForward")} tid="frame-layer-front-btn">
             <ChevronUp size={14} />
           </ToolbarButton>
         </>
       )}
-      <ToolbarButton onClick={onDelete} title="Delete this frame" tid="frame-delete-btn" danger>
+      <ToolbarButton onClick={onDelete} title={t("toolbars.deleteFrame")} tid="frame-delete-btn" danger>
         <Trash2 size={14} />
       </ToolbarButton>
     </ToolbarShell>
@@ -83,6 +85,7 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
  * rotation value sits directly under the rotation slider, not centered
  * under the whole row. */
 export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRotationChange, onDone }) {
+  const { t } = useTranslation();
   return (
     <ToolbarShell x={x} y={y} w={w} wide>
       <div className="flex items-start gap-2">
@@ -126,7 +129,7 @@ export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRo
             data-testid="frame-rotation-input"
           />
         </div>
-        <ToolbarButton onClick={onDone} title="Done" tid="frame-edit-done">
+        <ToolbarButton onClick={onDone} title={t("toolbars.done")} tid="frame-edit-done">
           <Check size={14} />
         </ToolbarButton>
       </div>
@@ -171,6 +174,7 @@ export function PhotoPanOverlay({ focalX, focalY, onPan }) {
 
 /** Text item selected: compact inline controls, no side panel. */
 export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
+  const { t } = useTranslation();
   const [pickerOpen, setPickerOpen] = React.useState(false);
   return (
     <ToolbarShell x={x} y={y} w={w} wide>
@@ -189,7 +193,7 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
       <div className="flex items-center gap-1 shrink-0">
         <ToolbarButton
           onClick={() => onChange({ font_size: Math.max(8, (item.font_size || 16) - 2) })}
-          title="Decrease font size"
+          title={t("toolbars.decreaseFontSize")}
           tid="text-toolbar-size-down"
         >
           <span className="text-xs w-3 inline-block text-center">−</span>
@@ -197,7 +201,7 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
         <span className="text-xs w-6 text-center">{item.font_size || 16}</span>
         <ToolbarButton
           onClick={() => onChange({ font_size: Math.min(96, (item.font_size || 16) + 2) })}
-          title="Increase font size"
+          title={t("toolbars.increaseFontSize")}
           tid="text-toolbar-size-up"
         >
           <span className="text-xs w-3 inline-block text-center">+</span>
@@ -205,13 +209,13 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
       </div>
       <ToolbarButton
         onClick={() => onChange({ font_weight: (item.font_weight === "bold" || item.font_weight === "700") ? "normal" : "bold" })}
-        title="Bold"
+        title={t("toolbars.bold")}
         tid="text-toolbar-bold"
       >
         <Bold size={13} />
       </ToolbarButton>
       <div className="relative">
-        <ToolbarButton onClick={() => setPickerOpen((v) => !v)} title="Text color" tid="text-toolbar-color-toggle">
+        <ToolbarButton onClick={() => setPickerOpen((v) => !v)} title={t("toolbars.textColor")} tid="text-toolbar-color-toggle">
           <Palette size={13} />
         </ToolbarButton>
         {pickerOpen && (
@@ -239,7 +243,7 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
                 type="text"
                 value={item.color || "#1A1A17"}
                 onChange={(e) => onChange({ color: e.target.value })}
-                placeholder="#RRGGBB"
+                placeholder={t("toolbars.hexPlaceholder")}
                 className="flex-1 min-w-0 bg-white/10 text-[color:var(--paper)] text-xs px-1.5 py-1 rounded-sm border border-white/20 font-mono"
                 data-testid="text-toolbar-color-hex"
               />
@@ -247,7 +251,7 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
           </div>
         )}
       </div>
-      <ToolbarButton onClick={onDelete} title="Delete this text" tid="text-toolbar-delete" danger>
+      <ToolbarButton onClick={onDelete} title={t("toolbars.deleteText")} tid="text-toolbar-delete" danger>
         <Trash2 size={14} />
       </ToolbarButton>
     </ToolbarShell>

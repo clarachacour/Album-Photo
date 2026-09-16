@@ -1,0 +1,505 @@
+{
+  "nav": {
+    "myAlbums": "Mes albums",
+    "orders": "Commandes",
+    "faq": "FAQ",
+    "admin": "Admin",
+    "logout": "Déconnexion",
+    "signIn": "Se connecter"
+  },
+  "landing": {
+    "hero": {
+      "title_line1": "Un album photo",
+      "title_highlight": "signé",
+      "title_line2": "par vos souvenirs.",
+      "subtitle": "Envoyez vos photos, et nous les transformerons en un album imprimé raffiné, pensé pour traverser le temps et être gardé précieusement.",
+      "cta": "Créer mon album"
+    },
+    "process": {
+      "steps": [
+        {
+          "title": "Vous envoyez",
+          "body": "Toutes vos photos, sans les trier — doublons, flous, HDR. On accepte tout."
+        },
+        {
+          "title": "On trie",
+          "body": "Gemini analyse chaque photo : composition, doublons, regroupement par scène."
+        },
+        {
+          "title": "Vous feuilletez",
+          "body": "Un aperçu 3D, des mises en page variées, et un export PDF haute résolution."
+        }
+      ]
+    },
+    "sorting": {
+      "eyebrow": "Comment fonctionne le tri",
+      "title_line1": "Ce qui arrive vraiment",
+      "title_highlight": "à vos photos.",
+      "intro": "Vous pouvez tout envoyer — des centaines de photos, des doublons, des rafales quasi identiques, quelques photos floues — sans avoir à faire le tri vous-même. Voici exactement ce qu'on fait pour transformer tout ça en album, étape par étape, sans jamais toucher à la résolution des images que vous imprimerez réellement.",
+      "steps": [
+        {
+          "title": "Repérer les quasi-doublons et les rafales",
+          "body": "Chaque photo reçoit une empreinte visuelle, et les photos prises à quelques instants d'intervalle sont comparées entre elles. Les images quasi identiques — le même instant photographié deux ou trois fois — sont regroupées automatiquement."
+        },
+        {
+          "title": "Choisir la plus nette",
+          "body": "Dans chaque groupe, on mesure directement la netteté et on garde la photo la plus nette. Les autres sont mises de côté discrètement, jamais supprimées."
+        },
+        {
+          "title": "Trier par date et par lieu",
+          "body": "Les photos distinctes restantes sont ensuite classées chronologiquement. Quand une photo porte une donnée de localisation, elle est regroupée avec les autres prises au même endroit avant d'être triée par heure — pour que votre album suive l'ordre réel des événements, lieu par lieu."
+        },
+        {
+          "title": "Écarter les ratés évidents",
+          "body": "Les photos manifestement floues — bougé important, doigt devant l'objectif — sont laissées de côté dans la mise en page automatique, sur la base du même test de netteté utilisé pour départager les quasi-doublons. Rien n'est jamais supprimé définitivement — tout ce qui est mis de côté pendant le tri reste disponible pour être rajouté dans l'éditeur si vous n'êtes pas d'accord."
+        }
+      ]
+    },
+    "templates": {
+      "eyebrow": "Modèles",
+      "title_line1": "Partez d'un thème.",
+      "title_highlight": "Faites-le vôtre.",
+      "intro": "Choisissez une base pour votre voyage, votre couple, votre famille, ou une célébration — puis personnalisez chaque détail dans l'éditeur : couleurs, titre, photos, mise en page."
+    },
+    "footer": {
+      "title_line1": "Prêt·e à concevoir",
+      "title_line2": "votre édition ?",
+      "cta": "Créer mon album photo"
+    }
+  },
+  "auth": {
+    "back": "Retour",
+    "backToSignIn": "Retour à la connexion",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "name": "Nom",
+    "rememberMe": "Se souvenir de moi",
+    "forgotPassword": "Mot de passe oublié ?",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "noAccount": "Pas encore de compte ? Inscrivez-vous",
+    "hasAccount": "Déjà un compte ? Connectez-vous",
+    "welcomeToast": "Bienvenue sur Everbook !",
+    "welcomeBackToast": "Content de vous revoir !",
+    "genericError": "Une erreur est survenue",
+    "login": {
+      "title": "Content de vous revoir !",
+      "subtitle": "Connectez-vous pour accéder à vos albums."
+    },
+    "signup": {
+      "title": "Créez votre première édition.",
+      "subtitle": "Un seul compte pour créer, enregistrer et exporter."
+    },
+    "forgot": {
+      "title": "Réinitialisez votre mot de passe.",
+      "subtitle": "Nous vous enverrons un e-mail avec un lien pour définir un nouveau mot de passe.",
+      "submit": "Envoyer le lien",
+      "error": "Une erreur est survenue",
+      "sentMessage": "Si un compte existe pour <1>{{email}}</1>, nous avons envoyé un lien de réinitialisation — vérifiez votre boîte de réception."
+    },
+    "reset": {
+      "title": "Définissez un nouveau mot de passe.",
+      "subtitle": "Choisissez un nouveau mot de passe pour votre compte.",
+      "newPassword": "Nouveau mot de passe",
+      "submit": "Mettre à jour le mot de passe",
+      "missingToken": "Ce lien n'a pas de jeton de réinitialisation. Merci d'en demander un nouveau depuis la page de connexion.",
+      "missingTokenToast": "Ce lien de réinitialisation n'a pas de jeton — merci d'en demander un nouveau.",
+      "successToast": "Mot de passe mis à jour — vous pouvez maintenant vous connecter.",
+      "error": "Ce lien est invalide ou a expiré"
+    },
+    "social": {
+      "googleFailed": "Échec de la connexion Google",
+      "appleFailed": "Échec de la connexion Apple",
+      "continueWithApple": "Continuer avec Apple",
+      "or": "ou"
+    }
+  },
+  "faq": {
+    "eyebrow": "Support",
+    "title": "Questions fréquentes",
+    "cantFind": "Vous ne trouvez pas ce que vous cherchez ?",
+    "getInTouch": "Contactez-nous",
+    "items": [
+      {
+        "q": "Combien de temps faut-il pour recevoir mon album ?",
+        "a": "Une fois votre commande passée, nous préparons et imprimons votre album, puis vous l'expédions. Vous pouvez suivre chaque étape depuis votre page Commandes."
+      },
+      {
+        "q": "Quels formats sont disponibles ?",
+        "a": "A5, A4 et A3, en orientation portrait ou paysage. Vous choisissez le format à la création de votre album, et le voyez reflété en direct dans l'éditeur."
+      },
+      {
+        "q": "Puis-je modifier mon album après avoir passé commande ?",
+        "a": "Une fois la commande passée, votre album part en production peu après, donc toute modification ultérieure ne sera pas prise en compte pour cette commande précise. Si vous avez besoin d'un changement, contactez-nous au plus vite et nous ferons de notre mieux pour vous aider."
+      },
+      {
+        "q": "Comment fonctionne la sélection des photos par IA ?",
+        "a": "Quand vous importez un grand nombre de photos, on détecte automatiquement les quasi-doublons et les rafales, on garde la photo la plus nette de chaque groupe, et l'IA aide à regrouper et décrire le meilleur de ce qui reste — pour que vous passiez moins de temps à trier et plus de temps à profiter du résultat."
+      },
+      {
+        "q": "Puis-je commander plusieurs exemplaires ?",
+        "a": "Oui — vous pouvez choisir une quantité au moment de la commande, par exemple pour offrir des exemplaires en cadeau."
+      },
+      {
+        "q": "Que faire si quelque chose arrive endommagé ou incorrect ?",
+        "a": "Contactez-nous via notre page Contact avec votre numéro de commande, et nous réglerons ça."
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Support",
+    "title": "Nous contacter",
+    "thanks": "Merci de nous avoir contactés",
+    "willReply": "Nous vous répondrons dès que possible.",
+    "name": "Nom",
+    "email": "E-mail",
+    "subject": "Sujet",
+    "message": "Message",
+    "sending": "Envoi…",
+    "send": "Envoyer le message",
+    "sentToast": "Message envoyé",
+    "errorToast": "Impossible d'envoyer votre message"
+  },
+  "chooseTemplate": {
+    "back": "Retour",
+    "title": "Choisissez un point de départ.",
+    "subtitle": "Partez d'un thème, ou commencez avec une page blanche pour créer votre propre style.",
+    "scratch_title": "Partir de zéro",
+    "scratch_subtitle": "Une page blanche — sans thème ni couleurs prédéfinis."
+  },
+  "dashboard": {
+    "eyebrow": "Bibliothèque",
+    "title": "Vos éditions",
+    "newAlbum": "Nouvel album",
+    "loadError": "Impossible de charger vos albums",
+    "confirmDelete": "Supprimer « {{title}} » ?",
+    "deletedToast": "Album supprimé",
+    "deleteError": "Échec de la suppression",
+    "deleteAria": "Supprimer",
+    "untitled": "Sans titre",
+    "landscape": "paysage",
+    "portrait": "portrait",
+    "created": "Créé le {{date}}",
+    "lastModified": "Modifié le {{date}}",
+    "deletionToday": "Cet album sera supprimé aujourd'hui",
+    "deletionInDays_one": "Cet album sera supprimé dans {{count}} jour",
+    "deletionInDays_other": "Cet album sera supprimé dans {{count}} jours",
+    "status": {
+      "draft": "Brouillon",
+      "processing": "Traitement IA",
+      "ready": "Prêt",
+      "error": "Erreur",
+      "ordered": "Commandé"
+    },
+    "empty": {
+      "title": "Aucun album pour l'instant.",
+      "subtitle": "Créez votre première édition en quelques minutes.",
+      "cta": "Commencer"
+    }
+  },
+  "orders": {
+    "eyebrow": "Compte",
+    "title": "Vos commandes",
+    "loading": "Chargement…",
+    "loadError": "Impossible de charger vos commandes",
+    "empty": "Vous n'avez encore commandé aucun album.",
+    "goToAlbums": "Voir vos albums",
+    "qty": "Qté",
+    "status": {
+      "pending_payment": "En attente de paiement",
+      "paid": "Payée",
+      "processing": "En traitement",
+      "printing": "En impression",
+      "ready_for_delivery": "Prête pour l'envoi",
+      "shipped": "Expédiée",
+      "delivered": "Livrée",
+      "cancelled": "Annulée"
+    }
+  },
+  "orderDetail": {
+    "loading": "Chargement…",
+    "loadError": "Impossible de charger cette commande",
+    "back": "Retour à vos commandes",
+    "orderNumber": "Commande n°{{id}}",
+    "paymentNotice": "Le paiement n'est pas encore configuré de notre côté — nous avons enregistré votre commande et commencé à préparer votre album. Nous vous recontacterons directement pour finaliser le paiement.",
+    "status": "Statut",
+    "cancelled": "Cette commande a été annulée.",
+    "trackingNumber": "Numéro de suivi :",
+    "orderDetails": "Détails de la commande",
+    "format": "Format",
+    "quantity": "Quantité",
+    "unitPrice": "Prix unitaire",
+    "total": "Total",
+    "placedOn": "Passée le {{date}}",
+    "shippingTo": "Livraison à"
+  },
+  "account": {
+    "eyebrow": "Compte",
+    "title": "Votre compte",
+    "myOrders": "Mes commandes",
+    "contactSupport": "Contacter le support",
+    "profileSection": "Profil et informations de livraison",
+    "name": "Nom",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "street": "Rue",
+    "building": "Bâtiment",
+    "city": "Ville",
+    "additionalInfo": "Informations complémentaires (facultatif)",
+    "additionalInfoPlaceholder": "Étage, code d'accès, consignes de livraison...",
+    "saving": "Enregistrement…",
+    "saveChanges": "Enregistrer les modifications",
+    "profileUpdated": "Profil mis à jour",
+    "profileUpdateError": "Impossible de mettre à jour le profil",
+    "changePassword": "Modifier le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
+    "updating": "Mise à jour…",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "passwordUpdated": "Mot de passe mis à jour",
+    "passwordUpdateError": "Impossible de mettre à jour le mot de passe",
+    "passwordMismatch": "Les nouveaux mots de passe ne correspondent pas"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé",
+    "saved": "Enregistré",
+    "uploadFailed": "Échec de l'envoi",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe"
+  },
+  "mobileQr": {
+    "title": "Scannez avec votre téléphone.",
+    "instructions": "Ouvrez l'appareil photo de votre téléphone, scannez le code, et choisissez vos photos — elles apparaîtront ici automatiquement, même après avoir fermé cette fenêtre.",
+    "error": "Impossible de créer un lien d'envoi — réessayez.",
+    "expiry": "Ce lien reste actif pendant 1 heure."
+  },
+  "photoGallery": {
+    "clickToPlace": "Cliquez sur un emplacement de n'importe quelle page pour y placer cette photo",
+    "clickToCancel": "Cliquez sur une page pour la placer — cliquez ici à nouveau pour annuler",
+    "dragOrClick": "Cliquez pour la placer sur une page, ou glissez-la"
+  },
+  "layoutPicker": {
+    "title": "Choisir une mise en page",
+    "instructions": "Vos photos existantes sont réorganisées dans la nouvelle disposition, et les emplacements supplémentaires nécessaires apparaissent vides — glissez vos photos dessus, chaque cadre reste redimensionnable ou déplaçable ensuite.",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos"
+  },
+  "createAlbum": {
+    "steps": {
+      "format": "Format",
+      "edit": "Édition",
+      "pictures": "Photos"
+    },
+    "composing": "L'IA compose votre édition",
+    "composingNote": "Ça peut prendre quelques minutes pour un grand album — n'hésitez pas à rester sur cette page.",
+    "composingToast": "L'IA compose votre album...",
+    "creationStages": [
+      "Analyse des images…",
+      "Détection des doublons…",
+      "Regroupement par scène…",
+      "Composition des pages…"
+    ],
+    "loadError": "Impossible de charger cet album",
+    "untitled": "Sans titre",
+    "createError": "Erreur lors de la création de l'album",
+    "saveError": "Enregistrement impossible",
+    "creationError": "Erreur pendant la création",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "continue": "Continuer",
+    "format": {
+      "title": "Format et orientation.",
+      "subtitle": "Le rendu imprimable final. Vous concevrez votre couverture juste après.",
+      "size": "Taille",
+      "orientation": "Orientation",
+      "portrait": "Portrait",
+      "landscape": "Paysage",
+      "portraitLower": "portrait",
+      "landscapeLower": "paysage",
+      "pageCount": "Nombre de pages",
+      "custom": "Personnalisé",
+      "customPagesNote": "pages — tarifé au-dessus du palier standard le plus proche",
+      "pagesCount_one": "{{count}} page",
+      "pagesCount_other": "{{count}} pages",
+      "perCopy": "par exemplaire"
+    },
+    "edit": {
+      "title": "Faites-le vôtre.",
+      "subtitle": "Cliquez sur le titre, le logo, ou le texte au dos pour les modifier directement. Glissez pour déplacer ou redimensionner. Ajoutez votre propre image ou texte n'importe où sur la couverture.",
+      "hint": "Cliquez sur n'importe quel élément de la couverture — le titre, le logo, le texte au dos — pour le modifier, le déplacer ou le supprimer."
+    },
+    "photos": {
+      "title": "Déposez vos photos.",
+      "subtitle": "Toutes vos photos, dans n'importe quel ordre. L'IA se charge du reste : tri, doublons, mise en page.",
+      "belowMinimum": "{{uploaded}} sur au moins {{minimum}} photos nécessaires pour un album de {{targetPages}} pages — envoyez {{remaining}} de plus pour continuer.",
+      "aboveMinimum": "{{uploaded}} photos envoyées (minimum {{minimum}} atteint). Vous pouvez maintenant créer votre album !",
+      "waitForImport": "Attendez la fin de l'import de vos photos",
+      "importing": "Import en cours…",
+      "createAlbum": "Créer l'album"
+    }
+  },
+  "photoUpload": {
+    "linkError": "Impossible de créer un lien d'envoi — réessayez.",
+    "phoneComing": "Des photos arrivent depuis votre téléphone — continuez à en ajouter, ou revenez sur cet écran.",
+    "limitReached": "Cet album a atteint la limite de 5000 photos — certaines de vos photos sélectionnées n'ont pas été ajoutées. Supprimez-en pour pouvoir en ajouter d'autres.",
+    "addingNew": "Ajout de vos nouvelles photos…",
+    "addError": "Impossible d'ajouter les photos",
+    "uploading": "Envoi en cours…",
+    "tapToChoose": "Touchez pour choisir des photos",
+    "dragHere": "Glissez vos images ici",
+    "cameraRoll": "depuis votre pellicule · JPG, PNG, WEBP",
+    "clickToBrowse": "ou cliquez pour parcourir · JPG, PNG, WEBP",
+    "fromPhone": "Depuis votre téléphone",
+    "addedSoFar_one": "{{count}} photo ajoutée pour l'instant",
+    "addedSoFar_other": "{{count}} photos ajoutées pour l'instant"
+  },
+  "googlePhotos": {
+    "accessDenied": "L'accès à Google Photos n'a pas été accordé",
+    "chooseInstructions": "Cliquez ci-dessous pour choisir vos photos dans Google Photos, puis revenez ici.",
+    "openButton": "Ouvrir Google Photos",
+    "selectionTimeout": "Le délai de sélection des photos a expiré",
+    "noneSelected": "Aucune photo n'a été sélectionnée",
+    "importing_one": "Import de {{count}} photo en cours — ça peut prendre quelques minutes pour une grande sélection.",
+    "importing_other": "Import de {{count}} photos en cours — ça peut prendre quelques minutes pour une grande sélection.",
+    "partialImport": "{{uploaded}} sur {{total}} photos importées — {{failed}} ont échoué et ont été ignorées. Vous pouvez réessayer de les importer.",
+    "importSuccess_one": "{{count}} photo importée depuis Google Photos",
+    "importSuccess_other": "{{count}} photos importées depuis Google Photos",
+    "importFailed": "Échec de l'import depuis Google Photos",
+    "importingLabel": "Import en cours…",
+    "buttonLabel": "Depuis Google Photos"
+  },
+  "albumEditor": {
+    "loadError": "Impossible de charger cet album",
+    "readyToast": "Album prêt",
+    "aiError": "Erreur lors du traitement IA",
+    "titleRequired": "Merci d'entrer un titre pour l'album",
+    "photoRequired": "Merci d'ajouter au moins une photo",
+    "composingToast": "L'IA compose votre album...",
+    "createError": "Erreur lors de la création",
+    "lockedError": "Cet album a déjà été commandé et ne peut plus être modifié",
+    "saveError": "Échec de l'enregistrement",
+    "picturesSwapped": "Photos échangées",
+    "resizedToast": "Album redimensionné à {{count}} pages.",
+    "resizeError": "Impossible de redimensionner l'album",
+    "pictureAdded": "Photo ajoutée",
+    "yourCaption": "Votre légende",
+    "coverImageAdded": "Image de couverture ajoutée",
+    "coverImageRemoved": "Image de couverture supprimée",
+    "coverImageRemoveError": "Impossible de supprimer l'image de couverture",
+    "loadingAlbum": "Chargement de l'album…",
+    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande.",
+    "previewQualityNote": "Cet aperçu est affiché en qualité réduite pour un chargement rapide — votre livre imprimé sera exporté en pleine résolution d'impression.",
+    "previousPage": "Page précédente",
+    "nextPage": "Page suivante",
+    "doublePage": "Double page {{count}}",
+    "pagesShort": "{{current}} sur {{target}} pages — il en manque {{remaining}} par rapport à ce que vous avez choisi.",
+    "addPage": "Ajouter une page",
+    "changePageCountLink": "Modifier le nombre total de pages…",
+    "rearrangePhotos": "Réorganiser les photos · glisser-déposer",
+    "allYourPhotos": "Toutes vos photos · cliquez ou glissez sur une page",
+    "addMorePhotos": "Ajouter d'autres photos",
+    "addMorePhotosNote": "L'IA choisira les meilleures de vos nouvelles photos et ajoutera des pages à la fin de votre album.",
+    "tools": "Outils",
+    "undoTitle": "Annuler (Ctrl+Z)",
+    "redoTitle": "Rétablir (Ctrl+Y)",
+    "savedAutomatically": "Enregistré automatiquement à {{time}}",
+    "orderThisAlbum": "Commander cet album",
+    "clickOnPage": "Cliquez sur la page…",
+    "addTextButton": "Ajouter du texte",
+    "editing": "Édition",
+    "selectedHint": "Utilisez la petite barre qui apparaît au-dessus de l'élément sélectionné pour le modifier, le recadrer, ou le supprimer — directement sur la page.",
+    "nothingSelectedHint": "Cliquez sur un élément pour le modifier. Sur la couverture, cliquez sur le fond, le titre, ou un élément ajouté.",
+    "tipLabel": "Astuce",
+    "tipText": "Déplacez et redimensionnez chaque élément directement dans le livre.",
+    "about": "À propos",
+    "pagesCount_one": "{{count}} page",
+    "pagesCount_other": "{{count}} pages",
+    "photosUsed_one": "{{count}} photo utilisée",
+    "photosUsed_other": "{{count}} photos utilisées",
+    "formatLine": "Format : {{size}} · {{orientation}}",
+    "legacyForm": {
+      "title": "Créer un nouvel album",
+      "subtitle": "Remplissez les informations et ajoutez vos photos pour lancer la composition automatique.",
+      "infoSection": "Informations",
+      "titleField": "Titre *",
+      "titlePlaceholder": "ex : Voyage en Italie",
+      "location": "Lieu / Pays",
+      "locationPlaceholder": "ex : Toscane",
+      "year": "Année",
+      "layoutSection": "Mise en page & Couverture",
+      "format": "Format",
+      "square": "Carré",
+      "coverColor": "Couleur de couverture",
+      "photosSection": "Photos",
+      "dropHere": "Cliquez ou glissez vos photos ici",
+      "acceptedFormats": "JPEG, PNG, WEBP acceptés",
+      "photosSelected_one": "{{count}} photo sélectionnée",
+      "photosSelected_other": "{{count}} photos sélectionnées",
+      "beginCreation": "Lancer la création"
+    },
+    "repack": {
+      "title": "Modifier le nombre total de pages",
+      "newTotal": "Nouveau nombre total de pages",
+      "rebuildAfter": "Reconstruire les pages après la double page n°",
+      "explanation": "Tout ce qui précède, y compris cette double page, reste exactement tel que vous l'avez laissé. Seul ce qui suit est reconstruit — mêmes photos, réarrangées automatiquement dans une nouvelle mise en page, donc toute modification manuelle sur ces pages ultérieures est perdue. Vous en aurez surtout besoin en <1>diminuant</1> le nombre de pages (moins de place signifie qu'il faut redistribuer quelque chose), ou si vous souhaitez qu'une section de l'album soit refaite volontairement depuis le début. Ajouter des pages n'en a pas besoin — laissez tel quel, les nouvelles pages vides sont ajoutées à la fin, rien d'existant n'est touché.",
+      "rebuilding": "Reconstruction…",
+      "apply": "Appliquer"
+    },
+    "textEditor": {
+      "text": "Texte",
+      "font": "Police",
+      "color": "Couleur",
+      "style": "Style",
+      "bold": "Gras",
+      "italic": "Italique",
+      "size": "Taille · {{size}}px"
+    },
+    "photoEditor": {
+      "hint": "Photo sélectionnée. Ajustez le zoom et le cadrage.",
+      "zoom": "Zoom · {{scale}}×",
+      "horizontal": "Cadrage horizontal · {{pct}}%",
+      "vertical": "Cadrage vertical · {{pct}}%",
+      "resetFraming": "Réinitialiser le cadrage",
+      "removeFromPage": "Retirer de la page"
+    }
+  },
+  "toolbars": {
+    "editPhoto": "Modifier la photo",
+    "clickToSwap": "Cliquez sur une autre photo pour l'échanger",
+    "swapWithAnother": "Échanger avec une autre photo",
+    "sendBackward": "Envoyer vers l'arrière",
+    "bringForward": "Amener vers l'avant",
+    "deleteFrame": "Supprimer ce cadre",
+    "done": "Terminé",
+    "decreaseFontSize": "Réduire la taille du texte",
+    "increaseFontSize": "Augmenter la taille du texte",
+    "bold": "Gras",
+    "textColor": "Couleur du texte",
+    "hexPlaceholder": "#RRVVBB",
+    "deleteText": "Supprimer ce texte"
+  },
+  "albumPage": {
+    "resize": "Redimensionner",
+    "changeLayout": "Changer la mise en page de cette page — combien de photos elle contient et comment elles sont disposées",
+    "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
+    "deletePage": "Supprimer toute cette page",
+    "addTextBox": "Ajouter une zone de texte à cette page — cliquez où vous voulez la placer"
+  },
+  "verifyEmail": {
+    "title": "Vérifiez votre boîte mail.",
+    "instructions": "Nous avons envoyé un lien de confirmation à :",
+    "resendButton": "Renvoyer l'e-mail de confirmation",
+    "sending": "Envoi…",
+    "resentToast": "E-mail de confirmation envoyé — vérifiez votre boîte de réception.",
+    "resendError": "Impossible de renvoyer l'e-mail. Merci de réessayer.",
+    "signOut": "Se déconnecter"
+  }
+}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation, Trans } from "react-i18next";
 import { api, coverImageUrl, coverAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
@@ -31,7 +32,8 @@ export default function AlbumEditor() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
-  
+  const { t, i18n } = useTranslation();
+
   const isCreating = !id || id === "new";
 
   // --- États du Formulaire de Création ---
@@ -96,7 +98,7 @@ export default function AlbumEditor() {
         setProcessing(true);
       } else setProcessing(false);
     } catch {
-      toast.error("Impossible de charger cet album");
+      toast.error(t("albumEditor.loadError"));
       nav("/dashboard");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,8 +214,8 @@ export default function AlbumEditor() {
           loadAlbum();
           if (!notifiedRef.current) {
             notifiedRef.current = true;
-            if (data.status === "ready") toast.success("Album prêt");
-            if (data.status === "error") toast.error("Erreur lors du traitement IA");
+            if (data.status === "ready") toast.success(t("albumEditor.readyToast"));
+            if (data.status === "error") toast.error(t("albumEditor.aiError"));
           }
         }
       } catch {
@@ -238,11 +240,11 @@ export default function AlbumEditor() {
 
   const createAndProcess = async () => {
     if (!title.trim()) {
-      toast.error("Veuillez entrer un titre pour l'album");
+      toast.error(t("albumEditor.titleRequired"));
       return;
     }
     if (files.length === 0) {
-      toast.error("Veuillez ajouter au moins une photo");
+      toast.error(t("albumEditor.photoRequired"));
       return;
     }
 
@@ -254,6 +256,7 @@ export default function AlbumEditor() {
         year: Number(year) || new Date().getFullYear(),
         size,
         orientation,
+        lang: i18n.language?.startsWith("fr") ? "fr" : "en",
       });
 
       const chunkSize = 8;
@@ -267,10 +270,10 @@ export default function AlbumEditor() {
       }
 
       await api.post(`/albums/${newAlbum.id}/process`);
-      toast.success("L'IA compose votre album...");
+      toast.success(t("albumEditor.composingToast"));
       nav(`/editor/${newAlbum.id}?processing=1`);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Erreur lors de la création");
+      toast.error(err?.response?.data?.detail || t("albumEditor.createError"));
       setBusy(false);
     }
   };
@@ -283,9 +286,9 @@ export default function AlbumEditor() {
     try {
       await api.patch(`/albums/${id}`, { title: current.title, country: current.country, year: current.year, pages: current.pages, cover: current.cover || {} });
       setLastSavedAt(new Date());
-      if (!silent) toast.success("Saved");
+      if (!silent) toast.success(t("common.saved"));
     } catch (err) {
-      toast.error(err?.response?.status === 403 ? "This album has already been ordered and can no longer be edited" : "Failed to save");
+      toast.error(err?.response?.status === 403 ? t("albumEditor.lockedError") : t("albumEditor.saveError"));
     } finally {
       setSaving(false);
     }
@@ -422,7 +425,7 @@ export default function AlbumEditor() {
       }
       return { ...prev, pages: newPages };
     });
-    toast.success("Pictures swapped");
+    toast.success(t("albumEditor.picturesSwapped"));
   };
 
   // Global so a swap can be started on one page and completed on another —
@@ -536,11 +539,11 @@ export default function AlbumEditor() {
         target_pages: targetPages,
         keep_first_pages: keepFirstPages,
       });
-      toast.success(`Album resized to ${data.pages} pages.`);
+      toast.success(t("albumEditor.resizedToast", { count: data.pages }));
       setShowRepackForm(false);
       await loadAlbum();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Could not resize the album");
+      toast.error(err?.response?.data?.detail || t("albumEditor.resizeError"));
     } finally {
       setRepacking(false);
     }
@@ -598,7 +601,7 @@ export default function AlbumEditor() {
       return { ...prev, pages: newPages };
     });
     setSelected({ pageIdx, item: newItem });
-    toast.success("Picture added");
+    toast.success(t("albumEditor.pictureAdded"));
   };
 
   const [placingText, setPlacingText] = useState(false);
@@ -608,7 +611,7 @@ export default function AlbumEditor() {
     const newItem = {
       id: cryptoRandom(),
       type: "text",
-      content: "Your caption",
+      content: t("albumEditor.yourCaption"),
       x: box.x,
       y: box.y,
       w: 0.5,
@@ -650,9 +653,9 @@ export default function AlbumEditor() {
       });
       setAlbum({ ...album, cover_image_path: data.cover_image_path });
       setCoverVersion((v) => v + 1);
-      toast.success("Cover image added");
+      toast.success(t("albumEditor.coverImageAdded"));
     } catch {
-      toast.error("Upload failed");
+      toast.error(t("common.uploadFailed"));
     } finally {
       setUploadingCover(false);
     }
@@ -664,9 +667,9 @@ export default function AlbumEditor() {
       await api.delete(`/albums/${id}/cover-image`);
       setAlbum({ ...album, cover_image_path: null });
       setCoverVersion((v) => v + 1);
-      toast.success("Cover image removed");
+      toast.success(t("albumEditor.coverImageRemoved"));
     } catch {
-      toast.error("Failed to remove cover image");
+      toast.error(t("albumEditor.coverImageRemoveError"));
     } finally {
       setUploadingCover(false);
     }
@@ -706,37 +709,37 @@ export default function AlbumEditor() {
         <div className="max-w-[1000px] mx-auto">
          
           <div className="mb-10">
-            <h1 className="font-serif-display text-4xl mb-2">Créer un nouvel album</h1>
-            <p className="text-sm text-[color:var(--muted)]">Remplissez les informations et ajoutez vos photos pour lancer la composition automatique.</p>
+            <h1 className="font-serif-display text-4xl mb-2">{t("albumEditor.legacyForm.title")}</h1>
+            <p className="text-sm text-[color:var(--muted)]">{t("albumEditor.legacyForm.subtitle")}</p>
           </div>
 
           <div className="space-y-10 bg-white p-8 border border-[color:var(--border-soft)]">
             {/* 1. Informations générales */}
             <div className="space-y-4">
-              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">Informations</h2>
+              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">{t("albumEditor.legacyForm.infoSection")}</h2>
               <div>
-                <label className="eyebrow block mb-2">Title *</label>
+                <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.titleField")}</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="ex: Voyage en Italie"
+                  placeholder={t("albumEditor.legacyForm.titlePlaceholder")}
                   className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="eyebrow block mb-2">Location / Country</label>
+                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.location")}</label>
                   <input
                     type="text"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    placeholder="ex: Toscane"
+                    placeholder={t("albumEditor.legacyForm.locationPlaceholder")}
                     className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
                   />
                 </div>
                 <div>
-                  <label className="eyebrow block mb-2">Year</label>
+                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.year")}</label>
                   <input
                     type="number"
                     value={year}
@@ -749,12 +752,12 @@ export default function AlbumEditor() {
 
             {/* 2. Format et Style de couverture */}
             <div className="space-y-4">
-              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">Mise en page & Couverture</h2>
+              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">{t("albumEditor.legacyForm.layoutSection")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="eyebrow block mb-2">Format</label>
+                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.format")}</label>
                   <div className="grid grid-cols-3 gap-2">
-                    {["A4", "A5", "Square"].map((s) => (
+                    {["A4", "A5", t("albumEditor.legacyForm.square")].map((s) => (
                       <button
                         key={s}
                         type="button"
@@ -769,11 +772,11 @@ export default function AlbumEditor() {
                   </div>
                 </div>
                 <div>
-                  <label className="eyebrow block mb-2">Orientation</label>
+                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.orientation")}</label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: "portrait", label: "Portrait" },
-                      { id: "landscape", label: "Landscape" },
+                      { id: "portrait", label: t("createAlbum.format.portrait") },
+                      { id: "landscape", label: t("createAlbum.format.landscape") },
                     ].map((o) => (
                       <button
                         key={o.id}
@@ -791,7 +794,7 @@ export default function AlbumEditor() {
               </div>
 
               <div>
-                <label className="eyebrow block mb-2">Cover Color</label>
+                <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.coverColor")}</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {COVER_COLOR_PRESETS.map((t) => (
                     <div
@@ -813,7 +816,7 @@ export default function AlbumEditor() {
 
             {/* 3. Photos */}
             <div className="space-y-4">
-              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">Photos</h2>
+              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">{t("albumEditor.legacyForm.photosSection")}</h2>
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
@@ -835,13 +838,13 @@ export default function AlbumEditor() {
                   }}
                 />
                 <ImageIcon size={32} className="mx-auto text-[color:var(--muted)] mb-3" />
-                <p className="text-sm font-semibold mb-1">Click or drag your photos here</p>
-                <p className="text-xs text-[color:var(--muted)]">JPEG, PNG, WEBP accepted</p>
+                <p className="text-sm font-semibold mb-1">{t("albumEditor.legacyForm.dropHere")}</p>
+                <p className="text-xs text-[color:var(--muted)]">{t("albumEditor.legacyForm.acceptedFormats")}</p>
               </div>
 
               {files.length > 0 && (
                 <div>
-                  <div className="eyebrow mb-2">{files.length} photo(s) selected</div>
+                  <div className="eyebrow mb-2">{t("albumEditor.legacyForm.photosSelected", { count: files.length })}</div>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 max-h-48 overflow-y-auto p-2 border border-[color:var(--border-soft)] bg-gray-50">
                     {files.map((file, idx) => (
                       <div key={idx} className="relative group aspect-square bg-gray-200 border overflow-hidden">
@@ -875,7 +878,7 @@ export default function AlbumEditor() {
                 className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                <span className="text-sm font-semibold tracking-widest uppercase">Begin creation</span>
+                <span className="text-sm font-semibold tracking-widest uppercase">{t("albumEditor.legacyForm.beginCreation")}</span>
               </button>
             </div>
           </div>
@@ -890,7 +893,7 @@ export default function AlbumEditor() {
   if (!album) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[color:var(--editor-canvas)]">
-        <p className="eyebrow animate-slow-pulse">Loading album…</p>
+        <p className="eyebrow animate-slow-pulse">{t("albumEditor.loadingAlbum")}</p>
       </div>
     );
   }
@@ -918,11 +921,11 @@ export default function AlbumEditor() {
           </div>
           {album.was_ordered && (
             <div className="w-full max-w-2xl mb-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-              This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order.
+              {t("albumEditor.orderedBanner")}
             </div>
           )}
           <div className="w-full max-w-2xl mb-4 text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2">
-            This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.
+            {t("albumEditor.previewQualityNote")}
           </div>
 
           <BookRenderer
@@ -975,16 +978,16 @@ export default function AlbumEditor() {
               data-testid={TID.editorPrev}
               onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
               className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
-              aria-label="Previous page"
+              aria-label={t("albumEditor.previousPage")}
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="eyebrow">Double-page {pageIndex + 1}</span>
+            <span className="eyebrow">{t("albumEditor.doublePage", { count: pageIndex + 1 })}</span>
             <button
               data-testid={TID.editorNext}
               onClick={() => bookRef.current?.pageFlip()?.flipNext()}
               className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
-              aria-label="Next page"
+              aria-label={t("albumEditor.nextPage")}
             >
               <ChevronRight size={16} />
             </button>
@@ -993,15 +996,14 @@ export default function AlbumEditor() {
           {album.target_pages && (album.pages || []).length < album.target_pages && (
             <div className="mt-6 flex items-center gap-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-4 py-2.5">
               <span>
-                {(album.pages || []).length} of {album.target_pages} pages — you're{" "}
-                {album.target_pages - (album.pages || []).length} short of what you chose.
+                {t("albumEditor.pagesShort", { current: (album.pages || []).length, target: album.target_pages, remaining: album.target_pages - (album.pages || []).length })}
               </span>
               <button
                 onClick={addBlankPage}
                 data-testid={TID.editorAddPage}
                 className="inline-flex items-center gap-1.5 whitespace-nowrap bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all"
               >
-                <Plus size={13} /> Add a page
+                <Plus size={13} /> {t("albumEditor.addPage")}
               </button>
             </div>
           )}
@@ -1021,14 +1023,14 @@ export default function AlbumEditor() {
                 data-testid={TID.editorChangePageCount}
                 className="text-sm text-[color:var(--muted)] hover:text-[color:var(--ink)] underline underline-offset-2"
               >
-                Change total page count…
+                {t("albumEditor.changePageCountLink")}
               </button>
             )}
           </div>
 
           {album.pages && album.pages.length > 0 && (
             <div className="w-full mt-12 max-w-4xl">
-              <div className="eyebrow mb-3 text-center">Rearrange the photos · drag and drop</div>
+              <div className="eyebrow mb-3 text-center">{t("albumEditor.rearrangePhotos")}</div>
               <PhotoTray
                 photoIds={photoSequence()}
                 onReorder={reorderPhotoSequence}
@@ -1038,7 +1040,7 @@ export default function AlbumEditor() {
 
           {album.photos && album.photos.length > 0 && (
             <div className="w-full mt-8 max-w-4xl">
-              <div className="eyebrow mb-3 text-center">All your photos · click or drag onto a page</div>
+              <div className="eyebrow mb-3 text-center">{t("albumEditor.allYourPhotos")}</div>
               <PhotoGallery
                 photos={sortedAlbumPhotos}
                 placedPhotoIds={new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo").map((it) => it.photo_id)))}
@@ -1051,7 +1053,7 @@ export default function AlbumEditor() {
           {/* Add more photos — same 3 methods as the creation wizard. The AI
               curates just the new ones and appends new pages at the end. */}
           <div className="w-full mt-10 max-w-4xl">
-            <div className="eyebrow mb-3 text-center">Add more photos</div>
+            <div className="eyebrow mb-3 text-center">{t("albumEditor.addMorePhotos")}</div>
             <PhotoUploadMethods
               albumId={id}
               mode="editor"
@@ -1063,14 +1065,14 @@ export default function AlbumEditor() {
               }}
             />
             <p className="text-xs text-[color:var(--muted)] mt-4 text-center">
-              The AI will pick the best of your new photos and add pages at the end of your album.
+              {t("albumEditor.addMorePhotosNote")}
             </p>
           </div>
         </div>
 
         {/* Barre latérale (Sidebar) */}
         <aside className="lg:sticky lg:top-16 bg-white p-4 border border-[color:var(--border-soft)] max-h-[calc(100vh-5rem)] overflow-y-auto">
-          <div className="eyebrow mb-3">Tools</div>
+          <div className="eyebrow mb-3">{t("albumEditor.tools")}</div>
 
           <div className="space-y-2 mb-4">
             <div className="grid grid-cols-2 gap-2">
@@ -1079,7 +1081,7 @@ export default function AlbumEditor() {
                 disabled={!albumHistory.canUndo()}
                 data-testid="editor-undo"
                 className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
-                title="Undo (Ctrl+Z)"
+                title={t("albumEditor.undoTitle")}
               >
                 <Undo2 size={14} />
               </button>
@@ -1088,7 +1090,7 @@ export default function AlbumEditor() {
                 disabled={!albumHistory.canRedo()}
                 data-testid="editor-redo"
                 className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
-                title="Redo (Ctrl+Y)"
+                title={t("albumEditor.redoTitle")}
               >
                 <Redo2 size={14} />
               </button>
@@ -1100,11 +1102,11 @@ export default function AlbumEditor() {
               className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Save</span>
+              <span className="text-sm font-semibold tracking-widest uppercase">{t("common.save")}</span>
             </button>
             {lastSavedAt && (
               <p className="text-[11px] text-[color:var(--muted)] text-center -mt-1">
-                Saved automatically at {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {t("albumEditor.savedAutomatically", { time: lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
               </p>
             )}
             <button
@@ -1114,7 +1116,7 @@ export default function AlbumEditor() {
               className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2.5 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <ShoppingBag size={14} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">Order this album</span>
+              <span className="text-sm font-semibold tracking-widest uppercase">{t("albumEditor.orderThisAlbum")}</span>
             </button>
             <button
               data-testid={TID.editorAddText}
@@ -1127,13 +1129,13 @@ export default function AlbumEditor() {
             >
               <Type size={14} />
               <span className="text-sm font-semibold tracking-widest uppercase">
-                {placingText ? "Click on the page…" : "Add Text"}
+                {placingText ? t("albumEditor.clickOnPage") : t("albumEditor.addTextButton")}
               </span>
             </button>
           </div>
 
           <div className="border-t border-[color:var(--border-soft)] pt-4">
-            <div className="eyebrow mb-3">Editing</div>
+            <div className="eyebrow mb-3">{t("albumEditor.editing")}</div>
             {coverSel ? (
               <CoverEditorPanel
                 album={album}
@@ -1150,22 +1152,22 @@ export default function AlbumEditor() {
               />
             ) : selected ? (
               <p className="text-xs text-[color:var(--muted)] leading-relaxed">
-                Use the small bar that appears above the selected element to modify, crop, or delete it — directly on the page.
+                {t("albumEditor.selectedHint")}
               </p>
             ) : (
               <p className="text-xs text-[color:var(--muted)] leading-relaxed">
-                Click on an element to edit it. On the cover, click on the background, title, or an added element.<br /><br />
-                <em>Tip</em> : Move and resize each element directly in the book.
+                {t("albumEditor.nothingSelectedHint")}<br /><br />
+                <em>{t("albumEditor.tipLabel")}</em> : {t("albumEditor.tipText")}
               </p>
             )}
           </div>
 
           <div className="border-t border-[color:var(--border-soft)] pt-6 mt-6">
-            <div className="eyebrow mb-3">About</div>
+            <div className="eyebrow mb-3">{t("albumEditor.about")}</div>
             <div className="text-sm text-[color:var(--ink)]/70 space-y-1">
-              <div>{album.pages?.length || 0} pages</div>
-              <div>{album.photos?.filter((p) => p.is_selected).length || 0} photos used</div>
-              <div>Format : {album.size} · {albumOrientation}</div>
+              <div>{t("albumEditor.pagesCount", { count: album.pages?.length || 0 })}</div>
+              <div>{t("albumEditor.photosUsed", { count: album.photos?.filter((p) => p.is_selected).length || 0 })}</div>
+              <div>{t("albumEditor.formatLine", { size: album.size, orientation: albumOrientation })}</div>
             </div>
           </div>
         </aside>
@@ -1198,6 +1200,7 @@ function spreadNumberToPageCount(spreadNumber) {
 }
 
 function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel, onSubmit }) {
+  const { t } = useTranslation();
   const [targetPages, setTargetPages] = useState(currentTargetPages || currentPageCount);
   // Defaults to protecting the *entire* current album, not just the first
   // spread — with the old default of 1, simply raising the page count
@@ -1214,10 +1217,10 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
 
   return (
     <div className="border border-[color:var(--border-soft)] bg-[color:var(--editor-canvas)] p-4 max-w-md">
-      <div className="text-sm font-semibold mb-3">Change total page count</div>
+      <div className="text-sm font-semibold mb-3">{t("albumEditor.repack.title")}</div>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-xs text-[color:var(--muted)] block mb-1">New total pages</label>
+          <label className="text-xs text-[color:var(--muted)] block mb-1">{t("albumEditor.repack.newTotal")}</label>
           <input
             type="number"
             min={1}
@@ -1227,7 +1230,7 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
           />
         </div>
         <div>
-          <label className="text-xs text-[color:var(--muted)] block mb-1">Rebuild pages after Double-page #</label>
+          <label className="text-xs text-[color:var(--muted)] block mb-1">{t("albumEditor.repack.rebuildAfter")}</label>
           <input
             type="number"
             min={1}
@@ -1238,12 +1241,10 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
         </div>
       </div>
       <p className="text-xs text-[color:var(--muted)] mb-4">
-        Everything up to and including this double-page stays exactly as you left it. Only what comes after gets
-        rebuilt — same photos, automatically re-arranged into a fresh layout, so any manual edits on those later
-        pages are lost. You'll mainly need this when <span className="font-medium text-[color:var(--ink)]/80">lowering</span> the
-        page count (less room means something has to be redistributed), or if you'd like a section of the album
-        redone from scratch on purpose. Just adding pages doesn't need this — leave it as is and new blank pages
-        are added at the end, nothing existing is touched.
+        <Trans
+          i18nKey="albumEditor.repack.explanation"
+          components={{ 1: <span className="font-medium text-[color:var(--ink)]/80" /> }}
+        />
       </p>
       <div className="flex gap-2">
         <button
@@ -1251,7 +1252,7 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
           disabled={busy}
           className="text-sm px-3 py-1.5 text-[color:var(--muted)] hover:text-[color:var(--ink)]"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           onClick={() => onSubmit({ targetPages, keepFirstPages })}
@@ -1259,7 +1260,7 @@ function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel,
           className="inline-flex items-center gap-1.5 text-sm bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all disabled:opacity-60"
         >
           {busy && <Loader2 size={13} className="animate-spin" />}
-          {busy ? "Rebuilding…" : "Apply"}
+          {busy ? t("albumEditor.repack.rebuilding") : t("albumEditor.repack.apply")}
         </button>
       </div>
     </div>
@@ -1411,10 +1412,11 @@ function BookRenderer({
 }
 
 function TextEditor({ item, onChange, onRemove }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div>
-        <label className="eyebrow block mb-2">Text</label>
+        <label className="eyebrow block mb-2">{t("albumEditor.textEditor.text")}</label>
         <textarea
           value={item.content || ""}
           onChange={(e) => onChange({ content: e.target.value })}
@@ -1423,7 +1425,7 @@ function TextEditor({ item, onChange, onRemove }) {
         />
       </div>
       <div>
-        <label className="eyebrow block mb-2">Font</label>
+        <label className="eyebrow block mb-2">{t("albumEditor.textEditor.font")}</label>
         <select
           data-testid={TID.editorFontSelect}
           value={item.font || FONT_OPTIONS[0].value}
@@ -1438,7 +1440,7 @@ function TextEditor({ item, onChange, onRemove }) {
         </select>
       </div>
       <div>
-        <label className="eyebrow block mb-2">Color</label>
+        <label className="eyebrow block mb-2">{t("albumEditor.textEditor.color")}</label>
         <div className="flex items-center gap-2 flex-wrap">
           {COLOR_SWATCHES.map((c) => (
             <button
@@ -1459,7 +1461,7 @@ function TextEditor({ item, onChange, onRemove }) {
         </div>
       </div>
       <div>
-        <label className="eyebrow block mb-2">Style</label>
+        <label className="eyebrow block mb-2">{t("albumEditor.textEditor.style")}</label>
         <div className="flex items-center gap-2">
           <button
             data-testid="editor-text-bold"
@@ -1469,7 +1471,7 @@ function TextEditor({ item, onChange, onRemove }) {
                 ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                 : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
             }`}
-            title="Gras"
+            title={t("albumEditor.textEditor.bold")}
           >
             <Bold size={14} />
           </button>
@@ -1481,14 +1483,14 @@ function TextEditor({ item, onChange, onRemove }) {
                 ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                 : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
             }`}
-            title="Italique"
+            title={t("albumEditor.textEditor.italic")}
           >
             <Italic size={14} />
           </button>
         </div>
       </div>
       <div>
-        <label className="eyebrow block mb-2">Size · {item.font_size || 16}px</label>
+        <label className="eyebrow block mb-2">{t("albumEditor.textEditor.size", { size: item.font_size || 16 })}</label>
         <input
           data-testid={TID.editorSizeInput}
           type="range"
@@ -1504,18 +1506,19 @@ function TextEditor({ item, onChange, onRemove }) {
         className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
       >
         <Trash2 size={14} />
-        <span className="text-xs font-semibold tracking-widest uppercase">Delete</span>
+        <span className="text-xs font-semibold tracking-widest uppercase">{t("common.delete")}</span>
       </button>
     </div>
   );
 }
 
 function PhotoEditor({ item, onChange, onRemove }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
-      <p className="text-xs text-[color:var(--muted)]">Selected photo. Adjust the zoom and framing.</p>
+      <p className="text-xs text-[color:var(--muted)]">{t("albumEditor.photoEditor.hint")}</p>
       <div>
-        <label className="eyebrow block mb-2 flex items-center gap-2"><ZoomIn size={12}/> Zoom · {(item.scale || 1).toFixed(2)}×</label>
+        <label className="eyebrow block mb-2 flex items-center gap-2"><ZoomIn size={12}/> {t("albumEditor.photoEditor.zoom", { scale: (item.scale || 1).toFixed(2) })}</label>
         <input
           data-testid="editor-photo-scale"
           type="range"
@@ -1528,7 +1531,7 @@ function PhotoEditor({ item, onChange, onRemove }) {
         />
       </div>
       <div>
-        <label className="eyebrow block mb-2 flex items-center gap-2"><Move size={12}/> Horizontal framing · {Math.round((item.focal_x ?? 0.5) * 100)}%</label>
+        <label className="eyebrow block mb-2 flex items-center gap-2"><Move size={12}/> {t("albumEditor.photoEditor.horizontal", { pct: Math.round((item.focal_x ?? 0.5) * 100) })}</label>
         <input
           data-testid="editor-photo-focalx"
           type="range"
@@ -1541,7 +1544,7 @@ function PhotoEditor({ item, onChange, onRemove }) {
         />
       </div>
       <div>
-        <label className="eyebrow block mb-2 flex items-center gap-2"><Move size={12}/> Vertical framing · {Math.round((item.focal_y ?? 0.5) * 100)}%</label>
+        <label className="eyebrow block mb-2 flex items-center gap-2"><Move size={12}/> {t("albumEditor.photoEditor.vertical", { pct: Math.round((item.focal_y ?? 0.5) * 100) })}</label>
         <input
           data-testid="editor-photo-focaly"
           type="range"
@@ -1558,27 +1561,22 @@ function PhotoEditor({ item, onChange, onRemove }) {
         className="w-full text-xs text-[color:var(--muted)] hover:text-[color:var(--ink)] underline underline-offset-4"
         data-testid="editor-photo-reset"
       >
-        Reset framing
+        {t("albumEditor.photoEditor.resetFraming")}
       </button>
       <button
         onClick={onRemove}
         className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
       >
         <Trash2 size={14} />
-        <span className="text-xs font-semibold tracking-widest uppercase">Remove from page</span>
+        <span className="text-xs font-semibold tracking-widest uppercase">{t("albumEditor.photoEditor.removeFromPage")}</span>
       </button>
     </div>
   );
 }
 
-const PROCESSING_STAGES = [
-  "Analyzing images…",
-  "Detecting duplicates…",
-  "Grouping by scene…",
-  "Composing pages…",
-];
-
 function ProcessingScreen({ title }) {
+  const { t } = useTranslation();
+  const stages = t("createAlbum.creationStages", { returnObjects: true });
   const [dots, setDots] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setDots((d) => (d + 1) % 4), 500);
@@ -1586,20 +1584,21 @@ function ProcessingScreen({ title }) {
   }, []);
   const [stage, setStage] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setStage((s) => (s + 1) % PROCESSING_STAGES.length), 2000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setStage((s) => (s + 1) % stages.length), 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <main className="min-h-screen bg-[color:var(--paper)] flex items-center justify-center pt-20 relative">
       <div className="absolute inset-0 grain pointer-events-none" />
       <div className="text-center max-w-lg px-6 relative">
         <Sparkles size={32} className="mx-auto text-[color:var(--coral)] mb-8 animate-slow-pulse" />
-        <div className="eyebrow mb-4">AI is composing your edition</div>
+        <div className="eyebrow mb-4">{t("createAlbum.composing")}</div>
         <h1 className="font-serif-display text-5xl md:text-6xl leading-[1] tracking-tight mb-8">
           {title}
         </h1>
         <p className="font-serif-display text-xl md:text-2xl text-[color:var(--muted)] italic">
-          {PROCESSING_STAGES[stage]}{".".repeat(dots)}
+          {stages[stage]}{".".repeat(dots)}
         </p>
       </div>
     </main>

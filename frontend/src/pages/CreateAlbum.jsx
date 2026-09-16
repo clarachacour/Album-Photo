@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_COVER, defaultLogoItem, getTemplate } from "@/lib/coverTemplates";
@@ -14,8 +15,6 @@ import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { useHistoryState } from "@/lib/useHistoryState";
 import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
-
-const STEPS = ["Format", "Edit", "Pictures"];
 
 function defaultCoverPayload(chosenTemplate) {
   const tplCover = chosenTemplate?.cover || {};
@@ -41,25 +40,21 @@ function defaultCoverPayload(chosenTemplate) {
   };
 }
 
-const CREATION_STAGES = [
-  "Analyzing images…",
-  "Detecting duplicates…",
-  "Grouping by scene…",
-  "Composing pages…",
-];
-
 function CreationProgressScreen({ progress }) {
+  const { t } = useTranslation();
+  const stages = t("createAlbum.creationStages", { returnObjects: true });
   const [stage, setStage] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setStage((s) => (s + 1) % CREATION_STAGES.length), 2200);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setStage((s) => (s + 1) % stages.length), 2200);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <div className="fixed inset-0 bg-[color:var(--paper)] flex items-center justify-center z-50">
       <div className="absolute inset-0 grain pointer-events-none" />
       <div className="text-center max-w-lg px-6 relative">
         <Sparkles size={32} className="mx-auto text-[color:var(--coral)] mb-8 animate-slow-pulse" />
-        <div className="eyebrow mb-4">AI is composing your edition</div>
+        <div className="eyebrow mb-4">{t("createAlbum.composing")}</div>
         <div className="font-serif-display text-6xl md:text-7xl tracking-tight mb-6">
           {Math.round(progress)}%
         </div>
@@ -70,10 +65,10 @@ function CreationProgressScreen({ progress }) {
           />
         </div>
         <p className="font-serif-display text-xl md:text-2xl text-[color:var(--muted)] italic">
-          {CREATION_STAGES[stage]}
+          {stages[stage]}
         </p>
         <p className="text-sm text-[color:var(--muted)] mt-6">
-          This can take a few minutes for a large album — feel free to stay on this page.
+          {t("createAlbum.composingNote")}
         </p>
       </div>
     </div>
@@ -81,6 +76,8 @@ function CreationProgressScreen({ progress }) {
 }
 
 export default function CreateAlbum() {
+  const { t, i18n } = useTranslation();
+  const STEPS = [t("createAlbum.steps.format"), t("createAlbum.steps.edit"), t("createAlbum.steps.pictures")];
   const [params] = useSearchParams();
   const resumeAlbumId = params.get("albumId");
   const chosenTemplate = findTemplate(params.get("template"));
@@ -108,7 +105,7 @@ export default function CreateAlbum() {
         setTargetPages(data.target_pages || 50);
         setStep(2); // straight to Pictures — cover/format were already set
       } catch {
-        toast.error("Could not load this album");
+        toast.error(t("createAlbum.loadError"));
         nav("/dashboard");
       } finally {
         setResuming(false);
@@ -213,9 +210,10 @@ export default function CreateAlbum() {
           size,
           orientation,
           target_pages: targetPages,
-          title: chosenTemplate?.title || "Untitled",
+          title: chosenTemplate?.title || t("createAlbum.untitled"),
           cover_template_id: chosenTemplate?.id || "default",
           cover: defaultCoverPayload(chosenTemplate),
+          lang: i18n.language?.startsWith("fr") ? "fr" : "en",
         });
         albumHistory.resetState(data);
       } else {
@@ -223,7 +221,7 @@ export default function CreateAlbum() {
       }
       setStep(1);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Erreur lors de la création de l'album");
+      toast.error(err?.response?.data?.detail || t("createAlbum.createError"));
     } finally {
       setBusy(false);
     }
@@ -237,7 +235,7 @@ export default function CreateAlbum() {
       await api.patch(`/albums/${album.id}`, { title: album.title, country: album.country, year: album.year, cover: album.cover || {} });
       setStep(2);
     } catch {
-      toast.error("Enregistrement impossible");
+      toast.error(t("createAlbum.saveError"));
     } finally {
       setBusy(false);
     }
@@ -270,11 +268,11 @@ export default function CreateAlbum() {
       await api.post(`/albums/${album.id}/process`);
       clearInterval(interval);
       setCreationProgress(100);
-      toast.success("AI is composing your album...");
+      toast.success(t("createAlbum.composingToast"));
       setTimeout(() => nav(`/editor/${album.id}?processing=1`), 500);
     } catch (err) {
       clearInterval(interval);
-      toast.error(err?.response?.data?.detail || "Error during creation");
+      toast.error(err?.response?.data?.detail || t("createAlbum.creationError"));
       setBusy(false);
       setCreationProgress(0);
     }
@@ -359,7 +357,7 @@ export default function CreateAlbum() {
               onClick={step === 0 ? () => nav("/dashboard") : prev}
               className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
             >
-              <ArrowLeft size={16} /> {step === 0 ? "Cancel" : "Back"}
+              <ArrowLeft size={16} /> {step === 0 ? t("createAlbum.cancel") : t("createAlbum.back")}
             </button>
             <button
               data-testid={TID.wizardNext}
@@ -367,7 +365,7 @@ export default function CreateAlbum() {
               disabled={!canProceed() || busy}
               className="inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-40"
             >
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <span className="text-sm font-semibold tracking-widest uppercase">Continue</span>}
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <span className="text-sm font-semibold tracking-widest uppercase">{t("createAlbum.continue")}</span>}
               {!busy && <ArrowRight size={16} />}
             </button>
           </div>
@@ -382,6 +380,7 @@ export default function CreateAlbum() {
 
 
 function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages }) {
+  const { t } = useTranslation();
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
   // A3 was removed — the printing office's max open (flat) size for a
   // hardcover is 70×33cm, and A3 exceeds that in both orientations
@@ -397,10 +396,10 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
   return (
     <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
       <div>
-        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Format & orientation.</h2>
-        <p className="text-[color:var(--ink)]/70 mb-10">The final printable output. You'll design your cover right after.</p>
+        <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.format.title")}</h2>
+        <p className="text-[color:var(--ink)]/70 mb-10">{t("createAlbum.format.subtitle")}</p>
         <div className="mb-10">
-          <div className="eyebrow mb-4">Size</div>
+          <div className="eyebrow mb-4">{t("createAlbum.format.size")}</div>
           <div className="flex gap-3">
             {["A4", "A5"].map((s) => (
               <button
@@ -420,11 +419,11 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
           </div>
         </div>
         <div className="mb-10">
-          <div className="eyebrow mb-4">Orientation</div>
+          <div className="eyebrow mb-4">{t("createAlbum.format.orientation")}</div>
           <div className="flex gap-3">
             {[
-              { v: "portrait", l: "Portrait" },
-              { v: "landscape", l: "Landscape" },
+              { v: "portrait", l: t("createAlbum.format.portrait") },
+              { v: "landscape", l: t("createAlbum.format.landscape") },
             ].map((o) => (
               <button
                 key={o.v}
@@ -443,21 +442,21 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
           </div>
         </div>
         <div>
-          <div className="eyebrow mb-4">Number of pages</div>
+          <div className="eyebrow mb-4">{t("createAlbum.format.pageCount")}</div>
           <div className="flex flex-wrap gap-3">
-            {PAGE_TIERS.map((t) => (
+            {PAGE_TIERS.map((tier) => (
               <button
-                key={t}
-                onClick={() => setTargetPages(t)}
+                key={tier}
+                onClick={() => setTargetPages(tier)}
                 className={`px-6 py-3 border ${
-                  targetPages === t
+                  targetPages === tier
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                     : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
                 } transition-colors`}
               >
-                <span className="font-semibold tracking-widest text-sm block">{t}p</span>
-                <span className={`text-xs block mt-0.5 ${targetPages === t ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
-                  ${computeUnitPrice(size, t)}
+                <span className="font-semibold tracking-widest text-sm block">{tier}p</span>
+                <span className={`text-xs block mt-0.5 ${targetPages === tier ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
+                  ${computeUnitPrice(size, tier)}
                 </span>
               </button>
             ))}
@@ -469,7 +468,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                   : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
               } transition-colors`}
             >
-              <span className="font-semibold tracking-widest text-sm">Custom</span>
+              <span className="font-semibold tracking-widest text-sm">{t("createAlbum.format.custom")}</span>
             </button>
           </div>
           {isCustom && (
@@ -481,12 +480,12 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 onChange={(e) => setTargetPages(Math.max(1, parseInt(e.target.value, 10) || 1))}
                 className="w-32 px-4 py-2 border border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] outline-none"
               />
-              <span className="text-sm text-[color:var(--ink)]/60 ml-3">pages — priced above the nearest standard tier</span>
+              <span className="text-sm text-[color:var(--ink)]/60 ml-3">{t("createAlbum.format.customPagesNote")}</span>
             </div>
           )}
           <p className="text-sm text-[color:var(--ink)]/70 mt-5">
-            {size} · {targetPages} pages: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
-            <span className="text-[color:var(--ink)]/50"> per copy</span>
+            {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
+            <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
           </p>
         </div>
       </div>
@@ -499,7 +498,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
             <div className="absolute inset-0 grain" />
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="font-serif-display text-xl md:text-2xl text-[color:var(--ink)]/60">
-                {size} · {orientation === "landscape" ? "landscape" : "portrait"}
+                {size} · {orientation === "landscape" ? t("createAlbum.format.landscapeLower") : t("createAlbum.format.portraitLower")}
               </span>
             </div>
           </div>
@@ -527,6 +526,7 @@ function StepEdit({
   addCoverImage,
   removeCoverItem,
 }) {
+  const { t } = useTranslation();
   const cover = album.cover || {};
   // No photos uploaded yet at this step (cover editing comes before the
   // "Pictures" step), so the *final* page count (after AI curation) isn't
@@ -542,10 +542,9 @@ function StepEdit({
     <section className="animate-fade-up grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
       <div>
         <div className="mb-8 max-w-2xl">
-          <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Make it yours.</h2>
+          <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.edit.title")}</h2>
           <p className="text-[color:var(--ink)]/70">
-            Click the title, the logo, or the text on the back to edit them directly. Drag to move or resize. Add your own
-            image or text anywhere on the cover.
+            {t("createAlbum.edit.subtitle")}
           </p>
         </div>
         <div
@@ -614,7 +613,7 @@ function StepEdit({
           />
         ) : (
           <div className="text-sm text-[color:var(--muted)] border border-dashed border-[color:var(--border-soft)] p-6">
-            Click any element on the cover — the title, the logo, the text on the back — to edit, move, or remove it.
+            {t("createAlbum.edit.hint")}
           </div>
         )}
       </div>
@@ -647,6 +646,7 @@ function minimumRequiredPhotos(targetPages) {
 }
 
 function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, onBack, onCreate, canCreate, busy }) {
+  const { t } = useTranslation();
   const minimum = minimumRequiredPhotos(targetPages);
   const uploaded = serverPhotos.length;
   const belowMinimum = uploaded < minimum;
@@ -654,11 +654,11 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
 
   return (
     <section className="animate-fade-up">
-      <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">Drop your photos.</h2>
+      <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.photos.title")}</h2>
       <p className="text-[color:var(--ink)]/70 mb-4">
-        All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.
+        {t("createAlbum.photos.subtitle")}
       </p>
-      
+
       <div
         className={`text-sm border rounded px-4 py-3 mb-6 ${
           belowMinimum
@@ -667,8 +667,8 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
         }`}
       >
         {belowMinimum
-          ? `${uploaded} of at least ${minimum} photos required for a ${targetPages}-page album — upload ${minimum - uploaded} more to continue.`
-          : `${uploaded} photos uploaded (minimum ${minimum} reached). You can now create your album!`}
+          ? t("createAlbum.photos.belowMinimum", { uploaded, minimum, targetPages, remaining: minimum - uploaded })
+          : t("createAlbum.photos.aboveMinimum", { uploaded, minimum })}
       </div>
 
       <PhotoUploadMethods
@@ -683,16 +683,16 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
               onClick={onBack}
               className="inline-flex items-center gap-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
             >
-              <ArrowLeft size={16} /> Back
+              <ArrowLeft size={16} /> {t("createAlbum.back")}
             </button>
             <button
               onClick={onCreate}
               disabled={!canCreate || busy || importing}
-              title={importing ? "Wait for your photos to finish importing" : undefined}
+              title={importing ? t("createAlbum.photos.waitForImport") : undefined}
               className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
             >
               {busy || importing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">{importing ? "Importing…" : "Create Album"}</span>
+              <span className="text-sm font-semibold tracking-widest uppercase">{importing ? t("createAlbum.photos.importing") : t("createAlbum.photos.createAlbum")}</span>
             </button>
           </div>
         }

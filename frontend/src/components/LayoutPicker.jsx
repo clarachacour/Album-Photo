@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { LAYOUT_PATTERNS, LAYOUT_GROUPS } from "@/lib/layoutPatterns";
 import { X } from "lucide-react";
 
@@ -30,6 +31,7 @@ function LayoutThumb({ name }) {
  * frame can still be freely moved/resized afterward like any other.
  */
 export default function LayoutPicker({ onChoose, onClose }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={onClose}>
       <div
@@ -37,17 +39,17 @@ export default function LayoutPicker({ onChoose, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-serif-display text-2xl tracking-tight">Choose a layout</h3>
-          <button onClick={onClose} className="text-[color:var(--muted)] hover:text-[color:var(--ink)]" aria-label="Close">
+          <h3 className="font-serif-display text-2xl tracking-tight">{t("layoutPicker.title")}</h3>
+          <button onClick={onClose} className="text-[color:var(--muted)] hover:text-[color:var(--ink)]" aria-label={t("common.close")}>
             <X size={18} />
           </button>
         </div>
         <p className="text-sm text-[color:var(--ink)]/70 mb-6">
-          Your existing photos move into the new arrangement, and any extra slots the layout needs appear empty — drag your photos onto them, and you can still resize or move any frame afterward.
+          {t("layoutPicker.instructions")}
         </p>
         {LAYOUT_GROUPS.map((group) => (
           <div key={group.count} className="mb-6">
-            <div className="eyebrow mb-3 text-[color:var(--muted)]">{group.count} photo{group.count > 1 ? "s" : ""}</div>
+            <div className="eyebrow mb-3 text-[color:var(--muted)]">{t("layoutPicker.photoCount", { count: group.count })}</div>
             <div className="grid grid-cols-2 gap-3">
               {group.patterns.map((name) => (
                 <button

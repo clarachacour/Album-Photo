@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Package } from "lucide-react";
@@ -21,6 +22,7 @@ const STATUS_COLORS = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     (async () => {
@@ -28,32 +30,33 @@ export default function OrdersPage() {
         const { data } = await api.get("/orders");
         setOrders(data);
       } catch {
-        toast.error("Failed to load your orders");
+        toast.error(t("orders.loadError"));
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[1100px] mx-auto">
         <div className="mb-12">
-          <div className="eyebrow mb-3">Account</div>
-          <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">Your orders</h1>
+          <div className="eyebrow mb-3">{t("orders.eyebrow")}</div>
+          <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">{t("orders.title")}</h1>
         </div>
 
         {loading ? (
-          <div className="text-sm text-[color:var(--muted)]">Loading…</div>
+          <div className="text-sm text-[color:var(--muted)]">{t("orders.loading")}</div>
         ) : orders.length === 0 ? (
           <div className="border border-[color:var(--border-soft)] p-16 text-center">
             <Package size={28} className="mx-auto mb-4 text-[color:var(--muted)]" />
-            <p className="text-sm text-[color:var(--muted)] mb-6">You haven't ordered any albums yet.</p>
+            <p className="text-sm text-[color:var(--muted)] mb-6">{t("orders.empty")}</p>
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] px-6 py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase"
             >
-              Go to your albums
+              {t("orders.goToAlbums")}
             </Link>
           </div>
         ) : (
@@ -68,13 +71,13 @@ export default function OrdersPage() {
                 <div>
                   <div className="font-serif-display text-xl tracking-tight mb-1">{o.album_title}</div>
                   <div className="text-xs text-[color:var(--muted)]">
-                    {o.size} · {o.orientation} · Qty {o.quantity} · {new Date(o.created_at).toLocaleDateString()}
+                    {o.size} · {o.orientation} · {t("orders.qty")} {o.quantity} · {new Date(o.created_at).toLocaleDateString(i18n.language)}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-sm font-medium">{formatPrice(o.total_price_cents, o.currency)}</div>
                   <div className={`text-xs uppercase tracking-widest font-semibold ${STATUS_COLORS[o.status] || ""}`}>
-                    {o.status.replace(/_/g, " ")}
+                    {t(`orders.status.${o.status}`, { defaultValue: o.status.replace(/_/g, " ") })}
                   </div>
                 </div>
               </Link>

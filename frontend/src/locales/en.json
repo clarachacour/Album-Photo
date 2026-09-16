@@ -1,0 +1,505 @@
+{
+  "nav": {
+    "myAlbums": "My albums",
+    "orders": "Orders",
+    "faq": "FAQ",
+    "admin": "Admin",
+    "logout": "Logout",
+    "signIn": "Sign in"
+  },
+  "landing": {
+    "hero": {
+      "title_line1": "A photo book",
+      "title_highlight": "signed",
+      "title_line2": "by your memories.",
+      "subtitle": "Upload your photos, and we'll turn them into a refined printed album, crafted to feel timeless and made to be kept",
+      "cta": "Create my album"
+    },
+    "process": {
+      "steps": [
+        {
+          "title": "You upload",
+          "body": "All your photos, unorganized — duplicates, blurry shots, HDR. We accept everything."
+        },
+        {
+          "title": "We sort",
+          "body": "Gemini analyzes each shot: composition, duplicates, and grouping by scene."
+        },
+        {
+          "title": "You flip",
+          "body": "A 3D preview, varied layouts, and a high-resolution PDF export."
+        }
+      ]
+    },
+    "sorting": {
+      "eyebrow": "How the sorting works",
+      "title_line1": "What actually happens",
+      "title_highlight": "to your photos.",
+      "intro": "You can upload everything — hundreds of photos, duplicates, near-identical bursts, the odd blurry shot — and skip the sorting yourself. Here's exactly what we do to turn that into a book, step by step, without ever touching the resolution of the images you'll actually print.",
+      "steps": [
+        {
+          "title": "Finding near-duplicates and bursts",
+          "body": "Every photo gets a visual fingerprint, and shots taken close together in time are compared to each other. Near-identical frames — the same moment shot two or three times — are grouped together automatically."
+        },
+        {
+          "title": "Picking the sharpest one",
+          "body": "Within each group, we measure focus and clarity directly and keep the sharpest frame. The rest are quietly set aside rather than deleted."
+        },
+        {
+          "title": "Sorting by date and place",
+          "body": "The surviving, distinct photos are then ordered chronologically. Where a photo carries location data, it's grouped with others taken at the same place before sorting by time — so your book follows the order things actually happened, place by place."
+        },
+        {
+          "title": "Filtering out clear misses",
+          "body": "Shots that are dramatically out of focus — severe motion blur, a finger over the lens — are left out of the automatic layout, based on the same sharpness check used to pick between near-duplicates. Nothing is ever permanently deleted — everything set aside during sorting stays available for you to add back in the editor if you disagree."
+        }
+      ]
+    },
+    "templates": {
+      "eyebrow": "Templates",
+      "title_line1": "Start from a theme.",
+      "title_highlight": "Make it yours.",
+      "intro": "Pick a starting look for your trip, your couple, your family, or a celebration — then customize every detail in the book editor: colors, title, photos, layout."
+    },
+    "footer": {
+      "title_line1": "Ready to design",
+      "title_line2": "your edition?",
+      "cta": "Create my photo album"
+    }
+  },
+  "auth": {
+    "back": "Back",
+    "backToSignIn": "Back to sign in",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "noAccount": "Don't have an account? Sign up",
+    "hasAccount": "Already have an account? Sign in",
+    "welcomeToast": "Welcome to Everbook!",
+    "welcomeBackToast": "Welcome back!",
+    "genericError": "An error occurred",
+    "login": {
+      "title": "Welcome back !",
+      "subtitle": "Sign in to access your albums."
+    },
+    "signup": {
+      "title": "Create your first edition.",
+      "subtitle": "One account to create, save, and export."
+    },
+    "forgot": {
+      "title": "Reset your password.",
+      "subtitle": "We'll email you a link to set a new password.",
+      "submit": "Send reset link",
+      "error": "Something went wrong",
+      "sentMessage": "If an account exists for <1>{{email}}</1>, we've sent a reset link — check your inbox."
+    },
+    "reset": {
+      "title": "Set a new password.",
+      "subtitle": "Choose a new password for your account.",
+      "newPassword": "New password",
+      "submit": "Update password",
+      "missingToken": "This link is missing its reset token. Please request a new one from the sign-in page.",
+      "missingTokenToast": "This reset link is missing its token — please request a new one.",
+      "successToast": "Password updated — you can sign in now.",
+      "error": "This link is invalid or has expired"
+    },
+    "social": {
+      "googleFailed": "Google sign-in failed",
+      "appleFailed": "Apple sign-in failed",
+      "continueWithApple": "Continue with Apple",
+      "or": "or"
+    }
+  },
+  "faq": {
+    "eyebrow": "Support",
+    "title": "Frequently asked questions",
+    "cantFind": "Can't find what you're looking for?",
+    "getInTouch": "Get in touch",
+    "items": [
+      {
+        "q": "How long does it take to receive my album?",
+        "a": "Once your order is placed, we prepare and print your album, then ship it to you. You can follow every step from your Orders page."
+      },
+      {
+        "q": "What formats are available?",
+        "a": "A5, A4 and A3, in either portrait or landscape orientation. You choose the format when you create your album, and can see it reflected live in the editor."
+      },
+      {
+        "q": "Can I edit my album after placing an order?",
+        "a": "Once an order is placed, your album is sent into production shortly after, so further edits won't be reflected in that particular order. If you need a change, contact us as soon as possible and we'll do our best to help."
+      },
+      {
+        "q": "How does the AI photo selection work?",
+        "a": "When you import a large batch of photos, we automatically detect near-duplicates and bursts, keep the sharpest shot from each, and use AI to help group and describe the best of what's left — so you spend less time sorting and more time enjoying the result."
+      },
+      {
+        "q": "Can I order more than one copy?",
+        "a": "Yes — you can choose a quantity when placing your order, for example to give copies as gifts."
+      },
+      {
+        "q": "What if something arrives damaged or wrong?",
+        "a": "Reach out through our Contact page with your order number and we'll sort it out."
+      }
+    ]
+  },
+  "contact": {
+    "eyebrow": "Support",
+    "title": "Contact us",
+    "thanks": "Thanks for reaching out",
+    "willReply": "We'll get back to you as soon as we can.",
+    "name": "Name",
+    "email": "Email",
+    "subject": "Subject",
+    "message": "Message",
+    "sending": "Sending…",
+    "send": "Send message",
+    "sentToast": "Message sent",
+    "errorToast": "Failed to send your message"
+  },
+  "chooseTemplate": {
+    "back": "Back",
+    "title": "Choose a starting point.",
+    "subtitle": "Pick a theme to start from, or begin with a blank canvas and build your own look.",
+    "scratch_title": "Start from scratch",
+    "scratch_subtitle": "A blank canvas — no preset theme or colors."
+  },
+  "dashboard": {
+    "eyebrow": "Library",
+    "title": "Your editions",
+    "newAlbum": "New album",
+    "loadError": "Failed to load your albums",
+    "confirmDelete": "Delete \"{{title}}\"?",
+    "deletedToast": "Album deleted",
+    "deleteError": "Deletion failed",
+    "deleteAria": "Delete",
+    "untitled": "Untitled",
+    "landscape": "landscape",
+    "portrait": "portrait",
+    "created": "Created {{date}}",
+    "lastModified": "Last modified {{date}}",
+    "deletionToday": "This album will be deleted today",
+    "deletionInDays_one": "This album will be deleted in {{count}} day",
+    "deletionInDays_other": "This album will be deleted in {{count}} days",
+    "status": {
+      "draft": "Draft",
+      "processing": "AI processing",
+      "ready": "Ready",
+      "error": "Error",
+      "ordered": "Ordered"
+    },
+    "empty": {
+      "title": "No albums yet.",
+      "subtitle": "Create your first edition in a few minutes.",
+      "cta": "Get started"
+    }
+  },
+  "orders": {
+    "eyebrow": "Account",
+    "title": "Your orders",
+    "loading": "Loading…",
+    "loadError": "Failed to load your orders",
+    "empty": "You haven't ordered any albums yet.",
+    "goToAlbums": "Go to your albums",
+    "qty": "Qty",
+    "status": {
+      "pending_payment": "Pending payment",
+      "paid": "Paid",
+      "processing": "Processing",
+      "printing": "Printing",
+      "ready_for_delivery": "Ready for delivery",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    }
+  },
+  "orderDetail": {
+    "loading": "Loading…",
+    "loadError": "Failed to load this order",
+    "back": "Back to your orders",
+    "orderNumber": "Order #{{id}}",
+    "paymentNotice": "Payment isn't set up yet on our end — we've saved your order and started preparing your album. We'll follow up with you directly to complete payment.",
+    "status": "Status",
+    "cancelled": "This order was cancelled.",
+    "trackingNumber": "Tracking number:",
+    "orderDetails": "Order details",
+    "format": "Format",
+    "quantity": "Quantity",
+    "unitPrice": "Unit price",
+    "total": "Total",
+    "placedOn": "Placed on {{date}}",
+    "shippingTo": "Shipping to"
+  },
+  "account": {
+    "eyebrow": "Account",
+    "title": "Your account",
+    "myOrders": "My orders",
+    "contactSupport": "Contact support",
+    "profileSection": "Profile & shipping details",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "street": "Street",
+    "building": "Building",
+    "city": "City",
+    "additionalInfo": "Additional info (optional)",
+    "additionalInfoPlaceholder": "Floor, gate code, delivery notes...",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "profileUpdated": "Profile updated",
+    "profileUpdateError": "Failed to update profile",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "updating": "Updating…",
+    "updatePassword": "Update password",
+    "passwordUpdated": "Password updated",
+    "passwordUpdateError": "Failed to update password",
+    "passwordMismatch": "New passwords don't match"
+  },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "saved": "Saved",
+    "uploadFailed": "Upload failed",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "mobileQr": {
+    "title": "Scan with your phone.",
+    "instructions": "Open your phone's camera, scan the code, and choose your photos — they'll appear here automatically, even after you close this window.",
+    "error": "Could not create an upload link — try again.",
+    "expiry": "This link stays active for 1 hour."
+  },
+  "photoGallery": {
+    "clickToPlace": "Click a spot on any page to place this photo",
+    "clickToCancel": "Click a page to place it — click here again to cancel",
+    "dragOrClick": "Click to place on a page, or drag it there"
+  },
+  "layoutPicker": {
+    "title": "Choose a layout",
+    "instructions": "Your existing photos move into the new arrangement, and any extra slots the layout needs appear empty — drag your photos onto them, and you can still resize or move any frame afterward.",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos"
+  },
+  "createAlbum": {
+    "steps": {
+      "format": "Format",
+      "edit": "Edit",
+      "pictures": "Pictures"
+    },
+    "composing": "AI is composing your edition",
+    "composingNote": "This can take a few minutes for a large album — feel free to stay on this page.",
+    "composingToast": "AI is composing your album...",
+    "creationStages": [
+      "Analyzing images…",
+      "Detecting duplicates…",
+      "Grouping by scene…",
+      "Composing pages…"
+    ],
+    "loadError": "Could not load this album",
+    "untitled": "Untitled",
+    "createError": "Error while creating the album",
+    "saveError": "Could not save",
+    "creationError": "Error during creation",
+    "cancel": "Cancel",
+    "back": "Back",
+    "continue": "Continue",
+    "format": {
+      "title": "Format & orientation.",
+      "subtitle": "The final printable output. You'll design your cover right after.",
+      "size": "Size",
+      "orientation": "Orientation",
+      "portrait": "Portrait",
+      "landscape": "Landscape",
+      "portraitLower": "portrait",
+      "landscapeLower": "landscape",
+      "pageCount": "Number of pages",
+      "custom": "Custom",
+      "customPagesNote": "pages — priced above the nearest standard tier",
+      "pagesCount_one": "{{count}} page",
+      "pagesCount_other": "{{count}} pages",
+      "perCopy": "per copy"
+    },
+    "edit": {
+      "title": "Make it yours.",
+      "subtitle": "Click the title, the logo, or the text on the back to edit them directly. Drag to move or resize. Add your own image or text anywhere on the cover.",
+      "hint": "Click any element on the cover — the title, the logo, the text on the back — to edit, move, or remove it."
+    },
+    "photos": {
+      "title": "Drop your photos.",
+      "subtitle": "All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.",
+      "belowMinimum": "{{uploaded}} of at least {{minimum}} photos required for a {{targetPages}}-page album — upload {{remaining}} more to continue.",
+      "aboveMinimum": "{{uploaded}} photos uploaded (minimum {{minimum}} reached). You can now create your album!",
+      "waitForImport": "Wait for your photos to finish importing",
+      "importing": "Importing…",
+      "createAlbum": "Create Album"
+    }
+  },
+  "photoUpload": {
+    "linkError": "Could not create an upload link — try again.",
+    "phoneComing": "Photos are coming in from your phone — keep adding more, or come back to this screen.",
+    "limitReached": "This album has reached the 5,000-photo limit — some of your selected photos weren't added. Remove some to add more.",
+    "addingNew": "Adding your new photos…",
+    "addError": "Could not add photos",
+    "uploading": "Uploading…",
+    "tapToChoose": "Tap to choose photos",
+    "dragHere": "Drag your images here",
+    "cameraRoll": "from your camera roll · JPG, PNG, WEBP",
+    "clickToBrowse": "or click to browse · JPG, PNG, WEBP",
+    "fromPhone": "From your phone",
+    "addedSoFar_one": "{{count}} photo added so far",
+    "addedSoFar_other": "{{count}} photos added so far"
+  },
+  "googlePhotos": {
+    "accessDenied": "Google Photos access was not granted",
+    "chooseInstructions": "Click below to choose your photos in Google Photos, then come back here.",
+    "openButton": "Open Google Photos",
+    "selectionTimeout": "Photo selection timed out",
+    "noneSelected": "No photos were selected",
+    "importing_one": "Importing {{count}} photo — this can take a few minutes for a large selection.",
+    "importing_other": "Importing {{count}} photos — this can take a few minutes for a large selection.",
+    "partialImport": "{{uploaded}} of {{total}} photos imported — {{failed}} failed and were skipped. You can try importing them again.",
+    "importSuccess_one": "{{count}} photo imported from Google Photos",
+    "importSuccess_other": "{{count}} photos imported from Google Photos",
+    "importFailed": "Google Photos import failed",
+    "importingLabel": "Importing…",
+    "buttonLabel": "From Google Photos"
+  },
+  "albumEditor": {
+    "loadError": "Could not load this album",
+    "readyToast": "Album ready",
+    "aiError": "Error during AI processing",
+    "titleRequired": "Please enter a title for the album",
+    "photoRequired": "Please add at least one photo",
+    "composingToast": "AI is composing your album...",
+    "createError": "Error during creation",
+    "lockedError": "This album has already been ordered and can no longer be edited",
+    "saveError": "Failed to save",
+    "picturesSwapped": "Pictures swapped",
+    "resizedToast": "Album resized to {{count}} pages.",
+    "resizeError": "Could not resize the album",
+    "pictureAdded": "Picture added",
+    "yourCaption": "Your caption",
+    "coverImageAdded": "Cover image added",
+    "coverImageRemoved": "Cover image removed",
+    "coverImageRemoveError": "Failed to remove cover image",
+    "loadingAlbum": "Loading album…",
+    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order.",
+    "previewQualityNote": "This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "doublePage": "Double-page {{count}}",
+    "pagesShort": "{{current}} of {{target}} pages — you're {{remaining}} short of what you chose.",
+    "addPage": "Add a page",
+    "changePageCountLink": "Change total page count…",
+    "rearrangePhotos": "Rearrange the photos · drag and drop",
+    "allYourPhotos": "All your photos · click or drag onto a page",
+    "addMorePhotos": "Add more photos",
+    "addMorePhotosNote": "The AI will pick the best of your new photos and add pages at the end of your album.",
+    "tools": "Tools",
+    "undoTitle": "Undo (Ctrl+Z)",
+    "redoTitle": "Redo (Ctrl+Y)",
+    "savedAutomatically": "Saved automatically at {{time}}",
+    "orderThisAlbum": "Order this album",
+    "clickOnPage": "Click on the page…",
+    "addTextButton": "Add Text",
+    "editing": "Editing",
+    "selectedHint": "Use the small bar that appears above the selected element to modify, crop, or delete it — directly on the page.",
+    "nothingSelectedHint": "Click on an element to edit it. On the cover, click on the background, title, or an added element.",
+    "tipLabel": "Tip",
+    "tipText": "Move and resize each element directly in the book.",
+    "about": "About",
+    "pagesCount_one": "{{count}} page",
+    "pagesCount_other": "{{count}} pages",
+    "photosUsed_one": "{{count}} photo used",
+    "photosUsed_other": "{{count}} photos used",
+    "formatLine": "Format : {{size}} · {{orientation}}",
+    "legacyForm": {
+      "title": "Create a new album",
+      "subtitle": "Fill in the details and add your photos to start automatic composition.",
+      "infoSection": "Information",
+      "titleField": "Title *",
+      "titlePlaceholder": "e.g. Trip to Italy",
+      "location": "Location / Country",
+      "locationPlaceholder": "e.g. Tuscany",
+      "year": "Year",
+      "layoutSection": "Layout & Cover",
+      "format": "Format",
+      "square": "Square",
+      "coverColor": "Cover Color",
+      "photosSection": "Photos",
+      "dropHere": "Click or drag your photos here",
+      "acceptedFormats": "JPEG, PNG, WEBP accepted",
+      "photosSelected_one": "{{count}} photo selected",
+      "photosSelected_other": "{{count}} photos selected",
+      "beginCreation": "Begin creation"
+    },
+    "repack": {
+      "title": "Change total page count",
+      "newTotal": "New total pages",
+      "rebuildAfter": "Rebuild pages after Double-page #",
+      "explanation": "Everything up to and including this double-page stays exactly as you left it. Only what comes after gets rebuilt — same photos, automatically re-arranged into a fresh layout, so any manual edits on those later pages are lost. You'll mainly need this when <1>lowering</1> the page count (less room means something has to be redistributed), or if you'd like a section of the album redone from scratch on purpose. Just adding pages doesn't need this — leave it as is and new blank pages are added at the end, nothing existing is touched.",
+      "rebuilding": "Rebuilding…",
+      "apply": "Apply"
+    },
+    "textEditor": {
+      "text": "Text",
+      "font": "Font",
+      "color": "Color",
+      "style": "Style",
+      "bold": "Bold",
+      "italic": "Italic",
+      "size": "Size · {{size}}px"
+    },
+    "photoEditor": {
+      "hint": "Selected photo. Adjust the zoom and framing.",
+      "zoom": "Zoom · {{scale}}×",
+      "horizontal": "Horizontal framing · {{pct}}%",
+      "vertical": "Vertical framing · {{pct}}%",
+      "resetFraming": "Reset framing",
+      "removeFromPage": "Remove from page"
+    }
+  },
+  "toolbars": {
+    "editPhoto": "Edit photo",
+    "clickToSwap": "Click another photo to swap",
+    "swapWithAnother": "Swap with another photo",
+    "sendBackward": "Send backward",
+    "bringForward": "Bring forward",
+    "deleteFrame": "Delete this frame",
+    "done": "Done",
+    "decreaseFontSize": "Decrease font size",
+    "increaseFontSize": "Increase font size",
+    "bold": "Bold",
+    "textColor": "Text color",
+    "hexPlaceholder": "#RRGGBB",
+    "deleteText": "Delete this text"
+  },
+  "albumPage": {
+    "resize": "Resize",
+    "changeLayout": "Change this page's layout — how many photos it holds and how they're arranged",
+    "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",
+    "deletePage": "Delete this whole page",
+    "addTextBox": "Add a text box to this page — click where you want it to go"
+  },
+  "verifyEmail": {
+    "title": "Check your inbox.",
+    "instructions": "We've sent a confirmation link to:",
+    "resendButton": "Resend confirmation email",
+    "sending": "Sending…",
+    "resentToast": "Confirmation email sent — check your inbox.",
+    "resendError": "Couldn't resend the email. Please try again.",
+    "signOut": "Sign out"
+  }
+}

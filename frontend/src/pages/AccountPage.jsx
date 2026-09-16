@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import PasswordInput from "@/components/PasswordInput";
 import { Package, LifeBuoy } from "lucide-react";
 
 export default function AccountPage() {
   const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
@@ -26,9 +29,9 @@ export default function AccountPage() {
     try {
       const { data } = await api.put("/auth/me", form);
       updateUser(data);
-      toast.success("Profile updated");
+      toast.success(t("account.profileUpdated"));
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Failed to update profile");
+      toast.error(err?.response?.data?.detail || t("account.profileUpdateError"));
     } finally {
       setSaving(false);
     }
@@ -37,7 +40,7 @@ export default function AccountPage() {
   const changePassword = async (e) => {
     e.preventDefault();
     if (pwForm.new_password !== pwForm.confirm) {
-      toast.error("New passwords don't match");
+      toast.error(t("account.passwordMismatch"));
       return;
     }
     setChangingPw(true);
@@ -46,10 +49,10 @@ export default function AccountPage() {
         current_password: pwForm.current_password,
         new_password: pwForm.new_password,
       });
-      toast.success("Password updated");
+      toast.success(t("account.passwordUpdated"));
       setPwForm({ current_password: "", new_password: "", confirm: "" });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Failed to update password");
+      toast.error(err?.response?.data?.detail || t("account.passwordUpdateError"));
     } finally {
       setChangingPw(false);
     }
@@ -62,8 +65,8 @@ export default function AccountPage() {
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[900px] mx-auto">
         <div className="mb-12">
-          <div className="eyebrow mb-3">Account</div>
-          <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">Your account</h1>
+          <div className="eyebrow mb-3">{t("account.eyebrow")}</div>
+          <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">{t("account.title")}</h1>
         </div>
 
         <div className="flex gap-4 mb-16">
@@ -71,46 +74,46 @@ export default function AccountPage() {
             to="/orders"
             className="inline-flex items-center gap-2 border border-[color:var(--ink)]/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
           >
-            <Package size={15} /> My orders
+            <Package size={15} /> {t("account.myOrders")}
           </Link>
           <Link
             to="/contact"
             className="inline-flex items-center gap-2 border border-[color:var(--ink)]/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
           >
-            <LifeBuoy size={15} /> Contact support
+            <LifeBuoy size={15} /> {t("account.contactSupport")}
           </Link>
         </div>
 
         <form onSubmit={saveProfile} className="mb-20">
-          <div className="eyebrow mb-6">Profile & shipping details</div>
+          <div className="eyebrow mb-6">{t("account.profileSection")}</div>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="eyebrow block mb-2">Name</label>
+              <label className="eyebrow block mb-2">{t("account.name")}</label>
               <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Email</label>
+              <label className="eyebrow block mb-2">{t("account.email")}</label>
               <input className={inputClass + " opacity-60"} value={user?.email || ""} disabled />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Phone</label>
+              <label className="eyebrow block mb-2">{t("account.phone")}</label>
               <input className={inputClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Street</label>
+              <label className="eyebrow block mb-2">{t("account.street")}</label>
               <input className={inputClass} value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Building</label>
+              <label className="eyebrow block mb-2">{t("account.building")}</label>
               <input className={inputClass} value={form.building} onChange={(e) => setForm({ ...form, building: e.target.value })} />
             </div>
             <div>
-              <label className="eyebrow block mb-2">City</label>
+              <label className="eyebrow block mb-2">{t("account.city")}</label>
               <input className={inputClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
             </div>
             <div className="md:col-span-2">
-              <label className="eyebrow block mb-2">Additional info (optional)</label>
-              <input className={inputClass} value={form.additional_info} onChange={(e) => setForm({ ...form, additional_info: e.target.value })} placeholder="Floor, gate code, delivery notes..." />
+              <label className="eyebrow block mb-2">{t("account.additionalInfo")}</label>
+              <input className={inputClass} value={form.additional_info} onChange={(e) => setForm({ ...form, additional_info: e.target.value })} placeholder={t("account.additionalInfoPlaceholder")} />
             </div>
           </div>
           <button
@@ -118,35 +121,32 @@ export default function AccountPage() {
             disabled={saving}
             className="inline-flex items-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? t("account.saving") : t("account.saveChanges")}
           </button>
         </form>
 
         <form onSubmit={changePassword} className="border-t border-[color:var(--border-soft)] pt-12">
-          <div className="eyebrow mb-6">Change password</div>
+          <div className="eyebrow mb-6">{t("account.changePassword")}</div>
           <div className="grid md:grid-cols-3 gap-4 mb-4 max-w-2xl">
             <div>
-              <label className="eyebrow block mb-2">Current password</label>
-              <input
-                type="password"
+              <label className="eyebrow block mb-2">{t("account.currentPassword")}</label>
+              <PasswordInput
                 className={inputClass}
                 value={pwForm.current_password}
                 onChange={(e) => setPwForm({ ...pwForm, current_password: e.target.value })}
               />
             </div>
             <div>
-              <label className="eyebrow block mb-2">New password</label>
-              <input
-                type="password"
+              <label className="eyebrow block mb-2">{t("account.newPassword")}</label>
+              <PasswordInput
                 className={inputClass}
                 value={pwForm.new_password}
                 onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
               />
             </div>
             <div>
-              <label className="eyebrow block mb-2">Confirm new password</label>
-              <input
-                type="password"
+              <label className="eyebrow block mb-2">{t("account.confirmNewPassword")}</label>
+              <PasswordInput
                 className={inputClass}
                 value={pwForm.confirm}
                 onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
@@ -158,7 +158,7 @@ export default function AccountPage() {
             disabled={changingPw}
             className="inline-flex items-center gap-2 border border-[color:var(--ink)] px-8 py-3 hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-50"
           >
-            {changingPw ? "Updating…" : "Update password"}
+            {changingPw ? t("account.updating") : t("account.updatePassword")}
           </button>
         </form>
       </div>
