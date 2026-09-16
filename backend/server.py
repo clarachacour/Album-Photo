@@ -1,6 +1,6 @@
 import sys
 import asyncio 
- 
+
 
 if sys.platform == "win32":
     # The default Windows event loop (Selector) can't spawn subprocesses,
@@ -448,12 +448,75 @@ def send_welcome_email(to_email: str, name: str):
     )
     send_email(to_email, subject, body)
 
+def send_verification_email(to_email: str, name: str, verify_token: str):
+    """Sent once, right at signup (see signup) — never for Google/Apple
+    accounts, whose provider has already confirmed the address (see
+    upsert_oauth_user). The link goes straight to a backend endpoint
+    (verify_email) rather than a frontend page, since there's nothing for
+    the person to fill in or decide — one click is the whole interaction,
+    the same shape as the printer/delivery action links (_sign_order_action)
+    elsewhere in this file, just without needing HMAC signing since the
+    token itself is the single-use credential, stored and cleared server-
+    side rather than reconstructed from a signature."""
+    verify_link = f"{BACKEND_URL}/api/auth/verify-email?token={verify_token}"
+    subject = "Confirm your email address"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Please confirm this is your email address by clicking the link below:\n{verify_link}\n\n"
+        f"If you didn't create an Everbook account, you can safely ignore this email."
+    )
+    send_email(to_email, subject, body)
+
+def send_pdf_generation_failed_email(order: dict, error: str):
+    """Sent to the admin (reusing ADMIN_EMAIL — the same address that
+    already has visibility into every order via the admin endpoints, so
+    this doesn't introduce a second address to keep in sync) the moment a
+    PDF generation attempt fails outright. Previously a failure only ever
+    showed up in Cloud Run's own logs or the admin orders page — nothing
+    proactively said "this needs attention", which is exactly what let
+    the Western Australia album's stuck generation go unnoticed for as
+    long as it did. Best-effort: if ADMIN_EMAIL isn't set, send_email's
+    own SMTP-not-configured branch already logs a warning, so this never
+    raises on top of the failure it's reporting."""
+    if not ADMIN_EMAIL:
+        return
+    admin_url = f"{FRONTEND_URL}/admin/orders"
+    subject = f"PDF generation failed — order #{order['id'][:8]} ({order.get('album_title', 'Album')})"
+    body = (
+        f"PDF generation failed for an order and needs attention.\n\n"
+        f"Album: {order.get('album_title', 'Album')}\n"
+        f"Order ID: {order['id']}\n"
+        f"Size/pages: {order.get('size')} · {order.get('orientation')}\n\n"
+        f"Error: {error}\n\n"
+        f"Regenerate or investigate here:\n{admin_url}"
+    )
+    send_email(ADMIN_EMAIL, subject, body)
+
 def send_password_reset_email(to_email: str, name: str, reset_link: str):
     subject = "Reset your password"
     body = (
         f"Hi {name or ''},\n\n"
         f"Click the link below to reset your password (valid for 1 hour):\n{reset_link}\n\n"
         f"If you didn't request this, you can safely ignore this email."
+    )
+    send_email(to_email, subject, body)
+
+def send_password_changed_email(to_email: str, name: str):
+    """A simple security notice, sent after a password change goes through
+    successfully — via the "I know my current password" flow (change_password)
+    or the "I forgot it" one (reset_password) alike, so either path leaves
+    the same trace in the account owner's inbox. Never blocks or reverses
+    the change itself if sending fails — this is a notification, not a
+    confirmation step the change waits on. Deliberately doesn't link
+    anywhere or ask the person to click anything: if this wasn't them, the
+    account may already be compromised, and a suspicious link is exactly
+    what a real phishing follow-up would look like."""
+    subject = "Your Everbook password was changed"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"This is a confirmation that your Everbook account password was just changed.\n\n"
+        f"If this was you, no action is needed. If you didn't make this change, "
+        f"please contact us right away so we can help secure your account."
     )
     send_email(to_email, subject, body)
 
@@ -623,6 +686,12 @@ async def upsert_oauth_user(email: str, name: str, provider: str) -> tuple:
         "password_hash": None,
         "name": name or email.split("@")[0],
         "auth_provider": provider,
+        # Google/Apple have already confirmed this address belongs to the
+        # person signing in — asking them to also click a verification
+        # link we'd send would be a redundant, confusing extra step for
+        # an email that's already proven. Only the plain signup path
+        # (below) starts unverified and needs its own confirmation link.
+        "email_verified": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
@@ -643,7 +712,13 @@ async def upsert_oauth_user(email: str, name: str, provider: str) -> tuple:
         raise
     return user_doc, True
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def _get_current_user_raw(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """The actual token -> user lookup, with no email-verification check —
+    used directly by the couple of endpoints an unverified person still
+    needs (checking their own status, asking for a fresh verification
+    email) so they aren't locked out of finding out *why* they're locked
+    out. Every other endpoint should depend on get_current_user below
+    instead, which wraps this with that enforcement."""
     if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = decode_token(credentials.credentials)
@@ -652,6 +727,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+async def get_current_user(user: dict = Depends(_get_current_user_raw)) -> dict:
+    """The dependency almost every endpoint in this file uses. Blocks
+    access outright for a classic (email/password) signup that hasn't
+    clicked its verification link yet — email_verified is explicitly set
+    to False at signup (see signup) and only becomes True once
+    verify_email runs. Deliberately checks `is False`, not falsy: every
+    account that existed before this feature shipped, and every Google/
+    Apple account (see upsert_oauth_user), has no email_verified field at
+    all (None) or is already True — neither should ever be blocked by a
+    check that was never meant to apply to them retroactively."""
+    if user.get("email_verified") is False:
+        raise HTTPException(status_code=403, detail="Please verify your email address before continuing.")
     return user
 
 # ---------- Models ----------
@@ -679,6 +768,14 @@ class UserOut(BaseModel):
     # drift out of sync with the real check, which always lives server-side
     # in require_admin regardless of what this flag says).
     is_admin: bool = False
+    # True for every account that either doesn't need verification at all
+    # (Google/Apple sign-in, or any account created before this feature
+    # existed) or has already clicked its link — only a brand-new classic
+    # signup starts out False. The frontend uses this to decide whether to
+    # show the "check your inbox" screen instead of the dashboard; the
+    # actual enforcement lives server-side in get_current_user regardless
+    # of what the frontend does with this flag.
+    email_verified: bool = True
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -813,11 +910,22 @@ async def signup(data: SignupInput):
     if existing:
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     user_id = str(uuid.uuid4())
+    verify_token = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
         "email": data.email.lower(),
         "password_hash": hash_password(data.password),
         "name": data.name,
+        # Unverified until the link in the confirmation email below is
+        # clicked (see verify_email) — unlike Google/Apple sign-in
+        # (upsert_oauth_user), nothing here proves this address actually
+        # belongs to the person signing up; anyone could type in anyone
+        # else's email today. Deliberately doesn't block login or any
+        # feature yet — this only tracks the fact, so it can be enforced
+        # later (e.g. requiring it before ordering) without a second
+        # migration to add the field retroactively.
+        "email_verified": False,
+        "verify_email_token": verify_token,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
@@ -835,7 +943,8 @@ async def signup(data: SignupInput):
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     token = create_token(user_id)
     send_welcome_email(data.email.lower(), data.name)
-    return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL))
+    send_verification_email(data.email.lower(), data.name, verify_token)
+    return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL, email_verified=False))
 
 @api_router.post("/auth/login", response_model=AuthResponse)
 async def login(data: LoginInput):
@@ -843,7 +952,7 @@ async def login(data: LoginInput):
     if not user or not user.get("password_hash") or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     token = create_token(user["id"])
-    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
+    return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL, email_verified=user.get("email_verified", True)))
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordInput):
@@ -873,7 +982,48 @@ async def reset_password(data: ResetPasswordInput):
         {"id": user["id"]},
         {"$set": {"password_hash": hash_password(data.new_password)}, "$unset": {"reset_token": "", "reset_token_expires": ""}},
     )
+    send_password_changed_email(user["email"], user.get("name", ""))
     return {"message": "Mot de passe mis à jour"}
+
+@api_router.get("/auth/verify-email")
+async def verify_email(token: str = Query(...)):
+    """Reached by a direct click from send_verification_email's link — no
+    login involved, the token itself (stored on the user doc at signup) is
+    the only proof needed. Returns a plain confirmation page rather than
+    JSON, matching order_action_mark_ready's shape: a person clicking a
+    link in their inbox expects to land on a page, not to receive raw
+    API output."""
+    user = await db.users.find_one({"verify_email_token": token})
+    if not user:
+        return HTMLResponse(
+            "<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
+            "<h2>This confirmation link is invalid or has already been used.</h2></body></html>"
+        )
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"email_verified": True}, "$unset": {"verify_email_token": ""}},
+    )
+    return HTMLResponse(
+        "<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
+        f"<h2>Your email is confirmed — thanks!</h2>"
+        f"<p><a href='{FRONTEND_URL}/dashboard'>Go to your albums</a></p></body></html>"
+    )
+
+@api_router.post("/auth/resend-verification")
+async def resend_verification_email(user: dict = Depends(_get_current_user_raw)):
+    """Uses _get_current_user_raw, not get_current_user — a still-
+    unverified person must be able to call this despite the very
+    enforcement that's blocking them from everything else, or they'd have
+    no way to recover from a lost or expired first email. A no-op (not an
+    error) if already verified, or if this is an OAuth account that was
+    never assigned a verify_email_token in the first place — either way
+    there's genuinely nothing to resend."""
+    if user.get("email_verified") is not False:
+        return {"message": "Your email is already verified."}
+    verify_token = str(uuid.uuid4())
+    await db.users.update_one({"id": user["id"]}, {"$set": {"verify_email_token": verify_token}})
+    send_verification_email(user["email"], user.get("name", ""), verify_token)
+    return {"message": "Verification email sent."}
 
 @api_router.post("/auth/google", response_model=AuthResponse)
 async def google_auth(data: GoogleAuthInput):
@@ -920,13 +1070,14 @@ async def apple_auth(data: AppleAuthInput):
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @api_router.get("/auth/me", response_model=UserOut)
-async def me(user: dict = Depends(get_current_user)):
+async def me(user: dict = Depends(_get_current_user_raw)):
     return UserOut(
         id=user["id"], email=user["email"], name=user["name"],
         phone=user.get("phone"), street=user.get("street"),
         building=user.get("building"), city=user.get("city"),
         additional_info=user.get("additional_info"),
         is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL,
+        email_verified=user.get("email_verified", True),
     )
 
 @api_router.put("/auth/me", response_model=UserOut)
@@ -948,6 +1099,7 @@ async def change_password(data: ChangePasswordInput, user: dict = Depends(get_cu
     if not full_user or not full_user.get("password_hash") or not verify_password(data.current_password, full_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
     await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(data.new_password)}})
+    send_password_changed_email(full_user["email"], full_user.get("name", ""))
     return {"message": "Mot de passe mis à jour"}
 
 @api_router.post("/contact")
@@ -3162,9 +3314,26 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     factored out of _render_pdf_via_browser_sync so a whole order's worth
     of chunks can share one launched browser (see that function's
     docstring for why relaunching Chromium per chunk was itself a real
-    chunk of the total generation time on a large album)."""
-    page.goto(print_url, wait_until="networkidle", timeout=30000)
-    page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=20000)
+    chunk of the total generation time on a large album).
+
+    Both timeouts below were raised from their original 30s/20s after a
+    real generation genuinely failed under this: _deprioritize_current_
+    process_tree deliberately lowers Chromium's OS scheduling priority so
+    a customer actively using the editor always wins any real CPU
+    contention — exactly as intended — but with a fixed 30s ceiling, that
+    intentional slowdown could tip an otherwise-fine page over into an
+    outright failure rather than just taking longer, on an album with
+    someone actively editing throughout (auto-save alone hits this
+    backend every couple of minutes). One later attempt failed at page 1
+    and a different one at page 52, on the same album — no single broken
+    photo could explain two different pages failing on two different
+    runs, but genuine CPU contention explains both equally well. The
+    recursive split-and-retry in _render_all_chunks is a different
+    safety net — for a chunk that's too heavy to fit under the string-
+    length ceiling — not a substitute for giving a single ordinary page
+    enough real time to finish under deliberately-lowered priority."""
+    page.goto(print_url, wait_until="networkidle", timeout=120000)
+    page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=90000)
     error_el = page.query_selector('[data-print-error="true"]')
     if error_el:
         error_text = error_el.inner_text()
@@ -3199,7 +3368,7 @@ def _deprioritize_current_process_tree():
     except Exception as e:
         logger.warning(f"Impossible de déprioriser le process Chromium : {e}")
 
-def _render_pdf_via_browser_sync(print_url: str) -> bytes:
+def _render_pdf_via_browser_sync(print_url: str, log_label: str = "") -> bytes:
     """Runs entirely with Playwright's sync API. Must be called off the main
     asyncio loop (via run_in_executor) since it blocks the calling thread —
     but that's exactly why it sidesteps the Windows subprocess/event-loop
@@ -3210,11 +3379,29 @@ def _render_pdf_via_browser_sync(print_url: str) -> bytes:
     whole order's worth of chunked renders, see _render_all_chunks below,
     which reuses one browser across every chunk instead of paying
     Chromium's ~1-2s launch cost per chunk (which alone added tens of
-    seconds on a large, many-chunk album)."""
+    seconds on a large, many-chunk album).
+
+    The step-by-step logging below (log_label lets a caller like
+    render_recursive tag these with the order/chunk they belong to) exists
+    because a real generation once ran the full 3600s Cloud Run ceiling and
+    got killed with *zero* log output in between "point de départ estimé"
+    and the timeout — no chunk succeeded, none logged a failure-and-split
+    either, meaning whatever hung did so somewhere between those two
+    existing checkpoints with nothing in between to narrow it down. Every
+    step Playwright takes before the render itself (spinning up its own
+    driver process, launching Chromium, opening a page) had no logging of
+    its own — any one of them could have been the actual hang, and there
+    was no way to tell which from the logs alone."""
+    prefix = f"{log_label} : " if log_label else ""
+    logger.info(f"{prefix}ouverture de sync_playwright()")
     with sync_playwright() as p:
+        logger.info(f"{prefix}sync_playwright() ouvert, lancement de Chromium…")
         browser = p.chromium.launch()
+        logger.info(f"{prefix}Chromium lancé, dépriorisation du process…")
         _deprioritize_current_process_tree()
+        logger.info(f"{prefix}ouverture d'une nouvelle page…")
         page = browser.new_page()
+        logger.info(f"{prefix}page ouverte, d\u00e9but du rendu…")
         pdf_bytes = _render_pdf_with_page(page, print_url)
         browser.close()
         return pdf_bytes
@@ -3778,17 +3965,30 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     await _acquire_pdf_generation_slot(order_id)
     try:
         # Pre-warm every used photo's "print" variant BEFORE launching the
-        # browser, one at a time. Without this, the headless browser (once
-        # it navigates to the print page) requests every photo's print
-        # variant at once — the first time any of them is needed, each of
-        # those ~dozens of concurrent requests triggers its own resize+R2
+        # browser. Without this, the headless browser (once it navigates
+        # to the print page) requests every photo's print variant at
+        # once — the first time any of them is needed, each of those
+        # ~dozens of concurrent requests triggers its own resize+R2
         # upload, all competing for this same small instance's limited
         # thread pool alongside the PDF task itself waiting on the whole
         # page to finish loading. That self-inflicted contention was
         # stalling the export badly enough to run into the request
-        # timeout with no clean error ever logged. Sequential and boring
-        # on purpose — by the time Playwright opens the page, every image
-        # it needs is already a fast, uncontended cache hit.
+        # timeout with no clean error ever logged.
+        #
+        # Was strictly one photo at a time on the default pool — safe, but
+        # needlessly slow: a large album (150-200+ used photos) pre-warming
+        # sequentially, each paying its own full R2-fetch + resize +
+        # R2-upload round trip, could easily take several minutes on its
+        # own before Chromium even launches — and a generation that
+        # measurably needed over an hour total for one real album makes
+        # every one of those minutes matter. Bounded concurrency still
+        # avoids the original problem this was written to prevent (every
+        # photo hitting R2/CPU at once, all colliding with Chromium's own
+        # page-load) — it's just a wider "one at a time" than literally 1
+        # — and moved off the default pool onto the same dedicated one
+        # regular photo processing already uses, so this doesn't compete
+        # with AI curation's own default-pool work either.
+        PDF_PREWARM_CONCURRENCY = 8
         album_doc = await db.albums.find_one({"id": album_id}, {"pages": 1})
         interior_pages = (album_doc or {}).get("pages", [])
         photo_ids = {
@@ -3799,13 +3999,19 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
         }
         if photo_ids:
             loop = asyncio.get_event_loop()
-            photos_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0})
-            async for photo in photos_cursor:
+            prewarm_semaphore = asyncio.Semaphore(PDF_PREWARM_CONCURRENCY)
+
+            async def _prewarm_one(photo):
                 if photo.get("print_path") and photo.get("print_size"):
-                    continue  # already cached from an earlier order/preview, size already on record
-                print_path, print_bytes = await loop.run_in_executor(None, _generate_print_variant, photo)
+                    return  # already cached from an earlier order/preview, size already on record
+                async with prewarm_semaphore:
+                    print_path, print_bytes = await loop.run_in_executor(_photo_processing_executor, _generate_print_variant, photo)
                 if print_path:
                     await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_path": print_path, "print_size": len(print_bytes)}})
+
+            photos_cursor = db.photos.find({"id": {"$in": list(photo_ids)}}, {"_id": 0})
+            photos_list = await photos_cursor.to_list(len(photo_ids))
+            await asyncio.gather(*(_prewarm_one(photo) for photo in photos_list))
 
         token = create_token(user_id)
         loop = asyncio.get_event_loop()
@@ -3893,7 +4099,7 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
                 chunk_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}&from={start}&to={end}"
                 t0 = _time.monotonic()
                 try:
-                    chunk_bytes = _render_pdf_via_browser_sync(chunk_url)
+                    chunk_bytes = _render_pdf_via_browser_sync(chunk_url, log_label=f"Commande {order_id} : pages {start}-{end} (profondeur {depth})")
                     elapsed = _time.monotonic() - t0
                     logger.info(f"Commande {order_id} : pages {start}-{end} (profondeur {depth}) → {len(chunk_bytes)/1024/1024:.0f} Mio en {elapsed:.1f}s")
                     return chunk_bytes
@@ -3963,6 +4169,9 @@ async def _generate_order_pdf(order_id: str, album_id: str, user_id: str):
     except Exception as e:
         logger.error(f"Échec de la génération du PDF pour la commande {order_id}: {e}")
         await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
+        fresh_failed = await db.orders.find_one({"id": order_id}, {"_id": 0})
+        if fresh_failed:
+            send_pdf_generation_failed_email(fresh_failed, str(e))
     finally:
         await _release_pdf_generation_slot(order_id)
 
@@ -4262,6 +4471,24 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
     return fresh
 
+@api_router.post("/admin/orders/{order_id}/resend-printer-email")
+async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_current_user)):
+    """Re-sends the printer notification email for an order whose PDF is
+    already generated — for exactly the situation that comes up while
+    still testing/fixing email delivery (a wrong BACKEND_URL, SMTP not
+    yet configured, etc.): the PDF itself is already correct and doesn't
+    need regenerating, only the email carrying its download link does.
+    Refuses if there's no PDF yet — regenerate the PDF first in that
+    case, which sends this same email itself once generation succeeds."""
+    require_admin(user)
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    if not order.get("pdf_ready") or not order.get("pdf_path"):
+        raise HTTPException(status_code=400, detail="Le PDF de cette commande n'est pas encore prêt — régénérez-le d'abord")
+    send_printer_order_email(order)
+    return {"sent": True}
+
 class OrderStatusUpdate(BaseModel):
     status: str
     tracking_number: Optional[str] = None
@@ -4432,4 +4659,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
- 
