@@ -490,5 +490,14 @@
     "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",
     "deletePage": "Delete this whole page",
     "addTextBox": "Add a text box to this page — click where you want it to go"
+  },
+  "verifyEmail": {
+    "title": "Check your inbox.",
+    "instructions": "We've sent a confirmation link to:",
+    "resendButton": "Resend confirmation email",
+    "sending": "Sending…",
+    "resentToast": "Confirmation email sent — check your inbox.",
+    "resendError": "Couldn't resend the email. Please try again.",
+    "signOut": "Sign out"
   }
 }
