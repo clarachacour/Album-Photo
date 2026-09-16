@@ -490,5 +490,14 @@
     "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
     "deletePage": "Supprimer toute cette page",
     "addTextBox": "Ajouter une zone de texte à cette page — cliquez où vous voulez la placer"
+  },
+  "verifyEmail": {
+    "title": "Vérifiez votre boîte mail.",
+    "instructions": "Nous avons envoyé un lien de confirmation à :",
+    "resendButton": "Renvoyer l'e-mail de confirmation",
+    "sending": "Envoi…",
+    "resentToast": "E-mail de confirmation envoyé — vérifiez votre boîte de réception.",
+    "resendError": "Impossible de renvoyer l'e-mail. Merci de réessayer.",
+    "signOut": "Se déconnecter"
   }
 }
