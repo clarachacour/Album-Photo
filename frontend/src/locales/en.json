@@ -512,5 +512,120 @@
     "sentToast": "Thanks for your feedback!",
     "sendError": "Couldn't send your feedback. Please try again.",
     "thanks": "Thanks for your feedback!"
+  },
+  "footer": {
+    "tagline": "Photo albums, printed and delivered.",
+    "navigation": "Navigation",
+    "contact": "Contact",
+    "legal": "Legal",
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "returns": "Returns & Refunds",
+    "shipping": "Shipping",
+    "company": "Company",
+    "legalNamePlaceholder": "[Legal company name — to confirm]",
+    "rcPlaceholder": "[RC number — to confirm]",
+    "addressPlaceholder": "[Registered address — to confirm]",
+    "rightsReserved": "All rights reserved.",
+    "madeIn": "Made in Lebanon"
+  },
+  "legal": {
+    "lastUpdated": "Last updated: [date to fill in when published]",
+    "terms": {
+      "eyebrow": "Legal",
+      "title": "Terms & Conditions",
+      "sections": [
+        {
+          "heading": "1. About this service",
+          "body": "Everbook lets you upload your photos, automatically or manually lay them out into a printed photo book, and order a physical copy. [Legal company name] ([RC number]) operates this service from [registered address], Lebanon."
+        },
+        {
+          "heading": "2. Orders and pricing",
+          "body": "Prices are displayed in USD and include [specify: production only / production and delivery]. Placing an order is a commitment to pay the displayed price for the album as it appears at the moment of ordering — once an order is placed, the album can no longer be edited (see the editor for details)."
+        },
+        {
+          "heading": "3. Production and delivery",
+          "body": "Albums are produced to order after payment. Estimated production and delivery times are described on our Shipping page. We currently deliver within Lebanon only."
+        },
+        {
+          "heading": "4. Returns and defects",
+          "body": "Because each album is custom-made from your own photos, orders cannot be returned for a change of mind. See our Returns & Refunds page for what happens if your album arrives damaged or defective."
+        },
+        {
+          "heading": "5. Your account and content",
+          "body": "You're responsible for the photos and text you upload. You retain ownership of your photos; we use them only to produce your order, as described in our Privacy Policy."
+        },
+        {
+          "heading": "6. Governing law",
+          "body": "These terms are governed by the laws of Lebanon. Any dispute will be submitted to the competent courts of [jurisdiction — to confirm, typically Beirut]."
+        }
+      ]
+    },
+    "privacy": {
+      "eyebrow": "Legal",
+      "title": "Privacy Policy",
+      "sections": [
+        {
+          "heading": "1. What we collect",
+          "body": "Your name, email address, phone number, and shipping address (to create your account and deliver your order); the photos and text you upload to build your album; and basic technical information needed to operate the site."
+        },
+        {
+          "heading": "2. Why we collect it",
+          "body": "To create and let you edit your album, to process and deliver your order, and to send you the emails described in our order and account flows (order confirmation, shipping updates, password resets, and similar service messages)."
+        },
+        {
+          "heading": "3. How long we keep it",
+          "body": "An album you never order is automatically deleted after 30 days of inactivity, along with its photos. Once you place an order, we keep the order record and the photos used in that order for as long as needed for our own records and to handle any after-sales issue."
+        },
+        {
+          "heading": "4. Who has access",
+          "body": "Your photos and shipping details are shared only with the printer producing your book and the delivery company bringing it to you — each sees only what they need (the printer receives the print file, the delivery company receives your shipping address) — never your account, password, or browsing activity."
+        },
+        {
+          "heading": "5. Your rights",
+          "body": "You can update your account details at any time from your account page. To request deletion of your data, contact us — see our Contact page."
+        }
+      ]
+    },
+    "returns": {
+      "eyebrow": "Legal",
+      "title": "Returns & Refunds",
+      "sections": [
+        {
+          "heading": "1. Custom-made products",
+          "body": "Each album is printed specifically for you from your own photos. Because of this, we cannot accept returns for a simple change of mind once an order has been placed."
+        },
+        {
+          "heading": "2. Damaged or defective albums",
+          "body": "If your album arrives damaged, or if there's a genuine printing defect, contact us within [X days — to confirm] of delivery with photos of the issue. We'll review it and arrange a reprint or a refund as appropriate."
+        },
+        {
+          "heading": "3. How to reach us",
+          "body": "Use our Contact page with your order number and a description (and photos, if relevant) of the problem."
+        }
+      ]
+    },
+    "shipping": {
+      "eyebrow": "Legal",
+      "title": "Shipping",
+      "sections": [
+        {
+          "heading": "1. Delivery area",
+          "body": "We currently deliver within Lebanon only."
+        },
+        {
+          "heading": "2. Production and delivery time",
+          "body": "[Estimated production time] once your order is placed, followed by [estimated delivery time] for delivery. You can follow your order's status from your Orders page."
+        },
+        {
+          "heading": "3. Delivery cost",
+          "body": "[Specify whether delivery is included in the displayed price or charged separately]."
+        },
+        {
+          "heading": "4. If delivery fails",
+          "body": "If we're unable to deliver to the address you provided, we'll contact you using the phone number or email on your account to arrange a new delivery."
+        }
+      ]
+    }
   }
 }
