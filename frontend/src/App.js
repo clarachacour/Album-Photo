@@ -21,6 +21,7 @@ import PrintAlbum from "@/pages/PrintAlbum";
 import AccountPage from "@/pages/AccountPage";
 import OrdersPage from "@/pages/OrdersPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
+import OrderFeedback from "@/pages/OrderFeedback";
 import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
 import AdminOrdersPage from "@/pages/AdminOrdersPage";
 import FAQPage from "@/pages/FAQPage";
@@ -98,6 +99,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:id/feedback"
+              element={
+                <ProtectedRoute>
+                  <OrderFeedback />
                 </ProtectedRoute>
               }
             />
