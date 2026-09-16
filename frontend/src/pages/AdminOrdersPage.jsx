@@ -4,7 +4,7 @@ import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { Download, ExternalLink, RefreshCw } from "lucide-react";
 
-function formatPrice(cents, currency = "eur") {
+function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
 }
 
