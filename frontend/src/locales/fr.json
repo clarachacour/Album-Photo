@@ -512,5 +512,120 @@
     "sentToast": "Merci pour votre avis !",
     "sendError": "Impossible d'envoyer votre avis. Merci de réessayer.",
     "thanks": "Merci pour votre avis !"
+  },
+  "footer": {
+    "tagline": "Albums photo, imprimés et livrés.",
+    "navigation": "Navigation",
+    "contact": "Contact",
+    "legal": "Légal",
+    "terms": "Conditions Générales de Vente",
+    "privacy": "Politique de confidentialité",
+    "returns": "Retours & Remboursements",
+    "shipping": "Livraison",
+    "company": "Société",
+    "legalNamePlaceholder": "[Nom légal de la société — à confirmer]",
+    "rcPlaceholder": "[Numéro RC — à confirmer]",
+    "addressPlaceholder": "[Adresse enregistrée — à confirmer]",
+    "rightsReserved": "Tous droits réservés.",
+    "madeIn": "Fabriqué au Liban"
+  },
+  "legal": {
+    "lastUpdated": "Dernière mise à jour : [date à renseigner à la publication]",
+    "terms": {
+      "eyebrow": "Légal",
+      "title": "Conditions Générales de Vente",
+      "sections": [
+        {
+          "heading": "1. À propos de ce service",
+          "body": "Everbook vous permet d'envoyer vos photos, de les mettre en page automatiquement ou manuellement dans un album photo imprimé, et de commander un exemplaire physique. [Nom légal de la société] ([numéro RC]) exploite ce service depuis [adresse enregistrée], Liban."
+        },
+        {
+          "heading": "2. Commandes et tarifs",
+          "body": "Les prix sont affichés en dollars américains (USD) et incluent [à préciser : la production seule / la production et la livraison]. Passer une commande vous engage à payer le prix affiché pour l'album tel qu'il apparaît au moment de la commande — une fois la commande passée, l'album ne peut plus être modifié (voir l'éditeur pour le détail)."
+        },
+        {
+          "heading": "3. Production et livraison",
+          "body": "Les albums sont produits à la commande après paiement. Les délais estimés de production et de livraison sont décrits sur notre page Livraison. Nous livrons actuellement uniquement au Liban."
+        },
+        {
+          "heading": "4. Retours et défauts",
+          "body": "Chaque album étant fabriqué sur-mesure à partir de vos propres photos, les commandes ne peuvent pas être retournées pour un simple changement d'avis. Consultez notre page Retours & Remboursements pour savoir ce qui se passe si votre album arrive endommagé ou présente un défaut."
+        },
+        {
+          "heading": "5. Votre compte et votre contenu",
+          "body": "Vous êtes responsable des photos et textes que vous envoyez. Vous conservez la propriété de vos photos ; nous les utilisons uniquement pour produire votre commande, comme décrit dans notre Politique de confidentialité."
+        },
+        {
+          "heading": "6. Droit applicable",
+          "body": "Les présentes conditions sont régies par le droit libanais. Tout litige sera soumis aux tribunaux compétents de [juridiction — à confirmer, généralement Beyrouth]."
+        }
+      ]
+    },
+    "privacy": {
+      "eyebrow": "Légal",
+      "title": "Politique de confidentialité",
+      "sections": [
+        {
+          "heading": "1. Ce que nous collectons",
+          "body": "Votre nom, votre adresse e-mail, votre numéro de téléphone, et votre adresse de livraison (pour créer votre compte et livrer votre commande) ; les photos et textes que vous envoyez pour créer votre album ; et des informations techniques de base nécessaires au fonctionnement du site."
+        },
+        {
+          "heading": "2. Pourquoi nous les collectons",
+          "body": "Pour créer et vous permettre de modifier votre album, pour traiter et livrer votre commande, et pour vous envoyer les e-mails décrits dans nos parcours de commande et de compte (confirmation de commande, suivi de livraison, réinitialisation de mot de passe, et autres messages liés au service)."
+        },
+        {
+          "heading": "3. Combien de temps nous les conservons",
+          "body": "Un album jamais commandé est automatiquement supprimé après 30 jours d'inactivité, photos comprises. Une fois la commande passée, nous conservons l'enregistrement de la commande et les photos utilisées aussi longtemps que nécessaire pour nos propres besoins et pour traiter toute question après-vente."
+        },
+        {
+          "heading": "4. Qui y a accès",
+          "body": "Vos photos et informations de livraison ne sont partagées qu'avec l'imprimeur qui produit votre livre et le transporteur qui vous le livre — chacun ne voit que ce dont il a besoin (l'imprimeur reçoit le fichier d'impression, le transporteur reçoit votre adresse de livraison) — jamais votre compte, votre mot de passe, ni votre activité de navigation."
+        },
+        {
+          "heading": "5. Vos droits",
+          "body": "Vous pouvez mettre à jour les informations de votre compte à tout moment depuis votre page compte. Pour demander la suppression de vos données, contactez-nous — voir notre page Contact."
+        }
+      ]
+    },
+    "returns": {
+      "eyebrow": "Légal",
+      "title": "Retours & Remboursements",
+      "sections": [
+        {
+          "heading": "1. Des produits sur-mesure",
+          "body": "Chaque album est imprimé spécifiquement pour vous à partir de vos propres photos. Pour cette raison, nous ne pouvons pas accepter de retours pour un simple changement d'avis une fois la commande passée."
+        },
+        {
+          "heading": "2. Albums endommagés ou défectueux",
+          "body": "Si votre album arrive endommagé, ou en cas de véritable défaut d'impression, contactez-nous dans les [X jours — à confirmer] suivant la livraison avec des photos du problème. Nous l'examinerons et organiserons une réimpression ou un remboursement selon le cas."
+        },
+        {
+          "heading": "3. Comment nous contacter",
+          "body": "Utilisez notre page Contact en indiquant votre numéro de commande et une description (avec photos, si pertinent) du problème."
+        }
+      ]
+    },
+    "shipping": {
+      "eyebrow": "Légal",
+      "title": "Livraison",
+      "sections": [
+        {
+          "heading": "1. Zone de livraison",
+          "body": "Nous livrons actuellement uniquement au Liban."
+        },
+        {
+          "heading": "2. Délai de production et de livraison",
+          "body": "[Délai de production estimé] une fois la commande passée, suivi de [délai de livraison estimé] pour la livraison. Vous pouvez suivre le statut de votre commande depuis votre page Commandes."
+        },
+        {
+          "heading": "3. Frais de livraison",
+          "body": "[Préciser si la livraison est incluse dans le prix affiché ou facturée séparément]."
+        },
+        {
+          "heading": "4. En cas d'échec de livraison",
+          "body": "Si nous ne parvenons pas à livrer à l'adresse que vous avez fournie, nous vous contacterons au numéro de téléphone ou à l'adresse e-mail de votre compte pour organiser une nouvelle livraison."
+        }
+      ]
+    }
   }
 }
