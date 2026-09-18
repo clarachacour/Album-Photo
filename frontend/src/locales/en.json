@@ -566,24 +566,44 @@
       "title": "Privacy Policy",
       "sections": [
         {
-          "heading": "1. What we collect",
-          "body": "Your name, email address, phone number, and shipping address (to create your account and deliver your order); the photos and text you upload to build your album; and basic technical information needed to operate the site."
+          "heading": "1. Who we are",
+          "body": "Everbook (\"we\", \"us\", \"our\") designs and prints custom photo albums, operated under [legal company name to confirm], registered in Lebanon under commercial registry number [RC number to confirm], with its registered address at [address to confirm]. This Privacy Policy explains what information we collect through everbook-album.com and our related mobile-friendly services (together, the \"Service\"), why we collect it, how long we keep it, who we share it with, and the choices you have. If you have questions about this policy or about your data, you can reach us through our Contact page."
         },
         {
-          "heading": "2. Why we collect it",
-          "body": "To create and let you edit your album, to process and deliver your order, and to send you the emails described in our order and account flows (order confirmation, shipping updates, password resets, and similar service messages)."
+          "heading": "2. Information we collect",
+          "body": "Account information: your name, email address, and password (stored as a secure one-way hash, never in plain text) when you create an account directly; or your name, email address, and a unique account identifier when you sign in with Google or Apple — in that case we never see or store your Google or Apple password.\n\nPhotos and album content: the photos, captions, titles, and layout choices you upload or create while building an album. Photo files may include metadata embedded by your camera or phone, such as the date taken and, if your device recorded it, GPS location. We also generate technical data from your photos — such as sharpness scores and similarity/duplicate signals — purely to help our editor suggest layouts and flag likely duplicate shots.\n\nOrder and delivery information: your shipping address, phone number, and the order details (album size, page count, price, currency) needed to produce and deliver your album.\n\nFeedback and support messages: anything you write to us through the Contact page or the post-delivery feedback form on your order.\n\nTechnical information: standard web request data such as your IP address, browser type, and device type, collected automatically by our hosting and security infrastructure to keep the Service running reliably and securely (for example, in server logs). We do not use third-party advertising trackers or sell any data collected this way."
         },
         {
-          "heading": "3. How long we keep it",
-          "body": "An album you never order is automatically deleted after 30 days of inactivity, along with its photos. Once you place an order, we keep the order record and the photos used in that order for as long as needed for our own records and to handle any after-sales issue."
+          "heading": "3. How we use your information",
+          "body": "We use your information to: create and secure your account; let you build, save, and edit your album; process, produce, and ship your order; send you service emails — order confirmation, shipping and delivery updates, password reset and password-changed confirmations, and (only if you sign up with an email and password) a one-time email verification message; respond to your questions and feedback; and detect and prevent fraud, abuse, or technical problems.\n\nA small number of your uploaded photos may, during album creation, be automatically compared to detect likely duplicates. When our own systems cannot confidently decide between two very similar photos, an anonymized visual comparison (not your name, email, or account details) may be sent to Google's Gemini API, a third-party AI service, solely to help decide which photo to suggest keeping. This happens only for ambiguous cases, not for every photo.\n\nWe do not use your photos or personal information for advertising, and we do not sell your data to third parties."
         },
         {
-          "heading": "4. Who has access",
-          "body": "Your photos and shipping details are shared only with the printer producing your book and the delivery company bringing it to you — each sees only what they need (the printer receives the print file, the delivery company receives your shipping address) — never your account, password, or browsing activity."
+          "heading": "4. How long we keep your information",
+          "body": "Draft albums: an album you have not ordered is automatically deleted, together with its photos, after 30 days of inactivity.\n\nOrdered albums: once you place an order, we keep the album, its photos, and the order record for as long as your account exists, so you can reorder or refer back to past orders, and so we can handle any after-sales question.\n\nUnused photos: photos you uploaded but did not include in your final layout are removed once your order's print file has been generated.\n\nAccount information: kept for as long as your account is active. We do not currently offer fully automated self-service account deletion; if you would like your account and associated data deleted, contact us and we will process your request.\n\nContact and feedback messages: kept for as long as reasonably needed to handle your request and to keep a record of past support conversations."
         },
         {
-          "heading": "5. Your rights",
-          "body": "You can update your account details at any time from your account page. To request deletion of your data, contact us — see our Contact page."
+          "heading": "5. Who we share your information with",
+          "body": "We share only what each party needs to do its job, and never sell your data:\n\n- Our printing partner receives the finished print file for your order (your photos and layout) to produce your physical album.\n- Our delivery partner receives your name, shipping address, and phone number to deliver your order.\n- Google and Apple, when you choose to sign in with them, confirm your identity to us; we receive your name and email address from them, in line with their own privacy policies.\n- Google's Gemini API may receive an anonymized visual comparison of two similar photos, as described in Section 3, strictly to assist duplicate detection.\n- Infrastructure providers that host our application, database, and file storage (including cloud hosting and object storage providers) process data on our behalf, under contractual confidentiality obligations, and do not use it for their own purposes.\n\nWe may also disclose information if required to do so by law, or to protect the rights, property, or safety of Everbook, our users, or others."
+        },
+        {
+          "heading": "6. How we protect your information",
+          "body": "We take reasonable technical and organizational measures to protect your information, including: encrypting data in transit using HTTPS across the Service; storing passwords as irreversible cryptographic hashes, never in plain text; restricting access to your photos and files through private, non-public cloud storage with time-limited, signed access links rather than permanently public URLs; and using authenticated, signed links (rather than open access) for the order-related emails we send to our printing and delivery partners. No method of transmission or storage is completely secure, but we work to protect your information using industry-standard practices."
+        },
+        {
+          "heading": "7. Your rights and choices",
+          "body": "You can review and update your account information (name, email, password) at any time from your account page. You can ask us to correct inaccurate information, or to delete your account and associated data, by contacting us through our Contact page; we will respond and process reasonable requests within a reasonable timeframe. If you signed up using Google or Apple, you can also manage the permissions you granted Everbook directly from your Google or Apple account settings."
+        },
+        {
+          "heading": "8. Children's privacy",
+          "body": "The Service is not directed to children, and we do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us so we can remove it."
+        },
+        {
+          "heading": "9. Changes to this policy",
+          "body": "We may update this Privacy Policy from time to time, for example to reflect changes in our practices or for legal reasons. If we make material changes, we will update the \"last updated\" date at the top of this page. We encourage you to review this page periodically."
+        },
+        {
+          "heading": "10. Contact us",
+          "body": "If you have any questions about this Privacy Policy or how we handle your information, please reach out through our Contact page and we will be happy to help."
         }
       ]
     },
