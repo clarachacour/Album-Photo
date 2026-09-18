@@ -562,28 +562,48 @@
       ]
     },
     "privacy": {
-      "eyebrow": "Légal",
+      "eyebrow": "Mentions légales",
       "title": "Politique de confidentialité",
       "sections": [
         {
-          "heading": "1. Ce que nous collectons",
-          "body": "Votre nom, votre adresse e-mail, votre numéro de téléphone, et votre adresse de livraison (pour créer votre compte et livrer votre commande) ; les photos et textes que vous envoyez pour créer votre album ; et des informations techniques de base nécessaires au fonctionnement du site."
+          "heading": "1. Qui sommes-nous",
+          "body": "Everbook (« nous ») conçoit et imprime des albums photo personnalisés, exploité sous le nom [raison sociale à confirmer], immatriculé au Liban sous le numéro de registre du commerce [numéro RC à confirmer], dont le siège social est situé [adresse à confirmer]. Cette politique de confidentialité explique quelles informations nous collectons via everbook-album.com et nos services associés (ensemble, le « Service »), pourquoi nous les collectons, combien de temps nous les conservons, avec qui nous les partageons, et les choix qui s'offrent à vous. Pour toute question concernant cette politique ou vos données, vous pouvez nous contacter via notre page Contact."
         },
         {
-          "heading": "2. Pourquoi nous les collectons",
-          "body": "Pour créer et vous permettre de modifier votre album, pour traiter et livrer votre commande, et pour vous envoyer les e-mails décrits dans nos parcours de commande et de compte (confirmation de commande, suivi de livraison, réinitialisation de mot de passe, et autres messages liés au service)."
+          "heading": "2. Informations que nous collectons",
+          "body": "Informations de compte : votre nom, votre adresse e-mail et votre mot de passe (stocké sous forme de hachage sécurisé à sens unique, jamais en clair) lorsque vous créez un compte directement ; ou votre nom, votre adresse e-mail et un identifiant de compte unique lorsque vous vous connectez avec Google ou Apple — dans ce cas, nous ne voyons ni ne stockons jamais votre mot de passe Google ou Apple.\n\nPhotos et contenu de l'album : les photos, légendes, titres et choix de mise en page que vous téléversez ou créez en composant un album. Les fichiers photo peuvent contenir des métadonnées enregistrées par votre appareil photo ou téléphone, telles que la date de prise de vue et, si votre appareil l'a enregistrée, la localisation GPS. Nous générons également des données techniques à partir de vos photos — comme des scores de netteté et des signaux de similarité/doublon — uniquement pour aider notre éditeur à suggérer des mises en page et à repérer les probables photos en double.\n\nInformations de commande et de livraison : votre adresse de livraison, votre numéro de téléphone et les détails de la commande (format de l'album, nombre de pages, prix, devise) nécessaires à la fabrication et à la livraison de votre album.\n\nMessages de retour et d'assistance : tout ce que vous nous écrivez via la page Contact ou le formulaire de retour d'expérience proposé après la livraison de votre commande.\n\nInformations techniques : des données standard de requête web telles que votre adresse IP, le type de navigateur et le type d'appareil, collectées automatiquement par notre infrastructure d'hébergement et de sécurité afin de garantir un fonctionnement fiable et sécurisé du Service (par exemple dans les journaux serveur). Nous n'utilisons aucun traceur publicitaire tiers et ne vendons aucune donnée collectée de cette manière."
         },
         {
-          "heading": "3. Combien de temps nous les conservons",
-          "body": "Un album jamais commandé est automatiquement supprimé après 30 jours d'inactivité, photos comprises. Une fois la commande passée, nous conservons l'enregistrement de la commande et les photos utilisées aussi longtemps que nécessaire pour nos propres besoins et pour traiter toute question après-vente."
+          "heading": "3. Comment nous utilisons vos informations",
+          "body": "Nous utilisons vos informations pour : créer et sécuriser votre compte ; vous permettre de composer, enregistrer et modifier votre album ; traiter, fabriquer et expédier votre commande ; vous envoyer des e-mails de service — confirmation de commande, suivi d'expédition et de livraison, confirmations de réinitialisation et de changement de mot de passe, et (uniquement si vous créez un compte avec une adresse e-mail et un mot de passe) un e-mail de vérification d'adresse e-mail ; répondre à vos questions et retours ; et détecter et prévenir la fraude, les abus ou les problèmes techniques.\n\nUn petit nombre de vos photos téléversées peuvent, lors de la création de l'album, être automatiquement comparées afin de détecter d'éventuels doublons. Lorsque nos propres systèmes ne parviennent pas à trancher avec certitude entre deux photos très similaires, une comparaison visuelle anonymisée (sans votre nom, adresse e-mail ni informations de compte) peut être envoyée à l'API Gemini de Google, un service d'intelligence artificielle tiers, uniquement pour aider à déterminer quelle photo suggérer de conserver. Cela ne concerne que les cas ambigus, pas l'ensemble de vos photos.\n\nNous n'utilisons pas vos photos ni vos informations personnelles à des fins publicitaires, et nous ne vendons pas vos données à des tiers."
         },
         {
-          "heading": "4. Qui y a accès",
-          "body": "Vos photos et informations de livraison ne sont partagées qu'avec l'imprimeur qui produit votre livre et le transporteur qui vous le livre — chacun ne voit que ce dont il a besoin (l'imprimeur reçoit le fichier d'impression, le transporteur reçoit votre adresse de livraison) — jamais votre compte, votre mot de passe, ni votre activité de navigation."
+          "heading": "4. Durée de conservation de vos informations",
+          "body": "Albums en cours de création : un album que vous n'avez pas commandé est automatiquement supprimé, avec ses photos, après 30 jours d'inactivité.\n\nAlbums commandés : une fois votre commande passée, nous conservons l'album, ses photos et l'historique de la commande aussi longtemps que votre compte existe, afin que vous puissiez recommander ou retrouver vos commandes passées, et pour pouvoir traiter toute question après-vente.\n\nPhotos non utilisées : les photos que vous avez téléversées mais qui n'ont pas été incluses dans votre mise en page finale sont supprimées une fois le fichier d'impression de votre commande généré.\n\nInformations de compte : conservées aussi longtemps que votre compte est actif. Nous ne proposons pas encore de suppression de compte entièrement automatisée en libre-service ; si vous souhaitez que votre compte et les données associées soient supprimés, contactez-nous et nous traiterons votre demande.\n\nMessages de contact et de retour : conservés aussi longtemps que raisonnablement nécessaire pour traiter votre demande et conserver un historique des échanges avec notre support."
         },
         {
-          "heading": "5. Vos droits",
-          "body": "Vous pouvez mettre à jour les informations de votre compte à tout moment depuis votre page compte. Pour demander la suppression de vos données, contactez-nous — voir notre page Contact."
+          "heading": "5. Avec qui nous partageons vos informations",
+          "body": "Nous ne partageons que ce dont chaque partie a besoin pour accomplir sa mission, et nous ne vendons jamais vos données :\n\n- Notre partenaire d'impression reçoit le fichier d'impression final de votre commande (vos photos et votre mise en page) afin de fabriquer votre album physique.\n- Notre partenaire de livraison reçoit votre nom, votre adresse de livraison et votre numéro de téléphone afin de livrer votre commande.\n- Google et Apple, lorsque vous choisissez de vous connecter via ces services, confirment votre identité auprès de nous ; nous recevons votre nom et votre adresse e-mail de leur part, conformément à leurs propres politiques de confidentialité.\n- L'API Gemini de Google peut recevoir une comparaison visuelle anonymisée de deux photos similaires, comme décrit à la section 3, uniquement pour faciliter la détection de doublons.\n- Nos prestataires d'infrastructure qui hébergent notre application, notre base de données et le stockage de fichiers (y compris nos fournisseurs d'hébergement cloud et de stockage d'objets) traitent des données pour notre compte, dans le cadre d'obligations contractuelles de confidentialité, et ne les utilisent pas à leurs propres fins.\n\nNous pouvons également divulguer des informations si la loi l'exige, ou pour protéger les droits, la propriété ou la sécurité d'Everbook, de nos utilisateurs ou de tiers."
+        },
+        {
+          "heading": "6. Comment nous protégeons vos informations",
+          "body": "Nous prenons des mesures techniques et organisationnelles raisonnables pour protéger vos informations, notamment : le chiffrement des données en transit via HTTPS sur l'ensemble du Service ; le stockage des mots de passe sous forme de hachages cryptographiques irréversibles, jamais en clair ; la restriction de l'accès à vos photos et fichiers via un stockage cloud privé et non public, avec des liens d'accès signés et limités dans le temps plutôt que des URL publiques permanentes ; et l'utilisation de liens authentifiés et signés (plutôt qu'un accès ouvert) pour les e-mails liés aux commandes que nous envoyons à nos partenaires d'impression et de livraison. Aucune méthode de transmission ou de stockage n'est totalement sécurisée, mais nous nous efforçons de protéger vos informations selon les standards du secteur."
+        },
+        {
+          "heading": "7. Vos droits et choix",
+          "body": "Vous pouvez consulter et mettre à jour les informations de votre compte (nom, e-mail, mot de passe) à tout moment depuis votre page de compte. Vous pouvez nous demander de corriger des informations inexactes, ou de supprimer votre compte et les données associées, en nous contactant via notre page Contact ; nous répondrons et traiterons les demandes raisonnables dans un délai raisonnable. Si vous vous êtes inscrit via Google ou Apple, vous pouvez également gérer les autorisations accordées à Everbook directement depuis les paramètres de votre compte Google ou Apple."
+        },
+        {
+          "heading": "8. Confidentialité des mineurs",
+          "body": "Le Service ne s'adresse pas aux enfants et nous ne collectons pas sciemment d'informations personnelles auprès de mineurs. Si vous pensez qu'un enfant nous a communiqué des informations personnelles, veuillez nous contacter afin que nous puissions les supprimer."
+        },
+        {
+          "heading": "9. Modifications de cette politique",
+          "body": "Nous pouvons mettre à jour cette politique de confidentialité de temps à autre, par exemple pour refléter des changements dans nos pratiques ou pour des raisons légales. Si nous apportons des modifications importantes, nous mettrons à jour la date de « dernière mise à jour » en haut de cette page. Nous vous encourageons à consulter cette page périodiquement."
+        },
+        {
+          "heading": "10. Nous contacter",
+          "body": "Pour toute question concernant cette politique de confidentialité ou la manière dont nous traitons vos informations, veuillez nous contacter via notre page Contact ; nous serons heureux de vous aider."
         }
       ]
     },
