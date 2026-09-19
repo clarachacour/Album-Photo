@@ -1956,7 +1956,19 @@ async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_c
 
 async def _get_mobile_session(token: str) -> dict:
     session = await db.mobile_sessions.find_one({"token": token})
-    if not session or session["expires"] < datetime.now(timezone.utc):
+    if not session:
+        raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
+    # Mongo/motor hands back naive datetimes (it strips the tzinfo on the
+    # round-trip through BSON) even though we stored an aware UTC datetime.
+    # Comparing a naive value against datetime.now(timezone.utc) (aware)
+    # raises TypeError, which FastAPI turns into a 500 — the frontend then
+    # shows the same "expired" message as a real expiry, which is why this
+    # looked like the link dying seconds after being created. Re-attach UTC
+    # before comparing instead of comparing raw.
+    expires = session["expires"]
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
     return session
 
