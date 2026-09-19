@@ -1142,6 +1142,8 @@ async def startup():
     await db.albums.create_index("user_id")
     await db.photos.create_index("album_id")
     await db.orders.create_index("user_id")
+    await db.mobile_sessions.create_index("token", unique=True)
+    await db.mobile_sessions.create_index("expires", expireAfterSeconds=0)
     logger.info("Startup complete")
 
 @app.on_event("shutdown")
@@ -1915,8 +1917,17 @@ async def upload_photos(
     return {"uploaded": len(uploaded), "photos": uploaded, "limit_reached": truncated}
 
 # ---------- Mobile upload (QR code) ----------
+# Sessions used to live in an in-memory dict (_mobile_sessions), scoped to a
+# single backend process. Cloud Run can run several instances at once, each
+# with its own memory — the request that creates the session (from the
+# logged-in browser) and the request that reads it (from the phone that
+# scanned the QR code) can land on two different instances. When that
+# happens the second instance has never heard of the token and reports it
+# as "expired" seconds after it was created. Storing sessions in MongoDB
+# instead makes them visible to every instance, exactly like
+# pdf_generation_slots. A TTL index (see startup()) does the cleanup
+# automatically.
 MOBILE_UPLOAD_SESSION_HOURS = 1
-_mobile_sessions: Dict[str, dict] = {}  # token -> {album_id, user_id, expires}
 
 class MobileUploadSessionOut(BaseModel):
     token: str
@@ -1931,28 +1942,33 @@ async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_c
     await _reject_if_ordered(album_id)
     token = str(uuid.uuid4())
     expires = datetime.now(timezone.utc) + timedelta(hours=MOBILE_UPLOAD_SESSION_HOURS)
-    _mobile_sessions[token] = {"album_id": album_id, "user_id": user["id"], "expires": expires}
+    await db.mobile_sessions.insert_one({
+        "token": token,
+        "album_id": album_id,
+        "user_id": user["id"],
+        "expires": expires,
+    })
     return MobileUploadSessionOut(
         token=token,
         upload_url=f"{FRONTEND_URL}/mobile-upload/{token}",
         expires_at=expires.isoformat(),
     )
 
-def _get_mobile_session(token: str) -> dict:
-    session = _mobile_sessions.get(token)
+async def _get_mobile_session(token: str) -> dict:
+    session = await db.mobile_sessions.find_one({"token": token})
     if not session or session["expires"] < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
     return session
 
 @api_router.get("/mobile-upload/{token}/info")
 async def mobile_upload_info(token: str):
-    session = _get_mobile_session(token)
+    session = await _get_mobile_session(token)
     album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "title": 1})
     return {"album_id": session["album_id"], "album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat()}
 
 @api_router.post("/mobile-upload/{token}/photos")
 async def mobile_upload_photos(token: str, files: List[UploadFile] = File(...)):
-    session = _get_mobile_session(token)
+    session = await _get_mobile_session(token)
     uploaded, limit_reached = await _store_many_photos(session["album_id"], session["user_id"], files)
 
     if uploaded:
@@ -2082,7 +2098,7 @@ async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput)
     Google's own picker UI and its per-album "select all", which the phone's
     generic OS file-source integration with the Google Photos app doesn't
     offer) instead of only their camera roll."""
-    session = _get_mobile_session(token)
+    session = await _get_mobile_session(token)
     album_id = session["album_id"]
     uploaded, limit_reached = await _import_google_photos_items(album_id, session["user_id"], data.items, data.access_token)
 
