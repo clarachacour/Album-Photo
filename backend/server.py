@@ -10,11 +10,12 @@ if sys.platform == "win32":
     # at import time, before anything else touches asyncio.
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Header, Query, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Header, Query, BackgroundTasks, Request
 from fastapi.responses import Response, StreamingResponse, HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from security import load_jwt_secret, parse_cors_origins, RateLimiter, client_ip
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
@@ -118,7 +119,10 @@ load_dotenv(ROOT_DIR / '.env')
 # ---------- Config ----------
 MONGO_URL = os.environ['MONGO_URL']
 DB_NAME = os.environ['DB_NAME']
-JWT_SECRET = os.environ.get('JWT_SECRET', 'dev-secret')
+# Required: the app refuses to start without a real secret (see
+# security.load_jwt_secret) — a guessable default would let anyone forge a
+# login token for any account.
+JWT_SECRET = load_jwt_secret(os.environ.get('JWT_SECRET'))
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXP_HOURS = 24 * 30
 APP_NAME = os.environ.get('APP_NAME', 'albumai')
@@ -189,6 +193,23 @@ ALBUM_EXPIRING_WARNING_DAYS_BEFORE = int(os.environ.get("ALBUM_EXPIRING_WARNING_
 import certifi
 client = AsyncIOMotorClient(MONGO_URL, tlsCAFile=certifi.where())
 db = client[DB_NAME]
+
+# ---------- Rate limiting ----------
+# Counters live in MongoDB so the limits hold across every Cloud Run
+# instance (see security.RateLimiter). Can be switched off with
+# RATE_LIMIT_ENABLED=false, e.g. for an automated test run — never in prod.
+rate_limiter = RateLimiter(
+    db.rate_limits,
+    enabled=os.environ.get("RATE_LIMIT_ENABLED", "true").strip().lower() not in ("0", "false", "no", "off"),
+)
+# (limit, window in seconds). Per email *and* per IP: the email limit stops
+# password guessing on one account even from many IPs; the IP limit stops
+# one visitor from trying many accounts or spamming forms.
+LOGIN_LIMIT_PER_EMAIL = (10, 15 * 60)
+LOGIN_LIMIT_PER_IP = (30, 15 * 60)
+FORGOT_PASSWORD_LIMIT_PER_EMAIL = (3, 60 * 60)
+FORGOT_PASSWORD_LIMIT_PER_IP = (10, 60 * 60)
+CONTACT_LIMIT_PER_IP = (5, 60 * 60)
 
 # ---------- App ----------
 app = FastAPI(title="Album AI Studio API")
@@ -1144,6 +1165,7 @@ async def startup():
     await db.orders.create_index("user_id")
     await db.mobile_sessions.create_index("token", unique=True)
     await db.mobile_sessions.create_index("expires", expireAfterSeconds=0)
+    await rate_limiter.ensure_indexes()
     logger.info("Startup complete")
 
 @app.on_event("shutdown")
@@ -1193,7 +1215,11 @@ async def signup(data: SignupInput):
     return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL, email_verified=False))
 
 @api_router.post("/auth/login", response_model=AuthResponse)
-async def login(data: LoginInput):
+async def login(data: LoginInput, request: Request):
+    await rate_limiter.check_all([
+        ("login:email", data.email, *LOGIN_LIMIT_PER_EMAIL),
+        ("login:ip", client_ip(request), *LOGIN_LIMIT_PER_IP),
+    ])
     user = await db.users.find_one({"email": data.email.lower()})
     if not user or not user.get("password_hash") or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
@@ -1201,7 +1227,13 @@ async def login(data: LoginInput):
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL, email_verified=user.get("email_verified", True)))
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(data: ForgotPasswordInput):
+async def forgot_password(data: ForgotPasswordInput, request: Request):
+    # Checked before looking the account up, so the limit applies the same
+    # way to existing and unknown emails and can't reveal which exist.
+    await rate_limiter.check_all([
+        ("forgot:email", data.email, *FORGOT_PASSWORD_LIMIT_PER_EMAIL),
+        ("forgot:ip", client_ip(request), *FORGOT_PASSWORD_LIMIT_PER_IP),
+    ])
     user = await db.users.find_one({"email": data.email.lower()})
     # Always return the same response whether or not the account exists,
     # so this endpoint can't be used to check which emails are registered.
@@ -1349,7 +1381,10 @@ async def change_password(data: ChangePasswordInput, user: dict = Depends(get_cu
     return {"message": "Mot de passe mis à jour"}
 
 @api_router.post("/contact")
-async def submit_contact(data: ContactInput):
+async def submit_contact(data: ContactInput, request: Request):
+    await rate_limiter.check_all([
+        ("contact:ip", client_ip(request), *CONTACT_LIMIT_PER_IP),
+    ])
     contact_id = str(uuid.uuid4())
     doc = {
         "id": contact_id,
@@ -4945,10 +4980,20 @@ async def root():
 # Include router
 app.include_router(api_router)
 
+# Only the websites listed here may call the API from a browser (never
+# "*"). CORS_ORIGINS is a comma-separated list; FRONTEND_URL is always
+# included. CORS_ORIGIN_REGEX optionally allows a pattern of URLs on top —
+# keep it strict: a loose *.vercel.app pattern would match strangers' sites.
+CORS_ORIGINS = parse_cors_origins(os.environ.get("CORS_ORIGINS"), FRONTEND_URL)
+CORS_ORIGIN_REGEX = os.environ.get("CORS_ORIGIN_REGEX") or None
+logger.info("CORS allowed origins: %s%s", CORS_ORIGINS, f" + regex {CORS_ORIGIN_REGEX}" if CORS_ORIGIN_REGEX else "")
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
+    # The frontend authenticates with an "Authorization: Bearer" header and
+    # never with cookies, so browsers don't need to send credentials.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
