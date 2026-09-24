@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { TID } from "@/constants/testIds";
 import { getCover, getTemplate } from "@/lib/coverTemplates";
 import { coverImageUrl } from "@/lib/api";
-import { CoverFrontPage } from "@/components/AlbumPage";
+import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { Plus, Trash2, ArrowUpRight } from "lucide-react";
 
 export default function Dashboard() {

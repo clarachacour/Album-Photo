@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { api, coverImageUrl } from "@/lib/api";
 import { getTemplate } from "@/lib/coverTemplates";
-import { CoverFrontPage, CoverBackPage, AlbumPage } from "@/components/AlbumPage";
+import { CoverFrontPage } from "@/components/book/CoverFrontPage";
+import { CoverBackPage } from "@/components/book/CoverBackPage";
+import { AlbumPage } from "@/components/book/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { pageDimsMm, spineWidthMm } from "@/lib/printDims";
 

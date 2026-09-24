@@ -1,5 +1,6 @@
 import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
-import { DraggableItem, measureDomTextWidth } from "@/components/AlbumPage";
+import { DraggableItem } from "@/components/book/DraggableItem";
+import { measureDomTextWidth } from "@/components/book/textMeasure";
 
 /** Tracks an element's live pixel height via ResizeObserver. */
 function useElementHeight(ref) {
