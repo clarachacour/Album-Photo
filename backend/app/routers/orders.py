@@ -28,7 +28,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
     if not album.get("pages"):
-        raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
+        raise HTTPException(status_code=400, detail="This album has no pages yet")
     # Nothing previously stopped a second order for the same album — and
     # since this whole endpoint is awaited synchronously (generation can
     # run for hours; see the comment on generate_order_pdf below for why

@@ -197,7 +197,7 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
     await reject_if_ordered(album_id)
     pages = album.get("pages") or []
     if not pages:
-        raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
+        raise HTTPException(status_code=400, detail="This album has no pages yet")
 
     keep_first_pages = max(0, min(data.keep_first_pages, len(pages)))
     preserved_pages = pages[:keep_first_pages]
@@ -291,7 +291,7 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
     await reject_if_ordered(album_id)
     photo_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
     if photo_count == 0:
-        raise HTTPException(status_code=400, detail="Ajoutez des photos avant de lancer l'IA")
+        raise HTTPException(status_code=400, detail="Add photos before starting the AI")
     # Same hard floor the frontend already blocks on before letting the
     # person click through — enforced here too since this endpoint is
     # reachable directly. The layout always uses at least 1 photo per
