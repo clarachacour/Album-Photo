@@ -29,7 +29,9 @@ function defaultCoverPayload(chosenTemplate) {
     // subtitle, or anything added later) — nothing gets silently dropped just
     // because this function wasn't updated to know about a new field name.
     ...tplCover,
-    extra_items: tplCover.extra_items ? tplCover.extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [defaultLogoItem()],
+    // template_item_id: lets "Reset position" find the element's place in
+    // the template (see lib/coverDefaults.js).
+    extra_items: tplCover.extra_items ? tplCover.extra_items.map((it) => ({ ...it, id: cryptoRandom(), template_item_id: it.id })) : [defaultLogoItem()],
     // No default back_extra_items — CoverBackPage already shows
     // album.country automatically (and gracefully renders nothing if it's
     // never been set) whenever there are no back_extra_items at all. A
@@ -37,7 +39,7 @@ function defaultCoverPayload(chosenTemplate) {
     // automatic display without ever showing anything itself, and looked
     // like a mystery empty box to select and delete before this display
     // was even reachable.
-    back_extra_items: tplCover.back_extra_items ? tplCover.back_extra_items.map((it) => ({ ...it, id: cryptoRandom() })) : [],
+    back_extra_items: tplCover.back_extra_items ? tplCover.back_extra_items.map((it) => ({ ...it, id: cryptoRandom(), template_item_id: it.id })) : [],
   };
 }
 

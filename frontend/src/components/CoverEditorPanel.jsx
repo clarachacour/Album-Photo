@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import {
   Bold,
   Type,
@@ -206,12 +207,7 @@ export function CoverEditorPanel({
             />
             <ResetPositionButton
               onClick={() =>
-                updateCover({
-                  title_x: 0.05,
-                  title_y: 0.05,
-                  title_w: 0.9,
-                  title_h: 0.2,
-                })
+                updateCover((({ x, y, w, h }) => ({ title_x: x, title_y: y, title_w: w, title_h: h }))(defaultTitleBox(album)))
               }
             />
           </div>
@@ -338,10 +334,7 @@ export function CoverEditorPanel({
             />
             <ResetPositionButton
               onClick={() =>
-                updateCover({
-                  [`${prefix}_y`]: null,
-                  [`${prefix}_h`]: null,
-                })
+                updateCover(defaultSpineBox(album, prefix))
               }
             />
           </div>
@@ -505,11 +498,7 @@ export function CoverEditorPanel({
 
           <ResetPositionButton
             onClick={() =>
-              updateCoverItem(
-                selectedItem.id,
-                { x: 0.1, y: 0.1, w: 0.5, h: selectedItem.type === "text" ? 0.1 : 0.3 },
-                side
-              )
+              updateCoverItem(selectedItem.id, defaultItemBox(album, selectedItem, side), side)
             }
           />
 

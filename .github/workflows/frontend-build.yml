@@ -1,5 +1,7 @@
 name: Frontend build
 
+# Lint, unit tests and production build of the React app.
+
 on:
   push:
     branches: [main, dev]
@@ -22,4 +24,5 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --legacy-peer-deps
       - run: npm run lint
+      - run: npm test
       - run: npm run build

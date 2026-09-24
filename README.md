@@ -51,8 +51,8 @@ Then open http://localhost:3000.
 ## Tests
 
 ```bash
-cd backend
-pytest
+cd backend && pytest        # backend
+cd frontend && npm test     # frontend
 ```
 
 They also run automatically on GitHub for every push to `dev` and `main`

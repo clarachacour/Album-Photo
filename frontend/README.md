@@ -9,6 +9,7 @@ npm start          # dev server on http://localhost:3000 (instant reload)
 npm run build      # production build in build/ (what Vercel runs)
 npm run preview    # serve that production build locally to check it
 npm run lint       # code checks (ESLint)
+npm test           # unit tests (Vitest), files named *.test.js next to the code
 ```
 
 - `src/pages/` — one file per screen (routes are declared in `src/App.jsx`)

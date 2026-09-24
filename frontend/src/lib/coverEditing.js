@@ -1,5 +1,6 @@
 import { api, coverAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
+import { DEFAULT_TITLE_BOX, NEW_ITEM_BOX } from "@/lib/coverDefaults";
 
 export function cryptoRandom() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -119,7 +120,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       const cover = prev.cover || {};
       const siblings = (cover[key] || []).filter((it) => it.id !== itemId);
       if (side === "front") {
-        siblings.push({ x: cover.title_x ?? 0.08, y: cover.title_y ?? 0.08, w: cover.title_w ?? 0.84, h: cover.title_h ?? 0.28 });
+        siblings.push({ x: cover.title_x ?? DEFAULT_TITLE_BOX.x, y: cover.title_y ?? DEFAULT_TITLE_BOX.y, w: cover.title_w ?? DEFAULT_TITLE_BOX.w, h: cover.title_h ?? DEFAULT_TITLE_BOX.h });
       }
       let guideX = null, guideY = null;
       const items = (cover[key] || []).map((it) => {
@@ -166,10 +167,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       id: cryptoRandom(),
       type: "text",
       content,
-      x: 0.1,
-      y: 0.5,
-      w: 0.5,
-      h: 0.08,
+      ...NEW_ITEM_BOX.text,
       font: "'Manrope', sans-serif",
       font_size: 22,
       font_weight: "normal",
@@ -189,10 +187,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       id: cryptoRandom(),
       type: "shape",
       shape_type,
-      x: 0.3,
-      y: 0.6,
-      w: 0.15,
-      h: 0.15,
+      ...NEW_ITEM_BOX.shape,
     };
     setAlbum((prev) => {
       const cover = prev.cover || {};
@@ -224,10 +219,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
           id: cryptoRandom(),
           type: "image",
           is_photo: true,
-          x: 0.28,
-          y: 0.42,
-          w: 0.44,
-          h: 0.4,
+          ...NEW_ITEM_BOX.image,
           image_url: imageUrl,
           storage_path: data.storage_path,
         };

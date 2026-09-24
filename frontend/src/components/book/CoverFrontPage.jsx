@@ -7,6 +7,7 @@ import { DraggableItem } from "@/components/book/DraggableItem";
 import { REFERENCE_PAGE_PX, measureDomTextWidth } from "@/components/book/textMeasure";
 import { useElementWidth } from "@/components/book/useElementWidth";
 import { useFitTitleFontSize } from "@/components/book/useFitTitleFontSize";
+import { DEFAULT_TITLE_BOX } from "@/lib/coverDefaults";
 
 /**
  * Cover front page — now fully editable: background/accent/text colors overridable,
@@ -43,10 +44,10 @@ export function CoverFrontPage({
   const text = cover.text_color || template.text;
   const titleFont = cover.title_font || "'Baloo 2', sans-serif";
   const titleWeight = cover.title_font_weight || "800";
-  const titleX = cover.title_x ?? 0.08;
-  const titleY = cover.title_y ?? 0.08;
-  const titleW = cover.title_w ?? 0.84;
-  const titleH = cover.title_h ?? 0.28;
+  const titleX = cover.title_x ?? DEFAULT_TITLE_BOX.x;
+  const titleY = cover.title_y ?? DEFAULT_TITLE_BOX.y;
+  const titleW = cover.title_w ?? DEFAULT_TITLE_BOX.w;
+  const titleH = cover.title_h ?? DEFAULT_TITLE_BOX.h;
   const titleFontSize = cover.title_font_size || null;
   const titleRotation = cover.title_rotation || 0;
   const titleWritingMode = cover.title_writing_mode || null; // "vertical-rl" keeps the box's own footprint, unlike rotate() which pivots around the box's center
