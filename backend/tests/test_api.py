@@ -4,6 +4,7 @@ Run from backend/ with:  pytest tests/test_api.py
 No database, network or R2 access needed.
 """
 import asyncio
+import time
 import uuid
 
 import pytest
@@ -83,11 +84,20 @@ def test_login_with_wrong_password(client, db):
     assert res.status_code == 200
 
 
-def test_login_is_rate_limited_per_email(client, db):
+def test_login_is_rate_limited_per_email(client, db, monkeypatch):
+    import types
+
     from app.core.rate_limit import LOGIN_LIMIT_PER_EMAIL
 
     email, _ = _signup(client, db=db)
-    limit, _window = LOGIN_LIMIT_PER_EMAIL
+    limit, window = LOGIN_LIMIT_PER_EMAIL
+    # Counters reset at fixed times (every `window` seconds). Freeze the
+    # limiter's clock in the middle of a window so the test can't straddle a
+    # reset (it once ran across 17:00:00 and saw a fresh counter). The next
+    # window, not a past one: counters whose expiry date has passed are
+    # deleted by the database.
+    frozen = (int(time.time()) // window + 1) * window + window // 2
+    monkeypatch.setattr("app.core.security.time", types.SimpleNamespace(time=lambda: frozen))
     for _ in range(limit):
         res = client.post("/api/auth/login", json={"email": email, "password": "wrong-password"})
         assert res.status_code == 401
