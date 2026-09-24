@@ -15,13 +15,56 @@ export default function MobileUpload() {
   const fileInput = useRef();
 
   useEffect(() => {
-    fetch(`${API}/mobile-upload/${token}/info`)
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then(setInfo)
-      .catch(() => setError("This link has expired or is invalid. Ask for a new QR code."));
+    let cancelled = false;
+    // A real "expired or invalid" answer is a 400 from the server, and is
+    // final — no point retrying that. But a plain network failure (nothing
+    // came back at all) gets exactly the same generic catch() treatment
+    // here as an actual 400 would, which is wrong: on iPhone specifically,
+    // opening this page straight from the Camera app right after scanning
+    // the QR code can land while iOS is still finishing a WiFi/cellular
+    // handoff, so the very first request can fail for a reason that has
+    // nothing to do with the link itself. Retrying a few times before
+    // giving up avoids showing "expired" for what's really just a moment
+    // without connectivity — this is also why it reportedly works fine on
+    // Android (whose network stack doesn't have the same brief gap on the
+    // app-to-browser handoff) but not on iPhone.
+    const MAX_ATTEMPTS = 5;
+    const RETRY_DELAY_MS = 1000;
+
+    const fetchInfo = (attempt) => {
+      fetch(`${API}/mobile-upload/${token}/info`)
+        .then(async (r) => {
+          if (!r.ok) {
+            if (r.status === 400) {
+              const err = new Error("expired");
+              err.expired = true;
+              throw err;
+            }
+            throw new Error(`HTTP ${r.status}`);
+          }
+          return r.json();
+        })
+        .then((data) => {
+          if (!cancelled) setInfo(data);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (err && err.expired) {
+            setError("This link has expired or is invalid. Ask for a new QR code.");
+            return;
+          }
+          if (attempt < MAX_ATTEMPTS) {
+            setTimeout(() => fetchInfo(attempt + 1), RETRY_DELAY_MS * attempt);
+          } else {
+            setError("Couldn't connect. Check your internet connection and try scanning the QR code again.");
+          }
+        });
+    };
+
+    fetchInfo(1);
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const handleFiles = async (fileList) => {

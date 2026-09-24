@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import TopNav from "@/components/TopNav";
+import Footer from "@/components/Footer";
 import Landing from "@/pages/Landing";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
@@ -21,11 +22,16 @@ import PrintAlbum from "@/pages/PrintAlbum";
 import AccountPage from "@/pages/AccountPage";
 import OrdersPage from "@/pages/OrdersPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
+import OrderFeedback from "@/pages/OrderFeedback";
 import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
 import AdminOrdersPage from "@/pages/AdminOrdersPage";
 import FAQPage from "@/pages/FAQPage";
 import ContactPage from "@/pages/ContactPage";
 import VerifyEmailPending from "@/pages/VerifyEmailPending";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import ReturnsPage from "@/pages/ReturnsPage";
+import ShippingPage from "@/pages/ShippingPage";
 
 function AppChrome({ children }) {
   const location = useLocation();
@@ -35,6 +41,7 @@ function AppChrome({ children }) {
     <>
       <TopNav />
       {children}
+      <Footer />
       <Toaster
         position="top-center"
         toastOptions={{
@@ -76,6 +83,10 @@ function App() {
                 page checks for a session itself and redirects to /auth
                 if there isn't one. */}
             <Route path="/verify-email" element={<VerifyEmailPending />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/returns" element={<ReturnsPage />} />
+            <Route path="/shipping" element={<ShippingPage />} />
 
             <Route
               path="/account"
@@ -98,6 +109,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:id/feedback"
+              element={
+                <ProtectedRoute>
+                  <OrderFeedback />
                 </ProtectedRoute>
               }
             />

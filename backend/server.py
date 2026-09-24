@@ -532,29 +532,46 @@ def send_welcome_email(to_email: str, name: str):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_verification_email(to_email: str, name: str, verify_token: str):
-    """Sent once, right at signup (see signup) — never for Google/Apple
-    accounts, whose provider has already confirmed the address (see
+def send_verification_email(to_email: str, name: str, verify_token: str, welcome: bool = False):
+    """Sent right at signup (welcome=True — see signup) and again whenever
+    resend_verification_email is called (welcome=False, a plain reminder
+    rather than a second "welcome") — never for Google/Apple accounts,
+    whose provider has already confirmed the address (see
     upsert_oauth_user). The link goes straight to a backend endpoint
     (verify_email) rather than a frontend page, since there's nothing for
     the person to fill in or decide — one click is the whole interaction,
     the same shape as the printer/delivery action links (_sign_order_action)
     elsewhere in this file, just without needing HMAC signing since the
     token itself is the single-use credential, stored and cleared server-
-    side rather than reconstructed from a signature."""
+    side rather than reconstructed from a signature.
+
+    welcome=True folds the account's very first email into this one
+    single message instead of sending a separate "Welcome to Everbook"
+    right alongside it — two emails at once meant the welcome one's own
+    "Get started" link took someone straight past the confirmation step
+    entirely (the site still blocks them once there, but arriving at a
+    page that looks ready before confirming anything is confusing on its
+    own). One email, one action, matches what a click from an inbox
+    should actually lead to."""
     verify_link = f"{BACKEND_URL}/api/auth/verify-email?token={verify_token}"
-    subject = "Confirm your email address"
+    subject = "Welcome to Everbook — confirm your email" if welcome else "Confirm your email address"
+    intro = (
+        "Welcome to Everbook — you're almost set up. Please confirm this is your email address to finish creating your account and start turning your photos into a printed book."
+        if welcome
+        else "Please confirm this is your email address to finish setting up your account."
+    )
     body = (
         f"Hi {name or ''},\n\n"
-        f"Please confirm this is your email address by clicking the link below:\n{verify_link}\n\n"
+        f"{intro}\n\n"
+        f"{verify_link}\n\n"
         f"If you didn't create an Everbook account, you can safely ignore this email."
     )
     html_body = _email_wrapper(
-        preheader="Please confirm your email address to finish setting up your account.",
-        title="Confirm your email address.",
+        preheader=intro,
+        title="Welcome to Everbook." if welcome else "Confirm your email address.",
         body_html=(
             f"<p>Hi {name or ''},</p>"
-            f"<p>Please confirm this is your email address to finish setting up your account.</p>"
+            f"<p>{intro}</p>"
             f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't create an Everbook account, "
             f"you can safely ignore this email.</p>"
         ),
@@ -658,7 +675,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     body = (
         f"Hi {name or ''},\n\n"
         f"Thanks for your order! We've received it and will start preparing your book.\n\n"
-        f"Order total: {total:.2f} {order.get('currency', 'eur').upper()}\n"
+        f"Order total: {total:.2f} {order.get('currency', 'usd').upper()}\n"
         f"Quantity: {order.get('quantity', 1)}\n\n"
         f"You can follow its status here:\n{order_url}\n\n"
         f"We'll email you again once it ships."
@@ -669,7 +686,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         body_html=(
             f"<p>Hi {name or ''},</p>"
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
-            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'eur').upper()}<br>"
+            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()}<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
             f"<p>We'll email you again once it ships.</p>"
         ),
@@ -702,12 +719,14 @@ def send_order_shipped_email(to_email: str, name: str, order: dict):
     send_email(to_email, subject, body, html_body=html_body)
 
 def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
+    feedback_url = f"{FRONTEND_URL}/orders/{order['id']}/feedback"
     contact_url = f"{FRONTEND_URL}/contact"
     subject = "How did your Everbook turn out?"
     body = (
         f"Hi {name or ''},\n\n"
         f"Your book should have arrived by now — we hope you love it!\n\n"
-        f"We'd love to hear what you thought, or know right away if anything wasn't right:\n{contact_url}\n\n"
+        f"We'd love to hear what you thought:\n{feedback_url}\n\n"
+        f"If anything wasn't right, contact us instead:\n{contact_url}\n\n"
         f"Thank you for printing with Everbook."
     )
     html_body = _email_wrapper(
@@ -716,11 +735,13 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
         body_html=(
             f"<p>Hi {name or ''},</p>"
             f"<p>Your book should have arrived by now — we hope you love it!</p>"
-            f"<p>We'd love to hear what you thought, or know right away if anything wasn't right.</p>"
-            f"<p>Thank you for printing with Everbook.</p>"
+            f"<p>We'd love to hear what you thought.</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If anything wasn't right, "
+            f"<a href=\"{contact_url}\" style=\"color:{_EMAIL_MUTED};\">contact us</a> instead — "
+            f"we'll get back to you directly.</p>"
         ),
         cta_label="Share your feedback",
-        cta_url=contact_url,
+        cta_url=feedback_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
@@ -1121,6 +1142,8 @@ async def startup():
     await db.albums.create_index("user_id")
     await db.photos.create_index("album_id")
     await db.orders.create_index("user_id")
+    await db.mobile_sessions.create_index("token", unique=True)
+    await db.mobile_sessions.create_index("expires", expireAfterSeconds=0)
     logger.info("Startup complete")
 
 @app.on_event("shutdown")
@@ -1166,8 +1189,7 @@ async def signup(data: SignupInput):
         # silently issuing a token here would skip that check entirely.
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     token = create_token(user_id)
-    send_welcome_email(data.email.lower(), data.name)
-    send_verification_email(data.email.lower(), data.name, verify_token)
+    send_verification_email(data.email.lower(), data.name, verify_token, welcome=True)
     return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL, email_verified=False))
 
 @api_router.post("/auth/login", response_model=AuthResponse)
@@ -1895,8 +1917,17 @@ async def upload_photos(
     return {"uploaded": len(uploaded), "photos": uploaded, "limit_reached": truncated}
 
 # ---------- Mobile upload (QR code) ----------
+# Sessions used to live in an in-memory dict (_mobile_sessions), scoped to a
+# single backend process. Cloud Run can run several instances at once, each
+# with its own memory — the request that creates the session (from the
+# logged-in browser) and the request that reads it (from the phone that
+# scanned the QR code) can land on two different instances. When that
+# happens the second instance has never heard of the token and reports it
+# as "expired" seconds after it was created. Storing sessions in MongoDB
+# instead makes them visible to every instance, exactly like
+# pdf_generation_slots. A TTL index (see startup()) does the cleanup
+# automatically.
 MOBILE_UPLOAD_SESSION_HOURS = 1
-_mobile_sessions: Dict[str, dict] = {}  # token -> {album_id, user_id, expires}
 
 class MobileUploadSessionOut(BaseModel):
     token: str
@@ -1911,28 +1942,45 @@ async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_c
     await _reject_if_ordered(album_id)
     token = str(uuid.uuid4())
     expires = datetime.now(timezone.utc) + timedelta(hours=MOBILE_UPLOAD_SESSION_HOURS)
-    _mobile_sessions[token] = {"album_id": album_id, "user_id": user["id"], "expires": expires}
+    await db.mobile_sessions.insert_one({
+        "token": token,
+        "album_id": album_id,
+        "user_id": user["id"],
+        "expires": expires,
+    })
     return MobileUploadSessionOut(
         token=token,
         upload_url=f"{FRONTEND_URL}/mobile-upload/{token}",
         expires_at=expires.isoformat(),
     )
 
-def _get_mobile_session(token: str) -> dict:
-    session = _mobile_sessions.get(token)
-    if not session or session["expires"] < datetime.now(timezone.utc):
+async def _get_mobile_session(token: str) -> dict:
+    session = await db.mobile_sessions.find_one({"token": token})
+    if not session:
+        raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
+    # Mongo/motor hands back naive datetimes (it strips the tzinfo on the
+    # round-trip through BSON) even though we stored an aware UTC datetime.
+    # Comparing a naive value against datetime.now(timezone.utc) (aware)
+    # raises TypeError, which FastAPI turns into a 500 — the frontend then
+    # shows the same "expired" message as a real expiry, which is why this
+    # looked like the link dying seconds after being created. Re-attach UTC
+    # before comparing instead of comparing raw.
+    expires = session["expires"]
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
     return session
 
 @api_router.get("/mobile-upload/{token}/info")
 async def mobile_upload_info(token: str):
-    session = _get_mobile_session(token)
+    session = await _get_mobile_session(token)
     album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "title": 1})
     return {"album_id": session["album_id"], "album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat()}
 
 @api_router.post("/mobile-upload/{token}/photos")
 async def mobile_upload_photos(token: str, files: List[UploadFile] = File(...)):
-    session = _get_mobile_session(token)
+    session = await _get_mobile_session(token)
     uploaded, limit_reached = await _store_many_photos(session["album_id"], session["user_id"], files)
 
     if uploaded:
@@ -2062,7 +2110,7 @@ async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput)
     Google's own picker UI and its per-album "select all", which the phone's
     generic OS file-source integration with the Google Photos app doesn't
     offer) instead of only their camera roll."""
-    session = _get_mobile_session(token)
+    session = await _get_mobile_session(token)
     album_id = session["album_id"]
     uploaded, limit_reached = await _import_google_photos_items(album_id, session["user_id"], data.items, data.access_token)
 
@@ -4468,7 +4516,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "quantity": data.quantity,
         "unit_price_cents": unit_price,
         "total_price_cents": unit_price * data.quantity,
-        "currency": "eur",
+        "currency": "usd",
         "shipping_address": data.shipping_address.dict(),
         "status": "pending_payment",
         "status_history": [{"status": "pending_payment", "at": now}],
@@ -4572,6 +4620,27 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     order["timeline"] = timeline
     order["status_label"] = ORDER_STATUS_LABELS.get(order["status"], order["status"])
     return order
+
+class OrderFeedbackInput(BaseModel):
+    comment: str = Field(min_length=1, max_length=2000)
+
+@api_router.post("/orders/{order_id}/feedback")
+async def submit_order_feedback(order_id: str, data: OrderFeedbackInput, user: dict = Depends(get_current_user)):
+    """A simple comment about how a specific order turned out — distinct
+    on purpose from /contact, which is for something going wrong and
+    needing a reply. This is one-way (no response expected, nothing here
+    notifies support) and tied to one order, not a general inbox message.
+    Stored directly on the order document rather than a separate
+    collection — there's only ever one feedback per order, so no need for
+    a whole collection just to look it up by order_id."""
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"feedback": {"comment": data.comment, "submitted_at": datetime.now(timezone.utc).isoformat()}}},
+    )
+    return {"message": "Merci pour votre retour !"}
 
 def require_admin(user: dict):
     """Every admin endpoint below hand-checks this rather than something

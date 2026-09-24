@@ -4,7 +4,7 @@ import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { Download, ExternalLink, RefreshCw } from "lucide-react";
 
-function formatPrice(cents, currency = "eur") {
+function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
 }
 
@@ -153,11 +153,13 @@ export default function AdminOrdersPage() {
                   <th className="p-3">Total</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">PDF</th>
+                  <th className="p-3">Feedback</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((o) => {
                   const addr = o.shipping_address || {};
+                  const feedbackComment = o.feedback?.comment;
                   return (
                     <tr key={o.id} className="border-b border-[color:var(--border-soft)] align-top">
                       <td className="p-3 whitespace-nowrap text-[color:var(--ink)]/70">
@@ -225,6 +227,18 @@ export default function AdminOrdersPage() {
                             </button>
                           )}
                         </div>
+                      </td>
+                      <td className="p-3 max-w-[220px]">
+                        {feedbackComment ? (
+                          <span
+                            className="text-xs text-[color:var(--ink)]/80 italic block"
+                            title={feedbackComment}
+                          >
+                            "{feedbackComment.length > 80 ? `${feedbackComment.slice(0, 80)}…` : feedbackComment}"
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[color:var(--muted)]">—</span>
+                        )}
                       </td>
                     </tr>
                   );
