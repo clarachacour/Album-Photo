@@ -4,7 +4,7 @@ import { api, API } from "@/lib/api";
 import { toast } from "sonner";
 import { ImageDown, Loader2 } from "lucide-react";
 
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID;
 const PICKER_SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly";
 
 // A batch this size keeps each request comfortably inside Cloud Run's

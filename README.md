@@ -8,7 +8,7 @@ flipbook, then exports a print-ready PDF and sends the order to the printer.
 
 | Part | Technology | Hosted on |
 | --- | --- | --- |
-| Frontend | React 19, React Router, Tailwind CSS, shadcn/ui, i18next (EN/FR) | Vercel |
+| Frontend | React 19 built with Vite, React Router, Tailwind CSS, shadcn/ui, i18next (EN/FR) | Vercel |
 | Backend | Python 3.11, FastAPI, Motor (async MongoDB) | Google Cloud Run (`backend/Dockerfile`) |
 | Database | MongoDB | |
 | Files | Cloudflare R2 (S3-compatible) | |
@@ -25,7 +25,7 @@ memory/     Original product notes (PRD)
 
 ## Run it locally
 
-You need Python 3.11, Node.js 20+ and a MongoDB (local or Atlas).
+You need Python 3.11, Node.js 22+ and a MongoDB (local or Atlas).
 
 **Backend** (terminal 1)
 
@@ -56,7 +56,7 @@ pytest
 ```
 
 They also run automatically on GitHub for every push to `dev` and `main`
-(tab **Actions** of the repository).
+(tab **Actions** of the repository), along with a frontend build and lint.
 
 ## Branches and deployment
 
