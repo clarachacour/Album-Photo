@@ -30,8 +30,10 @@ export function RepackPagesForm({ currentPageCount, currentTargetPages, busy, on
   return (
     <div className="border border-[color:var(--border-soft)] bg-[color:var(--editor-canvas)] p-4 max-w-md">
       <div className="text-sm font-semibold mb-3">{t("albumEditor.repack.title")}</div>
+      {/* Label at the top, input at the bottom of each column: the two inputs
+          stay aligned even when one label wraps onto two lines. */}
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
+        <div className="flex flex-col justify-between">
           <label className="text-xs text-[color:var(--muted)] block mb-1">{t("albumEditor.repack.newTotal")}</label>
           <input
             type="number"
@@ -41,7 +43,7 @@ export function RepackPagesForm({ currentPageCount, currentTargetPages, busy, on
             className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
           />
         </div>
-        <div>
+        <div className="flex flex-col justify-between">
           <label className="text-xs text-[color:var(--muted)] block mb-1">{t("albumEditor.repack.rebuildAfter")}</label>
           <input
             type="number"
