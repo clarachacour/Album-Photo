@@ -1,6 +1,6 @@
 import React from "react"; 
 import "@/App.css"; 
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/lib/auth";
@@ -161,6 +161,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* Old address of the album-creation form, now at /create. */}
+            <Route path="/editor/new" element={<Navigate to="/create" replace />} />
             <Route
               path="/editor/:id"
               element={

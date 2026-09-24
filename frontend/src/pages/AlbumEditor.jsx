@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, coverImageUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
+import { getTemplate } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { makeCoverEditingActions, computeAlignSnap, computeResizeAlignSnap } from "@/lib/coverEditing";
 import { LAYOUT_PATTERNS } from "@/lib/layoutPatterns";
@@ -12,7 +12,7 @@ import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, ShoppingBag, Save, Sparkles, Type, Loader2, Image as ImageIcon, X as XIcon, Undo2, Redo2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus } from "lucide-react";
 import { BookRenderer } from "@/components/editor/BookRenderer";
 import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
 import { RepackPagesForm } from "@/components/editor/RepackPagesForm";
@@ -23,24 +23,10 @@ export default function AlbumEditor() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const { t, i18n } = useTranslation();
-
-  const isCreating = !id || id === "new";
-
-  // --- États du Formulaire de Création ---
-  const [templateId, setTemplateId] = useState(COVER_COLOR_PRESETS?.[0]?.id || "default");
-  const [size, setSize] = useState("A4");
-  const [orientation, setOrientation] = useState("portrait");
-  const [title, setTitle] = useState("");
-  const [country, setCountry] = useState("");
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [files, setFiles] = useState([]);
-  const [busy, setBusy] = useState(false);
-  const fileInputRef = useRef();
+  const { t } = useTranslation();
 
   // --- États de l'Éditeur ---
   const bookRef = useRef();
-  const coverInputRef = useRef();
   const [album, setAlbum, albumHistory] = useHistoryState(null);
   const [showRepackForm, setShowRepackForm] = useState(false);
   const [repacking, setRepacking] = useState(false);
@@ -69,8 +55,6 @@ export default function AlbumEditor() {
   const [cropMode, setCropMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
-  const [uploadingCover, setUploadingCover] = useState(false);
-  const [coverVersion, setCoverVersion] = useState(0);
   const [processing, setProcessing] = useState(params.get("processing") === "1");
   const [coverSel, setCoverSel] = useState(null);
   const clipboardRef = useRef(null);
@@ -80,7 +64,6 @@ export default function AlbumEditor() {
   const notifiedRef = useRef(false);
 
   const loadAlbum = useCallback(async () => {
-    if (isCreating) return;
     try {
       const { data } = await api.get(`/albums/${id}`);
       albumHistory.resetState(data);
@@ -93,16 +76,14 @@ export default function AlbumEditor() {
       nav("/dashboard");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isCreating, nav]);
+  }, [id, nav]);
 
   useEffect(() => {
-    if (!isCreating) {
-      loadAlbum();
-    }
-  }, [loadAlbum, isCreating]);
+    loadAlbum();
+  }, [loadAlbum]);
 
   useEffect(() => {
-    if (isCreating || !coverSel) return;
+    if (!coverSel) return;
     const onPaste = (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea") return;
@@ -115,10 +96,9 @@ export default function AlbumEditor() {
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coverSel, isCreating]);
+  }, [coverSel]);
 
   useEffect(() => {
-    if (isCreating) return;
     const onKeyDown = (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable) return;
@@ -193,10 +173,10 @@ export default function AlbumEditor() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, coverSel, isCreating]);
+  }, [selected, coverSel]);
 
   useEffect(() => {
-    if (!processing || isCreating) return;
+    if (!processing) return;
     const interval = setInterval(async () => {
       try {
         const { data } = await api.get(`/albums/${id}/status`);
@@ -214,60 +194,7 @@ export default function AlbumEditor() {
       }
     }, 2500);
     return () => clearInterval(interval);
-  }, [processing, id, loadAlbum, isCreating]);
-
-  const template = isCreating
-    ? getTemplate()
-    : (album ? getTemplate() : null);
-
-  const handleFiles = (list) => {
-    const arr = Array.from(list).filter((f) => f.type.startsWith("image/"));
-    setFiles((prev) => [...prev, ...arr]);
-  };
-
-  const removeFile = (idx) => {
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const createAndProcess = async () => {
-    if (!title.trim()) {
-      toast.error(t("albumEditor.titleRequired"));
-      return;
-    }
-    if (files.length === 0) {
-      toast.error(t("albumEditor.photoRequired"));
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const { data: newAlbum } = await api.post("/albums", {
-        title: title.trim(),
-        country: country.trim(),
-        year: Number(year) || new Date().getFullYear(),
-        size,
-        orientation,
-        lang: i18n.language?.startsWith("fr") ? "fr" : "en",
-      });
-
-      const chunkSize = 8;
-      for (let i = 0; i < files.length; i += chunkSize) {
-        const chunk = files.slice(i, i + chunkSize);
-        const form = new FormData();
-        chunk.forEach((f) => form.append("files", f));
-        await api.post(`/albums/${newAlbum.id}/photos`, form, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
-
-      await api.post(`/albums/${newAlbum.id}/process`);
-      toast.success(t("albumEditor.composingToast"));
-      nav(`/editor/${newAlbum.id}?processing=1`);
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || t("albumEditor.createError"));
-      setBusy(false);
-    }
-  };
+  }, [processing, id, loadAlbum]);
 
   const save = async (opts = {}) => {
     const { silent = false } = opts;
@@ -308,18 +235,6 @@ export default function AlbumEditor() {
     // showing as a stale page count that never seemed to update.
     await save({ silent: true });
     nav(`/order/${id}`);
-  };
-
-  const updateSelectedItem = (patch) => {
-    if (!selected) return;
-    const { pageIdx, item } = selected;
-    const newPages = [...album.pages];
-    newPages[pageIdx] = {
-      ...newPages[pageIdx],
-      items: newPages[pageIdx].items.map((it) => (it.id === item.id ? { ...it, ...patch } : it)),
-    };
-    setAlbum({ ...album, pages: newPages });
-    setSelected({ pageIdx, item: { ...item, ...patch } });
   };
 
   const updateItemById = (pageIdx, itemId, patch) => {
@@ -633,39 +548,6 @@ export default function AlbumEditor() {
     setSelected(null);
   };
 
-  const uploadCoverImage = async (file) => {
-    if (!file) return;
-    setUploadingCover(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const { data } = await api.post(`/albums/${id}/cover-image`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setAlbum({ ...album, cover_image_path: data.cover_image_path });
-      setCoverVersion((v) => v + 1);
-      toast.success(t("albumEditor.coverImageAdded"));
-    } catch {
-      toast.error(t("common.uploadFailed"));
-    } finally {
-      setUploadingCover(false);
-    }
-  };
-
-  const removeCoverImage = async () => {
-    setUploadingCover(true);
-    try {
-      await api.delete(`/albums/${id}/cover-image`);
-      setAlbum({ ...album, cover_image_path: null });
-      setCoverVersion((v) => v + 1);
-      toast.success(t("albumEditor.coverImageRemoved"));
-    } catch {
-      toast.error(t("albumEditor.coverImageRemoveError"));
-    } finally {
-      setUploadingCover(false);
-    }
-  };
-
   const reorderPhotoSequence = (newPhotoIdSequence) => {
     const newPages = [];
     let idx = 0;
@@ -690,193 +572,6 @@ export default function AlbumEditor() {
     }
     return seq;
   };
-
-  // ==========================================
-  // RENDU : CRÉATION D'ALBUM (SANS STEPS)
-  // ==========================================
-  if (isCreating) {
-    return (
-      <main className="min-h-screen bg-[color:var(--paper)] pt-12 pb-24 px-6 md:px-12">
-        <div className="max-w-[1000px] mx-auto">
-         
-          <div className="mb-10">
-            <h1 className="font-serif-display text-4xl mb-2">{t("albumEditor.legacyForm.title")}</h1>
-            <p className="text-sm text-[color:var(--muted)]">{t("albumEditor.legacyForm.subtitle")}</p>
-          </div>
-
-          <div className="space-y-10 bg-white p-8 border border-[color:var(--border-soft)]">
-            {/* 1. Informations générales */}
-            <div className="space-y-4">
-              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">{t("albumEditor.legacyForm.infoSection")}</h2>
-              <div>
-                <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.titleField")}</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t("albumEditor.legacyForm.titlePlaceholder")}
-                  className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.location")}</label>
-                  <input
-                    type="text"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    placeholder={t("albumEditor.legacyForm.locationPlaceholder")}
-                    className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
-                  />
-                </div>
-                <div>
-                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.year")}</label>
-                  <input
-                    type="number"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                    className="w-full border border-[color:var(--ink)]/20 p-3 text-base bg-white focus:outline-none focus:border-[color:var(--ink)]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Format et Style de couverture */}
-            <div className="space-y-4">
-              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">{t("albumEditor.legacyForm.layoutSection")}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.format")}</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["A4", "A5", t("albumEditor.legacyForm.square")].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setSize(s)}
-                        className={`py-3 border text-xs font-semibold uppercase tracking-wider transition-all ${
-                          size === s ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]" : "bg-white border-[color:var(--border-soft)] hover:border-[color:var(--ink)]"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.orientation")}</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "portrait", label: t("createAlbum.format.portrait") },
-                      { id: "landscape", label: t("createAlbum.format.landscape") },
-                    ].map((o) => (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => setOrientation(o.id)}
-                        className={`py-3 border text-xs font-semibold uppercase tracking-wider transition-all ${
-                          orientation === o.id ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]" : "bg-white border-[color:var(--border-soft)] hover:border-[color:var(--ink)]"
-                        }`}
-                      >
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="eyebrow block mb-2">{t("albumEditor.legacyForm.coverColor")}</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {COVER_COLOR_PRESETS.map((t) => (
-                    <div
-                      key={t.id}
-                      onClick={() => setTemplateId(t.id)}
-                      className={`cursor-pointer p-4 border transition-all bg-white flex flex-col justify-between ${
-                        templateId === t.id ? "border-[color:var(--coral)] ring-1 ring-[color:var(--coral)]" : "border-[color:var(--border-soft)] hover:border-[color:var(--ink)]/30"
-                      }`}
-                    >
-                      <div>
-                        <h3 className="font-serif-display text-lg mb-1">{t.name}</h3>
-                        <p className="text-xs text-[color:var(--muted)]">{t.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Photos */}
-            <div className="space-y-4">
-              <h2 className="font-serif-display text-xl border-b border-[color:var(--border-soft)] pb-2">{t("albumEditor.legacyForm.photosSection")}</h2>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
-                }}
-                className="border-2 border-dashed border-[color:var(--ink)]/30 bg-[color:var(--paper)] p-8 text-center cursor-pointer hover:border-[color:var(--coral)] transition-colors"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files) handleFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-                <ImageIcon size={32} className="mx-auto text-[color:var(--muted)] mb-3" />
-                <p className="text-sm font-semibold mb-1">{t("albumEditor.legacyForm.dropHere")}</p>
-                <p className="text-xs text-[color:var(--muted)]">{t("albumEditor.legacyForm.acceptedFormats")}</p>
-              </div>
-
-              {files.length > 0 && (
-                <div>
-                  <div className="eyebrow mb-2">{t("albumEditor.legacyForm.photosSelected", { count: files.length })}</div>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 max-h-48 overflow-y-auto p-2 border border-[color:var(--border-soft)] bg-gray-50">
-                    {files.map((file, idx) => (
-                      <div key={idx} className="relative group aspect-square bg-gray-200 border overflow-hidden">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`upload-${idx}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeFile(idx);
-                          }}
-                          className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <XIcon size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bouton de validation final */}
-            <div className="pt-4 border-t border-[color:var(--border-soft)] flex justify-end">
-              <button
-                onClick={createAndProcess}
-                disabled={busy}
-                className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--ink)] transition-colors disabled:opacity-60"
-              >
-                {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                <span className="text-sm font-semibold tracking-widest uppercase">{t("albumEditor.legacyForm.beginCreation")}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   // ==========================================
   // RENDU : ÉCRAN DE CHARGEMENT DE L'IA
@@ -953,7 +648,7 @@ export default function AlbumEditor() {
               setPageIndex(p);
               if (p !== 0) setCoverSel(null);
             }}
-            coverImageUrl={album.cover_image_path ? coverImageUrl(id, coverVersion) : null}
+            coverImageUrl={album.cover_image_path ? coverImageUrl(id, 0) : null}
             coverSel={coverSel}
             onSelectCover={(side = "front") => { setSelected(null); setCoverSel({ mode: "cover", side }); }}
             onSelectCoverTitle={() => { setSelected(null); setCoverSel({ mode: "title", side: "front" }); }}
