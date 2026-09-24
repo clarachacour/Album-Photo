@@ -133,4 +133,4 @@ def require_admin(user: dict):
     business rather than building out a whole role system for one person's
     account."""
     if not ADMIN_EMAIL or user.get("email") != ADMIN_EMAIL:
-        raise HTTPException(status_code=403, detail="Non autorisé")
+        raise HTTPException(status_code=403, detail="Not authorized")

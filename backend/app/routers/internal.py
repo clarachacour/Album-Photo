@@ -41,9 +41,9 @@ async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
     Ordered albums are never touched here, matching the purge job.
     """
     if not CLEANUP_SECRET:
-        raise HTTPException(status_code=500, detail="CLEANUP_SECRET n'est pas configuré sur ce serveur")
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
     if x_cleanup_secret != CLEANUP_SECRET:
-        raise HTTPException(status_code=401, detail="Non autorisé")
+        raise HTTPException(status_code=401, detail="Not authorized")
 
     now = datetime.now(timezone.utc)
     ordered_album_ids = set(await db.orders.distinct("album_id"))
@@ -102,9 +102,9 @@ async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
     since there's no logged-in user in that context.
     """
     if not CLEANUP_SECRET:
-        raise HTTPException(status_code=500, detail="CLEANUP_SECRET n'est pas configuré sur ce serveur")
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
     if x_cleanup_secret != CLEANUP_SECRET:
-        raise HTTPException(status_code=401, detail="Non autorisé")
+        raise HTTPException(status_code=401, detail="Not authorized")
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)).isoformat()
     ordered_album_ids = set(await db.orders.distinct("album_id"))

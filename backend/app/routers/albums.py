@@ -112,7 +112,7 @@ def _json_safe(value):
 async def get_album(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     # Also include photos
     # is_deleted excluded — a deleted photo serves no purpose being sent to
     # the frontend at all, and including them was eating into the list cap
@@ -140,7 +140,7 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user)):
 async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     if data.size is not None and data.size not in ALLOWED_ALBUM_SIZES:
         raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
@@ -161,7 +161,7 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
         # An order is a paying customer's record — never removable via this
         # endpoint, regardless of what the UI does or doesn't show. Matches
         # the 30-day draft purge's same rule (see cleanup_expired_albums).
-        raise HTTPException(status_code=403, detail="Impossible de supprimer un album déjà commandé")
+        raise HTTPException(status_code=403, detail="An album that has already been ordered cannot be deleted")
 
     photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
     for p in photos:
@@ -193,7 +193,7 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
     the minimum-photos-required check at album creation."""
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     pages = album.get("pages") or []
     if not pages:
@@ -287,7 +287,7 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
 async def start_processing(album_id: str, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     photo_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
     if photo_count == 0:
@@ -322,7 +322,7 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
 async def get_status(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0, "status": 1, "id": 1, "google_import_result": 1})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     return {"status": album.get("status", "draft"), "google_import_result": album.get("google_import_result")}
 
 @router.post("/albums/{album_id}/add-photos")
@@ -338,14 +338,14 @@ async def add_more_photos(
     user already edited are left untouched."""
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
 
     uploaded, limit_reached = await store_many_photos(album_id, user["id"], files)
     new_ids = [p["id"] for p in uploaded]
 
     if not new_ids:
-        raise HTTPException(status_code=400, detail="Aucune photo valide n'a pu être ajoutée")
+        raise HTTPException(status_code=400, detail="No valid photo could be added")
 
     await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
     # Awaited, not background-tasked — same throttling issue as
@@ -375,7 +375,7 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
 
     album = await db.albums.find_one({"id": album_id, "user_id": user_id}, {"_id": 0})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
 
     try:
         print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"

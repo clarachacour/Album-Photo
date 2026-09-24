@@ -58,7 +58,7 @@ router = APIRouter()
 async def signup(data: SignupInput):
     existing = await db.users.find_one({"email": data.email.lower()})
     if existing:
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+        raise HTTPException(status_code=400, detail="This email is already in use")
     user_id = str(uuid.uuid4())
     verify_token = str(uuid.uuid4())
     user_doc = {
@@ -90,7 +90,7 @@ async def signup(data: SignupInput):
         # into the account that won the race — we have no way to confirm
         # this request's password actually matches that account's, and
         # silently issuing a token here would skip that check entirely.
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+        raise HTTPException(status_code=400, detail="This email is already in use")
     token = create_token(user_id)
     send_verification_email(data.email.lower(), data.name, verify_token, welcome=True)
     return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL, email_verified=False))
@@ -133,16 +133,16 @@ async def forgot_password(data: ForgotPasswordInput, request: Request):
 async def reset_password(data: ResetPasswordInput):
     user = await db.users.find_one({"reset_token": data.token})
     if not user:
-        raise HTTPException(status_code=400, detail="Lien de réinitialisation invalide ou expiré")
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
     expires = user.get("reset_token_expires")
     if not expires or datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Lien de réinitialisation invalide ou expiré")
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
     await db.users.update_one(
         {"id": user["id"]},
         {"$set": {"password_hash": hash_password(data.new_password)}, "$unset": {"reset_token": "", "reset_token_expires": ""}},
     )
     send_password_changed_email(user["email"], user.get("name", ""))
-    return {"message": "Mot de passe mis à jour"}
+    return {"message": "Password updated"}
 
 @router.get("/auth/verify-email")
 async def verify_email(token: str = Query(...)):
@@ -187,15 +187,15 @@ async def resend_verification_email(user: dict = Depends(get_current_user_raw)):
 @router.post("/auth/google", response_model=AuthResponse)
 async def google_auth(data: GoogleAuthInput):
     if not GOOGLE_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="La connexion Google n'est pas configurée sur ce serveur (GOOGLE_CLIENT_ID manquant)")
+        raise HTTPException(status_code=500, detail="Google sign-in is not configured on this server (GOOGLE_CLIENT_ID missing)")
     try:
         idinfo = google_id_token.verify_oauth2_token(data.credential, google_requests.Request(), GOOGLE_CLIENT_ID)
     except Exception as e:
         logger.error(f"Jeton Google invalide : {e}")
-        raise HTTPException(status_code=401, detail="Jeton Google invalide")
+        raise HTTPException(status_code=401, detail="Invalid Google token")
     email = idinfo.get("email")
     if not email:
-        raise HTTPException(status_code=400, detail="Impossible de récupérer l'email du compte Google")
+        raise HTTPException(status_code=400, detail="Could not read the email address of this Google account")
     user, is_new = await upsert_oauth_user(email, idinfo.get("name"), "google")
     token = create_token(user["id"])
     if is_new:
@@ -205,7 +205,7 @@ async def google_auth(data: GoogleAuthInput):
 @router.post("/auth/apple", response_model=AuthResponse)
 async def apple_auth(data: AppleAuthInput):
     if not APPLE_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="La connexion Apple n'est pas configurée sur ce serveur (APPLE_CLIENT_ID manquant)")
+        raise HTTPException(status_code=500, detail="Apple sign-in is not configured on this server (APPLE_CLIENT_ID missing)")
     try:
         header = jwt.get_unverified_header(data.id_token)
         jwk_data = get_apple_public_key(header["kid"])
@@ -218,10 +218,10 @@ async def apple_auth(data: AppleAuthInput):
         )
     except Exception as e:
         logger.error(f"Jeton Apple invalide : {e}")
-        raise HTTPException(status_code=401, detail="Jeton Apple invalide")
+        raise HTTPException(status_code=401, detail="Invalid Apple token")
     email = payload.get("email")
     if not email:
-        raise HTTPException(status_code=400, detail="Impossible de récupérer l'email du compte Apple")
+        raise HTTPException(status_code=400, detail="Could not read the email address of this Apple account")
     user, is_new = await upsert_oauth_user(email, data.name, "apple")
     token = create_token(user["id"])
     if is_new:
@@ -259,4 +259,4 @@ async def change_password(data: ChangePasswordInput, user: dict = Depends(get_cu
         raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
     await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(data.new_password)}})
     send_password_changed_email(full_user["email"], full_user.get("name", ""))
-    return {"message": "Mot de passe mis à jour"}
+    return {"message": "Password updated"}

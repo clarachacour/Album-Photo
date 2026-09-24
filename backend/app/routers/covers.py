@@ -26,14 +26,14 @@ async def upload_cover_image(
 ):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     content_type = file.content_type or "image/jpeg"
     if content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=400, detail="Format d'image non supporté")
+        raise HTTPException(status_code=400, detail="Unsupported image format")
     data = await file.read()
     if len(data) == 0:
-        raise HTTPException(status_code=400, detail="Fichier vide")
+        raise HTTPException(status_code=400, detail="Empty file")
     ext = (file.filename or "cover.jpg").rsplit(".", 1)[-1].lower()
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "jpg"
@@ -55,7 +55,7 @@ async def upload_cover_image(
 async def remove_cover_image(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     await db.albums.update_one(
         {"id": album_id},
@@ -75,7 +75,7 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
     album = await db.albums.find_one({"id": album_id, "user_id": user_id})
     if not album or not album.get("cover_image_path"):
-        raise HTTPException(status_code=404, detail="Aucune couverture personnalisée")
+        raise HTTPException(status_code=404, detail="No custom cover")
     path = album["cover_image_path"]
     served_content_type = album.get("cover_image_content_type")
     if variant == "thumb" and album.get("cover_image_thumbnail_path"):
@@ -89,14 +89,14 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
 async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     content_type = file.content_type or "image/png"
     if content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=400, detail="Format d'image non supporté")
+        raise HTTPException(status_code=400, detail="Unsupported image format")
     data = await file.read()
     if len(data) == 0:
-        raise HTTPException(status_code=400, detail="Fichier vide")
+        raise HTTPException(status_code=400, detail="Empty file")
     ext = (file.filename or "asset.png").rsplit(".", 1)[-1].lower()
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "png"
@@ -118,7 +118,7 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
         raise HTTPException(status_code=401, detail="Not authenticated")
     # Safety: only serve assets that belong to the requesting user
     if f"/users/{user_id}/" not in path:
-        raise HTTPException(status_code=403, detail="Accès refusé")
+        raise HTTPException(status_code=403, detail="Access denied")
     served_path = path
     served_content_type = None
     if variant == "thumb" and not path.endswith("_thumb.jpg"):

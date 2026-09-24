@@ -39,7 +39,7 @@ async def upload_photos(
 ):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     uploaded, truncated = await store_many_photos(album_id, user["id"], files)
     return {"uploaded": len(uploaded), "photos": uploaded, "limit_reached": truncated}
@@ -48,7 +48,7 @@ async def upload_photos(
 async def import_google_photos(album_id: str, data: GooglePhotosImportInput, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
 
     uploaded, limit_reached = await import_google_photos_items(album_id, user["id"], data.items, data.access_token)
@@ -81,7 +81,7 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
         raise HTTPException(status_code=401, detail="Not authenticated")
     photo = await db.photos.find_one({"id": photo_id, "user_id": user_id, "is_deleted": False})
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo introuvable")
+        raise HTTPException(status_code=404, detail="Photo not found")
     # "thumb" (small grids — the photo tray, upload picker) keeps browsing
     # fast; "medium" (the flipbook / editor page view) is sharp enough for
     # a full on-screen page without the cost of the full original;

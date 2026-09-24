@@ -34,7 +34,7 @@ MOBILE_UPLOAD_SESSION_HOURS = 1
 async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id)
     token = str(uuid.uuid4())
     expires = datetime.now(timezone.utc) + timedelta(hours=MOBILE_UPLOAD_SESSION_HOURS)
@@ -53,7 +53,7 @@ async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_c
 async def _get_mobile_session(token: str) -> dict:
     session = await db.mobile_sessions.find_one({"token": token})
     if not session:
-        raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
+        raise HTTPException(status_code=400, detail="This link has expired or is invalid")
     # Mongo/motor hands back naive datetimes (it strips the tzinfo on the
     # round-trip through BSON) even though we stored an aware UTC datetime.
     # Comparing a naive value against datetime.now(timezone.utc) (aware)
@@ -65,7 +65,7 @@ async def _get_mobile_session(token: str) -> dict:
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
     if expires < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Ce lien a expiré ou est invalide")
+        raise HTTPException(status_code=400, detail="This link has expired or is invalid")
     return session
 
 @router.get("/mobile-upload/{token}/info")

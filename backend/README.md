@@ -54,7 +54,7 @@ http://localhost:8000/docs.
 
 ```bash
 cd backend
-pytest tests/test_security.py tests/test_units.py tests/test_api.py
+pytest
 ```
 
 They need no database, network or R2: MongoDB is replaced by an in-memory

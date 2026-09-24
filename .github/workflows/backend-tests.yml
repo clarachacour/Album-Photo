@@ -21,6 +21,4 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements*.txt
       - run: pip install -r requirements-dev.txt
-      # Only the self-contained tests: backend_test.py and
-      # test_iteration4_manipulation.py call an old preview URL.
-      - run: pytest tests/test_security.py tests/test_units.py tests/test_api.py
+      - run: pytest

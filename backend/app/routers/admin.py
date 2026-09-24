@@ -88,9 +88,9 @@ async def admin_download_order_pdf(order_id: str, auth: str = Query(None), autho
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     if not order.get("pdf_path"):
-        raise HTTPException(status_code=404, detail="Le PDF de cette commande n'est pas encore prêt")
+        raise HTTPException(status_code=404, detail="This order's PDF is not ready yet")
     url = get_r2_client().generate_presigned_url(
         "get_object",
         Params={
@@ -116,7 +116,7 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     # The frontend already hides the regenerate button while pdf_generating
     # is true, but that's a UI nicety, not a guarantee — a stale page, a
     # second tab, or a direct API call all bypass it. This is the check
@@ -149,9 +149,9 @@ async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_cur
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     if not order.get("pdf_ready") or not order.get("pdf_path"):
-        raise HTTPException(status_code=400, detail="Le PDF de cette commande n'est pas encore prêt — régénérez-le d'abord")
+        raise HTTPException(status_code=400, detail="This order's PDF is not ready yet — regenerate it first")
     send_printer_order_email(order)
     return {"sent": True}
 
@@ -178,7 +178,7 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
         raise HTTPException(status_code=400, detail=f"Statut inconnu : {data.status}")
     order = await db.orders.find_one({"id": order_id})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     now = datetime.now(timezone.utc).isoformat()
     update = {"status": data.status, "updated_at": now}
     if data.tracking_number is not None:

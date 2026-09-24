@@ -58,7 +58,7 @@ async def export_pdf_reportlab_legacy(album_id: str, auth: str = Query(None), au
 
     album = await db.albums.find_one({"id": album_id, "user_id": user_id}, {"_id": 0})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
 
     photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(2000)
     photo_map = {p["id"]: p for p in photos}

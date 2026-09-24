@@ -1,0 +1,27 @@
+# Direct dependencies of the backend. Edit THIS file, never requirements.txt.
+#
+# requirements.txt is generated from it with exact versions (so every deploy
+# installs the same thing). After changing this file, or to upgrade:
+#   pip install pip-tools
+#   pip-compile --strip-extras --output-file requirements.txt requirements.in
+#   (add --upgrade to move everything to the latest versions, then run the tests)
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+motor>=3.3.0
+certifi>=2024.2.2
+pydantic[email]>=2.6.0
+python-dotenv>=1.0.0
+bcrypt>=4.1.0
+PyJWT>=2.8.0
+requests>=2.31.0
+reportlab>=4.1.0
+google-auth>=2.28.0
+pillow>=10.2.0
+pillow-heif>=0.18.0
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+boto3>=1.34.0
+python-multipart>=0.0.9
+playwright>=1.40.0
+pypdf>=4.0.0
+psutil>=6.0.0

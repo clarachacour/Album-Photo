@@ -38,4 +38,4 @@ async def submit_contact(data: ContactInput, request: Request):
             f"[Contact] {data.subject}",
             f"From: {data.name} <{data.email}>\n\n{data.message}",
         )
-    return {"message": "Message envoyé, nous vous répondrons rapidement."}
+    return {"message": "Message sent — we'll get back to you soon."}

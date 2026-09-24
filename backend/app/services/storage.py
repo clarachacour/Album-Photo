@@ -80,7 +80,7 @@ def get_object(path: str) -> tuple:
     try:
         resp = get_r2_client().get_object(Bucket=R2_BUCKET_NAME, Key=path)
     except Exception:
-        raise HTTPException(status_code=404, detail="Image non trouvée")
+        raise HTTPException(status_code=404, detail="Image not found")
     content = resp["Body"].read()
     content_type = resp.get("ContentType") or "image/jpeg"
     return content, content_type

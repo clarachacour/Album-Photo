@@ -239,7 +239,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
         toast.success("Image ajoutée à la couverture");
       }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Erreur lors de l'upload de l'image");
+      toast.error(err?.response?.data?.detail || "Image upload failed");
     }
   };
 

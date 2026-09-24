@@ -26,7 +26,7 @@ router = APIRouter()
 async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": data.album_id, "user_id": user["id"]})
     if not album:
-        raise HTTPException(status_code=404, detail="Album introuvable")
+        raise HTTPException(status_code=404, detail="Album not found")
     if not album.get("pages"):
         raise HTTPException(status_code=400, detail="Cet album n'a pas encore de pages")
     # Nothing previously stopped a second order for the same album — and
@@ -99,10 +99,10 @@ async def order_action_download_pdf(order_id: str, token: str = Query(None)):
     exceed Cloud Run's own response-size ceiling on this backend, well
     separate from the render-time chunking concern."""
     if not verify_order_action(order_id, "download", token):
-        raise HTTPException(status_code=403, detail="Lien invalide ou expiré")
+        raise HTTPException(status_code=403, detail="Invalid or expired link")
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order or not order.get("pdf_path"):
-        raise HTTPException(status_code=404, detail="PDF introuvable pour cette commande")
+        raise HTTPException(status_code=404, detail="No PDF found for this order")
     url = get_r2_client().generate_presigned_url(
         "get_object",
         Params={
@@ -123,10 +123,10 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
     since a person at the print shop is the one clicking this in their
     browser, not calling it as an API."""
     if not verify_order_action(order_id, "ready", token):
-        raise HTTPException(status_code=403, detail="Lien invalide ou expiré")
+        raise HTTPException(status_code=403, detail="Invalid or expired link")
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     if order["status"] != "ready_for_delivery":
         now = datetime.now(timezone.utc).isoformat()
         await db.orders.update_one(
@@ -147,7 +147,7 @@ async def list_orders(user: dict = Depends(get_current_user)):
 async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     if order["status"] == "cancelled":
         timeline = [{"status": "cancelled", "label": ORDER_STATUS_LABELS["cancelled"], "done": True}]
     else:
@@ -171,9 +171,9 @@ async def submit_order_feedback(order_id: str, data: OrderFeedbackInput, user: d
     a whole collection just to look it up by order_id."""
     order = await db.orders.find_one({"id": order_id, "user_id": user["id"]})
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Order not found")
     await db.orders.update_one(
         {"id": order_id},
         {"$set": {"feedback": {"comment": data.comment, "submitted_at": datetime.now(timezone.utc).isoformat()}}},
     )
-    return {"message": "Merci pour votre retour !"}
+    return {"message": "Thanks for your feedback!"}
