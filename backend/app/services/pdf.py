@@ -33,9 +33,15 @@ _WEB_FONTS = {
 }
 for _font_name, _font_bytes in _WEB_FONTS.items():
     _font_path = _os.path.join(_FONT_DIR, f"{_font_name}.ttf")
-    if not _os.path.exists(_font_path):
-        with open(_font_path, "wb") as _fh:
+    # Several processes can start at once (uvicorn workers, parallel tests):
+    # write to a private temp file, then rename it into place in one atomic
+    # step, so no process can ever read a half-written font. A size check
+    # also repairs a file left incomplete by an earlier crash.
+    if not _os.path.exists(_font_path) or _os.path.getsize(_font_path) != len(_font_bytes):
+        _fd, _tmp_path = _tempfile.mkstemp(dir=_FONT_DIR, suffix=".tmp")
+        with _os.fdopen(_fd, "wb") as _fh:
             _fh.write(_font_bytes)
+        _os.replace(_tmp_path, _font_path)
     pdfmetrics.registerFont(TTFont(_font_name, _font_path))
 
 # The web editor renders a single book page at roughly this many CSS pixels

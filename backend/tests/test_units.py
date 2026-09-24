@@ -37,3 +37,24 @@ def test_signed_link_cannot_be_reused_elsewhere():
     assert not verify_order_action("order-1", "ready", token)  # other action
     assert not verify_order_action("order-1", "download", None)  # no token
     assert not verify_order_action("order-1", "download", token + "x")  # tampered
+
+
+# ---------- PDF fonts ----------
+def test_half_written_font_file_is_repaired(tmp_path):
+    """A font file left incomplete (another process still writing it, or a
+    crash mid-write) used to make the whole app fail to start."""
+    import os
+    import subprocess
+    import sys
+
+    font_dir = tmp_path / "albumai_fonts"
+    font_dir.mkdir()
+    (font_dir / "CormorantGaramond-Bold.ttf").write_bytes(b"\x00\x01")
+    # tempfile.gettempdir() follows TMPDIR, so the app uses tmp_path.
+    env = {**os.environ, "TMPDIR": str(tmp_path)}
+    result = subprocess.run(
+        [sys.executable, "-c", "import app.services.pdf"],
+        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        env=env, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
