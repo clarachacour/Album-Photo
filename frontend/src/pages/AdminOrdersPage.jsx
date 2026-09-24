@@ -19,7 +19,7 @@ const STATUS_COLORS = {
   cancelled: "text-red-500",
 };
 
-// Matches ORDER_STATUS_LABELS in server.py — kept in sync manually, same
+// Matches ORDER_STATUS_LABELS in backend/app/services/orders.py — kept in sync manually, same
 // as the pricing table used to be before it moved to a shared file.
 const STATUS_LABELS = {
   pending_payment: "Payment pending",
@@ -100,7 +100,7 @@ export default function AdminOrdersPage() {
     toast.info("Regenerating — this stays open until it's actually done, which can take a while for a large album");
     try {
       // Awaited directly, not polled — background dispatch was tried
-      // twice (see server.py's comment on admin_regenerate_order_pdf)
+      // twice (see backend/app/routers/admin.py's comment on admin_regenerate_order_pdf)
       // and both times the job went silent mid-render with nothing in
       // the logs, even with instance-based billing and min-instances=1
       // in place. A slower response that reliably finishes beats a fast

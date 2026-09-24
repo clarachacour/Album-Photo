@@ -5,7 +5,7 @@ import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar }
 import LayoutPicker from "@/components/LayoutPicker";
 import { ImagePlus, LayoutGrid, Type, Trash2 } from "lucide-react";
 
-// Same reference width the backend PDF export (server.py) scales
+// Same reference width the backend PDF export (backend/app/services/pdf.py) scales
 // `title_font_size` / extra_items `font_size` against, so a value stored on
 // a template renders at the same relative size here as it will in the final
 // PDF. Kept as one named constant instead of the magic number 430 repeated

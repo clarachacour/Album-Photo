@@ -1,8 +1,6 @@
 """Security helpers: required secrets, CORS origins and rate limiting.
 
-Kept in its own module (rather than inside server.py) so it can be tested
-without importing the whole app, and as a first piece of the planned split
-of server.py into smaller modules.
+Kept free of any app import so it can be tested without starting the app.
 """
 from __future__ import annotations
 

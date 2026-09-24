@@ -624,7 +624,7 @@ function StepEdit({
 // Derived from LAYOUT_PATTERN's 7 templates (single_full=1, dual_vertical=2,
 // hero_strip=4, single_centered=1, quad_grid=4, triptych=3,
 // dual_horizontal=2 photos each) — kept in sync with the backend's layout
-// logic in server.py. A 1.3x margin accounts for photos the AI rejects as
+// logic in backend/app/services/layout.py. A 1.3x margin accounts for photos the AI rejects as
 // duplicates or too blurry, so this is a recommendation, not a guarantee —
 // actual results still depend on the quality of what's uploaded.
 const AVG_PHOTOS_PER_PAGE = 17 / 7;

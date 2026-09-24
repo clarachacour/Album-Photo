@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from mongomock_motor import AsyncMongoMockClient
 from starlette.requests import Request
 
-from security import (
+from app.core.security import (
     ConfigError,
     RateLimiter,
     client_ip,

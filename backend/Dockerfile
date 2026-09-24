@@ -15,7 +15,7 @@ RUN playwright install --with-deps chromium
 # cropping people's heads/faces out of a photo, by centering the crop on
 # detected faces instead of the raw photo center. Runs entirely locally in
 # this container (no photo ever leaves the server for this) — see
-# compute_face_focal_point() in server.py. Sourced from KDE's digiKam
+# compute_face_focal_point() in app/services/curation.py. Sourced from KDE's digiKam
 # mirror rather than the upstream opencv_zoo repo directly, since that
 # repo's own Git LFS bandwidth is currently exhausted; sha256sum below
 # pins it to the exact same file (verified against the official release).
@@ -34,4 +34,4 @@ EXPOSE 8000
 # Shell form (not exec-array form) is required here so $PORT actually gets
 # substituted — Cloud Run injects PORT=8080 and expects the container to
 # listen on it; platforms that don't set it (e.g. Render) fall back to 8000.
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

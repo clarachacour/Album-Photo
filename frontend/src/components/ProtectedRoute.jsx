@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children }) {
   if (!user) return <Navigate to="/auth" replace />;
   // A classic (email/password) signup that hasn't clicked its
   // verification link yet — email_verified is explicitly false only for
-  // that case (see AuthProvider/server.py's signup); every Google/Apple
+  // that case (see AuthProvider/backend/app/routers/auth.py's signup); every Google/Apple
   // account and every account that existed before this feature shipped
   // has it as true or entirely absent, so this never touches them. The
   // check happens here, before any protected page ever mounts, so a
