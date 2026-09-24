@@ -8,12 +8,14 @@ import { getCover, getTemplate } from "@/lib/coverTemplates";
 import { coverImageUrl } from "@/lib/api";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { Plus, Trash2, ArrowUpRight } from "lucide-react";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 export default function Dashboard() {
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const nav = useNavigate();
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -33,7 +35,7 @@ export default function Dashboard() {
   }, []);
 
   const remove = async (id, title) => {
-    if (!window.confirm(t("dashboard.confirmDelete", { title }))) return;
+    if (!(await confirm({ message: t("dashboard.confirmDelete", { title }), confirmLabel: t("common.delete") }))) return;
     try {
       await api.delete(`/albums/${id}`);
       toast.success(t("dashboard.deletedToast"));

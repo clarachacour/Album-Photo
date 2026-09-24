@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/lib/auth";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import TopNav from "@/components/TopNav";
 import Footer from "@/components/Footer";
@@ -65,6 +66,7 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
+        <ConfirmProvider>
           <AppChrome>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -173,6 +175,7 @@ function App() {
             />
           </Routes>
           </AppChrome>
+        </ConfirmProvider>
         </AuthProvider>
       </BrowserRouter>
     </div>

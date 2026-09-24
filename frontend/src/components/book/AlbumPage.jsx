@@ -6,6 +6,7 @@ import LayoutPicker from "@/components/LayoutPicker";
 import { ImagePlus, LayoutGrid, Type, Trash2 } from "lucide-react";
 import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 
 /**
@@ -40,6 +41,7 @@ export function AlbumPage({
   onTextEditHandled,
 }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const containerRef = useRef(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const items = page?.items || [];
@@ -352,9 +354,9 @@ export function AlbumPage({
           )}
           {onDeletePage && (
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
-                if (window.confirm(t("albumPage.confirmDeletePage"))) {
+                if (await confirm({ message: t("albumPage.confirmDeletePage"), confirmLabel: t("common.delete") })) {
                   onDeletePage();
                 }
               }}
