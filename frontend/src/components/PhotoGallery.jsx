@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { photoImageUrl } from "@/lib/api";
 import { Check } from "lucide-react";
+import { usePhotoHoverPreview } from "@/components/PhotoHoverPreview";
 
 /**
  * Shows every photo uploaded to the album — including the ones the AI didn't
@@ -13,6 +14,7 @@ import { Check } from "lucide-react";
  */
 export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, onSelectPhoto }) {
   const { t } = useTranslation();
+  const preview = usePhotoHoverPreview();
   const visible = (photos || []).filter((p) => !p.is_deleted);
   if (visible.length === 0) return null;
 
@@ -31,7 +33,9 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
             <div
               key={p.id}
               draggable
+              {...preview.bind(p.id)}
               onDragStart={(e) => {
+                preview.hide();
                 e.dataTransfer.setData("text/photo-id", p.id);
                 e.dataTransfer.effectAllowed = "copy";
               }}
@@ -58,6 +62,7 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
           );
         })}
       </div>
+      {preview.element}
     </div>
   );
 }

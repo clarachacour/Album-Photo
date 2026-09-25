@@ -16,8 +16,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { photoImageUrl } from "@/lib/api";
+import { usePhotoHoverPreview } from "@/components/PhotoHoverPreview";
 
-function SortablePhoto({ id, index }) {
+function SortablePhoto({ id, index, previewProps }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `slot-${index}` });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -30,6 +31,7 @@ function SortablePhoto({ id, index }) {
       style={style}
       {...attributes}
       {...listeners}
+      {...previewProps}
       data-testid={`tray-photo-${index}`}
       className="relative w-20 h-20 md:w-24 md:h-24 bg-white cursor-grab active:cursor-grabbing border border-[color:var(--border-soft)] overflow-hidden shrink-0 group"
     >
@@ -57,21 +59,24 @@ export default function PhotoTray({ photoIds, onReorder }) {
     onReorder(newOrder);
   };
 
+  const preview = usePhotoHoverPreview();
+
   if (!photoIds || photoIds.length === 0) return null;
 
   const items = photoIds.map((_, i) => `slot-${i}`);
 
   return (
     <div className="bg-white border border-[color:var(--border-soft)] p-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={preview.hide} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={horizontalListSortingStrategy}>
           <div className="flex gap-2 overflow-x-auto pb-2" data-testid="photo-tray">
             {photoIds.map((photoId, idx) => (
-              <SortablePhoto key={`${photoId}-${idx}`} id={photoId} index={idx} />
+              <SortablePhoto key={`${photoId}-${idx}`} id={photoId} index={idx} previewProps={preview.bind(photoId)} />
             ))}
           </div>
         </SortableContext>
       </DndContext>
+      {preview.element}
     </div>
   );
 }
