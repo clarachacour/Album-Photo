@@ -123,6 +123,7 @@ async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
             delete_object(p.get("thumbnail_path"))
             delete_object(p.get("medium_path"))
             delete_object(p.get("print_path"))
+            delete_object(p.get("print_full_path"))
         delete_object(album.get("cover_image_path"))
         await db.photos.update_many({"album_id": album["id"]}, {"$set": {"is_deleted": True}})
         await db.albums.update_one({"id": album["id"]}, {"$set": {"is_deleted": True}})

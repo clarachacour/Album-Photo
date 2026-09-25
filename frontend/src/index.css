@@ -59,7 +59,9 @@ body {
     box-shadow: inset -8px 0 24px -12px rgba(0, 0, 0, 0.18);
 }
 
-/* Grain texture overlay */
+/* Grain texture overlay — on screen only. In a PDF it would be printed on
+   top of every photo, and blending it makes Chromium's PDF output several
+   times slower (see backend/app/services/pdf.py). */
 .grain::before {
     content: '';
     position: absolute;
@@ -68,6 +70,12 @@ body {
     mix-blend-mode: overlay;
     opacity: 0.15;
     pointer-events: none;
+}
+
+@media print {
+    .grain::before {
+        display: none;
+    }
 }
 
 /* Custom scrollbar */

@@ -23,6 +23,7 @@ from app.services.google_photos import import_google_photos_items
 from app.services.photos import (
     generate_medium_variant,
     generate_print_variant,
+    print_needs_conversion,
     store_many_photos,
 )
 from app.services.processing import run_ai_processing_incremental
@@ -119,22 +120,22 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
             if photo.get("thumbnail_path"):
                 path, served_content_type = photo["thumbnail_path"], "image/jpeg"
     elif variant == "print":
-        # Used only by the PDF export (PrintAlbum.jsx) — sized for genuine
-        # print quality (PRINT_MAX_DIMENSION_PX) but not the raw original,
-        # which was pushing the whole-album Playwright render past the
-        # Cloud Run instance's memory limit. Same on-demand-then-cache
-        # pattern as medium above.
-        if photo.get("print_path"):
-            path = photo["print_path"]
-            served_content_type = "image/jpeg"
+        # Used by the PDF (PrintAlbum.jsx): the photo at the full resolution
+        # stored at upload, never downscaled. The PDF is rendered one page
+        # at a time, so memory stays bounded whatever the photo size.
+        if not print_needs_conversion(photo):
+            path, served_content_type = photo["storage_path"], photo.get("content_type")
+        elif photo.get("print_full_path"):
+            path, served_content_type = photo["print_full_path"], "image/jpeg"
         else:
+            # A format browsers can't draw (HEIC…): full-resolution JPEG
+            # copy, made once and cached.
             loop = asyncio.get_event_loop()
             print_path, print_bytes = await loop.run_in_executor(None, generate_print_variant, photo)
             if print_path:
-                await db.photos.update_one({"id": photo_id}, {"$set": {"print_path": print_path}})
-                data = print_bytes
-                return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})
-            # Resizing failed — fall back to the true original rather than
+                await db.photos.update_one({"id": photo_id}, {"$set": {"print_full_path": print_path}})
+                return Response(content=print_bytes, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})
+            # Conversion failed — fall back to the stored file rather than
             # silently omitting the photo from the printed album.
     data, ctype = await run_blocking(get_object, path)
     return Response( content=data, media_type=served_content_type or ctype, headers={"Cache-Control": "private, max-age=31536000, immutable"}, )

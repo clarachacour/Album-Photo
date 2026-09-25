@@ -16,6 +16,22 @@ import { pageDimsMm, spineWidthMm } from "@/lib/printDims";
  * this same React code already renders in the flipbook — no separate
  * hand-written PDF drawing logic to keep in sync.
  */
+// Resolves once every image on the page has loaded or failed, with the
+// addresses of the failed ones (without the auth token).
+function waitForImages() {
+  const imgs = Array.from(document.images).filter((img) => img.getAttribute("src"));
+  return Promise.all(
+    imgs.map((img) =>
+      img.complete
+        ? null
+        : new Promise((resolve) => {
+            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          })
+    )
+  ).then(() => imgs.filter((img) => !img.naturalWidth).map((img) => (img.currentSrc || img.src).split("?")[0]));
+}
+
 export default function PrintAlbum() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -84,7 +100,15 @@ export default function PrintAlbum() {
               if (cancelled) return;
               const pending = typeof window !== "undefined" ? window.__autoFitPending || 0 : 0;
               if (pending <= 0 || Date.now() - startedAt > MAX_WAIT_MS) {
-                setPrintReady(true);
+                // Never print with a photo missing: wait for every image,
+                // and report any that failed so the server retries this
+                // page (and flags the order if it keeps failing) instead of
+                // sending the printer a book with an empty frame.
+                waitForImages().then((failed) => {
+                  if (cancelled) return;
+                  if (failed.length) setError(`${failed.length} image(s) failed to load: ${failed.slice(0, 3).join(", ")}`);
+                  else setPrintReady(true);
+                });
                 return;
               }
               setTimeout(poll, 100);

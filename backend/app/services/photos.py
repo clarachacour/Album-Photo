@@ -164,26 +164,36 @@ def generate_medium_variant(photo: dict):
 # and crashed the whole export. This still cuts each photo's decoded
 # memory footprint substantially versus a raw original, just less
 # aggressively than the previous 3000px cap.
-PRINT_MAX_DIMENSION_PX = 3508
+# Formats a browser (and so the PDF renderer) can draw as they are.
+BROWSER_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+
+
+def print_needs_conversion(photo: dict) -> bool:
+    """The PDF uses each photo at the full resolution it was stored with at
+    upload. Only formats a browser can't draw (HEIC from iPhones…) need a
+    JPEG copy first — same pixels, nothing downscaled."""
+    return (photo.get("content_type") or "").lower() not in BROWSER_IMAGE_TYPES
+
 
 def generate_print_variant(photo: dict):
-    """Same idea as generate_medium_variant, but sized for genuine print
-    quality (PRINT_MAX_DIMENSION_PX) rather than screen viewing — this is
-    what the PDF export (PrintAlbum.jsx, variant=print) uses instead of
-    the true original, to keep the whole-album render within memory."""
+    """Full-resolution JPEG copy of a photo stored in a format browsers
+    can't draw (see print_needs_conversion). Returns (path, bytes).
+
+    Stored under a different key (and DB field print_full_path) than the
+    former 3508px "_print.jpg" copies, which must no longer reach a PDF."""
     try:
         data, _ = get_object(photo["storage_path"])
         with Image.open(BytesIO(data)) as img:
+            img = ImageOps.exif_transpose(img)
             img = img.convert("RGB") if img.mode not in ("RGB", "L") else img.copy()
-            img.thumbnail((PRINT_MAX_DIMENSION_PX, PRINT_MAX_DIMENSION_PX), Image.LANCZOS)
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=95)  # higher quality than medium — this is what actually gets printed
+            img.save(buf, format="JPEG", quality=95)
             print_bytes = buf.getvalue()
-        print_path = photo["storage_path"].rsplit(".", 1)[0] + "_print.jpg"
+        print_path = photo["storage_path"].rsplit(".", 1)[0] + "_printfull.jpg"
         put_object(print_path, print_bytes, "image/jpeg")
         return print_path, print_bytes
     except Exception as e:
-        logger.error(f"Impossible de générer la variante 'print' pour la photo {photo.get('id')}: {e}")
+        logger.error(f"Impossible de convertir la photo {photo.get('id')} pour l'impression : {e}")
         return None, None
 
 def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: str, album_id: str) -> dict:

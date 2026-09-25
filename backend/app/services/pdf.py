@@ -1,6 +1,7 @@
 """PDF rendering: fonts and the headless-browser export."""
 import base64
 import logging
+import time as _time
 from io import BytesIO
 
 import psutil
@@ -122,10 +123,8 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     and a different one at page 52, on the same album — no single broken
     photo could explain two different pages failing on two different
     runs, but genuine CPU contention explains both equally well. The
-    recursive split-and-retry in _render_all_chunks is a different
-    safety net — for a chunk that's too heavy to fit under the string-
-    length ceiling — not a substitute for giving a single ordinary page
-    enough real time to finish under deliberately-lowered priority."""
+    per-page retries in assemble_pages are a separate safety net, not a
+    substitute for giving a page enough time under lowered priority."""
     page.goto(print_url, wait_until="networkidle", timeout=120000)
     page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=90000)
     error_el = page.query_selector('[data-print-error="true"]')
@@ -169,14 +168,11 @@ def render_pdf_via_browser_sync(print_url: str, log_label: str = "") -> bytes:
     conflict: the sync API manages its own event loop internally, in its
     own thread, independent of whatever loop uvicorn is using.
 
-    Single-shot version — launches its own browser for one render. For a
-    whole order's worth of chunked renders, see _render_all_chunks below,
-    which reuses one browser across every chunk instead of paying
-    Chromium's ~1-2s launch cost per chunk (which alone added tens of
-    seconds on a large, many-chunk album).
+    Single-shot version — launches its own browser for one render. Whole
+    albums go through render_album_pdf_sync (one page at a time, one
+    browser).
 
-    The step-by-step logging below (log_label lets a caller like
-    render_recursive tag these with the order/chunk they belong to) exists
+    The step-by-step logging below (log_label lets a caller tag these with the order/chunk they belong to) exists
     because a real generation once ran the full 3600s Cloud Run ceiling and
     got killed with *zero* log output in between "point de départ estimé"
     and the timeout — no chunk succeeded, none logged a failure-and-split
@@ -199,3 +195,88 @@ def render_pdf_via_browser_sync(print_url: str, log_label: str = "") -> bytes:
         pdf_bytes = _render_pdf_with_page(page, print_url)
         browser.close()
         return pdf_bytes
+
+
+# ---------- Album PDF, one page at a time ----------
+# Chromium's print time grows much faster than the page count when one
+# document holds many large photos (measured: 3 pages 16 s, 10 pages 271 s),
+# which is why whole-album renders took 20+ minutes or never finished.
+# Printing each album page on its own and joining the results keeps the cost
+# proportional to the page count (a 20-page album: 42 s instead of 15+ min).
+# Joining copies each page as is: photos are not re-encoded.
+PAGE_RENDER_ATTEMPTS = 3
+# A fresh browser context now and then, so memory held by past pages can't
+# build up over a long album.
+PAGES_PER_BROWSER_CONTEXT = 20
+
+
+def assemble_pages(render_page, page_count: int, log_label: str = "") -> bytes:
+    """Calls render_page(i) for every album page i (each returns a PDF),
+    retrying a failed page, and joins the results in order."""
+    from pypdf import PdfReader, PdfWriter
+
+    writer = PdfWriter()
+    for i in range(page_count):
+        for attempt in range(1, PAGE_RENDER_ATTEMPTS + 1):
+            try:
+                part = render_page(i)
+                break
+            except Exception as e:
+                logger.warning(f"{log_label} page {i + 1}/{page_count}, essai {attempt}/{PAGE_RENDER_ATTEMPTS} échoué : {e}")
+                if attempt == PAGE_RENDER_ATTEMPTS:
+                    raise RuntimeError(f"page {i + 1} could not be rendered: {e}") from e
+        for pdf_page in PdfReader(BytesIO(part)).pages:
+            writer.add_page(pdf_page)
+    out = BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
+def render_album_pdf_sync(print_url: str, page_count: int, log_label: str = "") -> bytes:
+    """The album's print page (PrintAlbum.jsx), rendered one album page at a
+    time in a single Chromium and joined into one PDF. print_url is the
+    page's address without the from/to range. Blocking: run it in an
+    executor."""
+    if page_count <= 0:
+        return render_pdf_via_browser_sync(print_url, log_label=log_label)
+    sep = "&" if "?" in print_url else "?"
+    t_start = _time.monotonic()
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        _deprioritize_current_process_tree()
+        state = {"context": None, "pages_in_context": 0}
+
+        def fresh_context():
+            if state["context"] is not None:
+                try:
+                    state["context"].close()
+                except Exception:
+                    pass
+            state["context"] = browser.new_context()
+            state["pages_in_context"] = 0
+
+        def render_page(i: int) -> bytes:
+            if state["context"] is None or state["pages_in_context"] >= PAGES_PER_BROWSER_CONTEXT:
+                fresh_context()
+            state["pages_in_context"] += 1
+            page = state["context"].new_page()
+            t0 = _time.monotonic()
+            try:
+                pdf = _render_pdf_with_page(page, f"{print_url}{sep}from={i}&to={i}")
+            except Exception:
+                fresh_context()  # don't reuse a context that just failed
+                raise
+            finally:
+                try:
+                    page.close()
+                except Exception:
+                    pass
+            logger.info(f"{log_label} page {i + 1}/{page_count} en {_time.monotonic() - t0:.1f}s ({len(pdf) / 1e6:.1f} Mo)")
+            return pdf
+
+        try:
+            pdf = assemble_pages(render_page, page_count, log_label)
+        finally:
+            browser.close()
+    logger.info(f"{log_label} PDF de {page_count} pages en {_time.monotonic() - t_start:.0f}s ({len(pdf) / 1e6:.0f} Mo)")
+    return pdf

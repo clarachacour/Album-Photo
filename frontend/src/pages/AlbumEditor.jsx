@@ -206,8 +206,10 @@ export default function AlbumEditor() {
       await api.patch(`/albums/${id}`, { title: current.title, country: current.country, year: current.year, pages: current.pages, cover: current.cover || {} });
       setLastSavedAt(new Date());
       if (!silent) toast.success(t("common.saved"));
+      return true;
     } catch (err) {
       toast.error(err?.response?.status === 403 ? t("albumEditor.lockedError") : t("albumEditor.saveError"));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -234,7 +236,9 @@ export default function AlbumEditor() {
     // page then fetched "fresh" data that was genuinely still the old,
     // pre-edit version, since the edit itself had never been saved yet —
     // showing as a stale page count that never seemed to update.
-    await save({ silent: true });
+    // The PDF is made from the saved album: never go on to the order with
+    // edits that didn't reach the server.
+    if (!(await save({ silent: true }))) return;
     nav(`/order/${id}`);
   };
 

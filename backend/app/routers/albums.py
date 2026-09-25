@@ -29,7 +29,8 @@ from app.services.layout import (
     deterministic_layout,
     make_title_page,
 )
-from app.services.pdf import render_pdf_via_browser_sync
+from app.core.executors import pdf_render_executor
+from app.services.pdf import render_album_pdf_sync
 from app.services.pdf_legacy import export_pdf_reportlab_legacy
 from app.services.photos import store_many_photos
 from app.services.processing import (
@@ -169,6 +170,7 @@ async def delete_album(album_id: str, user: dict = Depends(get_current_user)):
         delete_object(p.get("thumbnail_path"))
         delete_object(p.get("medium_path"))
         delete_object(p.get("print_path"))
+        delete_object(p.get("print_full_path"))
     delete_object(album.get("cover_image_path"))
 
     result = await db.albums.delete_one({"id": album_id, "user_id": user["id"]})
@@ -380,7 +382,9 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     try:
         print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
         loop = asyncio.get_event_loop()
-        pdf_bytes = await loop.run_in_executor(None, render_pdf_via_browser_sync, print_url)
+        pdf_bytes = await loop.run_in_executor(
+            pdf_render_executor, render_album_pdf_sync, print_url, len(album.get("pages") or []), f"Export {album_id} :"
+        )
         filename = f"{album.get('title', 'album').replace(' ', '_')}.pdf"
         return Response(
             content=pdf_bytes,
