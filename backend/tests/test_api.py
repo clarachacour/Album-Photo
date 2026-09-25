@@ -116,3 +116,34 @@ def test_cors_only_allows_known_origins(client, origin, allowed):
         headers={"Origin": origin, "Access-Control-Request-Method": "GET"},
     )
     assert (res.headers.get("access-control-allow-origin") == origin) is allowed
+
+
+def test_computer_sees_when_the_phone_is_done_uploading(client, db, monkeypatch):
+    """The wizard's "Create album" stays blocked only while the phone that
+    scanned the QR code says it is sending photos."""
+    import types
+
+    from app.routers import mobile_upload
+
+    _, headers = _signup(client, db=db)
+    _, other = _signup(client, db=db)
+    album_id = client.post("/api/albums", json={"title": "Phone"}, headers=headers).json()["id"]
+    token = client.post(f"/api/albums/{album_id}/mobile-upload-session", headers=headers).json()["token"]
+    status_url = f"/api/albums/{album_id}/mobile-upload-session/{token}"
+
+    assert client.get(status_url, headers=headers).json() == {"uploading": False}
+    assert client.get(status_url, headers=other).status_code == 404
+
+    assert client.post(f"/api/mobile-upload/{token}/status", json={"uploading": True}).status_code == 200
+    assert client.get(status_url, headers=headers).json() == {"uploading": True}
+
+    # The phone went silent (locked, page closed): stop waiting for it.
+    real_datetime = mobile_upload.datetime
+    later = real_datetime.now(mobile_upload.timezone.utc) + mobile_upload.timedelta(seconds=mobile_upload.PHONE_STATUS_STALE_SECONDS + 1)
+    monkeypatch.setattr(mobile_upload, "datetime", types.SimpleNamespace(now=lambda tz=None: later))
+    assert client.get(status_url, headers=headers).json() == {"uploading": False}
+    monkeypatch.setattr(mobile_upload, "datetime", real_datetime)
+
+    assert client.post(f"/api/mobile-upload/{token}/status", json={"uploading": False}).status_code == 200
+    assert client.get(status_url, headers=headers).json() == {"uploading": False}
+    assert client.post("/api/mobile-upload/not-a-token/status", json={"uploading": True}).status_code == 400

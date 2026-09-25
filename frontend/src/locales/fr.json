@@ -349,6 +349,7 @@
   "photoUpload": {
     "linkError": "Impossible de créer un lien d'envoi — réessayez.",
     "phoneComing": "Des photos arrivent depuis votre téléphone — continuez à en ajouter, ou revenez sur cet écran.",
+    "phoneDone": "Toutes les photos de votre téléphone sont arrivées.",
     "limitReached": "Cet album a atteint la limite de 5000 photos — certaines de vos photos sélectionnées n'ont pas été ajoutées. Supprimez-en pour pouvoir en ajouter d'autres.",
     "addingNew": "Ajout de vos nouvelles photos…",
     "addError": "Impossible d'ajouter les photos",

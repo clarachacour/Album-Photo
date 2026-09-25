@@ -67,6 +67,29 @@ export default function MobileUpload() {
     };
   }, [token]);
 
+  // Tell the computer while photos are being sent, and as soon as it's
+  // done, so its "Create album" button unblocks right away. Repeated every
+  // 20 s: if this page goes silent (phone locked, tab closed), the server
+  // stops counting it as uploading after a minute.
+  const sending = uploading || googleImporting;
+  useEffect(() => {
+    if (!info) return;
+    const report = (value) =>
+      fetch(`${API}/mobile-upload/${token}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploading: value }),
+        keepalive: true,
+      }).catch(() => {});
+    if (!sending) {
+      report(false);
+      return;
+    }
+    report(true);
+    const heartbeat = setInterval(() => report(true), 20000);
+    return () => clearInterval(heartbeat);
+  }, [sending, info, token]);
+
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
     if (files.length === 0) return;

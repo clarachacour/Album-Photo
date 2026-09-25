@@ -25,7 +25,8 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   const [drag, setDrag] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [phoneSession, setPhoneSession] = useState(null);
-  const [phonePolling, setPhonePolling] = useState(false);
+  // True while the phone that scanned the QR code says it's sending photos.
+  const [phoneUploading, setPhoneUploading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [googleImporting, setGoogleImporting] = useState(false);
   const fileInput = React.useRef();
@@ -50,12 +51,10 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   // device upload, phone/QR, and Google Photos each have their own
   // internal progress state, but the caller (the wizard's Photos step)
   // just needs to know whether it's safe to let the person move on yet,
-  // regardless of which method is active. phonePolling (not showQR) is
-  // what actually tracks the phone upload — closing the QR modal used to
-  // stop the poll entirely, silently dropping any photo the person added
-  // from their phone after that point; the session and its poll now live
-  // here, independent of whether the modal itself is currently visible.
-  const importing = uploading || googleImporting || phonePolling;
+  // regardless of which method is active. The phone tells the server when
+  // it starts and finishes sending (see MobileUpload.jsx), so this frees
+  // up as soon as the last photo is in — no guessing from a quiet spell.
+  const importing = uploading || googleImporting || phoneUploading;
   useEffect(() => {
     onImportingChange && onImportingChange(importing);
   }, [importing]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -78,26 +77,25 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   // can keep landing for a while after that.
   useEffect(() => {
     if (!phoneSession) return;
-    setPhonePolling(true);
-    // No explicit "I'm done" signal comes from the phone side — this
-    // treats a stretch of polls with no new photo landing as "done", and
-    // frees up Create Album automatically instead of leaving it stuck on
-    // "Importing…" until the full 1-hour link lifetime runs out. Resets
-    // (and re-blocks Create Album, in case it had already gone idle) every
-    // time a new photo actually shows up, so someone pausing partway
-    // through selecting photos on their phone doesn't get cut off.
-    const IDLE_MS = 15000;
     let lastCount = (photos || []).length;
-    let idleTimeout = setTimeout(() => setPhonePolling(false), IDLE_MS);
+    let polling = false;
+    let active = true;
+    let wasUploading = false;
     const doPoll = async () => {
+      if (polling || !active) return;
+      polling = true;
       try {
+        // Status first: when it says "done", the album read right after
+        // already has every photo the phone sent.
+        const { data: status } = await api.get(`/albums/${albumId}/mobile-upload-session/${phoneSession.token}`);
         const { data } = await api.get(`/albums/${albumId}`);
+        if (!active) return;
+        if (wasUploading && !status.uploading) toast.success(t("photoUpload.phoneDone"));
+        wasUploading = status.uploading;
+        setPhoneUploading(status.uploading);
         const newPhotos = data.photos || [];
         if (newPhotos.length > lastCount) {
           lastCount = newPhotos.length;
-          setPhonePolling(true);
-          clearTimeout(idleTimeout);
-          idleTimeout = setTimeout(() => setPhonePolling(false), IDLE_MS);
           // The person is on their phone at this point, not looking at this
           // screen — closing the QR modal once photos genuinely start
           // arriving (rather than leaving it up for the full hour) gets it
@@ -115,6 +113,8 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         }
       } catch {
         /* ignore transient poll errors */
+      } finally {
+        polling = false;
       }
     };
     const interval = setInterval(doPoll, 3000);
@@ -136,15 +136,14 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
     // have stopped accepting new uploads by then.
     const stopTimeout = setTimeout(() => {
       clearInterval(interval);
-      clearTimeout(idleTimeout);
-      setPhonePolling(false);
+      setPhoneUploading(false);
     }, 60 * 60 * 1000);
     return () => {
+      active = false;
       clearInterval(interval);
-      clearTimeout(idleTimeout);
       clearTimeout(stopTimeout);
       document.removeEventListener("visibilitychange", onVisible);
-      setPhonePolling(false);
+      setPhoneUploading(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phoneSession, albumId]);

@@ -122,6 +122,9 @@ class MobileUploadSessionOut(BaseModel):
     upload_url: str
     expires_at: str
 
+class MobileUploadStatusInput(BaseModel):
+    uploading: bool
+
 # ---------- Google Photos import (Photos Picker API) ----------
 class GooglePhotosImportInput(BaseModel):
     access_token: str

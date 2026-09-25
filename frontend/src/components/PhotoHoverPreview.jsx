@@ -2,8 +2,14 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { photoImageUrl } from "@/lib/api";
 
-const SIZE = 320; // px, longest side of the preview
+const MAX_SIZE = 480; // px, longest side of the preview (the "medium" image is 1200px)
 const DELAY_MS = 180; // skip photos the mouse only crosses on its way
+// Moving straight from one thumbnail to the next swaps the preview at once,
+// so two photos that look alike can be compared back and forth.
+const SWITCH_GRACE_MS = 400;
+
+// As large as possible without covering most of the screen.
+const previewSize = () => Math.round(Math.max(200, Math.min(MAX_SIZE, window.innerHeight * 0.45, window.innerWidth - 32)));
 
 /**
  * Larger, uncropped preview of a small photo thumbnail while the mouse rests
@@ -19,10 +25,14 @@ const DELAY_MS = 180; // skip photos the mouse only crosses on its way
 export function usePhotoHoverPreview() {
   const [preview, setPreview] = useState(null); // { photoId, rect }
   const timer = useRef(null);
+  const lastShownAt = useRef(0); // when a preview was last on screen
 
   const hide = useCallback(() => {
     clearTimeout(timer.current);
-    setPreview(null);
+    setPreview((current) => {
+      if (current) lastShownAt.current = Date.now();
+      return null;
+    });
   }, []);
 
   useEffect(() => {
@@ -39,7 +49,9 @@ export function usePhotoHoverPreview() {
       if (e.pointerType !== "mouse" || e.buttons) return;
       const rect = e.currentTarget.getBoundingClientRect();
       clearTimeout(timer.current);
-      timer.current = setTimeout(() => setPreview({ photoId, rect }), DELAY_MS);
+      const switching = Date.now() - lastShownAt.current < SWITCH_GRACE_MS;
+      if (switching) setPreview({ photoId, rect });
+      else timer.current = setTimeout(() => setPreview({ photoId, rect }), DELAY_MS);
     },
     // No onPointerDown here: it would replace the drag-and-drop library's
     // own handler on sortable thumbnails. Callers hide it when a drag starts.
@@ -51,10 +63,11 @@ export function usePhotoHoverPreview() {
 }
 
 function PreviewBox({ photoId, rect }) {
+  const SIZE = previewSize();
   const margin = 8;
   // Above the thumbnail when there's room, otherwise below; kept on screen.
   const above = rect.top > SIZE + margin * 2;
-  const top = above ? rect.top - SIZE - margin : rect.bottom + margin;
+  const top = above ? rect.top - SIZE - margin : Math.min(rect.bottom + margin, window.innerHeight - SIZE - margin);
   const left = Math.min(Math.max(margin, rect.left + rect.width / 2 - SIZE / 2), window.innerWidth - SIZE - margin);
   return (
     <div
@@ -62,7 +75,12 @@ function PreviewBox({ photoId, rect }) {
       style={{ top, left, width: SIZE, height: SIZE }}
       data-testid="photo-hover-preview"
     >
-      <img src={photoImageUrl(photoId, "medium")} alt="" className="max-w-full max-h-full object-contain" />
+      {/* The small thumbnail (already loaded) stands in while the larger image arrives. */}
+      <div
+        className="absolute inset-1.5 bg-center bg-no-repeat bg-contain"
+        style={{ backgroundImage: `url("${photoImageUrl(photoId)}")` }}
+      />
+      <img key={photoId} src={photoImageUrl(photoId, "medium")} alt="" className="relative max-w-full max-h-full object-contain" />
     </div>
   );
 }

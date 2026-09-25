@@ -349,6 +349,7 @@
   "photoUpload": {
     "linkError": "Could not create an upload link — try again.",
     "phoneComing": "Photos are coming in from your phone — keep adding more, or come back to this screen.",
+    "phoneDone": "All the photos from your phone are in.",
     "limitReached": "This album has reached the 5,000-photo limit — some of your selected photos weren't added. Remove some to add more.",
     "addingNew": "Adding your new photos…",
     "addError": "Could not add photos",

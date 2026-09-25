@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.config import FRONTEND_URL
 from app.core.auth import get_current_user
 from app.db import db
-from app.schemas import GooglePhotosImportInput, MobileUploadSessionOut
+from app.schemas import GooglePhotosImportInput, MobileUploadSessionOut, MobileUploadStatusInput
 from app.services.albums import reject_if_ordered
 from app.services.google_photos import import_google_photos_items
 from app.services.photos import store_many_photos
@@ -29,6 +29,10 @@ router = APIRouter()
 # pdf_generation_slots. A TTL index (see lifespan() in app/main.py) does the cleanup
 # automatically.
 MOBILE_UPLOAD_SESSION_HOURS = 1
+# While it sends photos, the phone reports "uploading" again every 20 s
+# (MobileUpload.jsx). Past this delay without news — phone locked, page
+# closed mid-upload — the computer stops waiting for it.
+PHONE_STATUS_STALE_SECONDS = 60
 
 @router.post("/albums/{album_id}/mobile-upload-session", response_model=MobileUploadSessionOut)
 async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_current_user)):
@@ -67,6 +71,30 @@ async def _get_mobile_session(token: str) -> dict:
     if expires < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="This link has expired or is invalid")
     return session
+
+def _aware(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+@router.get("/albums/{album_id}/mobile-upload-session/{token}")
+async def mobile_upload_session_status(album_id: str, token: str, user: dict = Depends(get_current_user)):
+    """Whether the phone is still sending photos, so the computer can let
+    the person move on as soon as it's done rather than guessing."""
+    session = await db.mobile_sessions.find_one({"token": token, "album_id": album_id, "user_id": user["id"]})
+    if not session:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    status_at = session.get("phone_status_at")
+    fresh = status_at is not None and datetime.now(timezone.utc) - _aware(status_at) < timedelta(seconds=PHONE_STATUS_STALE_SECONDS)
+    return {"uploading": bool(session.get("phone_uploading")) and fresh}
+
+@router.post("/mobile-upload/{token}/status")
+async def mobile_upload_status(token: str, data: MobileUploadStatusInput):
+    """The phone says it started (and is still) sending photos, or is done."""
+    session = await _get_mobile_session(token)
+    await db.mobile_sessions.update_one(
+        {"token": session["token"]},
+        {"$set": {"phone_uploading": data.uploading, "phone_status_at": datetime.now(timezone.utc)}},
+    )
+    return {"ok": True}
 
 @router.get("/mobile-upload/{token}/info")
 async def mobile_upload_info(token: str):
