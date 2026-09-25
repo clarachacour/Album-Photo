@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse
 from app.config import R2_BUCKET_NAME
 from app.core.auth import decode_token, get_current_user, require_admin
 from app.db import db
+from app.monitoring import send_test_error
 from app.schemas import OrderStatusUpdate
 from app.services.email import (
     send_order_delivered_feedback_email,
@@ -21,6 +22,14 @@ from app.services.orders import (
 from app.services.storage import get_r2_client
 
 router = APIRouter()
+
+
+@router.post("/admin/sentry-test")
+async def admin_sentry_test(user: dict = Depends(get_current_user)):
+    """Checks the backend is connected to Sentry."""
+    require_admin(user)
+    event_id = send_test_error()
+    return {"configured": event_id is not None, "event_id": event_id}
 
 
 @router.get("/admin/orders")

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { Download, ExternalLink, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Bug } from "lucide-react";
+import { sendTestError } from "@/lib/monitoring";
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -133,7 +134,10 @@ export default function AdminOrdersPage() {
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[1400px] mx-auto">
-        <h1 className="font-serif-display text-4xl tracking-tight mb-8">All orders</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <h1 className="font-serif-display text-4xl tracking-tight">All orders</h1>
+          <SentryTestButton />
+        </div>
 
         {loading ? (
           <p className="text-sm text-[color:var(--muted)]">Loading…</p>
@@ -249,5 +253,40 @@ export default function AdminOrdersPage() {
         )}
       </div>
     </main>
+  );
+}
+
+// Sends one deliberate error from the site and one from the server, to
+// check both are connected to Sentry (they appear there within a minute).
+function SentryTestButton() {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const frontId = await sendTestError();
+      let back = { configured: false };
+      try {
+        ({ data: back } = await api.post("/admin/sentry-test"));
+      } catch {
+        back = { error: true };
+      }
+      const site = frontId ? "Site: sent" : "Site: Sentry not configured (REACT_APP_SENTRY_DSN)";
+      const server = back.error ? "Server: request failed" : back.configured ? "Server: sent" : "Server: Sentry not configured (SENTRY_DSN)";
+      const ok = frontId && back.configured;
+      toast[ok ? "success" : "warning"](`${site} · ${server}`, { duration: 10000 });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      onClick={run}
+      disabled={busy}
+      data-testid="admin-sentry-test"
+      className="inline-flex items-center gap-2 border border-[color:var(--ink)]/30 px-4 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+    >
+      <Bug size={14} />
+      <span className="text-xs font-semibold tracking-widest uppercase">{busy ? "Testing…" : "Test Sentry"}</span>
+    </button>
   );
 }

@@ -179,3 +179,19 @@ def test_tokens_never_reach_sentry():
     event = {"request": {"url": "https://api.example/api/photos/1/image?auth=SECRET", "query_string": "auth=SECRET"}}
     out = _scrub(event, None)
     assert "SECRET" not in str(out)
+
+
+def test_sentry_test_button_is_admin_only(client, db):
+    _, headers = _signup(client, db=db)
+    assert client.post("/api/admin/sentry-test", headers=headers).status_code == 403
+
+
+def test_sentry_test_without_dsn_reports_not_configured(client, db, monkeypatch):
+    from app.core import auth
+
+    email, headers = _signup(client, db=db)
+    monkeypatch.setattr(auth, "ADMIN_EMAIL", email)
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    res = client.post("/api/admin/sentry-test", headers=headers)
+    assert res.status_code == 200, res.text
+    assert res.json() == {"configured": False, "event_id": None}

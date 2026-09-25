@@ -16,6 +16,21 @@ def _scrub(event, hint):
     return event
 
 
+def send_test_error():
+    """Sends a deliberate error to Sentry (admin "Test Sentry" button).
+    Returns the event id, or None when Sentry isn't configured."""
+    if not os.environ.get("SENTRY_DSN"):
+        return None
+    import sentry_sdk
+
+    try:
+        raise RuntimeError("Sentry test from the admin page (backend) — safe to ignore")
+    except RuntimeError as e:
+        event_id = sentry_sdk.capture_exception(e)
+    sentry_sdk.flush(timeout=5)
+    return event_id
+
+
 def init_monitoring():
     dsn = os.environ.get("SENTRY_DSN")
     if not dsn:

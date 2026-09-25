@@ -26,5 +26,14 @@ export async function initMonitoring() {
 }
 
 export function reportError(error, extra) {
-  if (sentry) sentry.captureException(error, extra ? { extra } : undefined);
+  if (sentry) return sentry.captureException(error, extra ? { extra } : undefined);
+  return null;
+}
+
+/** Sends a deliberate error (admin "Test Sentry" button); null when Sentry isn't configured. */
+export async function sendTestError() {
+  if (!sentry) return null;
+  const id = reportError(new Error("Sentry test from the admin page (frontend) — safe to ignore"));
+  await sentry.flush(5000);
+  return id;
 }
