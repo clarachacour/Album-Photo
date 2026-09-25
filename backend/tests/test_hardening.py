@@ -92,7 +92,7 @@ def test_order_price_uses_the_real_page_count(client, db, monkeypatch):
     async def no_pdf(*args, **kwargs):
         return None
 
-    monkeypatch.setattr(orders, "generate_order_pdf", no_pdf)
+    monkeypatch.setattr(orders, "start_order_pdf_generation", no_pdf)
     monkeypatch.setattr(orders, "send_order_confirmation_email", lambda *a, **k: None)
 
     _, headers = _signup(client, db=db)

@@ -33,12 +33,43 @@ def create_token(user_id: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-def decode_token(token: str) -> Optional[str]:
+# The PDF is made by a browser opening the album's print page. It gets a
+# key that only opens that one album, for a few hours — never the
+# customer's 30-day login token.
+PRINT_TOKEN_HOURS = 3
+
+def create_print_token(user_id: str, album_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {"sub": user_id, "scope": "print", "album_id": album_id, "iat": now, "exp": now + timedelta(hours=PRINT_TOKEN_HOURS)}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def token_claims(token: str) -> Optional[dict]:
+    """The token's user and, for a print key, the one album it opens:
+    {"user_id": ..., "album_id": None | "..."}; None if invalid/expired."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload.get("sub")
     except jwt.PyJWTError:
         return None
+    if not payload.get("sub"):
+        return None
+    if payload.get("scope") == "print":
+        return {"user_id": payload["sub"], "album_id": payload.get("album_id")}
+    if payload.get("scope"):
+        return None
+    return {"user_id": payload["sub"], "album_id": None}
+
+def decode_token(token: str) -> Optional[str]:
+    """User id of a login token. Print keys are refused here: they only
+    work where decode_token_for_album is used."""
+    claims = token_claims(token)
+    return claims["user_id"] if claims and claims["album_id"] is None else None
+
+def decode_token_for_album(token: str, album_id: str) -> Optional[str]:
+    """User id of a login token, or of a print key for this album."""
+    claims = token_claims(token)
+    if not claims or claims["album_id"] not in (None, album_id):
+        return None
+    return claims["user_id"]
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -109,6 +140,21 @@ async def get_current_user_raw(credentials: HTTPAuthorizationCredentials = Depen
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+async def get_current_user_for_album(album_id: str, credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
+    """get_current_user for the album the print page reads: also accepts
+    a print key for that album (see create_print_token)."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    claims = token_claims(credentials.credentials)
+    if not claims or claims["album_id"] not in (None, album_id):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if claims["album_id"] is None:
+        return await get_current_user(await get_current_user_raw(credentials))
+    user = await db.users.find_one({"id": claims["user_id"]}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user

@@ -12,7 +12,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem("album_token");
-    if (!token) {
+    // The print page (opened by the server to make the PDF) runs on a key
+    // that only opens one album, not a login: checking it here would be
+    // refused and the 401 would erase the key the page is using.
+    if (!token || window.location.pathname.startsWith("/print/")) {
       setLoading(false);
       return;
     }

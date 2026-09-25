@@ -7,9 +7,11 @@ from app.config import (
     ALBUM_EXPIRING_WARNING_DAYS_BEFORE,
     CLEANUP_SECRET,
     DRAFT_ALBUM_RETENTION_DAYS,
+    PDF_TASK_MAX_ATTEMPTS,
     UNFINISHED_ALBUM_REMINDER_DAYS,
 )
 from app.db import db
+from app.services.orders import generate_order_pdf, purge_stale_pdf_generation_slots
 from app.services.email import (
     send_album_expiring_soon_email,
     send_unfinished_album_reminder_email,
@@ -17,6 +19,37 @@ from app.services.email import (
 from app.services.storage import delete_object
 
 router = APIRouter()
+
+
+# ---------- Order PDF (called by the Cloud Tasks queue) ----------
+@router.post("/internal/orders/{order_id}/generate-pdf")
+async def internal_generate_order_pdf(
+    order_id: str,
+    x_cleanup_secret: str = Header(None),
+    x_cloudtasks_taskretrycount: str = Header(None),
+):
+    """Generates an order's PDF; called by the PDF_TASKS_QUEUE queue (see
+    app/services/tasks.py). An error response makes the queue try again
+    later; the admin is emailed after the last attempt."""
+    if not CLEANUP_SECRET:
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
+    if x_cleanup_secret != CLEANUP_SECRET:
+        raise HTTPException(status_code=401, detail="Not authorized")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        return {"skipped": "order not found"}
+    if order.get("pdf_ready"):
+        return {"skipped": "PDF already ready"}
+    await purge_stale_pdf_generation_slots()
+    if await db.pdf_generation_slots.find_one({"order_id": order_id}):
+        # A previous attempt is still rendering: try again later.
+        raise HTTPException(status_code=409, detail="A generation is already in progress for this order")
+    attempt = int(x_cloudtasks_taskretrycount or 0) + 1
+    final_attempt = attempt >= PDF_TASK_MAX_ATTEMPTS
+    ok = await generate_order_pdf(order_id, order["album_id"], order["user_id"], final_attempt=final_attempt)
+    if not ok and not final_attempt:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed (attempt {attempt}), the queue will retry")
+    return {"pdf_ready": ok, "attempt": attempt}
 
 
 # ---------- Maintenance ----------

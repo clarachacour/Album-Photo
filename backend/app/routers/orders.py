@@ -15,7 +15,7 @@ from app.services.email import send_delivery_pickup_email, send_order_confirmati
 from app.services.orders import (
     ORDER_STATUS_LABELS,
     ORDER_STATUS_SEQUENCE,
-    generate_order_pdf,
+    start_order_pdf_generation,
 )
 from app.services.pricing import billed_page_count, compute_order_price_cents
 from app.services.storage import get_r2_client
@@ -82,17 +82,11 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # preparing your book" — never claims the PDF is done), so only the
     # trigger moved, not the text.
     send_order_confirmation_email(user.get("email"), user.get("name"), order_doc)
-    # Awaited directly, not dispatched via background_tasks. Background
-    # dispatch was tried twice now (Aug 30, and again Sep 1 after
-    # confirming instance-based billing + min-instances=1) and both times
-    # the job went silent mid-render with nothing in the logs — so
-    # whatever About Cloud Run's instance lifecycle makes this unsafe
-    # isn't fully solved by those settings alone. A slower response that
-    # reliably finishes beats a fast one that might silently never finish
-    # at all. Depends on the request timeout being raised well past its
-    # 900s default (Cloud Run allows up to 3600s) for a large album to
-    # have room to actually complete.
-    await generate_order_pdf(order_id, album["id"], user["id"])
+    # Through the Cloud Tasks queue when configured: the customer gets
+    # their answer at once and a failed generation is retried (background
+    # work inside this request doesn't survive on Cloud Run). Without the
+    # queue, generated here while the request waits, as before.
+    await start_order_pdf_generation(order_doc)
     fresh_order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     return fresh_order or order_doc
 

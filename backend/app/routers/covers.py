@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Uplo
 from fastapi.responses import Response
 
 from app.config import APP_NAME
-from app.core.auth import decode_token, get_current_user
+from app.core.auth import decode_token_for_album, get_current_user, token_claims
 from app.core.executors import run_blocking
 from app.db import db
 from app.services.albums import reject_if_ordered
@@ -70,7 +70,7 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
         token = authorization.split(" ", 1)[1]
     elif auth:
         token = auth
-    user_id = decode_token(token) if token else None
+    user_id = decode_token_for_album(token, album_id) if token else None
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     album = await db.albums.find_one({"id": album_id, "user_id": user_id})
@@ -113,11 +113,15 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
         token = authorization.split(" ", 1)[1]
     elif auth:
         token = auth
-    user_id = decode_token(token) if token else None
-    if not user_id:
+    claims = token_claims(token) if token else None
+    if not claims:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    # Safety: only serve assets that belong to the requesting user
-    if f"/users/{user_id}/" not in path:
+    user_id = claims["user_id"]
+    # Safety: only serve assets that belong to the requesting user (and,
+    # for a print key, to its album).
+    if f"/users/{user_id}/" not in path or ".." in path:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if claims["album_id"] and f"/users/{user_id}/albums/{claims['album_id']}/" not in path:
         raise HTTPException(status_code=403, detail="Access denied")
     served_path = path
     served_content_type = None

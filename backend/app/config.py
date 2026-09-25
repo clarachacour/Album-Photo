@@ -76,6 +76,15 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 # purge (see /internal/cleanup-expired-albums) — without it, anyone who
 # finds the URL could wipe every never-ordered album on demand.
 CLEANUP_SECRET = os.environ.get("CLEANUP_SECRET")
+# Order PDFs are generated through a Google Cloud Tasks queue
+# (projects/<project>/locations/<region>/queues/<name>): the order is
+# confirmed at once, the queue calls /api/internal/orders/<id>/generate-pdf
+# (authenticated with CLEANUP_SECRET) and retries it if it fails. Unset:
+# the PDF is generated during the order request, as before.
+PDF_TASKS_QUEUE = os.environ.get("PDF_TASKS_QUEUE")
+# Must match the queue's "max attempts": the admin gets the failure email
+# only after the last one.
+PDF_TASK_MAX_ATTEMPTS = int(os.environ.get("PDF_TASK_MAX_ATTEMPTS", "3"))
 DRAFT_ALBUM_RETENTION_DAYS = int(os.environ.get("DRAFT_ALBUM_RETENTION_DAYS", "30"))
 # First nudge once an album has sat untouched this many days; the second,
 # stronger warning fires this many days before the purge above actually

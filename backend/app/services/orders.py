@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 
 from app.config import APP_NAME, FRONTEND_URL, MAX_CONCURRENT_PDF_GENERATIONS
-from app.core.auth import create_token
+from app.core.auth import create_print_token
 from app.core.executors import (
     pdf_render_executor,
     photo_processing_executor,
@@ -20,6 +20,7 @@ from app.services.email import (
 from app.services.pdf import render_album_pdf_sync
 from app.services.photos import generate_print_variant, print_needs_conversion
 from app.services.storage import delete_object, put_object
+from app.services.tasks import enqueue_order_pdf, pdf_tasks_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -95,12 +96,28 @@ async def _acquire_pdf_generation_slot(order_id: str):
 async def _release_pdf_generation_slot(order_id: str):
     await db.pdf_generation_slots.delete_many({"order_id": order_id})
 
-async def generate_order_pdf(order_id: str, album_id: str, user_id: str):
-    """Runs in the background right after an order is created. Reuses the
-    exact same browser-based renderer as the (now customer-facing-removed)
-    PDF export, so the file the team sends to the printer is guaranteed to
-    match what the customer saw in the flipbook. Never surfaced to the
-    customer directly — this is purely for internal/printer use."""
+async def start_order_pdf_generation(order: dict) -> bool:
+    """Starts the order's PDF: through the Cloud Tasks queue when it's
+    configured (returns True at once), otherwise right here, waiting for
+    it (returns False when done). If the queue can't be reached, falls
+    back to generating here rather than leaving the order without a PDF."""
+    if pdf_tasks_enabled():
+        try:
+            await run_blocking(enqueue_order_pdf, order["id"])
+            await db.orders.update_one({"id": order["id"]}, {"$set": {"pdf_queued_at": datetime.now(timezone.utc).isoformat()}})
+            return True
+        except Exception as e:
+            logger.error(f"Commande {order['id']} : file Cloud Tasks injoignable ({e}), génération directe")
+    await generate_order_pdf(order["id"], order["album_id"], order["user_id"])
+    return False
+
+
+async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_attempt: bool = True) -> bool:
+    """Makes the order's print-ready PDF with the same browser renderer as
+    the flipbook, so the printer gets exactly what the customer saw.
+    Returns True on success. On failure the error is stored on the order;
+    the admin is emailed only when final_attempt is True (the queue will
+    try again otherwise)."""
     t_start = _time.monotonic()
     await _acquire_pdf_generation_slot(order_id)
     try:
@@ -131,7 +148,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str):
 
             await asyncio.gather(*(convert(ph) for ph in to_convert))
 
-        token = create_token(user_id)
+        token = create_print_token(user_id, album_id)
         print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
         loop = asyncio.get_event_loop()
         pdf_bytes = await loop.run_in_executor(
@@ -139,7 +156,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str):
         )
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         await run_blocking(put_object, path, pdf_bytes, "application/pdf")
-        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True}})
+        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True, "pdf_error": None}, "$unset": {"pdf_queued_at": ""}})
         logger.info(f"Commande {order_id} : PDF complet généré en {_time.monotonic() - t_start:.1f}s au total")
 
         # Moved in from create_order/admin_regenerate_order_pdf: this
@@ -163,12 +180,18 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str):
             # already-printing order shouldn't re-trigger this cleanup a
             # second time.
             await _delete_unselected_photos(album_id)
+        return True
     except Exception as e:
-        logger.error(f"Échec de la génération du PDF pour la commande {order_id}: {e}")
-        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_error": str(e)}})
-        fresh_failed = await db.orders.find_one({"id": order_id}, {"_id": 0})
-        if fresh_failed:
-            send_pdf_generation_failed_email(fresh_failed, str(e))
+        logger.error(f"Échec de la génération du PDF pour la commande {order_id}{'' if final_attempt else ' (nouvel essai prévu)'} : {e}")
+        update = {"$set": {"pdf_ready": False, "pdf_error": str(e)}}
+        if final_attempt:
+            update["$unset"] = {"pdf_queued_at": ""}
+        await db.orders.update_one({"id": order_id}, update)
+        if final_attempt:
+            fresh_failed = await db.orders.find_one({"id": order_id}, {"_id": 0})
+            if fresh_failed:
+                send_pdf_generation_failed_email(fresh_failed, str(e))
+        return False
     finally:
         await _release_pdf_generation_slot(order_id)
 

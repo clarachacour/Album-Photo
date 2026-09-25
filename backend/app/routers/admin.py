@@ -1,5 +1,5 @@
 """Admin-only order management."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -16,8 +16,8 @@ from app.services.email import (
 )
 from app.services.orders import (
     ORDER_STATUSES,
-    generate_order_pdf,
     purge_stale_pdf_generation_slots,
+    start_order_pdf_generation,
 )
 from app.services.storage import get_r2_client
 
@@ -56,8 +56,12 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
     active_slot_order_ids = {
         s["order_id"] async for s in db.pdf_generation_slots.find({}, {"order_id": 1})
     }
+    # Also "generating" while waiting in the Cloud Tasks queue (between
+    # attempts included), until the PDF is ready or the last attempt failed.
+    queue_cutoff = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
     for o in orders:
-        o["pdf_generating"] = o["id"] in active_slot_order_ids
+        queued = bool(o.get("pdf_queued_at")) and o["pdf_queued_at"] > queue_cutoff and not o.get("pdf_ready")
+        o["pdf_generating"] = o["id"] in active_slot_order_ids or queued
     return orders
 
 @router.get("/admin/orders/{order_id}/pdf")
@@ -114,14 +118,9 @@ async def admin_download_order_pdf(order_id: str, auth: str = Query(None), autho
 
 @router.post("/admin/orders/{order_id}/regenerate-pdf")
 async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):
-    """Re-runs the exact same PDF generation generate_order_pdf already
-    does for a brand-new order — for the day generation fails (memory
-    limit, a stuck browser render, anything transient) and needs a retry.
-    Awaited directly rather than dispatched as a background task — see
-    create_order's comment on why: tried twice, failed silently both
-    times even with instance-based billing and min-instances=1 in place.
-    A slower response that reliably finishes beats a fast one that might
-    not."""
+    """Re-runs the order's PDF generation (after a failure, or after a
+    fix): through the Cloud Tasks queue when configured, returning at
+    once, otherwise here while the request waits."""
     require_admin(user)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
@@ -142,8 +141,9 @@ async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_cur
     if await db.pdf_generation_slots.find_one({"order_id": order_id}):
         raise HTTPException(status_code=409, detail="A generation is already in progress for this order")
     await db.orders.update_one({"id": order_id}, {"$set": {"pdf_ready": False, "pdf_path": None, "pdf_error": None}})
-    await generate_order_pdf(order_id, order["album_id"], order["user_id"])
+    queued = await start_order_pdf_generation(order)
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    fresh["pdf_queued"] = queued
     return fresh
 
 @router.post("/admin/orders/{order_id}/resend-printer-email")

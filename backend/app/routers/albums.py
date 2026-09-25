@@ -19,7 +19,7 @@ from fastapi import (
 from fastapi.responses import Response
 
 from app.config import DRAFT_ALBUM_RETENTION_DAYS, FRONTEND_URL
-from app.core.auth import decode_token, get_current_user
+from app.core.auth import create_print_token, decode_token, get_current_user, get_current_user_for_album
 from app.db import db
 from app.schemas import AlbumCreate, AlbumUpdate, RepackPagesInput
 from app.services.albums import reject_if_ordered
@@ -110,7 +110,7 @@ def _json_safe(value):
     return value
 
 @router.get("/albums/{album_id}")
-async def get_album(album_id: str, user: dict = Depends(get_current_user)):
+async def get_album(album_id: str, user: dict = Depends(get_current_user_for_album)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
@@ -380,7 +380,7 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
         raise HTTPException(status_code=404, detail="Album not found")
 
     try:
-        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
+        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={create_print_token(user_id, album_id)}"
         loop = asyncio.get_event_loop()
         pdf_bytes = await loop.run_in_executor(
             pdf_render_executor, render_album_pdf_sync, print_url, len(album.get("pages") or []), f"Export {album_id} :"

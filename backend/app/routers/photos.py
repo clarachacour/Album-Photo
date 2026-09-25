@@ -14,7 +14,7 @@ from fastapi import (
 )
 from fastapi.responses import Response
 
-from app.core.auth import decode_token, get_current_user
+from app.core.auth import get_current_user, token_claims
 from app.core.executors import run_blocking
 from app.db import db
 from app.schemas import GooglePhotosImportInput
@@ -77,11 +77,12 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
         token = authorization.split(" ", 1)[1]
     elif auth:
         token = auth
-    user_id = decode_token(token) if token else None
-    if not user_id:
+    claims = token_claims(token) if token else None
+    if not claims:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    photo = await db.photos.find_one({"id": photo_id, "user_id": user_id, "is_deleted": False})
-    if not photo:
+    photo = await db.photos.find_one({"id": photo_id, "user_id": claims["user_id"], "is_deleted": False})
+    # A print key only opens the photos of its album.
+    if not photo or claims["album_id"] not in (None, photo.get("album_id")):
         raise HTTPException(status_code=404, detail="Photo not found")
     # "thumb" (small grids — the photo tray, upload picker) keeps browsing
     # fast; "medium" (the flipbook / editor page view) is sharp enough for

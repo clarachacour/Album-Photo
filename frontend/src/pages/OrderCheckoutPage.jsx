@@ -84,8 +84,9 @@ export default function OrderCheckoutPage() {
       nav(`/orders/${data.id}`);
     } catch (err) {
       // create_order inserts the order into the database as its very
-      // first step, well before the (potentially hours-long) PDF
-      // generation — so by the time this catch block can even run, the
+      // first step, before the PDF generation starts (queued, or run in
+      // the same request without the queue) — so by the time this catch
+      // block can even run, the
       // order has almost always already been created and the
       // confirmation email already sent, whatever went wrong afterwards.
       // The only genuine "nothing was created" failures are the specific,

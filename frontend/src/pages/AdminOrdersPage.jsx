@@ -98,17 +98,15 @@ export default function AdminOrdersPage() {
 
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
-    toast.info("Regenerating — this stays open until it's actually done, which can take a while for a large album");
     try {
-      // Awaited directly, not polled — background dispatch was tried
-      // twice (see backend/app/routers/admin.py's comment on admin_regenerate_order_pdf)
-      // and both times the job went silent mid-render with nothing in
-      // the logs, even with instance-based billing and min-instances=1
-      // in place. A slower response that reliably finishes beats a fast
-      // one that might not.
+      // With the Cloud Tasks queue (PDF_TASKS_QUEUE) this returns at once
+      // and the row shows "Generating…" until it's done (refresh the page);
+      // without it, it waits for the generation itself.
       const { data } = await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
-      if (data.pdf_ready) {
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data, pdf_generating: !!data.pdf_queued } : o)));
+      if (data.pdf_queued) {
+        toast.success("Regeneration started — refresh this page in a few minutes");
+      } else if (data.pdf_ready) {
         toast.success("PDF regenerated — the printer has been notified");
       } else {
         toast.error("Regeneration failed again — check the Cloud Run logs");
