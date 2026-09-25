@@ -37,6 +37,55 @@ export const DEFAULT_PAGE_COUNT_ESTIMATE = 40;
 // a fixed pixel value that shrinks to a tiny fraction on a wide cover and
 // swallows the whole cover on a narrow one.
 export function spineRatio(size, orientation, numPages) {
+  const printer = printerCoverTemplate(size, orientation, numPages);
+  if (printer) return printer.spine / printer.panelW;
   const { w: pageWidthMm } = pageDimsMm(size, orientation);
   return spineWidthMm(numPages) / pageWidthMm;
+}
+
+// Cover templates imposed by the printing office, in mm. Each one is a
+// hardcover case laid flat on a single sheet, left to right:
+//
+//   wrap | back cover | hinge | spine | hinge | front cover | wrap
+//
+// with the same wrap above and below the covers, plus a bleed all around
+// (trimmed off by the printer, so backgrounds must reach it). The covers'
+// visible faces (panelW × panelH) keep the page's proportions, so the
+// cover designs drop in unchanged, just scaled.
+//
+// Formats and page counts without a template here still get the older
+// layout (spine + front on the first sheet, back cover on the last) —
+// add each template as the printer sends it.
+const PRINTER_COVER_TEMPLATES = [
+  // Template_A4_1-50pgs.pdf: 475 × 330 mm trimmed.
+  { size: "A4", orientation: "portrait", minPages: 1, maxPages: 50, bleed: 5, wrap: 20, panelW: 205, panelH: 290, hinge: 9, spine: 7 },
+];
+
+/** The printer's cover template for this album, or null when there is none yet. */
+export function printerCoverTemplate(size, orientation, numPages) {
+  const s = (size || "A4").toUpperCase();
+  const o = orientation === "landscape" ? "landscape" : "portrait";
+  const n = numPages || 0;
+  return PRINTER_COVER_TEMPLATES.find((t) => t.size === s && t.orientation === o && n >= t.minPages && n <= t.maxPages) || null;
+}
+
+/**
+ * Where everything goes on the cover sheet of a printer template, in mm from
+ * the sheet's top-left corner (bleed included): the sheet itself, the
+ * trimmed area, and the back cover, spine and front cover boxes.
+ */
+export function coverSpreadLayout(t) {
+  const trimW = 2 * t.wrap + 2 * t.panelW + 2 * t.hinge + t.spine;
+  const trimH = 2 * t.wrap + t.panelH;
+  const top = t.bleed + t.wrap;
+  const backX = t.bleed + t.wrap;
+  const spineX = backX + t.panelW + t.hinge;
+  const frontX = spineX + t.spine + t.hinge;
+  return {
+    sheet: { w: trimW + 2 * t.bleed, h: trimH + 2 * t.bleed },
+    trim: { x: t.bleed, y: t.bleed, w: trimW, h: trimH },
+    back: { x: backX, y: top, w: t.panelW, h: t.panelH },
+    spine: { x: spineX, y: top, w: t.spine, h: t.panelH },
+    front: { x: frontX, y: top, w: t.panelW, h: t.panelH },
+  };
 }

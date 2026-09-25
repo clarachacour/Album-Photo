@@ -6,11 +6,12 @@ import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { AlbumPage } from "@/components/book/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
-import { pageDimsMm, spineWidthMm } from "@/lib/printDims";
+import { coverSpreadLayout, pageDimsMm, printerCoverTemplate, spineWidthMm } from "@/lib/printDims";
 
 /**
  * Renders the whole album — front cover + spine, interior pages, back cover
- * — as a sequence of full-physical-size pages, one per print sheet. This is
+ * (or, when the printer has a cover template for the format, one cover sheet
+ * with back cover, spine and front cover, then the interior pages) — as a sequence of full-physical-size pages, one per print sheet. This is
  * meant to be opened by a headless browser (Playwright) on the backend and
  * captured with page.pdf(), so the exported PDF is pixel-identical to what
  * this same React code already renders in the flipbook — no separate
@@ -131,6 +132,10 @@ export default function PrintAlbum() {
   const seamMm = 0.8; // thin visible gap between spine and cover, matching the flipbook
   const cover = album.cover || {};
   const allPages = album.pages || [];
+  // The printer's imposed cover template, when there is one for this format
+  // and page count: back cover, spine and front cover on one sheet.
+  const printerCover = printerCoverTemplate(album.size, album.orientation, allPages.length);
+  const spread = printerCover && coverSpreadLayout(printerCover);
 
   // A very large album (many hundreds of print-quality photo pages) can
   // produce a PDF whose base64 transfer over the browser's own debugging
@@ -156,6 +161,7 @@ export default function PrintAlbum() {
   return (
     <div data-print-ready={printReady ? "true" : undefined}>
       <style>{`
+        ${spread ? `@page cover-spread { size: ${spread.sheet.w}mm ${spread.sheet.h}mm; margin: 0; }` : ""}
         @page cover-sheet { size: ${pw + spineMm + seamMm}mm ${ph}mm; margin: 0; }
         @page content-sheet { size: ${pw}mm ${ph}mm; margin: 0; }
         body { margin: 0; }
@@ -172,6 +178,7 @@ export default function PrintAlbum() {
           page-break-after: auto;
           break-after: auto;
         }
+        .cover-spread { page: cover-spread; }
         .cover-sheet { page: cover-sheet; }
         .content-sheet { page: content-sheet; }
       `}</style>
@@ -181,7 +188,16 @@ export default function PrintAlbum() {
           distinct pieces rather than one continuous surface. Only the
           chunk starting at page 0 (or an unchunked, whole-album render)
           includes this — every later chunk picks up mid-album. */}
-      {includeCover && (
+      {includeCover && spread && (
+        <CoverSpread
+          layout={spread}
+          album={album}
+          template={template}
+          cover={cover}
+        />
+      )}
+
+      {includeCover && !spread && (
         <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex" }}>
           <div style={{ width: `${spineMm}mm`, height: `${ph}mm`, flexShrink: 0 }}>
             <CoverSpine title={album.title} year={album.year} template={template} cover={cover} editable={false} />
@@ -227,8 +243,9 @@ export default function PrintAlbum() {
         <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm`, background: "var(--paper)" }} />
       )}
 
-      {/* Back cover — only the chunk that reaches the real end of the album. */}
-      {includeBackCover && (
+      {/* Back cover — only the chunk that reaches the real end of the album,
+          and only when it isn't already on the printer's cover sheet. */}
+      {includeBackCover && !spread && (
         <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <CoverBackPage
             template={template}
@@ -240,6 +257,47 @@ export default function PrintAlbum() {
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The printer's cover sheet (see PRINTER_COVER_TEMPLATES in printDims.js):
+ * the cover color runs over the whole sheet — wrap, hinges and bleed
+ * included, so no white shows at a fold or a cut — with the back cover,
+ * spine and front cover placed on their faces.
+ */
+function CoverSpread({ layout, album, template, cover }) {
+  const box = (b) => ({ position: "absolute", left: `${b.x}mm`, top: `${b.y}mm`, width: `${b.w}mm`, height: `${b.h}mm` });
+  return (
+    <div
+      className="print-page cover-spread"
+      style={{ width: `${layout.sheet.w}mm`, height: `${layout.sheet.h}mm`, background: cover.bg_color || template.bg }}
+      data-testid="print-cover-spread"
+    >
+      <div style={box(layout.back)}>
+        <CoverBackPage
+          template={template}
+          country={album.country}
+          year={album.year}
+          orientation={album.orientation}
+          cover={cover}
+          editable={false}
+        />
+      </div>
+      <div style={box(layout.spine)}>
+        <CoverSpine title={album.title} year={album.year} template={template} cover={cover} editable={false} />
+      </div>
+      <div style={box(layout.front)}>
+        <CoverFrontPage
+          template={template}
+          title={album.title}
+          orientation={album.orientation}
+          coverImageUrl={album.cover_image_path ? coverImageUrl(album.id, 0, "original") : undefined}
+          cover={cover}
+          editable={false}
+        />
+      </div>
     </div>
   );
 }
