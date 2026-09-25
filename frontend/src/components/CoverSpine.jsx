@@ -1,6 +1,7 @@
 import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { measureDomTextWidth } from "@/components/book/textMeasure";
+import { spineLogoSource } from "@/lib/coverThemes";
 
 /** Tracks an element's live pixel height via ResizeObserver. */
 function useElementHeight(ref) {
@@ -132,12 +133,12 @@ function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, ti
 
 /**
  * The book spine — shown between the back and front cover panels.
- * Title and year always mirror the real book title/year (a spine can't say
- * something different from the cover), but — like every other text on the
- * cover — they can be dragged to reposition, resized, and restyled (font,
- * size), or hidden entirely.
+ * The title mirrors the book title unless the person types another one;
+ * two free texts (caption, subtitle) can be added. Like every other text on
+ * the cover they can be dragged, resized and restyled (font, size), and
+ * the title can be hidden.
  */
-export function CoverSpine({ title, year, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectSubtitle, onSelectYear, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
+export function CoverSpine({ title, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectSubtitle, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
   const containerRef = useRef(null);
   const containerHeight = useElementHeight(containerRef);
   const containerWidth = useElementWidth(containerRef);
@@ -229,13 +230,6 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
     y: cover.spine_subtitle_y ?? (titleItem.y + titleItem.h + SPINE_TITLE_SUBTITLE_GAP),
     w: 1,
     h: cover.spine_subtitle_h ?? defaultSubtitleH,
-  };
-  const yearItem = {
-    id: "spine-year",
-    x: 0,
-    y: cover.spine_year_y ?? 0.82,
-    w: 1,
-    h: cover.spine_year_h ?? 0.14,
   };
   // The caption's underlying box (captionItem.h) is kept generously sized
   // — it only sets the *ceiling* the font-fitting effect below can grow
@@ -570,32 +564,6 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
           )}
         </DraggableItem>
       )}
-      {!cover.spine_year_hidden && (
-        <DraggableItem
-          item={yearItem}
-          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_year_y: patch.y ?? yearItem.y, spine_year_h: patch.h ?? yearItem.h })}
-          onSelect={() => onSelectYear && onSelectYear()}
-          selected={selectedZone === "spine-year"}
-          containerRef={containerRef}
-          editable={editable}
-          tid="spine-year"
-          minW={1}
-        >
-          <div
-            className="w-full h-full flex items-center justify-center font-sans tracking-widest overflow-hidden pointer-events-none select-none"
-            style={{
-              color: cover.spine_year_color || text,
-              writingMode: "vertical-rl",
-              fontSize: `${(((cover.spine_year_size || 9) / 608) * 100).toFixed(2)}cqh`,
-              fontFamily: cover.spine_year_font || "'Manrope', sans-serif",
-              fontWeight: cover.spine_year_weight || "700",
-              lineHeight: 1,
-            }}
-          >
-            {year || ""}
-          </div>
-        </DraggableItem>
-      )}
       {cover.spine_title_caption_divider && !cover.spine_divider_hidden && (
         <DraggableItem
           item={dividerItem}
@@ -700,7 +668,7 @@ export function CoverSpine({ title, year, template, cover = {}, editable = false
             />
           )}
           <img
-            src={cover.spine_logo_image}
+            src={spineLogoSource(cover.spine_logo_image)}
             alt=""
             className="w-full h-full object-contain pointer-events-none select-none"
             style={{ transform: cover.spine_logo_rotation ? `rotate(${cover.spine_logo_rotation}deg)` : undefined }}

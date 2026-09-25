@@ -31,7 +31,7 @@ export function defaultTitleBox(album) {
   };
 }
 
-// Spine elements (prefix "spine_title", "spine_subtitle", "spine_year"…):
+// Spine elements (prefix "spine_title", "spine_subtitle", "spine_caption"…):
 // the template's own position, or null to let CoverSpine place it itself.
 export function defaultSpineBox(album, prefix) {
   const tpl = templateCover(album) || {};

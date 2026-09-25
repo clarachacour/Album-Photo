@@ -108,11 +108,6 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setAlbum((prev) => ({ ...prev, title: newTitle }));
   };
 
-  const updateAlbumYear = (newYear) => {
-    const y = parseInt(newYear, 10);
-    setAlbum((prev) => ({ ...prev, year: Number.isNaN(y) ? prev.year : y }));
-  };
-
   const updateCoverItem = (itemId, patch, side = coverSel?.side || "front") => {
     const key = side === "back" ? "back_extra_items" : "extra_items";
 
@@ -179,6 +174,18 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     });
     setCoverSel({ mode: "item", side, itemId: newItem.id });
     toast.success("Texte ajouté à la couverture");
+  };
+
+  // The spine holds two free texts besides the title: the caption, then the
+  // subtitle (shown right after the title). Fills the first empty one and
+  // selects it so it can be typed in right away; null when both are used.
+  const addSpineText = (cover = {}) => {
+    const zone = !cover.spine_caption ? "spine-caption" : !cover.spine_subtitle ? "spine-subtitle" : null;
+    if (!zone) return null;
+    const field = zone === "spine-caption" ? "spine_caption" : "spine_subtitle";
+    updateCover({ [field]: "Your text" });
+    setCoverSel({ mode: zone });
+    return zone;
   };
 
   const addCoverShape = (shape_type = "rect", side = coverSel?.side || "front") => {
@@ -265,7 +272,6 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     }
     const hiddenField = {
       "spine-title": "spine_title_hidden",
-      "spine-year": "spine_year_hidden",
       "spine-logo": "spine_logo_hidden",
       "spine-divider": "spine_divider_hidden",
     }[mode];
@@ -276,5 +282,5 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     });
   };
 
-  return { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };
+  return { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };
 }

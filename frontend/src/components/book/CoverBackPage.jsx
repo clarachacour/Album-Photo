@@ -7,7 +7,6 @@ import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 export function CoverBackPage({
   template,
   country,
-  year,
   orientation,
   cover = {},
   editable = false,

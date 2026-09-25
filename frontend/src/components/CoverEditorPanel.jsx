@@ -29,8 +29,6 @@ function spineZoneInfo(mode) {
       return { prefix: "spine_title", label: "Spine title", testid: "spine-title" };
     case "spine-subtitle":
       return { prefix: "spine_subtitle", label: "Spine subtitle", testid: "spine-subtitle" };
-    case "spine-year":
-      return { prefix: "spine_year", label: "Spine year", testid: "spine-year" };
     case "spine-caption":
       return { prefix: "spine_caption", label: "Spine text", testid: "spine-caption" };
     default:
@@ -51,7 +49,7 @@ export function CoverEditorPanel({
   addCoverImage,
   removeCoverItem,
   updateAlbumTitle,
-  updateAlbumYear,
+  addSpineText,
   onDismiss,
 }) {
   const cover = album.cover || {};
@@ -214,25 +212,13 @@ export function CoverEditorPanel({
         </div>
       )}
 
-      {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / SUBTITLE / YEAR / CAPTION) */}
+      {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / SUBTITLE / CAPTION) */}
       {spineZone && (() => {
         const { prefix, label, testid: testidPrefix } = spineZone;
         const zone = coverSel.mode;
         return (
         <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
           <div className="eyebrow">{label}</div>
-
-          {zone === "spine-year" && updateAlbumYear && (
-            <div>
-              <label className="eyebrow block mb-2">Year</label>
-              <input
-                type="text"
-                value={album.year || new Date().getFullYear()}
-                onChange={(e) => updateAlbumYear(e.target.value)}
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
-              />
-            </div>
-          )}
 
           {zone === "spine-caption" && (
             <div>
@@ -517,34 +503,53 @@ export function CoverEditorPanel({
 
       {/* 5. AJOUT D'ÉLÉMENTS SUR LA COUVERTURE */}
       <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-2">
-        <div className="eyebrow">Add — {zoneLabel}</div>
-        <button
-          data-testid="cover-add-text"
-          onClick={() => addCoverText(undefined, side)}
-          className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-        >
-          <Type size={14} />
-          <span className="text-xs font-semibold tracking-widest uppercase">Text</span>
-        </button>
-        <button
-          data-testid="cover-add-image"
-          onClick={() => addImageInput.current?.click()}
-          className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-        >
-          <ImageIcon size={14} />
-          <span className="text-xs font-semibold tracking-widest uppercase">Image</span>
-        </button>
-        <input
-          ref={addImageInput}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) addCoverImage(f, null, side);
-            e.target.value = "";
-          }}
-        />
+        {!spineZone && (
+          <>
+            <div className="eyebrow">Add — {zoneLabel}</div>
+            <button
+              data-testid="cover-add-text"
+              onClick={() => addCoverText(undefined, side)}
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+            >
+              <Type size={14} />
+              <span className="text-xs font-semibold tracking-widest uppercase">Text</span>
+            </button>
+            <button
+              data-testid="cover-add-image"
+              onClick={() => addImageInput.current?.click()}
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+            >
+              <ImageIcon size={14} />
+              <span className="text-xs font-semibold tracking-widest uppercase">Image</span>
+            </button>
+            <input
+              ref={addImageInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) addCoverImage(f, null, side);
+                e.target.value = "";
+              }}
+            />
+          </>
+        )}
+        {addSpineText && (
+          <>
+            <div className="eyebrow">Add — Spine</div>
+            <button
+              data-testid="spine-add-text"
+              onClick={() => addSpineText(cover)}
+              disabled={!!cover.spine_caption && !!cover.spine_subtitle}
+              title={cover.spine_caption && cover.spine_subtitle ? "The spine already has two texts besides the title" : undefined}
+              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:hover:border-[color:var(--ink)]/30"
+            >
+              <Type size={14} />
+              <span className="text-xs font-semibold tracking-widest uppercase">Text on the spine</span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

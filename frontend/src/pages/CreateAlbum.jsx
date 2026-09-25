@@ -118,7 +118,7 @@ export default function CreateAlbum() {
   }, [resumeAlbumId]);
 
   const template = getTemplate();
-  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
   // Same clipboard used by AlbumEditor.jsx's cover editing (Ctrl+C/Ctrl+V
@@ -327,7 +327,7 @@ export default function CreateAlbum() {
             updateCover={updateCover}
             updateCoverTitle={updateCoverTitle}
             updateAlbumTitle={updateAlbumTitle}
-            updateAlbumYear={updateAlbumYear}
+            addSpineText={addSpineText}
             updateCoverItem={updateCoverItem}
             addCoverText={addCoverText}
             addCoverShape={addCoverShape}
@@ -522,7 +522,7 @@ function StepEdit({
   updateCover,
   updateCoverTitle,
   updateAlbumTitle,
-  updateAlbumYear,
+  addSpineText,
   updateCoverItem,
   addCoverText,
   addCoverShape,
@@ -557,7 +557,6 @@ function StepEdit({
           <CoverBackPage
             template={template}
             country={album.country}
-            year={album.year}
             orientation={orientation}
             cover={cover}
             editable
@@ -568,14 +567,12 @@ function StepEdit({
           />
           <CoverSpine
             title={album.title}
-            year={album.year}
             template={template}
             cover={cover}
             editable
             selectedZone={coverSel?.mode}
             onSelectTitle={() => setCoverSel({ mode: "spine-title" })}
             onSelectSubtitle={() => setCoverSel({ mode: "spine-subtitle" })}
-            onSelectYear={() => setCoverSel({ mode: "spine-year" })}
             onSelectCaption={() => setCoverSel({ mode: "spine-caption" })}
             onSelectLogo={() => setCoverSel({ mode: "spine-logo" })}
             onSelectDivider={() => setCoverSel({ mode: "spine-divider" })}
@@ -611,7 +608,7 @@ function StepEdit({
             addCoverImage={addCoverImage}
             removeCoverItem={removeCoverItem}
             updateAlbumTitle={updateAlbumTitle}
-            updateAlbumYear={updateAlbumYear}
+            addSpineText={addSpineText}
             onDismiss={() => setCoverSel(null)}
           />
         ) : (

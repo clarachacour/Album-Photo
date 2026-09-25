@@ -200,7 +200,7 @@ export default function PrintAlbum() {
       {includeCover && !spread && (
         <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex" }}>
           <div style={{ width: `${spineMm}mm`, height: `${ph}mm`, flexShrink: 0 }}>
-            <CoverSpine title={album.title} year={album.year} template={template} cover={cover} editable={false} />
+            <CoverSpine title={album.title} template={template} cover={cover} editable={false} />
           </div>
           <div style={{ width: `${seamMm}mm`, height: `${ph}mm`, flexShrink: 0, background: "rgba(26,26,23,0.7)" }} />
           <div style={{ width: `${pw}mm`, height: `${ph}mm` }}>
@@ -250,7 +250,6 @@ export default function PrintAlbum() {
           <CoverBackPage
             template={template}
             country={album.country}
-            year={album.year}
             orientation={album.orientation}
             cover={cover}
             editable={false}
@@ -279,14 +278,13 @@ function CoverSpread({ layout, album, template, cover }) {
         <CoverBackPage
           template={template}
           country={album.country}
-          year={album.year}
           orientation={album.orientation}
           cover={cover}
           editable={false}
         />
       </div>
       <div style={box(layout.spine)}>
-        <CoverSpine title={album.title} year={album.year} template={template} cover={cover} editable={false} />
+        <CoverSpine title={album.title} template={template} cover={cover} editable={false} />
       </div>
       <div style={box(layout.front)}>
         <CoverFrontPage

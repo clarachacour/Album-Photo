@@ -297,7 +297,7 @@ export default function AlbumEditor() {
     setSelected((prev) => (prev && prev.item?.id === itemId ? { ...prev, item: { ...prev.item, ...patch } } : prev));
   };
 
-  const { updateCover, updateCoverTitle, updateAlbumTitle, updateAlbumYear, updateCoverItem, addCoverText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
     makeCoverEditingActions({ setAlbum, albumId: id, coverSel, setCoverSel });
 
   const deleteItemById = (pageIdx, itemId) => {
@@ -872,7 +872,7 @@ export default function AlbumEditor() {
                 addCoverImage={addCoverImage}
                 removeCoverItem={removeCoverItem}
                 updateAlbumTitle={updateAlbumTitle}
-                updateAlbumYear={updateAlbumYear}
+                addSpineText={addSpineText}
                 onDismiss={() => setCoverSel(null)}
               />
             ) : selected ? (

@@ -88,11 +88,11 @@ describe("defaultSpineBox", () => {
   });
 
   it("clears the position when there is no template (the spine places it itself)", () => {
-    expect(defaultSpineBox({ cover_template_id: "default" }, "spine_year")).toEqual({
-      spine_year_x: null,
-      spine_year_y: null,
-      spine_year_w: null,
-      spine_year_h: null,
+    expect(defaultSpineBox({ cover_template_id: "default" }, "spine_caption")).toEqual({
+      spine_caption_x: null,
+      spine_caption_y: null,
+      spine_caption_w: null,
+      spine_caption_h: null,
     });
   });
 });

@@ -62,14 +62,12 @@ export function BookRenderer({
       >
         <CoverSpine
           title={album.title}
-          year={album.year}
           template={template}
           cover={album.cover || {}}
           editable={!album.was_ordered}
           selectedZone={coverSel?.mode}
           onSelectTitle={() => onSelectSpine && onSelectSpine("spine-title")}
           onSelectSubtitle={() => onSelectSpine && onSelectSpine("spine-subtitle")}
-          onSelectYear={() => onSelectSpine && onSelectSpine("spine-year")}
           onSelectCaption={() => onSelectSpine && onSelectSpine("spine-caption")}
           onSelectLogo={() => onSelectSpine && onSelectSpine("spine-logo")}
           onSelectDivider={() => onSelectSpine && onSelectSpine("spine-divider")}
@@ -137,7 +135,6 @@ export function BookRenderer({
       key="cover-back"
       template={template}
       country={album.country}
-      year={album.year}
       orientation={orientation}
       cover={album.cover || {}}
       editable={!album.was_ordered}
