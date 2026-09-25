@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { computeUnitPrice } from "@/lib/pricing";
+import { billedPageCount, computeUnitPrice } from "@/lib/pricing";
 
 export default function OrderCheckoutPage() {
   const { albumId } = useParams();
@@ -62,7 +62,7 @@ export default function OrderCheckoutPage() {
     })();
   }, [albumId]);
 
-  const unitPrice = album ? computeUnitPrice(album.size || "A4", album.target_pages || 50) : 0;
+  const unitPrice = album ? computeUnitPrice(album.size || "A4", billedPageCount(album) || 50) : 0;
   const total = unitPrice * quantity;
 
   const placeOrder = async (e) => {

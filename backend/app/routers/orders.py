@@ -16,7 +16,7 @@ from app.services.orders import (
     ORDER_STATUS_SEQUENCE,
     generate_order_pdf,
 )
-from app.services.pricing import compute_order_price_cents
+from app.services.pricing import billed_page_count, compute_order_price_cents
 from app.services.storage import get_r2_client
 
 router = APIRouter()
@@ -42,7 +42,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     existing_order = await db.orders.find_one({"album_id": data.album_id})
     if existing_order:
         raise HTTPException(status_code=409, detail="An order already exists for this album")
-    unit_price = compute_order_price_cents(album.get("size", "A4"), album.get("target_pages", 50))
+    unit_price = compute_order_price_cents(album.get("size", "A4"), billed_page_count(album))
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     order_doc = {

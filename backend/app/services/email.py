@@ -1,4 +1,5 @@
 """Every email the app sends (customers, printer, delivery)."""
+import html
 import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -22,6 +23,12 @@ from app.core.signed_links import sign_order_action
 logger = logging.getLogger(__name__)
 
 
+def _h(value) -> str:
+    """Text typed by a customer (name, album title, address…), made safe to
+    put in an HTML email: shown as text, never read as a link or markup."""
+    return html.escape(str(value if value is not None else ""))
+
+
 def send_email(to_email: str, subject: str, body: str, html_body: str = None):
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         # No email provider configured — log it so it's usable in local/dev
@@ -40,7 +47,9 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None):
             msg.attach(MIMEText(html_body, "html"))
         else:
             msg = MIMEText(body)
-        msg["Subject"] = subject
+        # Album titles and contact subjects end up here: a line break would
+        # start a new header line.
+        msg["Subject"] = " ".join(str(subject).split())
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
@@ -84,9 +93,8 @@ def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = 
     than inventing a graphical logo that doesn't exist on the site
     itself) is what "matching the site" actually means.
 
-    body_html is trusted content assembled by the functions below from
-    fixed strings and already-escaped data (order/album titles, names) —
-    never raw user input passed straight through."""
+    body_html and preheader are HTML: every customer-typed value in them
+    goes through _h() first."""
     cta_html = ""
     if cta_label and cta_url:
         cta_html = f"""
@@ -135,7 +143,7 @@ def send_welcome_email(to_email: str, name: str):
         preheader="You're all set to start turning your photos into a printed book.",
         title="Welcome to Everbook.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>You're all set to start turning your photos into a printed book. "
             f"Upload your photos, let us help lay them out, and order a copy whenever you're ready.</p>"
         ),
@@ -182,7 +190,7 @@ def send_verification_email(to_email: str, name: str, verify_token: str, welcome
         preheader=intro,
         title="Welcome to Everbook." if welcome else "Confirm your email address.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>{intro}</p>"
             f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't create an Everbook account, "
             f"you can safely ignore this email.</p>"
@@ -220,10 +228,10 @@ def send_pdf_generation_failed_email(order: dict, error: str):
         title="PDF generation failed.",
         body_html=(
             f"<p>An order's PDF generation attempt failed and needs attention.</p>"
-            f"<p><strong>Album:</strong> {order.get('album_title', 'Album')}<br>"
+            f"<p><strong>Album:</strong> {_h(order.get('album_title', 'Album'))}<br>"
             f"<strong>Order ID:</strong> {order['id']}<br>"
             f"<strong>Format:</strong> {order.get('size')} · {order.get('orientation')}</p>"
-            f"<p><strong>Error:</strong><br><span style=\"font-family:monospace; font-size:13px;\">{error}</span></p>"
+            f"<p><strong>Error:</strong><br><span style=\"font-family:monospace; font-size:13px;\">{_h(error)}</span></p>"
         ),
         cta_label="Open admin orders",
         cta_url=admin_url,
@@ -241,7 +249,7 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str):
         preheader="Click below to reset your Everbook password.",
         title="Reset your password.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>Click the button below to reset your password. This link is valid for 1 hour.</p>"
             f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't request this, "
             f"you can safely ignore this email.</p>"
@@ -272,7 +280,7 @@ def send_password_changed_email(to_email: str, name: str):
         preheader="Your Everbook account password was just changed.",
         title="Your password was changed.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>This is a confirmation that your Everbook account password was just changed.</p>"
             f"<p>If this was you, no action is needed. If you didn't make this change, "
             f"please contact us right away so we can help secure your account.</p>"
@@ -296,7 +304,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         preheader="Thanks for your order! We've received it and will start preparing your book.",
         title="Your order is confirmed.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
             f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()}<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
@@ -321,9 +329,9 @@ def send_order_shipped_email(to_email: str, name: str, order: dict):
         preheader="Good news — your book has shipped!",
         title="Your order has shipped.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>Good news — your book has shipped!</p>"
-            + (f"<p><strong>Tracking number:</strong> {tracking}</p>" if tracking else "")
+            + (f"<p><strong>Tracking number:</strong> {_h(tracking)}</p>" if tracking else "")
         ),
         cta_label="Track your order",
         cta_url=order_url,
@@ -345,7 +353,7 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
         preheader="Your book should have arrived by now — we hope you love it!",
         title="How did your book turn out?",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
+            f"<p>Hi {_h(name or '')},</p>"
             f"<p>Your book should have arrived by now — we hope you love it!</p>"
             f"<p>We'd love to hear what you thought.</p>"
             f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If anything wasn't right, "
@@ -367,11 +375,11 @@ def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict):
         f"It only takes a few minutes to finish laying it out and order your printed copy."
     )
     html_body = _email_wrapper(
-        preheader=f"You started \"{album.get('title', 'an album')}\" but haven't finished it yet.",
+        preheader=f"You started \"{_h(album.get('title', 'an album'))}\" but haven't finished it yet.",
         title="Finish your album.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
-            f"<p>You started \"{album.get('title', 'an album')}\" but haven't finished it yet.</p>"
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>You started \"{_h(album.get('title', 'an album'))}\" but haven't finished it yet.</p>"
             f"<p>It only takes a few minutes to finish laying it out and order your printed copy.</p>"
         ),
         cta_label="Pick up where you left off",
@@ -390,11 +398,11 @@ def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_l
         f"If you're not planning to finish it, no action is needed."
     )
     html_body = _email_wrapper(
-        preheader=f"\"{album.get('title', 'Your album')}\" will be deleted in {days_left} days unless you open it again.",
+        preheader=f"\"{_h(album.get('title', 'Your album'))}\" will be deleted in {days_left} days unless you open it again.",
         title="Your album will be deleted soon.",
         body_html=(
-            f"<p>Hi {name or ''},</p>"
-            f"<p>\"{album.get('title', 'Your album')}\" hasn't been touched in a while, and unfinished albums "
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>\"{_h(album.get('title', 'Your album'))}\" hasn't been touched in a while, and unfinished albums "
             f"are automatically removed after {DRAFT_ALBUM_RETENTION_DAYS} days to free up space.</p>"
             f"<p>It'll be deleted in {days_left} day{'s' if days_left != 1 else ''} unless you open it again before then. "
             f"If you're not planning to finish it, no action is needed.</p>"
@@ -445,10 +453,10 @@ def send_printer_order_email(order: dict):
         </table>
     """
     html_body = _email_wrapper(
-        preheader=f"New book to print — {order.get('album_title', 'Album')}",
+        preheader=f"New book to print — {_h(order.get('album_title', 'Album'))}",
         title="New book to print.",
         body_html=(
-            f"<p><strong>Album:</strong> {order.get('album_title', 'Album')}<br>"
+            f"<p><strong>Album:</strong> {_h(order.get('album_title', 'Album'))}<br>"
             f"<strong>Format:</strong> {order.get('size')} · {order.get('orientation')}<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
             f"{two_button_html}"
@@ -477,16 +485,16 @@ def send_delivery_pickup_email(order: dict):
         + f"\nQuantity: {order.get('quantity', 1)}"
     )
     html_body = _email_wrapper(
-        preheader=f"Ready for pickup — {order.get('album_title', 'Album')}",
+        preheader=f"Ready for pickup — {_h(order.get('album_title', 'Album'))}",
         title="Ready for pickup.",
         body_html=(
             f"<p>A book is ready for pickup and delivery.</p>"
             f"<p><strong>Deliver to:</strong><br>"
-            f"{addr.get('full_name', '')}<br>"
-            f"{addr.get('street', '')}" + (f", {addr.get('building')}" if addr.get("building") else "") + f"<br>"
-            f"{addr.get('city', '')}<br>"
-            f"Phone: {addr.get('phone', '')}</p>"
-            + (f"<p><strong>Notes:</strong> {addr.get('additional_info')}</p>" if addr.get("additional_info") else "")
+            f"{_h(addr.get('full_name', ''))}<br>"
+            f"{_h(addr.get('street', ''))}" + (f", {_h(addr.get('building'))}" if addr.get("building") else "") + f"<br>"
+            f"{_h(addr.get('city', ''))}<br>"
+            f"Phone: {_h(addr.get('phone', ''))}</p>"
+            + (f"<p><strong>Notes:</strong> {_h(addr.get('additional_info'))}</p>" if addr.get("additional_info") else "")
             + f"<p><strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
         ),
     )

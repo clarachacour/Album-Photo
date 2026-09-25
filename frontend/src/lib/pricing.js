@@ -26,3 +26,9 @@ export function computeUnitPrice(size, targetPages) {
   const extraPages = Math.max(0, targetPages - baseTier);
   return tierPrices[baseTier] + extraPages * (OVERAGE_PER_PAGE[size] || OVERAGE_PER_PAGE.A4);
 }
+
+// Mirrors billed_page_count in backend/app/services/pricing.py: the page
+// count chosen at creation, or the album's real page count if it has more.
+export function billedPageCount(album) {
+  return Math.max(Number(album?.target_pages) || 0, (album?.pages || []).length);
+}

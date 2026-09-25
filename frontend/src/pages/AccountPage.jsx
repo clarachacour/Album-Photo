@@ -142,6 +142,8 @@ export default function AccountPage() {
                 className={inputClass}
                 value={pwForm.new_password}
                 onChange={(e) => setPwForm({ ...pwForm, new_password: e.target.value })}
+                minLength={6}
+                maxLength={72}
               />
             </div>
             <div>

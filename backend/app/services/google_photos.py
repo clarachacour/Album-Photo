@@ -1,6 +1,7 @@
 """Import from Google Photos (Photos Picker API)."""
 import asyncio
 import logging
+from urllib.parse import urlsplit
 
 import requests
 from fastapi import HTTPException
@@ -10,6 +11,40 @@ from app.db import db
 from app.services.photos import MAX_PHOTOS_PER_ALBUM, store_new_photo
 
 logger = logging.getLogger(__name__)
+
+
+def is_google_photos_url(url) -> bool:
+    """The download address comes from the browser: only Google's photo
+    servers are fetched, never an address of the client's choosing (which
+    could reach services inside our network, and would receive the
+    person's Google access token)."""
+    if not isinstance(url, str):
+        return False
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname or ""
+        port = parts.port
+    except ValueError:
+        return False
+    return (
+        parts.scheme == "https"
+        and port in (None, 443)
+        and not parts.username
+        and not parts.password
+        and host.endswith(".googleusercontent.com")
+    )
+
+
+def _download(url: str, headers: dict, max_redirects: int = 3):
+    """GET that follows redirects only to other Google photo servers."""
+    for _ in range(max_redirects + 1):
+        resp = requests.get(url, headers=headers, timeout=20, allow_redirects=False)
+        if resp.status_code not in (301, 302, 303, 307, 308):
+            return resp
+        url = requests.compat.urljoin(url, resp.headers.get("Location", ""))
+        if not is_google_photos_url(url):
+            raise ValueError("redirected outside Google")
+    raise ValueError("too many redirects")
 
 
 async def import_google_photos_items(album_id: str, user_id: str, items: list, access_token: str) -> tuple:
@@ -44,6 +79,9 @@ async def import_google_photos_items(album_id: str, user_id: str, items: list, a
         if not base_url:
             logger.warning(f"Photo Google Photos '{filename}' ignorée : aucune URL fournie par l'API")
             return None
+        if not is_google_photos_url(base_url):
+            logger.warning(f"Photo Google Photos '{filename}' ignorée : adresse hors de Google refusée")
+            return None
         # Google's servers occasionally drop the connection under
         # concurrent load (SSLEOFError / "Max retries exceeded") — this is
         # a transient network hiccup, not a real failure, and a retry
@@ -56,7 +94,7 @@ async def import_google_photos_items(album_id: str, user_id: str, items: list, a
             async with semaphore:
                 try:
                     img_resp = await loop.run_in_executor(
-                        None, lambda: requests.get(f"{base_url}=d", headers=headers, timeout=20)
+                        None, lambda: _download(f"{base_url}=d", headers)
                     )
                     if img_resp.status_code != 200:
                         # Previously returned immediately here — no retry,

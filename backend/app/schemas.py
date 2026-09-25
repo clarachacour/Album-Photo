@@ -1,14 +1,26 @@
 """Pydantic models: the shape of request bodies and responses."""
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, EmailStr, Field
+
+
+def _fits_bcrypt(password: str) -> str:
+    # bcrypt only reads the first 72 bytes and the library refuses longer
+    # input (the signup used to crash with a 500).
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 characters")
+    return password
+
+
+# Any password a person sets (signup, change, reset).
+NewPassword = Annotated[str, Field(min_length=6), AfterValidator(_fits_bcrypt)]
 
 
 # ---------- Models ----------
 class SignupInput(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: NewPassword
     name: str = Field(min_length=1)
 
 class LoginInput(BaseModel):
@@ -49,7 +61,7 @@ class ProfileUpdate(BaseModel):
 
 class ChangePasswordInput(BaseModel):
     current_password: str
-    new_password: str = Field(min_length=6)
+    new_password: NewPassword
 
 class ContactInput(BaseModel):
     name: str = Field(min_length=1)
@@ -79,7 +91,7 @@ class ForgotPasswordInput(BaseModel):
 
 class ResetPasswordInput(BaseModel):
     token: str
-    new_password: str = Field(min_length=6)
+    new_password: NewPassword
 
 class GoogleAuthInput(BaseModel):
     credential: str  # ID token from Google Identity Services
@@ -113,9 +125,11 @@ class AlbumUpdate(BaseModel):
     orientation: Optional[str] = None
     target_pages: Optional[int] = None
     pages: Optional[List[Dict[str, Any]]] = None
-    status: Optional[str] = None
-    cover_image_path: Optional[str] = None
     cover: Optional[Dict[str, Any]] = None
+    # No status or cover_image_path: only the server sets them. A client
+    # able to write cover_image_path could point it at another customer's
+    # file and read it through the cover image endpoint. Unknown fields in
+    # the request are ignored.
 
 class MobileUploadSessionOut(BaseModel):
     token: str

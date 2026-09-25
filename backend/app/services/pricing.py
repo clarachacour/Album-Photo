@@ -22,6 +22,14 @@ ORDER_PRICE_CENTS = {
 # placeholder until real per-page economics are confirmed.
 OVERAGE_PER_PAGE_CENTS = {"A5": 30, "A4": 45}
 
+def billed_page_count(album: dict) -> int:
+    """Pages the order is charged for: the page count chosen at creation,
+    or the album's real page count if it has more. target_pages can be
+    changed by the client, so it alone can't decide the price (a 250-page
+    album was ordered at the 24-page price)."""
+    return max(int(album.get("target_pages") or 0), len(album.get("pages") or []))
+
+
 def compute_order_price_cents(size: str, target_pages: int) -> int:
     size = size if size in ORDER_PRICE_CENTS else "A4"
     tier_prices = ORDER_PRICE_CENTS[size]

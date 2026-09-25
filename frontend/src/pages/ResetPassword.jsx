@@ -60,6 +60,7 @@ export default function ResetPassword() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              maxLength={72}
               className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
             />
           </div>
