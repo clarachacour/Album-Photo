@@ -8,6 +8,8 @@ import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
+import { FramedPhoto } from "@/components/book/FramedPhoto";
+import { minZoom, pageAspect } from "@/lib/photoFit";
 
 /**
  * AlbumPage renders one printable page with draggable + resizable items.
@@ -47,6 +49,9 @@ export function AlbumPage({
   const items = page?.items || [];
   const [draggingId, setDraggingId] = useState(null);
   const [textEditId, setTextEditId] = useState(null);
+  // Proportions read from loaded images, for photos placed before they were
+  // stored on the page item (see FramedPhoto).
+  const [loadedAspects, setLoadedAspects] = useState({});
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -150,7 +155,9 @@ export function AlbumPage({
       {items.map((item) => {
         const isSel = selectedItemId === item.id;
         if (item.type === "photo") {
-          const scale = Math.max(item.scale || 1, 1);
+          const frameAspect = (item.w / item.h) * pageAspect(orientation);
+          const photoAspect = item.photo_aspect || loadedAspects[item.id];
+          const scale = item.scale ?? 1;
           const focalX = item.focal_x ?? 0.5;
           const focalY = item.focal_y ?? 0.5;
           const rotation = item.rotation || 0;
@@ -177,17 +184,15 @@ export function AlbumPage({
                     <span className="text-[10px] text-[color:var(--muted)] uppercase tracking-widest text-center px-2">Drop a photo here</span>
                   </div>
                 ) : (
-                  <img
+                  <FramedPhoto
                     src={photoImageUrl(item.photo_id, highRes ? "print" : "medium")}
-                    alt=""
-                    className="w-full h-full pointer-events-none select-none"
-                    style={{
-                      objectFit: "cover",
-                      transform: `scale(${scale}) rotate(${rotation}deg)`,
-                      transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
-                      objectPosition: `${focalX * 100}% ${focalY * 100}%`,
-                    }}
-                    draggable={false}
+                    frameAspect={frameAspect}
+                    photoAspect={item.photo_aspect}
+                    zoom={scale}
+                    focalX={focalX}
+                    focalY={focalY}
+                    rotation={rotation}
+                    onAspect={(a) => setLoadedAspects((prev) => (prev[item.id] === a ? prev : { ...prev, [item.id]: a }))}
                   />
                 )}
                 {inCrop && !isEmpty && (
@@ -231,6 +236,7 @@ export function AlbumPage({
                   y={item.y}
                   w={item.w}
                   scale={scale}
+                  minScale={minZoom(frameAspect, photoAspect)}
                   onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
                   rotation={rotation}
                   onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { rotation: r })}

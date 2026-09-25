@@ -18,6 +18,7 @@ import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
 import { RepackPagesForm } from "@/components/editor/RepackPagesForm";
 import { spreadNumberToPageCount } from "@/components/editor/spreads";
 import { cryptoRandom } from "@/lib/cryptoRandom";
+import { fitItemToPhoto } from "@/lib/photoFit";
 
 export default function AlbumEditor() {
   const { id } = useParams();
@@ -274,6 +275,16 @@ export default function AlbumEditor() {
           updatedPatch.h = s.value;
           guideY = s.guide;
         }
+        if (it.type === "photo" && it.slot && patch.slot === undefined) {
+          const moved = { ...it, ...updatedPatch };
+          if (updatedPatch.w !== undefined || updatedPatch.h !== undefined) {
+            // Resized by hand: the new frame becomes its area.
+            updatedPatch.slot = { x: moved.x, y: moved.y, w: moved.w, h: moved.h };
+          } else if (updatedPatch.x !== undefined || updatedPatch.y !== undefined) {
+            // Moved: the area follows.
+            updatedPatch.slot = { ...it.slot, x: it.slot.x + (moved.x - it.x), y: it.slot.y + (moved.y - it.y) };
+          }
+        }
         return { ...it, ...updatedPatch };
       });
       newPages[pageIdx] = { ...newPages[pageIdx], items, align_guide_x: guideX, align_guide_y: guideY };
@@ -308,8 +319,10 @@ export default function AlbumEditor() {
       const a = srcItems.find((it) => it.id === srcItemId);
       const b = tgtItems.find((it) => it.id === tgtItemId);
       if (!a || !b) return prev;
+      const photoOf = (photoId) => prev.photos?.find((p) => p.id === photoId);
       const swapFields = (it, other) => ({
         ...it,
+        ...fitItemToPhoto(it, photoOf(other.photo_id), prev.orientation),
         photo_id: other.photo_id,
         focal_x: other.focal_x,
         focal_y: other.focal_y,
@@ -465,8 +478,12 @@ export default function AlbumEditor() {
       const otherItems = existingItems.filter((it) => it.type !== "photo");
       const reflowedPhotos = pattern.slots.map((slot, i) => {
         const existing = existingPhotos[i];
-        if (existing) return { ...existing, ...slot };
+        if (existing) {
+          const photo = prev.photos?.find((p) => p.id === existing.photo_id);
+          return { ...existing, ...fitItemToPhoto({ ...existing, slot }, photo, prev.orientation) };
+        }
         return {
+          slot,
           id: cryptoRandom(),
           type: "photo",
           photo_id: null,
@@ -491,7 +508,16 @@ export default function AlbumEditor() {
       newPages[pageIdx] = {
         ...newPages[pageIdx],
         items: newPages[pageIdx].items.map((it) =>
-          it.id === itemId ? { ...it, photo_id: photoId, focal_x: 0.5, focal_y: 0.5, scale: 1 } : it
+          it.id === itemId
+            ? {
+                ...it,
+                ...fitItemToPhoto(it, prev.photos?.find((p) => p.id === photoId), prev.orientation),
+                photo_id: photoId,
+                focal_x: 0.5,
+                focal_y: 0.5,
+                scale: 1,
+              }
+            : it
         ),
       };
       return { ...prev, pages: newPages };
@@ -499,7 +525,16 @@ export default function AlbumEditor() {
   };
 
   const addPhotoAt = (pageIdx, photoId, box) => {
-    const newItem = { id: cryptoRandom(), type: "photo", photo_id: photoId, focal_x: 0.5, focal_y: 0.5, scale: 1, ...box };
+    const photo = album?.photos?.find((p) => p.id === photoId);
+    const newItem = {
+      id: cryptoRandom(),
+      type: "photo",
+      photo_id: photoId,
+      focal_x: 0.5,
+      focal_y: 0.5,
+      scale: 1,
+      ...fitItemToPhoto(box, photo, album?.orientation),
+    };
     setAlbum((prev) => {
       if (!prev) return prev;
       const newPages = [...prev.pages];

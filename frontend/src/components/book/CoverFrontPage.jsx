@@ -8,6 +8,8 @@ import { REFERENCE_PAGE_PX, measureDomTextWidth } from "@/components/book/textMe
 import { useElementWidth } from "@/components/book/useElementWidth";
 import { useFitTitleFontSize } from "@/components/book/useFitTitleFontSize";
 import { DEFAULT_TITLE_BOX } from "@/lib/coverDefaults";
+import { FramedPhoto } from "@/components/book/FramedPhoto";
+import { minZoom, pageAspect as pageAspectWH } from "@/lib/photoFit";
 
 /**
  * Cover front page — now fully editable: background/accent/text colors overridable,
@@ -57,6 +59,7 @@ export function CoverFrontPage({
   const titleTextAlign = cover.title_text_align || "left";
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
+  const [loadedAspects, setLoadedAspects] = useState({});
   // Bumped exactly once, after actively triggering every font this cover
   // needs (title + all subtitle-role extras) to load. Confirmed by
   // inspecting the real rendered PDF export: a subtitle's font-size came
@@ -425,10 +428,12 @@ export function CoverFrontPage({
         if (item.type === "image") {
           const isPhoto = !!item.is_photo;
           const inCrop = isPhoto && cropItemId === item.id;
-          const scale = Math.max(item.scale || 1, 1);
+          const scale = item.scale ?? 1;
           const rotation = item.rotation || 0;
           const focalX = item.focal_x ?? 0.5;
           const focalY = item.focal_y ?? 0.5;
+          const frameAspect = (item.w / item.h) * pageAspectWH(orientation);
+          const photoAspect = item.photo_aspect || loadedAspects[item.id];
           return (
             <React.Fragment key={item.id}>
               <DraggableItem
@@ -442,21 +447,23 @@ export function CoverFrontPage({
                 onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
                 extraStyle={{ overflow: "hidden" }}
               >
-                {item.image_url ? (
+                {item.image_url && isPhoto ? (
+                  <FramedPhoto
+                    src={item.image_url}
+                    frameAspect={frameAspect}
+                    photoAspect={item.photo_aspect}
+                    zoom={scale}
+                    focalX={focalX}
+                    focalY={focalY}
+                    rotation={rotation}
+                    onAspect={(a) => setLoadedAspects((prev) => (prev[item.id] === a ? prev : { ...prev, [item.id]: a }))}
+                  />
+                ) : item.image_url ? (
                   <img
                     src={item.image_url}
                     alt=""
                     className="w-full h-full pointer-events-none select-none"
-                    style={
-                      isPhoto
-                        ? {
-                            objectFit: "cover",
-                            transform: `scale(${scale}) rotate(${rotation}deg)`,
-                            transformOrigin: `${focalX * 100}% ${focalY * 100}%`,
-                            objectPosition: `${focalX * 100}% ${focalY * 100}%`,
-                          }
-                        : { objectFit: "contain" }
-                    }
+                    style={{ objectFit: "contain" }}
                     draggable={false}
                   />
                 ) : (
@@ -490,6 +497,7 @@ export function CoverFrontPage({
                   y={item.y}
                   w={item.w}
                   scale={scale}
+                  minScale={minZoom(frameAspect, photoAspect)}
                   onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
                   rotation={rotation}
                   onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { rotation: r })}

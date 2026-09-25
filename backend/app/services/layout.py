@@ -63,6 +63,32 @@ TEMPLATE_PHOTO_COUNT = {
     "quad_grid": 4, "hero_strip": 4,
 }
 
+def fit_box_to_photo(slot: dict, photo_aspect: Optional[float], page_aspect_wh: float) -> dict:
+    """Largest box with the photo's own proportions that fits inside `slot`,
+    centered in it. Photos are never cropped by the layout: the frame takes
+    the photo's shape instead of the photo being cut to the frame's shape.
+
+    Coordinates are fractions of the page (0-1), so a box's real aspect
+    ratio is (w / h) * page_aspect_wh. Unknown photo size → slot unchanged.
+    """
+    if not photo_aspect or photo_aspect <= 0:
+        return dict(slot)
+    slot_aspect = (slot["w"] / slot["h"]) * page_aspect_wh
+    if photo_aspect >= slot_aspect:
+        # Wider than the slot: full slot width, less height.
+        w = slot["w"]
+        h = w * page_aspect_wh / photo_aspect
+    else:
+        # Taller than the slot: full slot height, less width.
+        h = slot["h"]
+        w = h * photo_aspect / page_aspect_wh
+    return {
+        "x": slot["x"] + (slot["w"] - w) / 2,
+        "y": slot["y"] + (slot["h"] - h) / 2,
+        "w": w,
+        "h": h,
+    }
+
 def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx: int = 0, content_pages_budget: Optional[int] = None) -> List[dict]:
     """Distribute photos across pages with varied layouts.
     Returns a list of pages (each with items containing photo refs and positions in normalized 0-1 coordinates).
@@ -195,14 +221,16 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
             if slot_idx not in assignment:
                 continue
             photo = candidates[assignment[slot_idx]]
+            box = fit_box_to_photo(slot, photo_aspect(photo) if photo.get("width") else None, page_aspect_wh)
             items.append({
                 "id": str(uuid.uuid4()),
                 "type": "photo",
                 "photo_id": photo["id"],
-                "x": slot["x"],
-                "y": slot["y"],
-                "w": slot["w"],
-                "h": slot["h"],
+                **box,
+                # The area this frame may use: when another photo is put in
+                # it later (swap, replace), the frame is refitted inside
+                # this slot rather than inside its current, shrunken box.
+                "slot": {k: slot[k] for k in ("x", "y", "w", "h")},
                 "focal_x": photo.get("ai_focal_x", 0.5),
                 "focal_y": photo.get("ai_focal_y", 0.5),
             })

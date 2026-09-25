@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown } from "lucide-react";
+import { MAX_ZOOM } from "@/lib/photoFit";
 
 const TOOLBAR_FONTS = [
   { label: "Manrope", value: "'Manrope', sans-serif" },
@@ -84,7 +85,7 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
  * and free rotation (any angle — no 90° steps), check to confirm. The exact
  * rotation value sits directly under the rotation slider, not centered
  * under the whole row. */
-export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRotationChange, onDone }) {
+export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, rotation, onRotationChange, onDone }) {
   const { t } = useTranslation();
   return (
     <ToolbarShell x={x} y={y} w={w} wide>
@@ -93,10 +94,10 @@ export function PhotoEditToolbar({ x, y, w, scale, onScaleChange, rotation, onRo
           <ZoomIn size={14} className="shrink-0" />
           <input
             type="range"
-            min="1"
-            max="2.5"
-            step="0.05"
-            value={scale}
+            min={minScale}
+            max={MAX_ZOOM}
+            step="0.01"
+            value={Math.min(MAX_ZOOM, Math.max(minScale, scale))}
             onChange={(e) => onScaleChange(parseFloat(e.target.value))}
             className="w-20 accent-[color:var(--coral)]"
             data-testid="frame-zoom-slider"
