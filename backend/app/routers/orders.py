@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
+from pymongo.errors import DuplicateKeyError
 
 from app.config import R2_BUCKET_NAME
 from app.core.auth import get_current_user
@@ -65,7 +66,12 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "created_at": now,
         "updated_at": now,
     }
-    await db.orders.insert_one(order_doc)
+    try:
+        await db.orders.insert_one(order_doc)
+    except DuplicateKeyError:
+        # A second checkout request for the same album got here at the same
+        # time: the unique index on orders.album_id keeps only the first.
+        raise HTTPException(status_code=409, detail="An order already exists for this album")
     # Sent right here, before generation even starts — not once the PDF is
     # ready (which used to be the trigger, tucked inside
     # generate_order_pdf's "printing" transition). Generation alone can

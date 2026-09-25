@@ -33,6 +33,7 @@ from app.routers import (
     orders,
     photos,
 )
+from app.db_indexes import ensure_indexes
 from app.services.storage import init_storage
 
 logger = logging.getLogger(__name__)
@@ -42,12 +43,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     init_storage()
-    await db.users.create_index("email", unique=True)
-    await db.albums.create_index("user_id")
-    await db.photos.create_index("album_id")
-    await db.orders.create_index("user_id")
-    await db.mobile_sessions.create_index("token", unique=True)
-    await db.mobile_sessions.create_index("expires", expireAfterSeconds=0)
+    await ensure_indexes(db)
     await rate_limiter.ensure_indexes()
     logger.info("Startup complete")
     yield
