@@ -584,6 +584,7 @@ function StepEdit({
             orientation={orientation}
             coverImageUrl={null}
             cover={cover}
+            templateId={album.cover_template_id}
             editable
             onSelectCover={() => setCoverSel({ mode: "cover", side: "front" })}
             onSelectTitle={() => setCoverSel({ mode: "title", side: "front" })}

@@ -8,6 +8,7 @@ import { REFERENCE_PAGE_PX, measureDomTextWidth } from "@/components/book/textMe
 import { useElementWidth } from "@/components/book/useElementWidth";
 import { useFitTitleFontSize } from "@/components/book/useFitTitleFontSize";
 import { DEFAULT_TITLE_BOX } from "@/lib/coverDefaults";
+import { findTemplate } from "@/lib/coverThemes";
 import { FramedPhoto } from "@/components/book/FramedPhoto";
 import { minZoom, pageAspect as pageAspectWH } from "@/lib/photoFit";
 
@@ -22,6 +23,7 @@ export function CoverFrontPage({
   orientation,
   coverImageUrl,
   cover = {},
+  templateId,
   editable = false,
   onSelectItem,
   onUpdateItem,
@@ -122,6 +124,9 @@ export function CoverFrontPage({
     pageAspect,
     singleLine: titleSingleLine,
     scale: cover.title_scale ?? 1,
+    // Albums made before this setting existed don't carry it: read it from
+    // their template.
+    fitHeight: cover.title_fit_height ?? !!findTemplate(templateId)?.cover?.title_fit_height,
   });
   const titleFontSizeStyle = containerWidth ? `${fittedTitleFontSizePx}px` : "clamp(18px, 9cqw, 56px)";
 

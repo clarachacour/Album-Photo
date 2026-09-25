@@ -88,6 +88,7 @@ export function BookRenderer({
           orientation={orientation}
           coverImageUrl={coverImageUrl}
           cover={album.cover || {}}
+          templateId={album.cover_template_id}
           editable={!album.was_ordered}
           onSelectCover={() => onSelectCover("front")}
           onSelectTitle={onSelectCoverTitle}

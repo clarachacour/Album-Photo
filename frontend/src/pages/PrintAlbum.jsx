@@ -210,6 +210,7 @@ export default function PrintAlbum() {
               orientation={album.orientation}
               coverImageUrl={album.cover_image_path ? coverImageUrl(album.id, 0, "original") : undefined}
               cover={cover}
+              templateId={album.cover_template_id}
               editable={false}
             />
           </div>
@@ -293,6 +294,7 @@ function CoverSpread({ layout, album, template, cover }) {
           orientation={album.orientation}
           coverImageUrl={album.cover_image_path ? coverImageUrl(album.id, 0, "original") : undefined}
           cover={cover}
+          templateId={album.cover_template_id}
           editable={false}
         />
       </div>

@@ -10,7 +10,7 @@ import { measureDomTextWidth } from "@/components/book/textMeasure";
  * an oversized box. The stored title_font_size is only used as the
  * starting point for measurement, not as a ceiling.
  */
-export function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode, pageAspect, singleLine, scale }) {
+export function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode, pageAspect, singleLine, scale, fitHeight }) {
   const [fontSize, setFontSize] = useState(storedFontSize || 32);
 
   useLayoutEffect(() => {
@@ -89,7 +89,11 @@ export function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeigh
       // such risk — capping it too would silently override the width-fill
       // goal using the stored title_h, which was sized for the old, smaller
       // static font and is often too short for a true full-width fit.
-      if (boxHeightFraction && lineCount > 1) {
+      // One-word titles fill the width only, unless the template has text
+      // right under the title (fitHeight): then the title also stays within
+      // its box's height — in landscape, a short word filling the wider box
+      // would otherwise grow down onto that text.
+      if (boxHeightFraction && (lineCount > 1 || fitHeight)) {
         const boxHeightPx = boxHeightFraction * containerWidth * pageAspect; // height = width * (page height / page width)
         const maxByHeight = (boxHeightPx / lineCount) * 0.92;
         fitted = Math.min(fitted, maxByHeight);
@@ -117,7 +121,7 @@ export function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeigh
     return () => {
       cancelled = true;
     };
-  }, [containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode, pageAspect, singleLine, scale]);
+  }, [containerWidth, boxWidthFraction, boxHeightFraction, lineCount, text, storedFontSize, fontFamily, fontWeight, uppercase, writingMode, pageAspect, singleLine, scale, fitHeight]);
 
   return fontSize;
 }

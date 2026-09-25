@@ -117,6 +117,7 @@ export default function Dashboard() {
                     <CoverFrontPage
                       template={getTemplate()}
                       cover={cover}
+                      templateId={a.cover_template_id}
                       title={a.title || t("dashboard.untitled")}
                       orientation={a.orientation || "portrait"}
                       coverImageUrl={uploadedCoverImageUrl}
