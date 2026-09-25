@@ -652,5 +652,16 @@
         }
       ]
     }
+  },
+  "notFound": {
+    "title": "This page doesn't exist.",
+    "body": "The link may be broken, or the page may have moved.",
+    "home": "Back to home"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong.",
+    "body": "This page ran into a problem. Your saved work is safe — reload the page, or go back to your albums.",
+    "reload": "Reload the page",
+    "myAlbums": "My albums"
   }
 }

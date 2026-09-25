@@ -2,6 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Chromium goes to a shared folder (not root's home) so the unprivileged
+# user below can run it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -29,6 +35,12 @@ assert h == '8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4', 
 open('/app/face_detection_yunet.onnx', 'wb').write(data)"
 
 COPY . .
+
+# Run as an unprivileged user, not root: if the app were ever compromised,
+# the attacker couldn't change the container's system files. The code is
+# read-only for it; it only writes to /tmp (PDF fonts, Chromium).
+RUN useradd --create-home --uid 10001 app
+USER app
 
 EXPOSE 8000
 # Shell form (not exec-array form) is required here so $PORT actually gets

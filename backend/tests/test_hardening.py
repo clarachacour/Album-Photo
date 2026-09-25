@@ -144,3 +144,38 @@ def test_password_longer_than_bcrypt_limit_is_refused_cleanly(client):
     assert accents.status_code == 422  # 80 bytes
     ok = client.post("/api/auth/signup", json={"email": "long3@example.com", "password": "x" * 72, "name": "L"})
     assert ok.status_code == 200, ok.text
+
+
+# ---------- Length limits ----------
+@pytest.mark.parametrize(
+    "path, body",
+    [
+        ("/api/auth/signup", {"email": "big@example.com", "password": "secret123", "name": "x" * 100_000}),
+        ("/api/contact", {"name": "A", "email": "a@example.com", "subject": "Hi", "message": "x" * 2_000_000}),
+    ],
+)
+def test_oversized_fields_are_refused(client, path, body):
+    assert client.post(path, json=body).status_code == 422
+
+
+def test_album_page_count_is_bounded(client, db):
+    _, headers = _signup(client, db=db)
+    assert client.post("/api/albums", json={"title": "T", "target_pages": 100_000}, headers=headers).status_code == 422
+    album_id = _album(client, headers)
+    assert client.patch(f"/api/albums/{album_id}", json={"title": "x" * 1000}, headers=headers).status_code == 422
+
+
+# ---------- Monitoring ----------
+def test_monitoring_is_off_without_dsn(monkeypatch):
+    from app.monitoring import init_monitoring
+
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    assert init_monitoring() is False
+
+
+def test_tokens_never_reach_sentry():
+    from app.monitoring import _scrub
+
+    event = {"request": {"url": "https://api.example/api/photos/1/image?auth=SECRET", "query_string": "auth=SECRET"}}
+    out = _scrub(event, None)
+    assert "SECRET" not in str(out)

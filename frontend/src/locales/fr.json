@@ -652,5 +652,16 @@
         }
       ]
     }
+  },
+  "notFound": {
+    "title": "Cette page n'existe pas.",
+    "body": "Le lien est peut-être erroné, ou la page a été déplacée.",
+    "home": "Retour à l'accueil"
+  },
+  "errorBoundary": {
+    "title": "Un problème est survenu.",
+    "body": "Cette page a rencontré une erreur. Votre travail enregistré est en sécurité : rechargez la page, ou revenez à vos albums.",
+    "reload": "Recharger la page",
+    "myAlbums": "Mes albums"
   }
 }

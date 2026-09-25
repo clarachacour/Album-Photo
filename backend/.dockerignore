@@ -1,0 +1,13 @@
+# Kept out of the server image: secrets, tests and local caches.
+.env
+.env.*
+!.env.example
+**/__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+tests
+requirements-dev.txt
+README.md
+Dockerfile
+.dockerignore

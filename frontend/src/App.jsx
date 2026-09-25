@@ -33,15 +33,25 @@ import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import ReturnsPage from "@/pages/ReturnsPage";
 import ShippingPage from "@/pages/ShippingPage";
+import NotFound from "@/pages/NotFound";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function AppChrome({ children }) {
   const location = useLocation();
   const isPrintRoute = location.pathname.startsWith("/print/");
-  if (isPrintRoute) return children;
+  if (isPrintRoute) {
+    // The PDF server waits for data-print-ready or data-print-error: a crash
+    // is reported at once instead of waiting for its timeout.
+    return (
+      <ErrorBoundary resetKey={location.pathname} renderFallback={(e) => <div data-print-error="true">{String(e?.message || e)}</div>}>
+        {children}
+      </ErrorBoundary>
+    );
+  }
   return (
     <>
       <TopNav />
-      {children}
+      <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
       <Footer />
       <Toaster
         position="top-center"
@@ -173,6 +183,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="*" element={<NotFound />} />
           </Routes>
           </AppChrome>
         </ConfirmProvider>

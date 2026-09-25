@@ -34,6 +34,7 @@ from app.routers import (
     photos,
 )
 from app.db_indexes import ensure_indexes
+from app.monitoring import init_monitoring
 from app.services.storage import init_storage
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,10 @@ async def lifespan(app: FastAPI):
     # Shutdown
     client.close()
 
+
+# Before the app is built, so Sentry hooks into it (after app.config has
+# loaded .env).
+init_monitoring()
 
 app = FastAPI(title="Album AI Studio API", lifespan=lifespan)
 

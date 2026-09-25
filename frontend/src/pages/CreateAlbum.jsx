@@ -479,6 +479,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
               <input
                 type="number"
                 min={1}
+                max={500}
                 value={targetPages}
                 onChange={(e) => setTargetPages(Math.max(1, parseInt(e.target.value, 10) || 1))}
                 className="w-32 px-4 py-2 border border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] outline-none"
