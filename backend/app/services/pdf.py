@@ -1,7 +1,9 @@
 """PDF rendering: fonts and the headless-browser export."""
 import base64
 import logging
+import os
 import time as _time
+from urllib.parse import urlsplit
 from io import BytesIO
 
 import psutil
@@ -126,7 +128,10 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     per-page retries in assemble_pages are a separate safety net, not a
     substitute for giving a page enough time under lowered priority."""
     page.goto(print_url, wait_until="networkidle", timeout=120000)
-    page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=90000)
+    try:
+        page.wait_for_selector('[data-print-ready="true"], [data-print-error="true"]', timeout=90000)
+    except Exception as e:
+        raise RuntimeError(f"print page never became ready — {_describe_page(page)}") from e
     error_el = page.query_selector('[data-print-error="true"]')
     if error_el:
         error_text = error_el.inner_text()
@@ -134,6 +139,45 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     page.evaluate("document.fonts.ready")
     page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
     return page.pdf(print_background=True, prefer_css_page_size=True)
+
+def _describe_page(page) -> str:
+    """What the browser is actually showing, for error messages: a login or
+    error page from the host instead of the print page, the album still
+    loading, or images that never finished. The address is given without its
+    query string, which holds the customer's login token."""
+    try:
+        info = page.evaluate("""() => ({
+            text: (document.body && document.body.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 160),
+            pendingImages: Array.from(document.images).filter((i) => i.getAttribute("src") && !i.complete).length,
+            images: document.images.length,
+        })""")
+        return (
+            f"shown: {page.url.split('?')[0]} — title {page.title()!r} — text {info['text']!r} — "
+            f"{info['pendingImages']}/{info['images']} images still loading"
+        )
+    except Exception as e:
+        return f"page could not be inspected ({e})"
+
+
+def _new_context(browser, print_url: str):
+    """Browser context for the print page. When the frontend host protects its
+    deployments (Vercel "Deployment Protection" on preview/branch URLs), the
+    headless browser would get a login page instead of the album:
+    VERCEL_PROTECTION_BYPASS_SECRET (Vercel → Settings → Deployment Protection
+    → Protection Bypass for Automation) is then sent with the requests to the
+    frontend only, never to the API or anywhere else."""
+    context = browser.new_context()
+    secret = os.environ.get("VERCEL_PROTECTION_BYPASS_SECRET")
+    if secret:
+        parts = urlsplit(print_url)
+        origin = f"{parts.scheme}://{parts.netloc}"
+
+        def add_bypass_header(route):
+            route.continue_(headers={**route.request.headers, "x-vercel-protection-bypass": secret})
+
+        context.route(lambda url: url.startswith(origin), add_bypass_header)
+    return context
+
 
 def _deprioritize_current_process_tree():
     """Lowers the OS scheduling priority (Linux 'nice' value) of every
@@ -190,7 +234,7 @@ def render_pdf_via_browser_sync(print_url: str, log_label: str = "") -> bytes:
         logger.info(f"{prefix}Chromium lancé, dépriorisation du process…")
         _deprioritize_current_process_tree()
         logger.info(f"{prefix}ouverture d'une nouvelle page…")
-        page = browser.new_page()
+        page = _new_context(browser, print_url).new_page()
         logger.info(f"{prefix}page ouverte, d\u00e9but du rendu…")
         pdf_bytes = _render_pdf_with_page(page, print_url)
         browser.close()
@@ -252,7 +296,7 @@ def render_album_pdf_sync(print_url: str, page_count: int, log_label: str = "") 
                     state["context"].close()
                 except Exception:
                     pass
-            state["context"] = browser.new_context()
+            state["context"] = _new_context(browser, print_url)
             state["pages_in_context"] = 0
 
         def render_page(i: int) -> bytes:
