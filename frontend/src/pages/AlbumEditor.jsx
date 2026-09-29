@@ -21,6 +21,7 @@ import { cryptoRandom } from "@/lib/cryptoRandom";
 import { fitItemToPhoto } from "@/lib/photoFit";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
+import { useAlbumSaving } from "@/hooks/useAlbumSaving";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
 export default function AlbumEditor() {
@@ -58,8 +59,6 @@ export default function AlbumEditor() {
   const [pageIndex, setPageIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [cropMode, setCropMode] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState(null);
   const [processing, setProcessing] = useState(params.get("processing") === "1");
   const [coverSel, setCoverSel] = useState(null);
   const clipboardRef = useRef(null);
@@ -67,11 +66,16 @@ export default function AlbumEditor() {
   // same processing run (e.g. React re-invoking effects, or the status
   // poll landing twice before the interval is torn down).
   const notifiedRef = useRef(false);
+  // Saving: automatic, retried after a dropped connection, with a copy of
+  // unsaved edits kept on this device (see useAlbumSaving).
+  const saver = useAlbumSaving({ albumId: id, album, autosave: Boolean(album && !processing && !album.was_ordered) });
+  const saving = saver.status === "saving";
 
   const loadAlbum = useCallback(async () => {
     try {
       const { data } = await api.get(`/albums/${id}`);
       albumHistory.resetState(data);
+      saver.markLoaded(data);
       if (data.status === "processing") {
         notifiedRef.current = false;
         setProcessing(true);
@@ -81,7 +85,7 @@ export default function AlbumEditor() {
       nav("/dashboard");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, nav]);
+  }, [id, nav, saver.markLoaded]);
 
   useEffect(() => {
     loadAlbum();
@@ -203,34 +207,17 @@ export default function AlbumEditor() {
 
   const save = async (opts = {}) => {
     const { silent = false } = opts;
-    const current = albumRef.current;
-    if (!current) return;
-    setSaving(true);
-    try {
-      await api.patch(`/albums/${id}`, { title: current.title, country: current.country, year: current.year, pages: current.pages, cover: current.cover || {} });
-      setLastSavedAt(new Date());
-      if (!silent) toast.success(t("common.saved"));
-      return true;
-    } catch (err) {
-      toast.error(err?.response?.status === 403 ? t("albumEditor.lockedError") : t("albumEditor.saveError"));
-      return false;
-    } finally {
-      setSaving(false);
+    const result = await saver.save();
+    if (!silent) {
+      if (result === "saved") toast.success(t("common.saved"));
+      else toast.error(result === "locked" ? t("albumEditor.lockedError") : t("albumEditor.saveOffline"));
+    } else if (result === "locked") {
+      toast.error(t("albumEditor.lockedError"));
+    } else if (result === "failed") {
+      toast.error(t("albumEditor.saveOffline"));
     }
+    return result === "saved";
   };
-
-  // Auto-save every 2 minutes so "My Albums" always reflects recent edits,
-  // even if the user never clicks the Save button themselves — silent, so it
-  // never interrupts with a popup; a small "Saved automatically" note near
-  // the Save button is enough.
-  useEffect(() => {
-    if (!album) return;
-    const interval = setInterval(() => {
-      save({ silent: true });
-    }, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [album?.id]);
 
   const goToOrder = async () => {
     // Auto-save only runs every 2 minutes (or on a manual Save click) —
@@ -686,6 +673,32 @@ export default function AlbumEditor() {
               {t("albumEditor.orderedBanner")}
             </div>
           )}
+          {!saver.online && (
+            <div className="w-full max-w-2xl mb-4 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" role="status" data-testid="editor-offline">
+              {t("albumEditor.offlineBanner")}
+            </div>
+          )}
+          {saver.recovered && !album.was_ordered && (
+            <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" data-testid="editor-recovered">
+              <span>{t("albumEditor.recovered.body")}</span>
+              <span className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAlbum((prev) => ({ ...prev, ...saver.recovered }));
+                    saver.clearRecovered();
+                  }}
+                  className="text-xs font-semibold tracking-widest uppercase underline underline-offset-4"
+                  data-testid="editor-recovered-restore"
+                >
+                  {t("albumEditor.recovered.restore")}
+                </button>
+                <button type="button" onClick={saver.dismissRecovered} className="text-xs font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)]">
+                  {t("albumEditor.recovered.dismiss")}
+                </button>
+              </span>
+            </div>
+          )}
           <div className="w-full max-w-2xl mb-4 text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2">
             {t("albumEditor.previewQualityNote")}
           </div>
@@ -868,9 +881,14 @@ export default function AlbumEditor() {
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               <span className="text-sm font-semibold tracking-widest uppercase">{t("common.save")}</span>
             </button>
-            {lastSavedAt && (
-              <p className="text-[11px] text-[color:var(--muted)] text-center -mt-1">
-                {t("albumEditor.savedAutomatically", { time: lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
+            {(saver.status !== "saved" || saver.lastSavedAt) && (
+              <p
+                className={`text-[11px] text-center -mt-1 ${saver.status === "offline" || saver.status === "error" ? "text-amber-700" : "text-[color:var(--muted)]"}`}
+                data-testid="editor-save-status"
+              >
+                {saver.status === "saved"
+                  ? t("albumEditor.savedAt", { time: saver.lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
+                  : t(`albumEditor.saveStatus.${saver.status}`)}
               </p>
             )}
             <button

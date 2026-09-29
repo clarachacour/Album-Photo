@@ -405,7 +405,6 @@
     "composingToast": "L'IA compose votre album...",
     "createError": "Erreur lors de la création",
     "lockedError": "Cet album a déjà été commandé et ne peut plus être modifié",
-    "saveError": "Échec de l'enregistrement",
     "picturesSwapped": "Photos échangées",
     "resizedToast": "Album redimensionné à {{count}} pages.",
     "resizeError": "Impossible de redimensionner l'album",
@@ -430,7 +429,6 @@
     "tools": "Outils",
     "undoTitle": "Annuler (Ctrl+Z)",
     "redoTitle": "Rétablir (Ctrl+Y)",
-    "savedAutomatically": "Enregistré automatiquement à {{time}}",
     "orderThisAlbum": "Commander cet album",
     "clickOnPage": "Cliquez sur la page…",
     "addTextButton": "Ajouter du texte",
@@ -489,6 +487,21 @@
       "vertical": "Cadrage vertical · {{pct}}%",
       "resetFraming": "Réinitialiser le cadrage",
       "removeFromPage": "Retirer de la page"
+    },
+    "savedAt": "Enregistré à {{time}}",
+    "saveOffline": "Enregistrement impossible pour le moment. Vos modifications sont gardées sur cet appareil et seront enregistrées dès le retour de la connexion.",
+    "saveStatus": {
+      "saving": "Enregistrement…",
+      "unsaved": "Modifications pas encore enregistrées",
+      "offline": "Hors ligne — modifications gardées sur cet appareil",
+      "error": "Enregistrement impossible — nouvel essai automatique…",
+      "locked": "Album commandé — il ne peut plus être modifié"
+    },
+    "offlineBanner": "Vous êtes hors ligne. Vous pouvez continuer à modifier votre album : vos changements sont gardés sur cet appareil et seront enregistrés dès le retour de la connexion.",
+    "recovered": {
+      "body": "Des modifications faites lors de votre dernière visite n'avaient pas pu être enregistrées. Voulez-vous les récupérer ?",
+      "restore": "Récupérer",
+      "dismiss": "Ignorer"
     }
   },
   "toolbars": {

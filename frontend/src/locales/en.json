@@ -405,7 +405,6 @@
     "composingToast": "AI is composing your album...",
     "createError": "Error during creation",
     "lockedError": "This album has already been ordered and can no longer be edited",
-    "saveError": "Failed to save",
     "picturesSwapped": "Pictures swapped",
     "resizedToast": "Album resized to {{count}} pages.",
     "resizeError": "Could not resize the album",
@@ -430,7 +429,6 @@
     "tools": "Tools",
     "undoTitle": "Undo (Ctrl+Z)",
     "redoTitle": "Redo (Ctrl+Y)",
-    "savedAutomatically": "Saved automatically at {{time}}",
     "orderThisAlbum": "Order this album",
     "clickOnPage": "Click on the page…",
     "addTextButton": "Add Text",
@@ -489,6 +487,21 @@
       "vertical": "Vertical framing · {{pct}}%",
       "resetFraming": "Reset framing",
       "removeFromPage": "Remove from page"
+    },
+    "savedAt": "Saved at {{time}}",
+    "saveOffline": "Can't save right now. Your changes are kept on this device and will be saved as soon as the connection is back.",
+    "saveStatus": {
+      "saving": "Saving…",
+      "unsaved": "Changes not saved yet",
+      "offline": "Offline — changes kept on this device",
+      "error": "Couldn't save — trying again automatically…",
+      "locked": "Album ordered — it can no longer be edited"
+    },
+    "offlineBanner": "You're offline. You can keep editing your album: your changes are kept on this device and will be saved as soon as the connection is back.",
+    "recovered": {
+      "body": "Some changes from your last visit couldn't be saved. Do you want to get them back?",
+      "restore": "Get them back",
+      "dismiss": "Ignore"
     }
   },
   "toolbars": {
