@@ -44,6 +44,10 @@ ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/hei
 # capture well beyond what a printed page can show, saving real storage
 # with no visible loss at print time.
 MAX_STORED_DIMENSION_PX = 5000
+# JPEG/WebP quality of the stored copy — the one the print PDF is made
+# from. 90: no visible loss in print, about half the weight of 95 (lighter
+# PDFs to generate and send to the printer).
+STORED_IMAGE_QUALITY = 90
 
 def store_image_with_thumbnail(path: str, data: bytes, content_type: str):
     """Uploads a print-quality (but not necessarily full-original-resolution)
@@ -57,6 +61,12 @@ def store_image_with_thumbnail(path: str, data: bytes, content_type: str):
     store_data, store_content_type = data, content_type
     try:
         with Image.open(BytesIO(data)) as _probe:
+            # Read before exif_transpose below, which returns a copy that
+            # no longer knows its format — the reason every photo used to be
+            # saved at Pillow's default quality (75) whatever was asked. HEIC
+            # and other formats are stored as JPEG, as before.
+            store_format = _probe.format if _probe.format in ("JPEG", "PNG", "WEBP") else "JPEG"
+            save_kwargs = {"quality": STORED_IMAGE_QUALITY} if store_format in ("JPEG", "WEBP") else {}
             # Phone cameras very often save the raw sensor pixels in one
             # orientation (frequently landscape, regardless of how the
             # phone was actually held) plus an EXIF tag saying "rotate/
@@ -82,8 +92,7 @@ def store_image_with_thumbnail(path: str, data: bytes, content_type: str):
                 scaled = _probe.copy()
                 scaled.thumbnail((MAX_STORED_DIMENSION_PX, MAX_STORED_DIMENSION_PX), Image.LANCZOS)
                 out_buf = BytesIO()
-                save_kwargs = {"quality": 92} if (_probe.format or "").upper() == "JPEG" else {}
-                scaled.save(out_buf, format=_probe.format or "JPEG", **save_kwargs)
+                scaled.save(out_buf, format=store_format, **save_kwargs)
                 store_data = out_buf.getvalue()
                 img_w, img_h = scaled.size
             else:
@@ -94,8 +103,7 @@ def store_image_with_thumbnail(path: str, data: bytes, content_type: str):
                 # else) claim the corrected one, a mismatch worse than
                 # not fixing this at all.
                 out_buf = BytesIO()
-                save_kwargs = {"quality": 95} if (_probe.format or "").upper() == "JPEG" else {}
-                _probe.save(out_buf, format=_probe.format or "JPEG", **save_kwargs)
+                _probe.save(out_buf, format=store_format, **save_kwargs)
                 store_data = out_buf.getvalue()
                 img_w, img_h = orig_w, orig_h
     except Exception as e:

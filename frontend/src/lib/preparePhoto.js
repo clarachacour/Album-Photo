@@ -7,9 +7,9 @@
  *   long side, see MAX_STORED_DIMENSION_PX in the backend) and within
  *   16 million pixels (the largest canvas older iPhones can draw), which is
  *   still well above an A4 page printed at 300 dpi (3508 × 2480).
- * - Saved again as a JPEG at quality 0.92 (the server itself stores at 0.92–
- *   0.95): phones save theirs at a much higher setting, which is where most
- *   of the weight goes.
+ * - Saved again as a JPEG at quality 0.92 (the server then stores it at 90,
+ *   see STORED_IMAGE_QUALITY in the backend): phones save theirs at a much
+ *   higher setting, which is where most of the weight goes.
  * - The EXIF data (date taken, GPS position — used to put the album in
  *   chronological order) is copied over from the original. The rotation is
  *   applied to the pixels, so the EXIF orientation is reset to "normal".
