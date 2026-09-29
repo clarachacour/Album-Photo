@@ -1,7 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function ShippingPage() {
+  usePageMeta("shipping");
   const { t } = useTranslation();
   const sections = t("legal.shipping.sections", { returnObjects: true });
   return (

@@ -94,7 +94,7 @@ export const COVER_THEMES = [
       {
         id: "travel-sicily",
         name: "Sicily",
-        landingImage: "/theme-covers/travel-sicily.jpg",
+        landingImage: "/theme-covers/travel-sicily.webp",
         title: "Sicily",
         cover: {
           bg_color: "#1B8F73",
@@ -119,7 +119,7 @@ export const COVER_THEMES = [
       {
         id: "travel-hawaii",
         name: "Honolulu, Hawaii",
-        landingImage: "/theme-covers/travel-hawaii.jpg",
+        landingImage: "/theme-covers/travel-hawaii.webp",
         title: "Honolulu",
         cover: {
           bg_color: "#D9ACA8",
@@ -144,7 +144,7 @@ export const COVER_THEMES = [
       {
         id: "travel-thailand",
         name: "Thailand",
-        landingImage: "/theme-covers/travel-thailand.jpg",
+        landingImage: "/theme-covers/travel-thailand.webp",
         title: "Thailand",
         cover: {
           bg_color: "#1B7A50",
@@ -169,7 +169,7 @@ export const COVER_THEMES = [
       {
         id: "travel-paros",
         name: "Paros, Greece",
-        landingImage: "/theme-covers/travel-paros.jpg",
+        landingImage: "/theme-covers/travel-paros.webp",
         title: "Paros",
         cover: {
           bg_color: "#154A8C",
@@ -194,7 +194,7 @@ export const COVER_THEMES = [
       {
         id: "travel-morocco",
         name: "Morocco, Africa",
-        landingImage: "/theme-covers/travel-morocco.jpg",
+        landingImage: "/theme-covers/travel-morocco.webp",
         title: "Morocco",
         cover: {
           bg_color: "#DCB987",
@@ -219,7 +219,7 @@ export const COVER_THEMES = [
       {
         id: "travel-australia",
         name: "Australia",
-        landingImage: "/theme-covers/travel-australia.jpg",
+        landingImage: "/theme-covers/travel-australia.webp",
         title: "Australia",
         cover: {
           bg_color: "#166F8C",
@@ -245,7 +245,7 @@ export const COVER_THEMES = [
       {
         id: "travel-barcelona",
         name: "Barcelona, Catalonia",
-        landingImage: "/theme-covers/travel-barcelona.jpg",
+        landingImage: "/theme-covers/travel-barcelona.webp",
         title: "Barcelona",
         cover: {
           bg_color: "#B0C385",
@@ -276,7 +276,7 @@ export const COVER_THEMES = [
       {
         id: "couple-notre-rencontre",
         name: "Notre Rencontre",
-        landingImage: "/theme-covers/couple-notre-rencontre.jpg",
+        landingImage: "/theme-covers/couple-notre-rencontre.webp",
         title: "Notre Rencontre",
         cover: {
           bg_color: "#D3C0BA",
@@ -302,7 +302,7 @@ export const COVER_THEMES = [
       {
         id: "couple-notre-histoire",
         name: "Notre Histoire",
-        landingImage: "/theme-covers/couple-notre-histoire.jpg",
+        landingImage: "/theme-covers/couple-notre-histoire.webp",
         title: "Notre histoire",
         cover: {
           bg_color: "#F8F6F2",
@@ -329,7 +329,7 @@ export const COVER_THEMES = [
       {
         id: "couple-forever-journey",
         name: "Our Forever Journey",
-        landingImage: "/theme-covers/couple-forever-journey.jpg",
+        landingImage: "/theme-covers/couple-forever-journey.webp",
         title: "Our Forever Journey",
         cover: {
           bg_color: "#F5F5F3",
@@ -371,7 +371,7 @@ export const COVER_THEMES = [
       {
         id: "family-plain",
         name: "family.",
-        landingImage: "/theme-covers/family-plain.jpg",
+        landingImage: "/theme-covers/family-plain.webp",
         title: "family.",
         cover: {
           bg_color: "#CEBAB4",
@@ -404,7 +404,7 @@ export const COVER_THEMES = [
       {
         id: "family-mom",
         name: "Mom",
-        landingImage: "/theme-covers/family-mom.jpg",
+        landingImage: "/theme-covers/family-mom.webp",
         title: "Mom",
         cover: {
           bg_color: "#B24862",
@@ -439,7 +439,7 @@ export const COVER_THEMES = [
       {
         id: "family-dad",
         name: "Dad",
-        landingImage: "/theme-covers/family-dad.jpg",
+        landingImage: "/theme-covers/family-dad.webp",
         title: "Dad",
         cover: {
           bg_color: "#26354B",
@@ -480,7 +480,7 @@ export const COVER_THEMES = [
       {
         id: "celebrations-best-friends",
         name: "Best Friends",
-        landingImage: "/theme-covers/celebrations-best-friends.jpg",
+        landingImage: "/theme-covers/celebrations-best-friends.webp",
         title: "Best friends",
         cover: {
           bg_color: "#3C5065",
@@ -515,7 +515,7 @@ export const COVER_THEMES = [
       {
         id: "celebrations-our-year",
         name: "Our Year",
-        landingImage: "/theme-covers/celebrations-our-year.jpg",
+        landingImage: "/theme-covers/celebrations-our-year.webp",
         title: "Our Year",
         cover: {
           bg_color: "#E6DBD7",

@@ -663,5 +663,57 @@
     "body": "Cette page a rencontré une erreur. Votre travail enregistré est en sécurité : rechargez la page, ou revenez à vos albums.",
     "reload": "Recharger la page",
     "myAlbums": "Mes albums"
+  },
+  "meta": {
+    "landing": {
+      "title": "Everbook — vos photos, en livre imprimé",
+      "description": "Transformez vos photos en un beau livre photo imprimé, mis en page pour vous en quelques minutes. Choisissez une couverture, ajoutez vos photos, on s'occupe du reste."
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "description": "Tout sur la création, la commande et la livraison de votre livre photo Everbook : formats, pages, délais et plus."
+    },
+    "contact": {
+      "title": "Nous contacter",
+      "description": "Une question sur votre livre photo ou votre commande ? Écrivez à l'équipe Everbook."
+    },
+    "terms": {
+      "title": "Conditions générales de vente",
+      "description": "Les conditions générales de vente d'Everbook."
+    },
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "description": "Comment Everbook traite vos photos et vos données personnelles."
+    },
+    "returns": {
+      "title": "Retours et remboursements",
+      "description": "La politique de retours et de remboursements d'Everbook."
+    },
+    "shipping": {
+      "title": "Livraison",
+      "description": "Délais de fabrication, zones et frais de livraison de votre livre photo Everbook."
+    },
+    "auth": {
+      "title": "Connexion",
+      "description": "Connectez-vous ou créez votre compte Everbook pour commencer votre livre photo."
+    },
+    "dashboard": {
+      "title": "Mes albums"
+    },
+    "create": {
+      "title": "Créer un album"
+    },
+    "editor": {
+      "title": "Éditeur d'album"
+    },
+    "orders": {
+      "title": "Mes commandes"
+    },
+    "account": {
+      "title": "Mon compte"
+    },
+    "notFound": {
+      "title": "Page introuvable"
+    }
   }
 }

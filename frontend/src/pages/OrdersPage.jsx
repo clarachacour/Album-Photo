@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Package } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -20,6 +21,7 @@ const STATUS_COLORS = {
 };
 
 export default function OrdersPage() {
+  usePageMeta("orders");
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const { t, i18n } = useTranslation();

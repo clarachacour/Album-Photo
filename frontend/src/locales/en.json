@@ -663,5 +663,57 @@
     "body": "This page ran into a problem. Your saved work is safe — reload the page, or go back to your albums.",
     "reload": "Reload the page",
     "myAlbums": "My albums"
+  },
+  "meta": {
+    "landing": {
+      "title": "Everbook — your photos, as a printed book",
+      "description": "Turn your photos into a beautifully designed printed photo book, laid out for you in minutes. Choose a cover, add your photos, we take care of the rest."
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "description": "Everything about creating, ordering and receiving your Everbook photo book: formats, pages, delivery and more."
+    },
+    "contact": {
+      "title": "Contact us",
+      "description": "A question about your photo book or your order? Write to the Everbook team."
+    },
+    "terms": {
+      "title": "Terms of sale",
+      "description": "Everbook's terms and conditions of sale."
+    },
+    "privacy": {
+      "title": "Privacy policy",
+      "description": "How Everbook handles your photos and personal data."
+    },
+    "returns": {
+      "title": "Returns & refunds",
+      "description": "Everbook's returns and refunds policy."
+    },
+    "shipping": {
+      "title": "Shipping",
+      "description": "Production times, delivery areas and shipping costs for your Everbook photo book."
+    },
+    "auth": {
+      "title": "Sign in",
+      "description": "Sign in or create your Everbook account to start your photo book."
+    },
+    "dashboard": {
+      "title": "My albums"
+    },
+    "create": {
+      "title": "Create an album"
+    },
+    "editor": {
+      "title": "Album editor"
+    },
+    "orders": {
+      "title": "My orders"
+    },
+    "account": {
+      "title": "My account"
+    },
+    "notFound": {
+      "title": "Page not found"
+    }
   }
 }

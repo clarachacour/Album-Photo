@@ -16,6 +16,7 @@ import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { useHistoryState } from "@/lib/useHistoryState";
 import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 function defaultCoverPayload(chosenTemplate) {
   const tplCover = chosenTemplate?.cover || {};
@@ -79,6 +80,7 @@ function CreationProgressScreen({ progress }) {
 }
 
 export default function CreateAlbum() {
+  usePageMeta("create");
   const { t, i18n } = useTranslation();
   const STEPS = [t("createAlbum.steps.format"), t("createAlbum.steps.edit"), t("createAlbum.steps.pictures")];
   const [params] = useSearchParams();

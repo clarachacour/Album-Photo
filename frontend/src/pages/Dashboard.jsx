@@ -9,8 +9,10 @@ import { coverImageUrl } from "@/lib/api";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { Plus, Trash2, ArrowUpRight } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Dashboard() {
+  usePageMeta("dashboard");
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const nav = useNavigate();

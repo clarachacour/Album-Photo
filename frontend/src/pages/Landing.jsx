@@ -1,11 +1,14 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { COVER_THEMES } from "@/lib/coverThemes";
 import { TID } from "@/constants/testIds";
+
+const TemplateGallery = lazy(() => import("@/components/landing/TemplateGallery"));
 import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Landing() {
+  usePageMeta("landing");
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -56,11 +59,16 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="md:col-span-5 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+          {/* No fade-in here: this photo is the largest thing on screen, and
+              it counts as displayed (for speed scores) only once fully shown. */}
+          <div className="md:col-span-5">
             <div className="max-w-md mx-auto md:ml-auto">
               <img
-                src="/hero-shelf.jpg"
+                src="/hero-shelf.webp"
                 alt="Printed photo albums on a shelf"
+                width={760}
+                height={1024}
+                fetchPriority="high"
                 className="w-full h-auto rounded-sm book-shadow"
               />
             </div>
@@ -128,21 +136,11 @@ export default function Landing() {
             </p>
           </div>
 
-          {COVER_THEMES.map((theme) => (
-            <div key={theme.id} className="mb-14">
-              <h3 className="font-serif-display text-2xl mb-5">{theme.label}</h3>
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {theme.templates.map((tpl) => (
-                  <div key={tpl.id} className="shrink-0 w-40 md:w-48">
-                    <div className="aspect-[3/4] overflow-hidden book-shadow rounded-sm">
-                      <img src={tpl.landingImage} alt={tpl.name} className="w-full h-full object-cover" />
-                    </div>
-                    <p className="mt-2 text-xs text-[color:var(--ink)]/70 text-center">{tpl.name}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+          {/* Loaded after the first paint: the templates list (with the
+              cover logos) is a large file the top of the page doesn't need. */}
+          <Suspense fallback={<div className="min-h-[600px]" />}>
+            <TemplateGallery />
+          </Suspense>
         </div>
       </section>
 

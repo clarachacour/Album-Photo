@@ -6,8 +6,10 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import PasswordInput from "@/components/PasswordInput";
 import { Package, LifeBuoy } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function AccountPage() {
+  usePageMeta("account");
   const { user, updateUser } = useAuth();
   const { t } = useTranslation();
   const [form, setForm] = useState({

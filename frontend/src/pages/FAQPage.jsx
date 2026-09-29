@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function FAQPage() {
+  usePageMeta("faq");
   const [openIdx, setOpenIdx] = useState(null);
   const { t } = useTranslation();
   const faqs = t("faq.items", { returnObjects: true });

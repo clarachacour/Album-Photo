@@ -3,21 +3,33 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
-        
-        <!-- Main Description -->
-        <meta name="description" content="Create custom photo albums automatically from your favorite memories." />
+        <meta name="theme-color" content="#F9F8F6" />
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-        <!-- Open Graph tags for link previews -->
-        <meta property="og:title" content="Everbook" />
-        <meta property="og:description" content="Create custom photo albums automatically from your favorite memories." />
+        <!-- Default description; each page sets its own title and description. -->
+        <meta name="description" content="Turn your photos into a beautifully designed printed photo book, laid out for you in minutes." />
+
+        <!-- Link previews (WhatsApp, Facebook, iMessage…). %SITE_URL% is
+             filled in at build time (see seo.plugin.js). -->
+        <meta property="og:site_name" content="Everbook" />
+        <meta property="og:title" content="Everbook — your photos, as a printed book" />
+        <meta property="og:description" content="Turn your photos into a beautifully designed printed photo book, laid out for you in minutes." />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="%SITE_URL%/" />
+        <meta property="og:image" content="%SITE_URL%/og-image.jpg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
+        <!-- Linked here rather than @import-ed from the CSS, so the browser
+             fetches the fonts in parallel with the app instead of after it. -->
+        <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Alex+Brush&display=swap" rel="stylesheet" />
 
-        <title>Everbook</title>
+        <title>Everbook — your photos, as a printed book</title>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

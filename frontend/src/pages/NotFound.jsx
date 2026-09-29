@@ -1,9 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 /** Shown for any address that doesn't match a page of the site. */
 export default function NotFound() {
+  usePageMeta("notFound");
   const { t } = useTranslation();
   return (
     <main className="min-h-[70vh] flex items-center justify-center p-8 bg-[color:var(--paper)]" data-testid="not-found">

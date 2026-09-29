@@ -19,8 +19,10 @@ import { RepackPagesForm } from "@/components/editor/RepackPagesForm";
 import { spreadNumberToPageCount } from "@/components/editor/spreads";
 import { cryptoRandom } from "@/lib/cryptoRandom";
 import { fitItemToPhoto } from "@/lib/photoFit";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function AlbumEditor() {
+  usePageMeta("editor");
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();

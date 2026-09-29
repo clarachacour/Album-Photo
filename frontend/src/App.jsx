@@ -1,4 +1,4 @@
-import React from "react"; 
+import React, { Suspense } from "react";
 import "@/App.css"; 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -8,33 +8,33 @@ import { ConfirmProvider } from "@/components/ConfirmDialog";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import TopNav from "@/components/TopNav";
 import Footer from "@/components/Footer";
-import Landing from "@/pages/Landing";
-import AuthPage from "@/pages/AuthPage";
-import Dashboard from "@/pages/Dashboard";
-import CreateAlbum from "@/pages/CreateAlbum";
-import ChooseTemplate from "@/pages/ChooseTemplate";
-import AlbumEditor from "@/pages/AlbumEditor";
-
-// 🆕 Imports des deux nouvelles pages
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import MobileUpload from "@/pages/MobileUpload";
-import PrintAlbum from "@/pages/PrintAlbum";
-import AccountPage from "@/pages/AccountPage";
-import OrdersPage from "@/pages/OrdersPage";
-import OrderDetailPage from "@/pages/OrderDetailPage";
-import OrderFeedback from "@/pages/OrderFeedback";
-import OrderCheckoutPage from "@/pages/OrderCheckoutPage";
-import AdminOrdersPage from "@/pages/AdminOrdersPage";
-import FAQPage from "@/pages/FAQPage";
-import ContactPage from "@/pages/ContactPage";
-import VerifyEmailPending from "@/pages/VerifyEmailPending";
-import TermsPage from "@/pages/TermsPage";
-import PrivacyPage from "@/pages/PrivacyPage";
-import ReturnsPage from "@/pages/ReturnsPage";
-import ShippingPage from "@/pages/ShippingPage";
-import NotFound from "@/pages/NotFound";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { lazyPage } from "@/lib/lazyPage";
+import Landing from "@/pages/Landing";
+const AuthPage = lazyPage(() => import("@/pages/AuthPage"));
+const Dashboard = lazyPage(() => import("@/pages/Dashboard"));
+const CreateAlbum = lazyPage(() => import("@/pages/CreateAlbum"));
+const ChooseTemplate = lazyPage(() => import("@/pages/ChooseTemplate"));
+const AlbumEditor = lazyPage(() => import("@/pages/AlbumEditor"));
+
+const ForgotPassword = lazyPage(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazyPage(() => import("@/pages/ResetPassword"));
+const MobileUpload = lazyPage(() => import("@/pages/MobileUpload"));
+const PrintAlbum = lazyPage(() => import("@/pages/PrintAlbum"));
+const AccountPage = lazyPage(() => import("@/pages/AccountPage"));
+const OrdersPage = lazyPage(() => import("@/pages/OrdersPage"));
+const OrderDetailPage = lazyPage(() => import("@/pages/OrderDetailPage"));
+const OrderFeedback = lazyPage(() => import("@/pages/OrderFeedback"));
+const OrderCheckoutPage = lazyPage(() => import("@/pages/OrderCheckoutPage"));
+const AdminOrdersPage = lazyPage(() => import("@/pages/AdminOrdersPage"));
+const FAQPage = lazyPage(() => import("@/pages/FAQPage"));
+const ContactPage = lazyPage(() => import("@/pages/ContactPage"));
+const VerifyEmailPending = lazyPage(() => import("@/pages/VerifyEmailPending"));
+const TermsPage = lazyPage(() => import("@/pages/TermsPage"));
+const PrivacyPage = lazyPage(() => import("@/pages/PrivacyPage"));
+const ReturnsPage = lazyPage(() => import("@/pages/ReturnsPage"));
+const ShippingPage = lazyPage(() => import("@/pages/ShippingPage"));
+const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
 function AppChrome({ children }) {
   const location = useLocation();
@@ -78,6 +78,8 @@ function App() {
         <AuthProvider>
         <ConfirmProvider>
           <AppChrome>
+          {/* Each page's code is downloaded when it's first opened. */}
+          <Suspense fallback={<div className="min-h-screen bg-[color:var(--paper)]" />}>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -185,6 +187,7 @@ function App() {
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </AppChrome>
         </ConfirmProvider>
         </AuthProvider>

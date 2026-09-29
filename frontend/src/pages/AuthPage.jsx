@@ -7,8 +7,10 @@ import { TID } from "@/constants/testIds";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import PasswordInput from "@/components/PasswordInput";
 import { Loader2 } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function AuthPage() {
+  usePageMeta("auth");
   const [mode, setMode] = useState("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -162,7 +164,7 @@ export default function AuthPage() {
       <div className="hidden md:flex bg-[color:var(--editor-canvas)] items-center justify-center p-16 relative overflow-hidden">
         <div className="absolute inset-0 grain" />
         <div className="relative max-w-md w-full">
-          <img src="/hero-shelf.jpg" alt="Printed photo albums on a shelf" className="w-full h-auto rounded-sm book-shadow" />
+          <img src="/hero-shelf.webp" alt="Printed photo albums on a shelf" width={760} height={1024} className="w-full h-auto rounded-sm book-shadow" />
         </div>
       </div>
     </main>

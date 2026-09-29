@@ -4,8 +4,10 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function ContactPage() {
+  usePageMeta("contact");
   const { user } = useAuth();
   const { t } = useTranslation();
   const [form, setForm] = useState({ name: user?.name || "", email: user?.email || "", subject: "", message: "" });

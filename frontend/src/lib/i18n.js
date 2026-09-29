@@ -34,4 +34,9 @@ i18n
     },
   });
 
+// The page's language, for search engines and screen readers.
+const setHtmlLang = (lng) => document.documentElement.setAttribute("lang", (lng || "en").slice(0, 2));
+setHtmlLang(i18n.resolvedLanguage);
+i18n.on("languageChanged", setHtmlLang);
+
 export default i18n;

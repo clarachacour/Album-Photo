@@ -44,7 +44,7 @@ export default function ChooseTemplate() {
                   className="text-left group"
                 >
                   <div className="aspect-[3/4] overflow-hidden book-shadow rounded-sm group-hover:opacity-90 transition-opacity">
-                    <img src={tpl.landingImage} alt={tpl.name} className="w-full h-full object-cover" />
+                    <img src={tpl.landingImage} alt={tpl.name} width={480} height={640} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                   <p className="mt-2 text-xs text-[color:var(--ink)]/70 group-hover:text-[color:var(--ink)]">{tpl.name}</p>
                 </button>
