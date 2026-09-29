@@ -32,6 +32,7 @@ from app.services.layout import (
 from app.core.executors import pdf_render_executor
 from app.services.pdf import render_album_pdf_sync
 from app.services.pdf_legacy import export_pdf_reportlab_legacy
+from app.services.cover_art import slim_cover
 from app.services.photos import store_many_photos
 from app.services.processing import (
     run_ai_processing,
@@ -69,7 +70,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "status": "draft",
         "pages": [make_title_page(data.title, data.lang)],
         "cover_image_path": None,
-        "cover": data.cover or {},
+        "cover": slim_cover(data.cover or {})[0],
         "created_at": now,
         "updated_at": now,
     }
@@ -84,6 +85,7 @@ async def list_albums(user: dict = Depends(get_current_user)):
     ordered_ids = set(await db.orders.distinct("album_id", {"user_id": user["id"]}))
     now = datetime.now(timezone.utc)
     for a in albums:
+        await _slim_stored_cover(a)
         a["is_ordered"] = a["id"] in ordered_ids
         a["days_until_deletion"] = None
         if not a["is_ordered"] and a.get("created_at"):
@@ -94,6 +96,17 @@ async def list_albums(user: dict = Depends(get_current_user)):
             except (ValueError, TypeError):
                 pass
     return albums
+
+async def _slim_stored_cover(album: dict):
+    """Older albums hold their template's logos as embedded images: swapped
+    for the file address (see slim_cover), in the response and in the
+    database, once. updated_at is left alone: nothing the person made
+    changed."""
+    cover, changed = slim_cover(album.get("cover"))
+    if changed:
+        album["cover"] = cover
+        await db.albums.update_one({"id": album["id"]}, {"$set": {"cover": cover}})
+
 
 def _json_safe(value):
     """Recursively replaces any NaN/Infinity float (not valid JSON, but a
@@ -114,6 +127,7 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user_for_alb
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
+    await _slim_stored_cover(album)
     # Also include photos
     # is_deleted excluded — a deleted photo serves no purpose being sent to
     # the frontend at all, and including them was eating into the list cap
@@ -146,6 +160,8 @@ async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(ge
     if data.size is not None and data.size not in ALLOWED_ALBUM_SIZES:
         raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if "cover" in update:
+        update["cover"], _ = slim_cover(update["cover"])
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.albums.update_one({"id": album_id}, {"$set": update})
     updated = await db.albums.find_one({"id": album_id}, {"_id": 0})

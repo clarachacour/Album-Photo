@@ -91,8 +91,18 @@ def decode_data_uri_image(data_uri: str):
     """Decode a `data:image/...;base64,...` string (our custom cover logos —
     heart, rings, compass — are stored this way) into an ImageReader.
     Returns None for anything else (SVG data URIs, external URLs, etc.) so
-    callers can just skip drawing rather than crash."""
+    callers can just skip drawing rather than crash.
+
+    Also takes the address of one of those logos now served as a file by the
+    site ("/cover-art/…", see app/services/cover_art.py)."""
     try:
+        if isinstance(data_uri, str) and data_uri.startswith("/cover-art/") and not data_uri.endswith(".svg"):
+            import requests
+            from app.config import FRONTEND_URL
+
+            res = requests.get(FRONTEND_URL.rstrip("/") + data_uri, timeout=15)
+            res.raise_for_status()
+            return ImageReader(BytesIO(res.content))
         if not data_uri or not data_uri.startswith("data:image/"):
             return None
         header, _, encoded = data_uri.partition(",")

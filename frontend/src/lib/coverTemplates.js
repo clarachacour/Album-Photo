@@ -10,7 +10,7 @@
 // expects a legacy `{ bg, accent, text, illustration }` shape for its *default*
 // (pre-customization) palette, kept via DEFAULT_COVER_TEMPLATE below so we don't
 // have to touch that renderer. Per-album overrides always use bg_color/accent_color/text_color.
-import { CORAL_LOGO_DATA_URI } from "@/lib/coverAssets";
+import { CORAL_LOGO_URL } from "@/lib/coverAssets";
 
 export const DEFAULT_TITLE_FONT = "'Baloo 2', sans-serif";
 
@@ -36,8 +36,7 @@ export const DEFAULT_COVER_TEMPLATE = {
 // The default logo/illustration shown on the front cover. It's a normal
 // draggable "image" item on the cover (same system as text/shape extras),
 // so the user can move it, resize it, delete it, or replace it with their own.
-// The image itself is embedded as a base64 data URI (see coverAssets.js) —
-// no file to place anywhere, it ships inside the code.
+// The image is a file in public/cover-art (see coverAssets.js).
 export function defaultLogoItem() {
   return {
     id: "default-logo",
@@ -46,7 +45,7 @@ export function defaultLogoItem() {
     y: 0.42,
     w: 0.44,
     h: 0.4,
-    image_url: CORAL_LOGO_DATA_URI,
+    image_url: CORAL_LOGO_URL,
     asset: "coral",
   };
 }
