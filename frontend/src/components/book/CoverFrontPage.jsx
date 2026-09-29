@@ -11,6 +11,7 @@ import { DEFAULT_TITLE_BOX } from "@/lib/coverDefaults";
 import { findTemplate } from "@/lib/coverThemes";
 import { FramedPhoto } from "@/components/book/FramedPhoto";
 import { minZoom, pageAspect as pageAspectWH } from "@/lib/photoFit";
+import { coverItemImageSrc } from "@/lib/api";
 
 /**
  * Cover front page — now fully editable: background/accent/text colors overridable,
@@ -454,7 +455,7 @@ export function CoverFrontPage({
               >
                 {item.image_url && isPhoto ? (
                   <FramedPhoto
-                    src={item.image_url}
+                    src={coverItemImageSrc(item)}
                     frameAspect={frameAspect}
                     photoAspect={item.photo_aspect}
                     zoom={scale}
@@ -465,7 +466,7 @@ export function CoverFrontPage({
                   />
                 ) : item.image_url ? (
                   <img
-                    src={item.image_url}
+                    src={coverItemImageSrc(item)}
                     alt=""
                     className="w-full h-full pointer-events-none select-none"
                     style={{ objectFit: "contain" }}

@@ -48,6 +48,21 @@ export function coverAssetUrl(storagePath, variant = "thumb") {
   return `${API}/cover-assets/image?path=${encodeURIComponent(storagePath)}&auth=${encodeURIComponent(t || "")}&variant=${variant}`;
 }
 
+/**
+ * Address of an image placed on the cover, built when it's displayed. The
+ * address saved with the album contains the sign-in key of the day it was
+ * added, which expires after 30 days (and the print page has its own key):
+ * rebuild it from the file's storage path with the current key.
+ */
+export function coverItemImageSrc(item, variant = "original") {
+  if (item?.storage_path) return coverAssetUrl(item.storage_path, variant);
+  const url = item?.image_url;
+  if (!url) return null;
+  const query = url.split("/cover-assets/image?")[1];
+  const path = query && new URLSearchParams(query).get("path");
+  return path ? coverAssetUrl(path, variant) : url; // images built into templates (data: URLs) as is
+}
+
 export function adminOrderPdfUrl(orderId) {
   const t = getToken();
   return `${API}/admin/orders/${orderId}/pdf?auth=${encodeURIComponent(t || "")}`;

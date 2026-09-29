@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
+import { coverItemImageSrc } from "@/lib/api";
 import {
   Bold,
   Type,
@@ -438,7 +439,7 @@ export function CoverEditorPanel({
           {selectedItem.type === "image" && (
             <>
               <img
-                src={selectedItem.image_url}
+                src={coverItemImageSrc(selectedItem)}
                 alt=""
                 className="w-full max-h-32 object-contain border border-[color:var(--border-soft)] bg-[color:var(--paper)]"
               />
