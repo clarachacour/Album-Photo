@@ -834,11 +834,15 @@
       },
       "book": {
         "title": "Your album",
-        "body": "Flip through it like a real book by clicking a page corner. The first page is the cover: click it to change its colors or title, or to add text and images."
+        "body": "Here is your album, as it will be printed. To flip through it, use the arrows just below. The first page is the cover: click it to change its colors or title, or to add text and images."
+      },
+      "firstPage": {
+        "title": "Your first page",
+        "body": "Right after the cover, it holds your album's title and a short introduction. Double-click a text to rewrite it, drag it to move it, or delete it. You can also add photos to it: drag them from the gallery below."
       },
       "photo": {
         "title": "Edit a photo",
-        "body": "Click a photo to select it. Drag it to move it and pull its corners to resize it. The small bar that appears above it lets you zoom and crop, swap it with another photo, bring it forward or backward, or delete it."
+        "body": "Click a photo to select it, like this one. Drag it to move it and pull its corners to resize it. The bar that appears above it lets you zoom and crop, swap it with another photo, bring it forward or backward, or delete it. Double-click a photo to swap it straight away."
       },
       "pageTools": {
         "title": "Page tools",

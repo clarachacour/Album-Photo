@@ -76,6 +76,12 @@ const CustomFlipbook = React.forwardRef(function CustomFlipbook({ pages, orienta
     flipPrev,
     goToEnd: () => setViewIdx(totalViews - 1),
     goToStart: () => setViewIdx(0),
+    // Straight to a view, without the page-turn animation (used by the guide).
+    goTo: (v) => {
+      const target = Math.max(0, Math.min(v, totalViews - 1));
+      setViewIdx(target);
+      onFlip && onFlip(target);
+    },
     getSpread: () => viewIdx,
   }));
 

@@ -34,8 +34,9 @@ function findTarget(selector) {
 /**
  * A step-by-step guide over the page: each step highlights one element
  * (`target`, a CSS selector — or none for a centered message) and explains
- * it in a bubble; an optional `prepare()` gets the page ready first. Texts come from the locale files: <prefix>.<key>.title and
- * <prefix>.<key>.body.
+ * it in a bubble; an optional `prepare(context)` gets the page ready first
+ * (`context` is whatever the page passes, e.g. functions to turn to a page).
+ * Texts come from the locale files: <prefix>.<key>.title and <prefix>.<key>.body.
  *
  *   const tour = useGuidedTour({ id: "editor", prefix: "tour.editor", steps, autoStart: ready });
  *   <button onClick={tour.start}>Guide</button>
@@ -44,8 +45,10 @@ function findTarget(selector) {
  * Opens by itself the first time (autoStart) and never again once finished
  * or skipped; tour.start() replays it.
  */
-export function useGuidedTour({ id, prefix, steps, autoStart = false }) {
+export function useGuidedTour({ id, prefix, steps, autoStart = false, context }) {
   const [index, setIndex] = useState(null); // null = closed
+  const contextRef = useRef(context);
+  contextRef.current = context;
   const start = useCallback(() => setIndex(0), []);
   const close = useCallback(() => {
     markSeen(id);
@@ -65,6 +68,7 @@ export function useGuidedTour({ id, prefix, steps, autoStart = false }) {
       : createPortal(
           <TourStep
             step={steps[index]}
+            contextRef={contextRef}
             prefix={prefix}
             index={index}
             count={steps.length}
@@ -80,7 +84,7 @@ export function useGuidedTour({ id, prefix, steps, autoStart = false }) {
 const PAD = 8; // space around the highlighted element
 const BUBBLE_W = 340;
 
-function TourStep({ step, prefix, index, count, onPrev, onNext, onClose }) {
+function TourStep({ step, contextRef, prefix, index, count, onPrev, onNext, onClose }) {
   const { t } = useTranslation();
   const [rect, setRect] = useState(null);
   const bubbleRef = useRef(null);
@@ -91,10 +95,10 @@ function TourStep({ step, prefix, index, count, onPrev, onNext, onClose }) {
   // element into view, then follow it (scroll, resize, layout).
   useEffect(() => {
     let frame;
-    step.prepare?.();
+    step.prepare?.(contextRef.current);
     const scrollTimer = setTimeout(() => {
       findTarget(step.target)?.scrollIntoView({ block: "center", behavior: "smooth" });
-    }, step.prepare ? 450 : 0);
+    }, step.prepare ? 150 : 0);
     const follow = () => {
       const target = findTarget(step.target);
       const r = target?.getBoundingClientRect();
@@ -110,7 +114,7 @@ function TourStep({ step, prefix, index, count, onPrev, onNext, onClose }) {
       clearTimeout(scrollTimer);
       cancelAnimationFrame(frame);
     };
-  }, [step]);
+  }, [step, contextRef]);
 
   // The bubble's height decides whether it fits below the highlight.
   useLayoutEffect(() => {
@@ -135,8 +139,8 @@ function TourStep({ step, prefix, index, count, onPrev, onNext, onClose }) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const narrow = vw < 640;
-  // Bubble next to the highlight: below if it fits, else above, else
-  // centered; kept inside the screen. On phones, docked at the bottom.
+  // Bubble next to the highlight: below if it fits, else above, else on
+  // the side; kept inside the screen. On phones, docked at the bottom.
   let bubbleStyle;
   if (narrow) {
     bubbleStyle = { left: 12, right: 12, bottom: 12 };
@@ -146,8 +150,15 @@ function TourStep({ step, prefix, index, count, onPrev, onNext, onClose }) {
     const left = Math.min(Math.max(16, rect.left + rect.width / 2 - BUBBLE_W / 2), vw - BUBBLE_W - 16);
     const below = rect.top + rect.height + PAD + 12;
     const above = rect.top - PAD - 12 - bubbleH;
-    const top = below + bubbleH < vh - 16 ? below : above > 16 ? above : Math.max(16, vh - bubbleH - 16);
-    bubbleStyle = { left, top, width: BUBBLE_W };
+    const sideTop = Math.min(Math.max(16, rect.top + rect.height / 2 - bubbleH / 2), vh - bubbleH - 16);
+    const right = rect.left + rect.width + PAD + 12;
+    const leftSide = rect.left - PAD - 12 - BUBBLE_W;
+    if (below + bubbleH < vh - 16) bubbleStyle = { left, top: below, width: BUBBLE_W };
+    else if (above > 16) bubbleStyle = { left, top: above, width: BUBBLE_W };
+    // No room above or below: beside it, so it doesn't hide what it explains.
+    else if (right + BUBBLE_W < vw - 16) bubbleStyle = { left: right, top: sideTop, width: BUBBLE_W };
+    else if (leftSide > 16) bubbleStyle = { left: leftSide, top: sideTop, width: BUBBLE_W };
+    else bubbleStyle = { left, top: Math.max(16, vh - bubbleH - 16), width: BUBBLE_W };
   }
 
   const key = `${prefix}.${step.key}`;

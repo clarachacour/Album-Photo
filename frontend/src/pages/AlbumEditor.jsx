@@ -560,6 +560,32 @@ export default function AlbumEditor() {
     prefix: "tour.editor",
     steps: EDITOR_TOUR,
     autoStart: Boolean(album && !processing && !album.was_ordered && (album.pages || []).length > 0),
+    context: {
+      // Book views: 0 is the cover alone, then [blank, page 0], [page 1, page 2]…
+      showCover: () => {
+        setSelected(null);
+        bookRef.current?.goTo(0);
+      },
+      showFirstPage: () => {
+        setSelected(null);
+        bookRef.current?.goTo(1);
+      },
+      // The first real photo of the album, selected so its toolbar shows.
+      showPhoto: () => {
+        const pages = album?.pages || [];
+        for (let p = 0; p < pages.length; p++) {
+          const item = (pages[p].items || []).find((it) => it.type === "photo" && it.photo_id);
+          if (item) {
+            bookRef.current?.goTo(Math.floor((p + 3) / 2));
+            setCropMode(false);
+            setCoverSel(null);
+            setSelected({ pageIdx: p, item });
+            return;
+          }
+        }
+        bookRef.current?.goTo(2);
+      },
+    },
   });
   const [autoEditItemId, setAutoEditItemId] = useState(null);
 

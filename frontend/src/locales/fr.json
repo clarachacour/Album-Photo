@@ -344,8 +344,8 @@
     },
     "edit": {
       "title": "Faites-le vôtre.",
-      "subtitle": "Cliquez sur le titre, le logo, ou le texte au dos pour les modifier directement. Glissez pour déplacer ou redimensionner. Ajoutez votre propre image ou texte n'importe où sur la couverture.",
-      "hint": "Cliquez sur n'importe quel élément de la couverture — le titre, le logo, le texte au dos — pour le modifier, le déplacer ou le supprimer."
+      "subtitle": "Cliquez sur le titre, le logo, ou les textes de la reliure et du dos pour les modifier directement. Glissez pour déplacer ou redimensionner. Ajoutez votre propre image ou texte n'importe où sur la couverture.",
+      "hint": "Cliquez sur n'importe quel élément de la couverture — le titre, le logo, les textes de la reliure et du dos — pour le modifier, le déplacer ou le supprimer."
     },
     "photos": {
       "title": "Déposez vos photos.",
@@ -728,10 +728,10 @@
     }
   },
   "coverPanel": {
-    "front": "1re de couverture",
-    "back": "4e de couverture",
+    "front": "Couverture avant",
+    "back": "Dos",
     "header": "Couverture — {{zone}}",
-    "spine": "Dos",
+    "spine": "Reliure",
     "close": "Fermer",
     "bgColor": "Couleur de fond",
     "textColor": "Couleur du texte",
@@ -740,9 +740,9 @@
     "font": "Police",
     "titleSize": "Taille du titre",
     "size": "Taille",
-    "spineTitle": "Titre du dos",
-    "spineSubtitle": "Sous-titre du dos",
-    "spineText": "Texte du dos",
+    "spineTitle": "Titre de la reliure",
+    "spineSubtitle": "Sous-titre de la reliure",
+    "spineText": "Texte de la reliure",
     "captionLabel": "Texte (2 lignes)",
     "matchCoverTitle": "reprendre le titre",
     "sameAsCoverTitle": "Identique au titre de la couverture",
@@ -757,8 +757,8 @@
     "addTo": "Ajouter — {{zone}}",
     "text": "Texte",
     "image": "Image",
-    "textOnSpine": "Texte sur le dos",
-    "spineFull": "Le dos a déjà deux textes en plus du titre",
+    "textOnSpine": "Texte sur la reliure",
+    "spineFull": "La reliure a déjà deux textes en plus du titre",
     "bold": "Gras",
     "resetPosition": "Replacer",
     "default": "par défaut",
@@ -834,11 +834,15 @@
       },
       "book": {
         "title": "Votre album",
-        "body": "Feuilletez-le comme un vrai livre, en cliquant sur le coin d'une page. La première page est la couverture : cliquez dessus pour changer ses couleurs, son titre ou y ajouter du texte et des images."
+        "body": "Voici votre album, tel qu'il sera imprimé. Pour le feuilleter, utilisez les flèches juste en dessous. La première page est la couverture : cliquez dessus pour changer ses couleurs, son titre ou y ajouter du texte et des images."
+      },
+      "firstPage": {
+        "title": "Votre première page",
+        "body": "Juste après la couverture, elle accueille le titre de votre album et un petit texte d'introduction. Double-cliquez sur un texte pour le réécrire, faites-le glisser pour le déplacer, ou supprimez-le. Vous pouvez aussi y ajouter des photos : glissez-les depuis la galerie plus bas."
       },
       "photo": {
         "title": "Modifier une photo",
-        "body": "Cliquez sur une photo pour la sélectionner. Faites-la glisser pour la déplacer et tirez sur ses coins pour la redimensionner. La petite barre qui apparaît au-dessus permet de zoomer et recadrer, de l'échanger avec une autre photo, de la passer devant ou derrière, ou de la supprimer."
+        "body": "Cliquez sur une photo pour la sélectionner, comme celle-ci. Faites-la glisser pour la déplacer et tirez sur ses coins pour la redimensionner. La barre qui apparaît au-dessus permet de zoomer et recadrer, de l'échanger avec une autre photo, de la passer devant ou derrière, ou de la supprimer. Double-cliquez sur une photo pour l'échanger directement."
       },
       "pageTools": {
         "title": "Les outils de la page",
@@ -880,19 +884,19 @@
     "cover": {
       "welcome": {
         "title": "Personnalisez votre couverture",
-        "body": "Voici votre couverture à plat, comme elle sera imprimée : la 4e de couverture à gauche, le dos au centre et la couverture à droite."
+        "body": "Voici votre couverture à plat, comme elle sera imprimée : le dos à gauche, la reliure au centre et la couverture avant à droite."
       },
       "front": {
-        "title": "La couverture",
+        "title": "La couverture avant",
         "body": "Cliquez sur le titre pour changer sa police, sa taille ou son texte (double-cliquez pour l'écrire directement). Faites glisser chaque élément pour le déplacer et tirez sur ses coins pour le redimensionner."
       },
       "spine": {
-        "title": "Le dos",
-        "body": "Cliquez sur le dos pour modifier son titre, sa police et sa taille, ou pour y ajouter un texte."
+        "title": "La reliure",
+        "body": "Cliquez sur la reliure pour modifier son titre, sa police et sa taille, ou pour y ajouter un texte."
       },
       "back": {
-        "title": "La 4e de couverture",
-        "body": "Cliquez sur le fond pour ajouter un texte ou une image au dos de votre album."
+        "title": "Le dos",
+        "body": "Cliquez sur le fond pour ajouter un texte ou une image au dos de votre album (la couverture arrière)."
       },
       "panel": {
         "title": "Les réglages",

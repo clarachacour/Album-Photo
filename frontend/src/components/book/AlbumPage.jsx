@@ -145,6 +145,8 @@ export function AlbumPage({
   return (
     <div
       ref={containerRef}
+      data-tour-page={pageIndex}
+      data-tour-selected={items.some((it) => it.id === selectedItemId) || undefined}
       className={`relative w-full ${aspect} bg-[color:var(--paper)] ${placingText ? "cursor-text" : ""} ${placingPhotoId ? "cursor-copy" : ""}`}
       style={{ containerType: "inline-size" }}
       onDragOver={handleDragOver}
