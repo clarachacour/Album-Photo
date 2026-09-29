@@ -49,7 +49,7 @@ export default function SocialAuthButtons() {
             try {
               await loginWithGoogle(response.credential);
               toast.success(t("auth.welcomeToast"));
-              nav("/dashboard");
+              nav("/");
             } catch (err) {
               toast.error(err?.response?.data?.detail || t("auth.social.googleFailed"));
             }
@@ -93,7 +93,7 @@ export default function SocialAuthButtons() {
       if (!idToken) throw new Error("No id_token returned");
       await loginWithApple(idToken, fullName);
       toast.success(t("auth.welcomeToast"));
-      nav("/dashboard");
+      nav("/");
     } catch (err) {
       if (err?.error === "popup_closed_by_user") return;
       toast.error(err?.response?.data?.detail || t("auth.social.appleFailed"));

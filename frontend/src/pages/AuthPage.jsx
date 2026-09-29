@@ -41,14 +41,17 @@ export default function AuthPage() {
     }
 
     try {
+      let signedIn;
       if (mode === "signup") {
-        await signup(name.trim(), email.trim().toLowerCase(), password);
+        signedIn = await signup(name.trim(), email.trim().toLowerCase(), password);
         toast.success(t("auth.welcomeToast"));
       } else {
-        await login(email.trim().toLowerCase(), password);
+        signedIn = await login(email.trim().toLowerCase(), password);
         toast.success(t("auth.welcomeBackToast"));
       }
-      nav("/dashboard");
+      // Home page once signed in — except an email address still to be
+      // confirmed, which goes to the "check your inbox" screen (via /dashboard).
+      nav(signedIn?.email_verified === false ? "/dashboard" : "/");
     } catch (err) {
       toast.error(err?.response?.data?.detail || t("auth.genericError"));
     } finally {
