@@ -85,6 +85,21 @@ def get_object(path: str) -> tuple:
     content_type = resp.get("ContentType") or "image/jpeg"
     return content, content_type
 
+def delete_prefix(prefix: str) -> int:
+    """Deletes every object whose key starts with prefix (e.g. everything a
+    user ever uploaded). Returns how many were deleted. A folder-like prefix
+    must end with "/" so "users/ab/" can't also match "users/abc/"."""
+    if not prefix or not prefix.endswith("/"):
+        raise ValueError("prefix must end with '/'")
+    client = get_r2_client()
+    deleted = 0
+    for page in client.get_paginator("list_objects_v2").paginate(Bucket=R2_BUCKET_NAME, Prefix=prefix):
+        keys = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+        if keys:
+            client.delete_objects(Bucket=R2_BUCKET_NAME, Delete={"Objects": keys, "Quiet": True})
+            deleted += len(keys)
+    return deleted
+
 def delete_object(path: str) -> None:
     """Deletes one object from R2. Never raises — a missing/already-deleted
     object is not an error for a cleanup operation, and callers (order-time

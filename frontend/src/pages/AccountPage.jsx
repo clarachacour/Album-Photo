@@ -5,8 +5,9 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import PasswordInput from "@/components/PasswordInput";
-import { Package, LifeBuoy } from "lucide-react";
+import { Package, LifeBuoy, Trash2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { showAfterReload } from "@/lib/flash";
 
 export default function AccountPage() {
   usePageMeta("account");
@@ -127,6 +128,7 @@ export default function AccountPage() {
           </button>
         </form>
 
+        {user?.has_password !== false && (
         <form onSubmit={changePassword} className="border-t border-[color:var(--border-soft)] pt-12">
           <div className="eyebrow mb-6">{t("account.changePassword")}</div>
           <div className="grid md:grid-cols-3 gap-4 mb-4 max-w-2xl">
@@ -165,7 +167,84 @@ export default function AccountPage() {
             {changingPw ? t("account.updating") : t("account.updatePassword")}
           </button>
         </form>
+        )}
+
+        <DeleteAccountSection user={user} inputClass={inputClass} />
       </div>
     </main>
+  );
+}
+
+// Permanent deletion of the account, its albums and photos (past orders are
+// kept as sales records). Accounts with a password must type it again.
+function DeleteAccountSection({ user, inputClass }) {
+  const { t } = useTranslation();
+  const { logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const needsPassword = user?.has_password !== false;
+
+  const deleteAccount = async (e) => {
+    e.preventDefault();
+    setDeleting(true);
+    try {
+      await api.delete("/auth/me", { data: needsPassword ? { password } : {} });
+      // Signed out and back to the home page with a fresh load (a regular
+      // navigation would land on the sign-in page: this protected page
+      // reacts to the sign-out first). The message shows after the load.
+      logout();
+      showAfterReload(t("account.deleted"));
+      window.location.replace("/");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || t("account.deleteError"));
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <section className="mt-16 pt-10 border-t border-[color:var(--border-soft)]" data-testid="delete-account">
+      <div className="eyebrow mb-3 text-red-700">{t("account.deleteSection")}</div>
+      <p className="text-sm text-[color:var(--ink)]/70 max-w-xl mb-6">{t("account.deleteIntro")}</p>
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-2 border border-red-300 text-red-700 px-6 py-3 hover:bg-red-50 transition-colors text-sm font-semibold tracking-widest uppercase"
+          data-testid="delete-account-start"
+        >
+          <Trash2 size={14} /> {t("account.deleteStart")}
+        </button>
+      ) : (
+        <form onSubmit={deleteAccount} className="max-w-md space-y-4">
+          {needsPassword && (
+            <div>
+              <label className="eyebrow block mb-2">{t("account.deleteConfirmPassword")}</label>
+              <PasswordInput className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={deleting || (needsPassword && !password)}
+              className="inline-flex items-center gap-2 bg-red-700 text-white px-6 py-3 hover:bg-red-800 transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-50"
+              data-testid="delete-account-confirm"
+            >
+              <Trash2 size={14} /> {deleting ? t("account.deleting") : t("account.deleteConfirm")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setPassword("");
+              }}
+              className="px-6 py-3 text-sm font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+            >
+              {t("common.cancel")}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

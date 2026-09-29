@@ -17,7 +17,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <div className="eyebrow mb-4 text-[color:var(--paper)]/50">{t("footer.navigation")}</div>
+          <div className="eyebrow mb-4 text-[color:var(--paper)]/70">{t("footer.navigation")}</div>
           <ul className="space-y-2.5 text-sm">
             <li><Link to="/dashboard" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.myAlbums")}</Link></li>
             <li><Link to="/orders" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.orders")}</Link></li>
@@ -27,7 +27,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <div className="eyebrow mb-4 text-[color:var(--paper)]/50">{t("footer.legal")}</div>
+          <div className="eyebrow mb-4 text-[color:var(--paper)]/70">{t("footer.legal")}</div>
           <ul className="space-y-2.5 text-sm">
             <li><Link to="/terms" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.terms")}</Link></li>
             <li><Link to="/privacy" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.privacy")}</Link></li>
@@ -37,7 +37,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <div className="eyebrow mb-4 text-[color:var(--paper)]/50">{t("footer.company")}</div>
+          <div className="eyebrow mb-4 text-[color:var(--paper)]/70">{t("footer.company")}</div>
           <ul className="space-y-2.5 text-sm text-[color:var(--paper)]/60">
             {/* Placeholders — replace with the real registered name, RC
                 number/jurisdiction, and address once confirmed; nothing
@@ -50,7 +50,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-[color:var(--paper)]/10">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-6 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-[color:var(--paper)]/50">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-6 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-[color:var(--paper)]/70">
           <span>© {year} Everbook. {t("footer.rightsReserved")}</span>
           <span>{t("footer.madeIn")}</span>
         </div>

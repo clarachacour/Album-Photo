@@ -34,6 +34,7 @@ from app.schemas import (
     AppleAuthInput,
     AuthResponse,
     ChangePasswordInput,
+    DeleteAccountInput,
     ForgotPasswordInput,
     GoogleAuthInput,
     LoginInput,
@@ -42,7 +43,9 @@ from app.schemas import (
     SignupInput,
     UserOut,
 )
+from app.services.accounts import delete_account
 from app.services.email import (
+    send_account_deleted_email,
     send_password_changed_email,
     send_password_reset_email,
     send_verification_email,
@@ -237,20 +240,40 @@ async def me(user: dict = Depends(get_current_user_raw)):
         additional_info=user.get("additional_info"),
         is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL,
         email_verified=user.get("email_verified", True),
+        # The user loaded for the request leaves the password hash out.
+        has_password=await _has_password(user["id"]),
     )
+
+async def _has_password(user_id: str) -> bool:
+    doc = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 1})
+    return bool(doc and doc.get("password_hash"))
 
 @router.put("/auth/me", response_model=UserOut)
 async def update_profile(data: ProfileUpdate, user: dict = Depends(get_current_user)):
     updates = {k: v for k, v in data.dict().items() if v is not None}
     if updates:
         await db.users.update_one({"id": user["id"]}, {"$set": updates})
-    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     return UserOut(
         id=fresh["id"], email=fresh["email"], name=fresh["name"],
         phone=fresh.get("phone"), street=fresh.get("street"),
         building=fresh.get("building"), city=fresh.get("city"),
         additional_info=fresh.get("additional_info"),
+        is_admin=bool(ADMIN_EMAIL) and fresh["email"] == ADMIN_EMAIL,
+        email_verified=fresh.get("email_verified", True),
+        has_password=bool(fresh.get("password_hash")),
     )
+
+@router.delete("/auth/me")
+async def delete_my_account(data: DeleteAccountInput, user: dict = Depends(get_current_user_raw)):
+    """Deletes the account and its albums and photos (see
+    app/services/accounts.py). Accounts with a password must confirm it."""
+    full_user = await db.users.find_one({"id": user["id"]})
+    if full_user.get("password_hash") and not verify_password(data.password or "", full_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+    result = await delete_account(full_user)
+    send_account_deleted_email(full_user["email"], full_user.get("name", ""))
+    return {"deleted": True, **result}
 
 @router.put("/auth/password")
 async def change_password(data: ChangePasswordInput, user: dict = Depends(get_current_user)):

@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import {
   Bold,
@@ -26,11 +27,11 @@ function isBoldWeight(w) {
 function spineZoneInfo(mode) {
   switch (mode) {
     case "spine-title":
-      return { prefix: "spine_title", label: "Spine title", testid: "spine-title" };
+      return { prefix: "spine_title", labelKey: "spineTitle", testid: "spine-title" };
     case "spine-subtitle":
-      return { prefix: "spine_subtitle", label: "Spine subtitle", testid: "spine-subtitle" };
+      return { prefix: "spine_subtitle", labelKey: "spineSubtitle", testid: "spine-subtitle" };
     case "spine-caption":
-      return { prefix: "spine_caption", label: "Spine text", testid: "spine-caption" };
+      return { prefix: "spine_caption", labelKey: "spineText", testid: "spine-caption" };
     default:
       return null;
   }
@@ -52,6 +53,7 @@ export function CoverEditorPanel({
   addSpineText,
   onDismiss,
 }) {
+  const { t } = useTranslation();
   const cover = album.cover || {};
   const side = coverSel.side || "front";
   const extras = side === "back" ? cover.back_extra_items || [] : cover.extra_items || [];
@@ -62,7 +64,7 @@ export function CoverEditorPanel({
   const addImageInput = useRef(null);
   const replaceImageInput = useRef(null);
 
-  const zoneLabel = side === "back" ? "Back Cover" : "Front Cover";
+  const zoneLabel = side === "back" ? t("coverPanel.back") : t("coverPanel.front");
 
   // A single "Text color" field that always edits whatever's currently
   // selected — the title, a spine zone, or a selected text item — instead
@@ -106,13 +108,13 @@ export function CoverEditorPanel({
       {/* Entête du panneau */}
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
-          {spineZone ? "Cover — Spine" : `Cover — ${zoneLabel}`}
+          {t("coverPanel.header", { zone: spineZone ? t("coverPanel.spine") : zoneLabel })}
         </div>
         <button
           onClick={onDismiss}
           className="text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors"
           data-testid="cover-editor-dismiss"
-          aria-label="Fermer"
+          aria-label={t("coverPanel.close")}
         >
           <XIcon size={14} />
         </button>
@@ -121,14 +123,14 @@ export function CoverEditorPanel({
       {/* 1. COULEURS DE LA COUVERTURE */}
       <div className="space-y-3">
         <ColorField
-          label="Background color"
+          label={t("coverPanel.bgColor")}
           value={cover.bg_color || ""}
           onChange={(v) => updateCover({ bg_color: v || null })}
           tid="cover-bg-color"
           onReset={() => updateCover({ bg_color: null })}
         />
         <ColorField
-          label="Text color"
+          label={t("coverPanel.textColor")}
           value={textColorTarget.value}
           onChange={textColorTarget.onChange}
           tid="cover-text-color"
@@ -139,36 +141,30 @@ export function CoverEditorPanel({
       {/* 2. ÉDITION DU TITRE PRINCIPAL */}
       {coverSel.mode === "title" && (
         <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">Main Title</div>
+          <div className="eyebrow">{t("coverPanel.mainTitle")}</div>
           <textarea
             data-testid="cover-title-content"
             value={album.title || ""}
             onChange={(e) => updateAlbumTitle && updateAlbumTitle(e.target.value)}
             rows={2}
             className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
-            placeholder="Title of the album"
+            placeholder={t("coverPanel.titlePlaceholder")}
           />
 
           <div>
-            <label className="eyebrow block mb-2">Font</label>
+            <label className="eyebrow block mb-2">{t("coverPanel.font")}</label>
             <select
               data-testid="cover-title-font"
               value={cover.title_font || "'Baloo 2', sans-serif"}
               onChange={(e) => updateCover({ title_font: e.target.value })}
               className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
             >
-              <option value="'Baloo 2', sans-serif">Baloo (rounded)</option>
-              <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
-              <option value="'Alex Brush', cursive">Alex Brush (script)</option>
-              <option value="'Manrope', sans-serif">Manrope (sans)</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Helvetica, Arial, sans-serif">Helvetica</option>
-              <option value="'Courier New', monospace">Courier</option>
+              <FontOptions />
             </select>
           </div>
 
           <div>
-            <label className="eyebrow block mb-2">Title Size</label>
+            <label className="eyebrow block mb-2">{t("coverPanel.titleSize")}</label>
             {cover.title_writing_mode ? (
               <input
                 type="range"
@@ -214,15 +210,15 @@ export function CoverEditorPanel({
 
       {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / SUBTITLE / CAPTION) */}
       {spineZone && (() => {
-        const { prefix, label, testid: testidPrefix } = spineZone;
+        const { prefix, labelKey, testid: testidPrefix } = spineZone;
         const zone = coverSel.mode;
         return (
         <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">{label}</div>
+          <div className="eyebrow">{t(`coverPanel.${labelKey}`)}</div>
 
           {zone === "spine-caption" && (
             <div>
-              <label className="eyebrow block mb-2">Text (2 lines)</label>
+              <label className="eyebrow block mb-2">{t("coverPanel.captionLabel")}</label>
               <textarea
                 data-testid="spine-caption-content"
                 value={cover.spine_caption || ""}
@@ -237,7 +233,7 @@ export function CoverEditorPanel({
           {zone === "spine-title" && (
             <div>
               <label className="eyebrow flex items-center justify-between mb-2">
-                <span>Spine Title</span>
+                <span>{t("coverPanel.spineTitle")}</span>
                 {cover.spine_title_text != null && (
                   <button
                     type="button"
@@ -245,7 +241,7 @@ export function CoverEditorPanel({
                     className="underline text-[10px] normal-case tracking-normal font-normal"
                     data-testid="spine-title-text-reset"
                   >
-                    match cover title
+                    {t("coverPanel.matchCoverTitle")}
                   </button>
                 )}
               </label>
@@ -255,45 +251,39 @@ export function CoverEditorPanel({
                 value={cover.spine_title_text ?? album?.title ?? ""}
                 onChange={(e) => updateCover({ spine_title_text: e.target.value })}
                 className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
-                placeholder="Same as the cover title"
+                placeholder={t("coverPanel.sameAsCoverTitle")}
               />
             </div>
           )}
 
           {(zone === "spine-title" || zone === "spine-subtitle") && (
             <div>
-              <label className="eyebrow block mb-2">Subtitle</label>
+              <label className="eyebrow block mb-2">{t("coverPanel.subtitle")}</label>
               <input
                 type="text"
                 data-testid="spine-subtitle-content"
                 value={cover.spine_subtitle || ""}
                 onChange={(e) => updateCover({ spine_subtitle: e.target.value })}
                 className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
-                placeholder="Optional — shown right after the title"
+                placeholder={t("coverPanel.subtitlePlaceholder")}
               />
             </div>
           )}
 
           <div>
-            <label className="eyebrow block mb-2">Font</label>
+            <label className="eyebrow block mb-2">{t("coverPanel.font")}</label>
             <select
               data-testid={`${testidPrefix}-font`}
               value={cover[`${prefix}_font`] || "'Manrope', sans-serif"}
               onChange={(e) => updateCover({ [`${prefix}_font`]: e.target.value })}
               className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
             >
-              <option value="'Baloo 2', sans-serif">Baloo (rounded)</option>
-              <option value="'Manrope', sans-serif">Manrope (sans)</option>
-              <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
-              <option value="'Alex Brush', cursive">Alex Brush (script)</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Helvetica, Arial, sans-serif">Helvetica</option>
-              <option value="'Courier New', monospace">Courier</option>
+              <FontOptions />
             </select>
           </div>
 
           <div>
-            <label className="eyebrow block mb-2">Size</label>
+            <label className="eyebrow block mb-2">{t("coverPanel.size")}</label>
             {/* This scales the auto-fit result down (never up) rather
                 than setting a raw point size. Spine text always auto-fits
                 to the spine's real width/word length now, so a raw size
@@ -333,7 +323,7 @@ export function CoverEditorPanel({
             >
               {cover[`${prefix}_hidden`] ? <Eye size={14} /> : <EyeOff size={14} />}
               <span className="text-xs font-semibold tracking-widest uppercase">
-                {cover[`${prefix}_hidden`] ? "Show" : "Hide"}
+                {cover[`${prefix}_hidden`] ? t("coverPanel.show") : t("coverPanel.hide")}
               </span>
             </button>
           )}
@@ -344,7 +334,7 @@ export function CoverEditorPanel({
               data-testid={zone === "spine-caption" ? "spine-caption-clear" : "spine-subtitle-clear"}
             >
               <EyeOff size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">Clear</span>
+              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.clear")}</span>
             </button>
           )}
         </div>
@@ -354,7 +344,7 @@ export function CoverEditorPanel({
       {/* 4. ÉDITION D'UN ÉLÉMENT SÉLECTIONNÉ (EXTRA ITEM) */}
       {selectedItem && (
         <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">Selected Item</div>
+          <div className="eyebrow">{t("coverPanel.selectedItem")}</div>
 
           {selectedItem.type === "text" && (
             <>
@@ -379,13 +369,7 @@ export function CoverEditorPanel({
                 }
                 className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
               >
-                <option value="'Baloo 2', sans-serif">Baloo (rounded)</option>
-                <option value="'Manrope', sans-serif">Manrope (sans)</option>
-                <option value="'Cormorant Garamond', serif">Cormorant (serif)</option>
-                <option value="'Alex Brush', cursive">Alex Brush (script)</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="Helvetica, Arial, sans-serif">Helvetica</option>
-                <option value="'Courier New', monospace">Courier</option>
+                <FontOptions />
               </select>
               <div className="flex items-center gap-2">
                 <BoldToggle
@@ -465,7 +449,7 @@ export function CoverEditorPanel({
               >
                 <ImageIcon size={14} />
                 <span className="text-xs font-semibold tracking-widest uppercase">
-                  Replace image
+                  {t("coverPanel.replaceImage")}
                 </span>
               </button>
               <input
@@ -495,7 +479,7 @@ export function CoverEditorPanel({
           >
             <Trash2 size={14} />
             <span className="text-xs font-semibold tracking-widest uppercase">
-              Delete
+              {t("coverPanel.delete")}
             </span>
           </button>
         </div>
@@ -505,14 +489,14 @@ export function CoverEditorPanel({
       <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-2">
         {!spineZone && (
           <>
-            <div className="eyebrow">Add — {zoneLabel}</div>
+            <div className="eyebrow">{t("coverPanel.addTo", { zone: zoneLabel })}</div>
             <button
               data-testid="cover-add-text"
               onClick={() => addCoverText(undefined, side)}
               className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
             >
               <Type size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">Text</span>
+              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.text")}</span>
             </button>
             <button
               data-testid="cover-add-image"
@@ -520,7 +504,7 @@ export function CoverEditorPanel({
               className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
             >
               <ImageIcon size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">Image</span>
+              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.image")}</span>
             </button>
             <input
               ref={addImageInput}
@@ -537,16 +521,16 @@ export function CoverEditorPanel({
         )}
         {addSpineText && (
           <>
-            <div className="eyebrow">Add — Spine</div>
+            <div className="eyebrow">{t("coverPanel.addTo", { zone: t("coverPanel.spine") })}</div>
             <button
               data-testid="spine-add-text"
               onClick={() => addSpineText(cover)}
               disabled={!!cover.spine_caption && !!cover.spine_subtitle}
-              title={cover.spine_caption && cover.spine_subtitle ? "The spine already has two texts besides the title" : undefined}
+              title={cover.spine_caption && cover.spine_subtitle ? t("coverPanel.spineFull") : undefined}
               className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:hover:border-[color:var(--ink)]/30"
             >
               <Type size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">Text on the spine</span>
+              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.textOnSpine")}</span>
             </button>
           </>
         )}
@@ -560,6 +544,7 @@ export function CoverEditorPanel({
 // spine, and item versions each having their own slightly different
 // logic that could disagree about whether the same weight counted as bold.
 function BoldToggle({ tid, weight, onToggle }) {
+  const { t } = useTranslation();
   const bold = isBoldWeight(weight);
   return (
     <button
@@ -570,7 +555,7 @@ function BoldToggle({ tid, weight, onToggle }) {
           ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
           : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
       }`}
-      title="Bold"
+      title={t("coverPanel.bold")}
     >
       <Bold size={14} />
     </button>
@@ -578,20 +563,22 @@ function BoldToggle({ tid, weight, onToggle }) {
 }
 
 function ResetPositionButton({ onClick }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClick}
       className="inline-flex items-center gap-1.5 px-3 py-2 border border-[color:var(--ink)]/30 text-xs font-semibold uppercase hover:border-[color:var(--ink)] transition-colors"
-      title="Reset position"
+      title={t("coverPanel.resetPosition")}
     >
       <RotateCcw size={12} />
-      Reset position
+      {t("coverPanel.resetPosition")}
     </button>
   );
 }
 
 export function ColorField({ label, value, onChange, tid, onReset }) {
+  const { t } = useTranslation();
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
@@ -600,7 +587,7 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
           onClick={onReset}
           className="text-[10px] text-[color:var(--muted)] hover:text-[color:var(--ink)] underline"
         >
-          default
+          {t("coverPanel.default")}
         </button>
       </div>
       <div className="flex items-center gap-2">
@@ -615,10 +602,30 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="default"
+          placeholder={t("coverPanel.default")}
           className="flex-1 border border-[color:var(--ink)]/20 px-2 py-1 text-xs font-mono focus:border-[color:var(--ink)] focus:outline-none"
         />
       </div>
     </div>
   );
+}
+
+// The fonts offered for every text on the cover.
+const FONTS = [
+  ["'Baloo 2', sans-serif", "Baloo", "rounded"],
+  ["'Manrope', sans-serif", "Manrope", "sans"],
+  ["'Cormorant Garamond', serif", "Cormorant", "serif"],
+  ["'Alex Brush', cursive", "Alex Brush", "script"],
+  ["Georgia, serif", "Georgia"],
+  ["Helvetica, Arial, sans-serif", "Helvetica"],
+  ["'Courier New', monospace", "Courier"],
+];
+
+function FontOptions() {
+  const { t } = useTranslation();
+  return FONTS.map(([value, name, kind]) => (
+    <option key={value} value={value}>
+      {kind ? `${name} (${t(`coverPanel.fonts.${kind}`)})` : name}
+    </option>
+  ));
 }

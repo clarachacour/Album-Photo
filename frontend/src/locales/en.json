@@ -5,7 +5,10 @@
     "faq": "FAQ",
     "admin": "Admin",
     "logout": "Logout",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "account": "My account",
+    "menu": "Menu",
+    "closeMenu": "Close menu"
   },
   "landing": {
     "hero": {
@@ -259,7 +262,15 @@
     "updatePassword": "Update password",
     "passwordUpdated": "Password updated",
     "passwordUpdateError": "Failed to update password",
-    "passwordMismatch": "New passwords don't match"
+    "passwordMismatch": "New passwords don't match",
+    "deleteSection": "Delete my account",
+    "deleteIntro": "Your account, albums and photos will be permanently deleted. Past orders are kept for our accounting records. This can't be undone.",
+    "deleteStart": "Delete my account",
+    "deleteConfirmPassword": "Enter your password to confirm",
+    "deleteConfirm": "Delete permanently",
+    "deleting": "Deleting…",
+    "deleted": "Your account has been deleted.",
+    "deleteError": "Couldn't delete the account"
   },
   "common": {
     "loading": "Loading...",
@@ -584,7 +595,7 @@
         },
         {
           "heading": "5. How long we keep your information",
-          "body": "Draft albums: an album you have not ordered is automatically deleted, together with its photos, after 30 days of inactivity.\n\nOrdered albums: once you place an order, we keep the album, its photos, and the order record for as long as your account exists, so you can reorder or refer back to past orders, and so we can handle any after-sales question.\n\nUnused photos: photos you uploaded but did not include in your final layout are removed once your order's print file has been generated.\n\nAccount information: kept for as long as your account is active. We do not currently offer fully automated self-service account deletion; if you would like your account and associated data deleted, contact us and we will process your request.\n\nContact and feedback messages: kept for as long as reasonably needed to handle your request and to keep a record of past support conversations."
+          "body": "Draft albums: an album you have not ordered is automatically deleted, together with its photos, after 30 days of inactivity.\n\nOrdered albums: once you place an order, we keep the album, its photos, and the order record for as long as your account exists, so you can reorder or refer back to past orders, and so we can handle any after-sales question.\n\nUnused photos: photos you uploaded but did not include in your final layout are removed once your order's print file has been generated.\n\nAccount information: kept for as long as your account is active. You can delete your account at any time from your account page (\"Delete my account\"): your account, albums and photos are then permanently deleted. The records of your past orders (amount, shipping address) are kept, as the law requires for accounting. Deletion isn't possible while an order is still being made or delivered.\n\nContact and feedback messages: kept for as long as reasonably needed to handle your request and to keep a record of past support conversations."
         },
         {
           "heading": "6. Who we share your information with",
@@ -596,7 +607,7 @@
         },
         {
           "heading": "8. Your rights and choices",
-          "body": "You can review and update your account information (name, email, password) at any time from your account page. You can ask us to correct inaccurate information, or to delete your account and associated data — including any Google or Apple Sign-In data we hold — by contacting us through our Contact page; we will respond and process reasonable requests within a reasonable timeframe. If you signed up using Google or Apple, you can also revoke the permissions you granted Everbook at any time directly from your Google or Apple account settings."
+          "body": "You can review and update your account information (name, email, password) at any time from your account page. You can ask us to correct inaccurate information, and you can delete your account and associated data yourself — including any Google or Apple Sign-In data we hold — from your account page, or ask us through our Contact page; we will respond and process reasonable requests within a reasonable timeframe. If you signed up using Google or Apple, you can also revoke the permissions you granted Everbook at any time directly from your Google or Apple account settings."
         },
         {
           "heading": "9. Children's privacy",
@@ -715,5 +726,99 @@
     "notFound": {
       "title": "Page not found"
     }
+  },
+  "coverPanel": {
+    "front": "Front cover",
+    "back": "Back cover",
+    "header": "Cover — {{zone}}",
+    "spine": "Spine",
+    "close": "Close",
+    "bgColor": "Background color",
+    "textColor": "Text color",
+    "mainTitle": "Main title",
+    "titlePlaceholder": "Title of the album",
+    "font": "Font",
+    "titleSize": "Title size",
+    "size": "Size",
+    "spineTitle": "Spine title",
+    "spineSubtitle": "Spine subtitle",
+    "spineText": "Spine text",
+    "captionLabel": "Text (2 lines)",
+    "matchCoverTitle": "match cover title",
+    "sameAsCoverTitle": "Same as the cover title",
+    "subtitle": "Subtitle",
+    "subtitlePlaceholder": "Optional — shown right after the title",
+    "show": "Show",
+    "hide": "Hide",
+    "clear": "Clear",
+    "selectedItem": "Selected item",
+    "replaceImage": "Replace image",
+    "delete": "Delete",
+    "addTo": "Add — {{zone}}",
+    "text": "Text",
+    "image": "Image",
+    "textOnSpine": "Text on the spine",
+    "spineFull": "The spine already has two texts besides the title",
+    "bold": "Bold",
+    "resetPosition": "Reset position",
+    "default": "default",
+    "fonts": {
+      "rounded": "rounded",
+      "serif": "serif",
+      "script": "script",
+      "sans": "sans"
+    },
+    "toast": {
+      "textAdded": "Text added to the cover",
+      "shapeAdded": "Shape added",
+      "imageReplaced": "Image replaced",
+      "imageAdded": "Image added to the cover"
+    },
+    "newText": "New text",
+    "yourText": "Your text",
+    "imageUploadFailed": "Image upload failed"
+  },
+  "checkout": {
+    "loadError": "Failed to load this album",
+    "requiredFields": "Please fill in all required shipping fields",
+    "alreadyOrdered": "You've already placed an order for this album.",
+    "checkAlbum": "Please check your album and try again.",
+    "slow": "This is taking a little longer than expected — check your orders, your order may already be placed.",
+    "loading": "Loading…",
+    "placedTitle": "Order placed.",
+    "placedBody": "Thank you — we're getting <b>{{title}}</b> ready for print.",
+    "backToEditing": "Back to editing",
+    "eyebrow": "Order",
+    "shippingAddress": "Shipping address",
+    "fullName": "Full name *",
+    "phone": "Phone *",
+    "street": "Street *",
+    "building": "Building",
+    "city": "City *",
+    "additionalInfo": "Additional info (optional)",
+    "additionalInfoPlaceholder": "Floor, gate code, delivery notes...",
+    "required": "* Required",
+    "summary": "Order summary",
+    "format": "Format",
+    "pages": "Pages",
+    "shortAlbum": "Your album has {{count}} pages. You'll still be charged the {{target}}-page price.",
+    "previewQuality": "The preview you edited is shown at reduced quality for fast loading — the book we print for you will be at full print resolution.",
+    "quantity": "Quantity",
+    "unitPrice": "Unit price",
+    "total": "Total",
+    "placeOrder": "Place order",
+    "noPayment": "Online payment isn't set up yet — placing an order saves it and starts preparing your album. We'll follow up to complete payment."
+  },
+  "mobileUpload": {
+    "expired": "This link has expired or is invalid. Ask for a new QR code.",
+    "offline": "Couldn't connect. Check your internet connection and try scanning the QR code again.",
+    "partial": "{{added}} of {{total}} photos added — {{failed}} didn't make it. Try selecting the rest again.",
+    "loading": "Loading…",
+    "title": "Add your photos.",
+    "intro": "Choose photos from your phone — they'll appear in your album on the computer automatically.",
+    "uploading": "Uploading…",
+    "choose": "Choose photos",
+    "added_one": "{{count}} photo added — you can add more or close this page.",
+    "added_other": "{{count}} photos added — you can add more or close this page."
   }
 }

@@ -64,6 +64,9 @@ class UserOut(BaseModel):
     # actual enforcement lives server-side in get_current_user regardless
     # of what the frontend does with this flag.
     email_verified: bool = True
+    # False for Google/Apple accounts: deleting the account then doesn't
+    # ask for a password.
+    has_password: bool = True
 
 class ProfileUpdate(BaseModel):
     name: OptName
@@ -72,6 +75,9 @@ class ProfileUpdate(BaseModel):
     building: OptLine
     city: OptName
     additional_info: OptNote
+
+class DeleteAccountInput(BaseModel):
+    password: Optional[Annotated[str, Field(max_length=200)]] = None
 
 class ChangePasswordInput(BaseModel):
     current_password: Annotated[str, Field(max_length=200)]

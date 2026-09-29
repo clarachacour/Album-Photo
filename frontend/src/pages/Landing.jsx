@@ -152,7 +152,7 @@ export default function Landing() {
           </h2>
           <button
             onClick={handleCreateAlbumClick}
-            className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)] transition-colors duration-300"
+            className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--ink)] px-8 py-4 hover:bg-[color:var(--paper)] transition-colors duration-300"
             data-testid="footer-cta"
           >
             <span className="text-sm font-semibold tracking-widest uppercase">{t("landing.footer.cta")}</span>

@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import "@/App.css"; 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -10,6 +10,7 @@ import TopNav from "@/components/TopNav";
 import Footer from "@/components/Footer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazyPage } from "@/lib/lazyPage";
+import { showPendingFlash } from "@/lib/flash";
 import Landing from "@/pages/Landing";
 const AuthPage = lazyPage(() => import("@/pages/AuthPage"));
 const Dashboard = lazyPage(() => import("@/pages/Dashboard"));
@@ -38,6 +39,9 @@ const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
 function AppChrome({ children }) {
   const location = useLocation();
+  useEffect(() => {
+    showPendingFlash();
+  }, []);
   const isPrintRoute = location.pathname.startsWith("/print/");
   if (isPrintRoute) {
     // The PDF server waits for data-print-ready or data-print-error: a crash

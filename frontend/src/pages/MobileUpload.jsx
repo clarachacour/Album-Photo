@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 
 export default function MobileUpload() {
   const { token } = useParams();
+  const { t } = useTranslation();
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -50,13 +52,13 @@ export default function MobileUpload() {
         .catch((err) => {
           if (cancelled) return;
           if (err && err.expired) {
-            setError("This link has expired or is invalid. Ask for a new QR code.");
+            setError(t("mobileUpload.expired"));
             return;
           }
           if (attempt < MAX_ATTEMPTS) {
             setTimeout(() => fetchInfo(attempt + 1), RETRY_DELAY_MS * attempt);
           } else {
-            setError("Couldn't connect. Check your internet connection and try scanning the QR code again.");
+            setError(t("mobileUpload.offline"));
           }
         });
     };
@@ -65,7 +67,7 @@ export default function MobileUpload() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, t]);
 
   // Tell the computer while photos are being sent, and as soon as it's
   // done, so its "Create album" button unblocks right away. Repeated every
@@ -146,7 +148,7 @@ export default function MobileUpload() {
     setAddedCount((c) => c + added);
     if (failed > 0) {
       setUploadWarning(
-        `${added} of ${added + failed} photo${added + failed > 1 ? "s" : ""} added — ${failed} didn't make it. Try selecting the rest again.`
+        t("mobileUpload.partial", { added, total: added + failed, failed })
       );
     }
     setUploading(false);
@@ -164,11 +166,11 @@ export default function MobileUpload() {
     <main className="min-h-screen flex items-center justify-center p-8 bg-[color:var(--paper)]">
       <div className="w-full max-w-sm text-center">
         <div className="eyebrow mb-3 text-[color:var(--muted)]">
-          {info ? info.album_title : "Loading…"}
+          {info ? info.album_title : t("mobileUpload.loading")}
         </div>
-        <h1 className="font-serif-display text-4xl tracking-tight mb-3">Add your photos.</h1>
+        <h1 className="font-serif-display text-4xl tracking-tight mb-3">{t("mobileUpload.title")}</h1>
         <p className="text-[color:var(--ink)]/70 mb-10">
-          Choose photos from your phone — they'll appear in your album on the computer automatically.
+          {t("mobileUpload.intro")}
         </p>
 
         <button
@@ -178,7 +180,7 @@ export default function MobileUpload() {
         >
           {uploading ? <Loader2 size={28} className="animate-spin" /> : <Upload size={28} />}
           <span className="text-sm font-semibold tracking-widest uppercase">
-            {uploading ? "Uploading…" : "Choose photos"}
+            {uploading ? t("mobileUpload.uploading") : t("mobileUpload.choose")}
           </span>
         </button>
         <input
@@ -213,7 +215,7 @@ export default function MobileUpload() {
         {addedCount > 0 && (
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-[color:var(--ink)]/80">
             <Check size={16} className="text-green-600" />
-            {addedCount} photo{addedCount > 1 ? "s" : ""} added — you can add more or close this page.
+            {t("mobileUpload.added", { count: addedCount })}
           </div>
         )}
       </div>

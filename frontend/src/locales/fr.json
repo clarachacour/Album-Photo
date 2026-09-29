@@ -5,7 +5,10 @@
     "faq": "FAQ",
     "admin": "Admin",
     "logout": "Déconnexion",
-    "signIn": "Se connecter"
+    "signIn": "Se connecter",
+    "account": "Mon compte",
+    "menu": "Menu",
+    "closeMenu": "Fermer le menu"
   },
   "landing": {
     "hero": {
@@ -259,7 +262,15 @@
     "updatePassword": "Mettre à jour le mot de passe",
     "passwordUpdated": "Mot de passe mis à jour",
     "passwordUpdateError": "Impossible de mettre à jour le mot de passe",
-    "passwordMismatch": "Les nouveaux mots de passe ne correspondent pas"
+    "passwordMismatch": "Les nouveaux mots de passe ne correspondent pas",
+    "deleteSection": "Supprimer mon compte",
+    "deleteIntro": "Votre compte, vos albums et vos photos seront supprimés définitivement. Les commandes passées sont conservées pour notre comptabilité. Cette action est irréversible.",
+    "deleteStart": "Supprimer mon compte",
+    "deleteConfirmPassword": "Saisissez votre mot de passe pour confirmer",
+    "deleteConfirm": "Supprimer définitivement",
+    "deleting": "Suppression…",
+    "deleted": "Votre compte a été supprimé.",
+    "deleteError": "Impossible de supprimer le compte"
   },
   "common": {
     "loading": "Chargement...",
@@ -584,7 +595,7 @@
         },
         {
           "heading": "5. Durée de conservation de vos informations",
-          "body": "Albums en cours de création : un album que vous n'avez pas commandé est automatiquement supprimé, avec ses photos, après 30 jours d'inactivité.\n\nAlbums commandés : une fois votre commande passée, nous conservons l'album, ses photos et l'historique de la commande aussi longtemps que votre compte existe, afin que vous puissiez recommander ou retrouver vos commandes passées, et pour pouvoir traiter toute question après-vente.\n\nPhotos non utilisées : les photos que vous avez téléversées mais qui n'ont pas été incluses dans votre mise en page finale sont supprimées une fois le fichier d'impression de votre commande généré.\n\nInformations de compte : conservées aussi longtemps que votre compte est actif. Nous ne proposons pas encore de suppression de compte entièrement automatisée en libre-service ; si vous souhaitez que votre compte et les données associées soient supprimés, contactez-nous et nous traiterons votre demande.\n\nMessages de contact et de retour : conservés aussi longtemps que raisonnablement nécessaire pour traiter votre demande et conserver un historique des échanges avec notre support."
+          "body": "Albums en cours de création : un album que vous n'avez pas commandé est automatiquement supprimé, avec ses photos, après 30 jours d'inactivité.\n\nAlbums commandés : une fois votre commande passée, nous conservons l'album, ses photos et l'historique de la commande aussi longtemps que votre compte existe, afin que vous puissiez recommander ou retrouver vos commandes passées, et pour pouvoir traiter toute question après-vente.\n\nPhotos non utilisées : les photos que vous avez téléversées mais qui n'ont pas été incluses dans votre mise en page finale sont supprimées une fois le fichier d'impression de votre commande généré.\n\nInformations de compte : conservées aussi longtemps que votre compte est actif. Vous pouvez supprimer votre compte à tout moment depuis votre page de compte (« Supprimer mon compte ») : votre compte, vos albums et vos photos sont alors supprimés définitivement. Les enregistrements de vos commandes passées (montant, adresse de livraison) sont conservés, comme la loi l'impose pour la comptabilité. La suppression n'est pas possible tant qu'une commande est en cours de fabrication ou de livraison.\n\nMessages de contact et de retour : conservés aussi longtemps que raisonnablement nécessaire pour traiter votre demande et conserver un historique des échanges avec notre support."
         },
         {
           "heading": "6. Avec qui nous partageons vos informations",
@@ -596,7 +607,7 @@
         },
         {
           "heading": "8. Vos droits et choix",
-          "body": "Vous pouvez consulter et mettre à jour les informations de votre compte (nom, e-mail, mot de passe) à tout moment depuis votre page de compte. Vous pouvez nous demander de corriger des informations inexactes, ou de supprimer votre compte et les données associées — y compris toute donnée de connexion Google ou Apple que nous détenons — en nous contactant via notre page Contact ; nous répondrons et traiterons les demandes raisonnables dans un délai raisonnable. Si vous vous êtes inscrit via Google ou Apple, vous pouvez également révoquer à tout moment les autorisations accordées à Everbook directement depuis les paramètres de votre compte Google ou Apple."
+          "body": "Vous pouvez consulter et mettre à jour les informations de votre compte (nom, e-mail, mot de passe) à tout moment depuis votre page de compte. Vous pouvez nous demander de corriger des informations inexactes, et vous pouvez supprimer vous-même votre compte et les données associées — y compris toute donnée de connexion Google ou Apple que nous détenons — depuis votre page de compte, ou nous le demander via notre page Contact ; nous répondrons et traiterons les demandes raisonnables dans un délai raisonnable. Si vous vous êtes inscrit via Google ou Apple, vous pouvez également révoquer à tout moment les autorisations accordées à Everbook directement depuis les paramètres de votre compte Google ou Apple."
         },
         {
           "heading": "9. Confidentialité des mineurs",
@@ -715,5 +726,99 @@
     "notFound": {
       "title": "Page introuvable"
     }
+  },
+  "coverPanel": {
+    "front": "1re de couverture",
+    "back": "4e de couverture",
+    "header": "Couverture — {{zone}}",
+    "spine": "Dos",
+    "close": "Fermer",
+    "bgColor": "Couleur de fond",
+    "textColor": "Couleur du texte",
+    "mainTitle": "Titre principal",
+    "titlePlaceholder": "Titre de l'album",
+    "font": "Police",
+    "titleSize": "Taille du titre",
+    "size": "Taille",
+    "spineTitle": "Titre du dos",
+    "spineSubtitle": "Sous-titre du dos",
+    "spineText": "Texte du dos",
+    "captionLabel": "Texte (2 lignes)",
+    "matchCoverTitle": "reprendre le titre",
+    "sameAsCoverTitle": "Identique au titre de la couverture",
+    "subtitle": "Sous-titre",
+    "subtitlePlaceholder": "Facultatif — affiché juste après le titre",
+    "show": "Afficher",
+    "hide": "Masquer",
+    "clear": "Effacer",
+    "selectedItem": "Élément sélectionné",
+    "replaceImage": "Remplacer l'image",
+    "delete": "Supprimer",
+    "addTo": "Ajouter — {{zone}}",
+    "text": "Texte",
+    "image": "Image",
+    "textOnSpine": "Texte sur le dos",
+    "spineFull": "Le dos a déjà deux textes en plus du titre",
+    "bold": "Gras",
+    "resetPosition": "Replacer",
+    "default": "par défaut",
+    "fonts": {
+      "rounded": "arrondie",
+      "serif": "à empattements",
+      "script": "manuscrite",
+      "sans": "sans empattements"
+    },
+    "toast": {
+      "textAdded": "Texte ajouté à la couverture",
+      "shapeAdded": "Forme ajoutée",
+      "imageReplaced": "Image remplacée",
+      "imageAdded": "Image ajoutée à la couverture"
+    },
+    "newText": "Nouveau texte",
+    "yourText": "Votre texte",
+    "imageUploadFailed": "L'envoi de l'image a échoué"
+  },
+  "checkout": {
+    "loadError": "Impossible de charger cet album",
+    "requiredFields": "Merci de remplir tous les champs obligatoires de l'adresse de livraison",
+    "alreadyOrdered": "Vous avez déjà commandé cet album.",
+    "checkAlbum": "Vérifiez votre album et réessayez.",
+    "slow": "Cela prend un peu plus de temps que prévu — consultez vos commandes, la vôtre est peut-être déjà enregistrée.",
+    "loading": "Chargement…",
+    "placedTitle": "Commande enregistrée.",
+    "placedBody": "Merci — nous préparons <b>{{title}}</b> pour l'impression.",
+    "backToEditing": "Retour à l'édition",
+    "eyebrow": "Commande",
+    "shippingAddress": "Adresse de livraison",
+    "fullName": "Nom complet *",
+    "phone": "Téléphone *",
+    "street": "Rue *",
+    "building": "Bâtiment",
+    "city": "Ville *",
+    "additionalInfo": "Informations complémentaires (facultatif)",
+    "additionalInfoPlaceholder": "Étage, code d'accès, consignes de livraison...",
+    "required": "* Obligatoire",
+    "summary": "Récapitulatif",
+    "format": "Format",
+    "pages": "Pages",
+    "shortAlbum": "Votre album compte {{count}} pages. Le prix appliqué reste celui de {{target}} pages.",
+    "previewQuality": "L'aperçu que vous avez modifié est affiché en qualité réduite pour un chargement rapide — le livre imprimé sera en pleine résolution.",
+    "quantity": "Quantité",
+    "unitPrice": "Prix unitaire",
+    "total": "Total",
+    "placeOrder": "Commander",
+    "noPayment": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous commençons à préparer votre album. Nous vous recontacterons pour le paiement."
+  },
+  "mobileUpload": {
+    "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",
+    "offline": "Connexion impossible. Vérifiez votre connexion internet et scannez à nouveau le QR code.",
+    "partial": "{{added}} photos sur {{total}} ajoutées — {{failed}} n'ont pas pu être envoyées. Sélectionnez à nouveau les photos manquantes.",
+    "loading": "Chargement…",
+    "title": "Ajoutez vos photos.",
+    "intro": "Choisissez des photos sur votre téléphone — elles apparaîtront automatiquement dans votre album sur l'ordinateur.",
+    "uploading": "Envoi en cours…",
+    "choose": "Choisir des photos",
+    "added_one": "{{count}} photo ajoutée — vous pouvez en ajouter d'autres ou fermer cette page.",
+    "added_other": "{{count}} photos ajoutées — vous pouvez en ajouter d'autres ou fermer cette page."
   }
 }

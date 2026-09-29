@@ -259,6 +259,26 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
+def send_account_deleted_email(to_email: str, name: str):
+    """Confirms an account deletion, so the owner knows it happened (and
+    can reach us if it wasn't them)."""
+    subject = "Your Everbook account was deleted"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Your Everbook account has been deleted, along with your albums and photos.\n\n"
+        f"If you didn't ask for this, please contact us right away."
+    )
+    html_body = _email_wrapper(
+        preheader="Your Everbook account and photos have been deleted.",
+        title="Your account was deleted.",
+        body_html=(
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>Your Everbook account has been deleted, along with your albums and photos.</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't ask for this, please contact us right away.</p>"
+        ),
+    )
+    send_email(to_email, subject, body, html_body=html_body)
+
 def send_password_changed_email(to_email: str, name: str):
     """A simple security notice, sent after a password change goes through
     successfully — via the "I know my current password" flow (change_password)

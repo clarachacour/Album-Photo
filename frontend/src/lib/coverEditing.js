@@ -1,6 +1,7 @@
 import { api, coverAssetUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_TITLE_BOX, NEW_ITEM_BOX } from "@/lib/coverDefaults";
+import i18n from "@/lib/i18n";
 
 export function cryptoRandom() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -156,7 +157,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel((prev) => (prev && prev.mode === "item" && prev.itemId === itemId ? { ...prev } : prev));
   };
 
-  const addCoverText = (content = "Nouveau texte", side = coverSel?.side || "front") => {
+  const addCoverText = (content = i18n.t("coverPanel.newText"), side = coverSel?.side || "front") => {
     const key = side === "back" ? "back_extra_items" : "extra_items";
     const newItem = {
       id: cryptoRandom(),
@@ -173,7 +174,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), newItem] } };
     });
     setCoverSel({ mode: "item", side, itemId: newItem.id });
-    toast.success("Texte ajouté à la couverture");
+    toast.success(i18n.t("coverPanel.toast.textAdded"));
   };
 
   // The spine holds two free texts besides the title: the caption, then the
@@ -183,7 +184,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     const zone = !cover.spine_caption ? "spine-caption" : !cover.spine_subtitle ? "spine-subtitle" : null;
     if (!zone) return null;
     const field = zone === "spine-caption" ? "spine_caption" : "spine_subtitle";
-    updateCover({ [field]: "Your text" });
+    updateCover({ [field]: i18n.t("coverPanel.yourText") });
     setCoverSel({ mode: zone });
     return zone;
   };
@@ -202,7 +203,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), newItem] } };
     });
     setCoverSel({ mode: "item", side, itemId: newItem.id });
-    toast.success("Forme ajoutée");
+    toast.success(i18n.t("coverPanel.toast.shapeAdded"));
   };
 
   const addCoverImage = async (file, replaceItemId = null, side = coverSel?.side || "front") => {
@@ -220,7 +221,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       const imageUrl = coverAssetUrl(data.storage_path, "original");
       if (replaceItemId) {
         updateCoverItem(replaceItemId, { image_url: imageUrl, storage_path: data.storage_path, asset: null }, side);
-        toast.success("Image remplacée");
+        toast.success(i18n.t("coverPanel.toast.imageReplaced"));
       } else {
         const newItem = {
           id: cryptoRandom(),
@@ -235,10 +236,10 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
           return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), newItem] } };
         });
         setCoverSel({ mode: "item", side, itemId: newItem.id });
-        toast.success("Image ajoutée à la couverture");
+        toast.success(i18n.t("coverPanel.toast.imageAdded"));
       }
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Image upload failed");
+      toast.error(err?.response?.data?.detail || i18n.t("coverPanel.imageUploadFailed"));
     }
   };
 
