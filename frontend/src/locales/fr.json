@@ -820,5 +820,92 @@
     "choose": "Choisir des photos",
     "added_one": "{{count}} photo ajoutée — vous pouvez en ajouter d'autres ou fermer cette page.",
     "added_other": "{{count}} photos ajoutées — vous pouvez en ajouter d'autres ou fermer cette page."
+  },
+  "tour": {
+    "help": "Guide",
+    "next": "Suivant",
+    "prev": "Précédent",
+    "skip": "Passer",
+    "done": "Terminer",
+    "editor": {
+      "welcome": {
+        "title": "Bienvenue dans l'éditeur",
+        "body": "Votre album a été mis en page automatiquement. Ce guide vous montre en une minute comment le personnaliser. Vous pourrez le relancer à tout moment avec le bouton « Guide »."
+      },
+      "book": {
+        "title": "Votre album",
+        "body": "Feuilletez-le comme un vrai livre, en cliquant sur le coin d'une page. La première page est la couverture : cliquez dessus pour changer ses couleurs, son titre ou y ajouter du texte et des images."
+      },
+      "photo": {
+        "title": "Modifier une photo",
+        "body": "Cliquez sur une photo pour la sélectionner. Faites-la glisser pour la déplacer et tirez sur ses coins pour la redimensionner. La petite barre qui apparaît au-dessus permet de zoomer et recadrer, de l'échanger avec une autre photo, de la passer devant ou derrière, ou de la supprimer."
+      },
+      "pageTools": {
+        "title": "Les outils de la page",
+        "body": "Sur le bord de chaque page : changer la mise en page (combien de photos et comment elles sont disposées), ajouter une zone de texte, ou supprimer la page."
+      },
+      "pageNav": {
+        "title": "Passer d'une page à l'autre",
+        "body": "Utilisez ces flèches pour aller d'une double page à la suivante."
+      },
+      "pageCount": {
+        "title": "Le nombre de pages",
+        "body": "Besoin de plus ou de moins de pages ? Changez le total ici : l'album est recomposé automatiquement."
+      },
+      "rearrange": {
+        "title": "Réorganiser les photos",
+        "body": "Glissez-déposez ces miniatures pour changer l'ordre des photos dans tout l'album. Survolez une miniature pour la voir en grand."
+      },
+      "gallery": {
+        "title": "Toutes vos photos",
+        "body": "Toutes les photos envoyées, y compris celles que l'IA n'a pas utilisées (sans coche). Cliquez sur une photo puis sur un cadre de la page pour la placer, ou faites-la glisser directement sur la page."
+      },
+      "addPhotos": {
+        "title": "Ajouter d'autres photos",
+        "body": "Depuis votre ordinateur, votre téléphone (QR code) ou Google Photos. L'IA choisit les meilleures et ajoute des pages à la fin de l'album."
+      },
+      "tools": {
+        "title": "Vos outils",
+        "body": "Annuler et rétablir (Ctrl+Z / Ctrl+Y), enregistrer (l'album s'enregistre aussi automatiquement) et ajouter du texte n'importe où dans le livre."
+      },
+      "order": {
+        "title": "Commander",
+        "body": "Quand tout vous plaît, commandez votre album : nous préparons le fichier d'impression en pleine résolution."
+      },
+      "help": {
+        "title": "Revoir ce guide",
+        "body": "Cliquez ici à tout moment pour relancer ce guide. Bonne création !"
+      }
+    },
+    "cover": {
+      "welcome": {
+        "title": "Personnalisez votre couverture",
+        "body": "Voici votre couverture à plat, comme elle sera imprimée : la 4e de couverture à gauche, le dos au centre et la couverture à droite."
+      },
+      "front": {
+        "title": "La couverture",
+        "body": "Cliquez sur le titre pour changer sa police, sa taille ou son texte (double-cliquez pour l'écrire directement). Faites glisser chaque élément pour le déplacer et tirez sur ses coins pour le redimensionner."
+      },
+      "spine": {
+        "title": "Le dos",
+        "body": "Cliquez sur le dos pour modifier son titre, sa police et sa taille, ou pour y ajouter un texte."
+      },
+      "back": {
+        "title": "La 4e de couverture",
+        "body": "Cliquez sur le fond pour ajouter un texte ou une image au dos de votre album."
+      },
+      "panel": {
+        "title": "Les réglages",
+        "body": "Quand un élément est sélectionné, ses réglages apparaissent ici : couleurs du fond et du texte, police, taille, ajout de texte ou d'image, et « Replacer » pour revenir à la position d'origine."
+      },
+      "next": {
+        "title": "Étape suivante",
+        "body": "Quand votre couverture vous plaît, continuez pour ajouter vos photos. Vous pourrez encore la modifier plus tard dans l'éditeur."
+      },
+      "help": {
+        "title": "Revoir ce guide",
+        "body": "Cliquez ici à tout moment pour relancer ce guide."
+      }
+    }
   }
 }

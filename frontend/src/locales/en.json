@@ -820,5 +820,92 @@
     "choose": "Choose photos",
     "added_one": "{{count}} photo added — you can add more or close this page.",
     "added_other": "{{count}} photos added — you can add more or close this page."
+  },
+  "tour": {
+    "help": "Guide",
+    "next": "Next",
+    "prev": "Back",
+    "skip": "Skip",
+    "done": "Done",
+    "editor": {
+      "welcome": {
+        "title": "Welcome to the editor",
+        "body": "Your album has been laid out for you. This one-minute guide shows how to make it yours. You can replay it at any time with the \"Guide\" button."
+      },
+      "book": {
+        "title": "Your album",
+        "body": "Flip through it like a real book by clicking a page corner. The first page is the cover: click it to change its colors or title, or to add text and images."
+      },
+      "photo": {
+        "title": "Edit a photo",
+        "body": "Click a photo to select it. Drag it to move it and pull its corners to resize it. The small bar that appears above it lets you zoom and crop, swap it with another photo, bring it forward or backward, or delete it."
+      },
+      "pageTools": {
+        "title": "Page tools",
+        "body": "On the edge of each page: change the layout (how many photos and how they're arranged), add a text box, or delete the page."
+      },
+      "pageNav": {
+        "title": "Move between pages",
+        "body": "Use these arrows to go from one spread to the next."
+      },
+      "pageCount": {
+        "title": "Number of pages",
+        "body": "Need more or fewer pages? Change the total here: the album is laid out again automatically."
+      },
+      "rearrange": {
+        "title": "Rearrange your photos",
+        "body": "Drag and drop these thumbnails to change the order of the photos across the whole album. Hover a thumbnail to see it larger."
+      },
+      "gallery": {
+        "title": "All your photos",
+        "body": "Every photo you uploaded, including the ones the AI didn't use (no check mark). Click a photo then a frame on the page to place it, or drag it straight onto the page."
+      },
+      "addPhotos": {
+        "title": "Add more photos",
+        "body": "From your computer, your phone (QR code) or Google Photos. The AI picks the best ones and adds pages at the end of the album."
+      },
+      "tools": {
+        "title": "Your tools",
+        "body": "Undo and redo (Ctrl+Z / Ctrl+Y), save (the album also saves automatically) and add text anywhere in the book."
+      },
+      "order": {
+        "title": "Order",
+        "body": "When everything looks right, order your album: we prepare the print file at full resolution."
+      },
+      "help": {
+        "title": "Replay this guide",
+        "body": "Click here at any time to replay this guide. Enjoy!"
+      }
+    },
+    "cover": {
+      "welcome": {
+        "title": "Make your cover",
+        "body": "Here is your cover laid flat, as it will be printed: the back cover on the left, the spine in the middle and the front cover on the right."
+      },
+      "front": {
+        "title": "The front cover",
+        "body": "Click the title to change its font, size or text (double-click to type it directly). Drag any element to move it and pull its corners to resize it."
+      },
+      "spine": {
+        "title": "The spine",
+        "body": "Click the spine to change its title, font and size, or to add a text to it."
+      },
+      "back": {
+        "title": "The back cover",
+        "body": "Click the background to add a text or an image to the back of your album."
+      },
+      "panel": {
+        "title": "Settings",
+        "body": "When an element is selected, its settings appear here: background and text colors, font, size, adding text or an image, and \"Reset position\" to put it back where it was."
+      },
+      "next": {
+        "title": "Next step",
+        "body": "When you like your cover, continue to add your photos. You can still change it later in the editor."
+      },
+      "help": {
+        "title": "Replay this guide",
+        "body": "Click here at any time to replay this guide."
+      }
+    }
   }
 }

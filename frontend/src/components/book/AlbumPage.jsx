@@ -331,7 +331,7 @@ export function AlbumPage({
         guideY={page?.align_guide_y}
       />
       {editable && (onApplyLayout || onStartAddText || onDeletePage) && (
-        <div className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "-right-9" : "-left-9"} z-30 flex flex-col gap-2`}>
+        <div data-tour="page-tools" className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "-right-9" : "-left-9"} z-30 flex flex-col gap-2`}>
           {onApplyLayout && (
             <button
               onClick={(e) => {

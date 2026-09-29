@@ -20,6 +20,8 @@ import { spreadNumberToPageCount } from "@/components/editor/spreads";
 import { cryptoRandom } from "@/lib/cryptoRandom";
 import { fitItemToPhoto } from "@/lib/photoFit";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
+import { EDITOR_TOUR } from "@/components/tour/tours";
 
 export default function AlbumEditor() {
   usePageMeta("editor");
@@ -552,6 +554,13 @@ export default function AlbumEditor() {
   };
 
   const [placingText, setPlacingText] = useState(false);
+  // Step-by-step guide: opens by itself the first time an album is ready.
+  const tour = useGuidedTour({
+    id: "editor",
+    prefix: "tour.editor",
+    steps: EDITOR_TOUR,
+    autoStart: Boolean(album && !processing && !album.was_ordered && (album.pages || []).length > 0),
+  });
   const [autoEditItemId, setAutoEditItemId] = useState(null);
 
   const placeTextAt = (pageIdx, box) => {
@@ -644,7 +653,7 @@ export default function AlbumEditor() {
         <div className="flex flex-col items-center pt-2">
           <div className="w-full max-w-2xl mb-4 flex items-center justify-between">
             <h1 className="font-serif-display text-2xl truncate">{album.title}</h1>
-            <div />
+            <TourHelpButton onClick={tour.start} className="shrink-0 ml-4" />
           </div>
           {album.was_ordered && (
             <div className="w-full max-w-2xl mb-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
@@ -655,6 +664,7 @@ export default function AlbumEditor() {
             {t("albumEditor.previewQualityNote")}
           </div>
 
+          <div data-tour="book" className="w-full flex flex-col items-center">
           <BookRenderer
             album={album}
             template={albumTemplate}
@@ -699,8 +709,9 @@ export default function AlbumEditor() {
             onUpdateCover={updateCover}
             onSelectSpine={(mode) => { setSelected(null); setCoverSel({ mode }); }}
           />
+          </div>
 
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex items-center gap-4 mt-4" data-tour="page-nav">
             <button
               data-testid={TID.editorPrev}
               onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
@@ -756,7 +767,7 @@ export default function AlbumEditor() {
           </div>
 
           {album.pages && album.pages.length > 0 && (
-            <div className="w-full mt-12 max-w-4xl">
+            <div className="w-full mt-12 max-w-4xl" data-tour="rearrange">
               <div className="eyebrow mb-3 text-center">{t("albumEditor.rearrangePhotos")}</div>
               <PhotoTray
                 photoIds={photoSequence()}
@@ -779,7 +790,7 @@ export default function AlbumEditor() {
 
           {/* Add more photos — same 3 methods as the creation wizard. The AI
               curates just the new ones and appends new pages at the end. */}
-          <div className="w-full mt-10 max-w-4xl">
+          <div className="w-full mt-10 max-w-4xl" data-tour="add-photos">
             <div className="eyebrow mb-3 text-center">{t("albumEditor.addMorePhotos")}</div>
             <PhotoUploadMethods
               albumId={id}
@@ -801,7 +812,7 @@ export default function AlbumEditor() {
         <aside className="lg:sticky lg:top-16 bg-white p-4 border border-[color:var(--border-soft)] max-h-[calc(100vh-5rem)] overflow-y-auto">
           <div className="eyebrow mb-3">{t("albumEditor.tools")}</div>
 
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-4" data-tour="editor-tools">
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => albumHistory.undo()}
@@ -899,6 +910,7 @@ export default function AlbumEditor() {
           </div>
         </aside>
       </div>
+      {tour.element}
     </main>
   );
 }

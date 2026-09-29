@@ -450,7 +450,7 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
     : `${(((cover.spine_subtitle_size || 9) / 608) * 100).toFixed(2)}cqh`;
 
   return (
-    <div ref={containerRef} className="relative h-full" style={{ background: bg, containerType: "size" }}>
+    <div ref={containerRef} data-tour="cover-spine" className="relative h-full" style={{ background: bg, containerType: "size" }}>
       <div className="absolute inset-0 grain pointer-events-none" />
       {!cover.spine_title_hidden && (
         <DraggableItem

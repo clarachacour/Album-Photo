@@ -17,6 +17,8 @@ import { TID } from "@/constants/testIds";
 import { useHistoryState } from "@/lib/useHistoryState";
 import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
+import { COVER_TOUR } from "@/components/tour/tours";
 
 function defaultCoverPayload(chosenTemplate) {
   const tplCover = chosenTemplate?.cover || {};
@@ -366,6 +368,7 @@ export default function CreateAlbum() {
             </button>
             <button
               data-testid={TID.wizardNext}
+              data-tour="wizard-continue"
               onClick={next}
               disabled={!canProceed() || busy}
               className="inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-10 py-4 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-40"
@@ -534,6 +537,8 @@ function StepEdit({
 }) {
   const { t } = useTranslation();
   const cover = album.cover || {};
+  // Step-by-step guide to the cover, opened by itself the first time.
+  const tour = useGuidedTour({ id: "cover", prefix: "tour.cover", steps: COVER_TOUR, autoStart: true });
   // No photos uploaded yet at this step (cover editing comes before the
   // "Pictures" step), so the *final* page count (after AI curation) isn't
   // known yet — but the person's chosen target_pages already is (set back
@@ -548,12 +553,16 @@ function StepEdit({
     <section className="animate-fade-up grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
       <div>
         <div className="mb-8 max-w-2xl">
-          <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.edit.title")}</h2>
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.edit.title")}</h2>
+            <TourHelpButton onClick={tour.start} className="shrink-0 mt-2" />
+          </div>
           <p className="text-[color:var(--ink)]/70">
             {t("createAlbum.edit.subtitle")}
           </p>
         </div>
         <div
+          data-tour="cover-spread"
           className="grid gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70"
           style={{ gridTemplateColumns: `1fr ${spineFr}fr 1fr` }}
         >
@@ -600,7 +609,7 @@ function StepEdit({
           />
         </div>
       </div>
-      <div>
+      <div data-tour="cover-panel">
         {coverSel ? (
           <CoverEditorPanel
             album={album}
@@ -621,6 +630,7 @@ function StepEdit({
           </div>
         )}
       </div>
+      {tour.element}
     </section>
   );
 }
