@@ -13,6 +13,9 @@ export async function initMonitoring() {
       environment: import.meta.env.REACT_APP_SENTRY_ENVIRONMENT || import.meta.env.MODE,
       // Errors only: no performance tracing or session replay.
       tracesSampleRate: 0,
+      // Errors thrown by scripts that aren't ours: the Vercel toolbar on
+      // preview deployments (vercel.live) and browser extensions.
+      denyUrls: [/vercel\.live/i, /^(chrome|moz|safari|safari-web)-extension:\/\//i],
       // The print page's address carries a login token.
       beforeSend(event) {
         if (event.request?.url) event.request.url = event.request.url.split("?")[0];
