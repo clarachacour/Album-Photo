@@ -147,3 +147,43 @@ def test_computer_sees_when_the_phone_is_done_uploading(client, db, monkeypatch)
     assert client.post(f"/api/mobile-upload/{token}/status", json={"uploading": False}).status_code == 200
     assert client.get(status_url, headers=headers).json() == {"uploading": False}
     assert client.post("/api/mobile-upload/not-a-token/status", json={"uploading": True}).status_code == 400
+
+
+def test_a_photo_sent_twice_is_stored_once(client, db, monkeypatch):
+    """A batch sent again after a dropped connection (its first try got
+    through, but the answer was lost) must not make duplicate photos."""
+    import io
+
+    from PIL import Image
+
+    from app.services import photos as photos_service
+
+    stored = {}
+    monkeypatch.setattr(photos_service, "put_object", lambda path, data, ct=None: stored.setdefault(path, data) and {"path": path})
+    _, headers = _signup(client, db=db)
+    album_id = client.post("/api/albums", json={"title": "Retry"}, headers=headers).json()["id"]
+
+    def jpeg(color):
+        buf = io.BytesIO()
+        Image.new("RGB", (64, 48), color).save(buf, "JPEG")
+        return buf.getvalue()
+
+    first, second = jpeg("red"), jpeg("blue")
+    send = lambda files: client.post(
+        f"/api/albums/{album_id}/photos",
+        files=[("files", (name, data, "image/jpeg")) for name, data in files],
+        headers=headers,
+    )
+    res = send([("a.jpg", first)])
+    assert res.status_code == 200 and res.json()["uploaded"] == 1
+    # Sent again together with a new photo: the server answers for both,
+    # but only the new one is stored.
+    res = send([("a.jpg", first), ("b.jpg", second)])
+    assert res.status_code == 200 and res.json()["uploaded"] == 2
+    count = asyncio.run(db.photos.count_documents({"album_id": album_id, "is_deleted": False}))
+    assert count == 2
+
+    # A photo the person deleted can be added again.
+    asyncio.run(db.photos.update_many({"album_id": album_id}, {"$set": {"is_deleted": True}}))
+    assert send([("a.jpg", first)]).json()["uploaded"] == 1
+    assert asyncio.run(db.photos.count_documents({"album_id": album_id, "is_deleted": False})) == 1

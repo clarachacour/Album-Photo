@@ -7,6 +7,7 @@ import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import { Upload, Smartphone } from "lucide-react";
 import { TID } from "@/constants/testIds";
 import { isMobileDevice } from "@/lib/device";
+import { uploadInBatches } from "@/lib/uploadBatches";
 
 /**
  * The three ways to add photos to an album — drag & drop / file picker,
@@ -28,6 +29,9 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   // True while the phone that scanned the QR code says it's sending photos.
   const [phoneUploading, setPhoneUploading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(null); // { done, total } while sending
+  // Photos the connection didn't let through, offered to be sent again.
+  const [failedFiles, setFailedFiles] = useState([]);
   const [googleImporting, setGoogleImporting] = useState(false);
   const fileInput = React.useRef();
   // Doesn't change for the lifetime of a page load, so no need for this to
@@ -156,56 +160,33 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
 
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-    if (files.length === 0 || !albumId) return;
+    if (files.length === 0 || !albumId || uploading) return;
     setUploading(true);
+    setFailedFiles([]);
+    setProgress({ done: 0, total: files.length });
     try {
       const endpoint = mode === "editor" ? `/albums/${albumId}/add-photos` : `/albums/${albumId}/photos`;
-      // Batch by actual size, not just file count — a handful of modern
-      // phone photos can easily blow past a fixed count's assumed size.
-      // Cloud Run rejects any single request over ~32MB, so keeping some
-      // margin below that here avoids hitting that limit regardless of how
-      // large individual photos are.
-      const MAX_BATCH_BYTES = 20 * 1024 * 1024;
-      const MAX_BATCH_COUNT = 8;
-      const batches = [];
-      let i = 0;
-      while (i < files.length) {
-        const chunk = [];
-        let batchBytes = 0;
-        while (i < files.length && chunk.length < MAX_BATCH_COUNT && (chunk.length === 0 || batchBytes + files[i].size <= MAX_BATCH_BYTES)) {
-          chunk.push(files[i]);
-          batchBytes += files[i].size;
-          i++;
-        }
-        batches.push(chunk);
-      }
-      // Several batches in flight at once — sending them strictly one after
-      // another meant a single big upload could never benefit from the
-      // backend being able to handle multiple requests at the same time.
-      const BATCH_CONCURRENCY = 16;
-      let nextBatch = 0;
-      let limitReached = false;
-      const runNext = async () => {
-        while (nextBatch < batches.length && !limitReached) {
-          const chunk = batches[nextBatch++];
+      // Batching, retries after a dropped connection and how many batches
+      // go at once: see uploadInBatches.
+      const res = await uploadInBatches(
+        files,
+        async (batch, { timeout }) => {
           const form = new FormData();
-          chunk.forEach((f) => form.append("files", f));
-          const { data } = await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" } });
-          // The backend enforces a 5000-photo-per-album cap and trims
-          // whatever doesn't fit rather than silently ignoring it later —
-          // this just needs to stop sending further batches once it's hit
-          // (there's no point) and tell the person plainly why the rest
-          // of what they selected didn't make it in.
-          if (data?.limit_reached) limitReached = true;
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
-      if (limitReached) {
-        toast.warning(t("photoUpload.limitReached"), { duration: 8000 });
-      }
+          batch.forEach((f) => form.append("files", f));
+          const { data } = await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" }, timeout });
+          return { uploaded: mode === "editor" ? data?.added : data?.uploaded, limitReached: data?.limit_reached };
+        },
+        { onProgress: setProgress }
+      );
+      if (res.errorDetail) toast.error(res.errorDetail);
+      if (res.limitReached) toast.warning(t("photoUpload.limitReached"), { duration: 8000 });
+      if (res.rejected > 0) toast.warning(t("photoUpload.unreadable", { count: res.rejected }), { duration: 8000 });
+      setFailedFiles(res.failedFiles);
       if (mode === "editor") {
-        toast.success(t("photoUpload.addingNew"));
-        onProcessingStarted && onProcessingStarted();
+        if (res.uploaded > 0) {
+          toast.success(t("photoUpload.addingNew"));
+          onProcessingStarted && onProcessingStarted();
+        }
       } else {
         await refreshAlbum();
       }
@@ -213,8 +194,20 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       toast.error(err?.response?.data?.detail || t("photoUpload.addError"));
     } finally {
       setUploading(false);
+      setProgress(null);
     }
   };
+
+  // Closing the page (or reloading it) in the middle would stop the upload.
+  useEffect(() => {
+    if (!uploading) return;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [uploading]);
 
   const handlePhoneOrGoogleUpdate = async () => {
     const data = await refreshAlbum();
@@ -237,7 +230,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           setDrag(false);
           handleFiles(e.dataTransfer.files);
         }}
-        onClick={() => fileInput.current?.click()}
+        onClick={() => !uploading && fileInput.current?.click()}
         className={`border-2 border-dashed cursor-pointer p-16 text-center transition-colors ${
           drag ? "border-[color:var(--coral)] bg-[color:var(--coral)]/5" : "border-[color:var(--ink)]/20 hover:border-[color:var(--ink)]/50"
         }`}
@@ -246,7 +239,20 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         <p className="font-serif-display text-2xl mb-2">
           {uploading ? t("photoUpload.uploading") : onPhone ? t("photoUpload.tapToChoose") : t("photoUpload.dragHere")}
         </p>
-        <p className="text-[color:var(--muted)] text-sm">{onPhone ? t("photoUpload.cameraRoll") : t("photoUpload.clickToBrowse")}</p>
+        {progress ? (
+          <div className="max-w-sm mx-auto" data-testid="upload-progress">
+            <div className="h-1.5 bg-[color:var(--ink)]/10 overflow-hidden">
+              <div
+                className="h-full bg-[color:var(--coral)] transition-all duration-300"
+                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
+              />
+            </div>
+            <p className="text-sm mt-3">{t("photoUpload.progress", progress)}</p>
+            <p className="text-[color:var(--muted)] text-xs mt-1">{t("photoUpload.keepOpen")}</p>
+          </div>
+        ) : (
+          <p className="text-[color:var(--muted)] text-sm">{onPhone ? t("photoUpload.cameraRoll") : t("photoUpload.clickToBrowse")}</p>
+        )}
         <input
           ref={fileInput}
           data-testid={TID.photoInput}
@@ -260,6 +266,20 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           }}
         />
       </div>
+
+      {failedFiles.length > 0 && !uploading && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 px-4 py-3" data-testid="upload-failed">
+          <span>{t("photoUpload.failed", { count: failedFiles.length })}</span>
+          <button
+            type="button"
+            onClick={() => handleFiles(failedFiles)}
+            className="text-xs font-semibold tracking-widest uppercase underline underline-offset-4 hover:text-[color:var(--ink)]"
+            data-testid="upload-resend"
+          >
+            {t("photoUpload.resend", { count: failedFiles.length })}
+          </button>
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-3">
         {!onPhone && (
@@ -292,7 +312,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2">
             {photos.map((p) => (
               <div key={p.id} className="relative aspect-square bg-[color:var(--editor-canvas)] overflow-hidden">
-                <img src={photoImageUrl(p.id)} alt="" className="w-full h-full object-cover" />
+                <img src={photoImageUrl(p.id)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>

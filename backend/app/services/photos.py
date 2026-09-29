@@ -1,5 +1,6 @@
 """Photo storage: validation, resizing into variants, saving."""
 import asyncio
+import hashlib
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -244,6 +245,14 @@ async def store_new_photo(album_id: str, user_id: str, filename: str, content_ty
     if len(data) == 0:
         logger.warning(f"Photo '{filename}' ignorée : fichier vide")
         return None
+    # The same file already in this album: a batch sent again after a
+    # dropped connection (the first try got through but its answer was
+    # lost), or the same photo picked twice. Answer with the photo we
+    # already have instead of storing a copy.
+    content_hash = hashlib.sha256(data).hexdigest()
+    existing = await db.photos.find_one({"album_id": album_id, "content_hash": content_hash, "is_deleted": False}, {"_id": 0})
+    if existing:
+        return {**existing, "already_uploaded": True}
     loop = asyncio.get_event_loop()
     # Retried up to 3 times, same shape as the Google Photos import's own
     # retry (see import_google_photos_items) — a transient hiccup (an R2
@@ -289,6 +298,7 @@ async def store_new_photo(album_id: str, user_id: str, filename: str, content_ty
         "gps_lat": processed["gps_lat"],
         "gps_lng": processed["gps_lng"],
         "phash": processed["phash"],
+        "content_hash": content_hash,
         "is_selected": True,
         "is_duplicate": False,
         "is_deleted": False,

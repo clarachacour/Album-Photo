@@ -19,6 +19,7 @@ INDEXES = [
     ("albums", "created_at", {}),  # draft reminders and cleanup
     ("photos", "id", {"unique": True}),  # read for every image shown
     ("photos", "album_id", {}),
+    ("photos", [("album_id", ASCENDING), ("content_hash", ASCENDING)], {}),  # skip a photo sent twice
     ("orders", "id", {"unique": True}),
     # One order per album, enforced by the database too: two checkout
     # requests arriving together can't both create one.

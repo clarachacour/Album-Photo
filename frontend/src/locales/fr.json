@@ -371,7 +371,15 @@
     "clickToBrowse": "ou cliquez pour parcourir · JPG, PNG, WEBP",
     "fromPhone": "Depuis votre téléphone",
     "addedSoFar_one": "{{count}} photo ajoutée pour l'instant",
-    "addedSoFar_other": "{{count}} photos ajoutées pour l'instant"
+    "addedSoFar_other": "{{count}} photos ajoutées pour l'instant",
+    "progress": "{{done}} / {{total}} photos envoyées",
+    "keepOpen": "Gardez cette page ouverte jusqu'à la fin de l'envoi. Si la connexion coupe, l'envoi reprend tout seul.",
+    "failed_one": "{{count}} photo n'a pas pu être envoyée à cause de la connexion.",
+    "failed_other": "{{count}} photos n'ont pas pu être envoyées à cause de la connexion.",
+    "resend_one": "Renvoyer la photo manquante",
+    "resend_other": "Renvoyer les {{count}} photos manquantes",
+    "unreadable_one": "{{count}} photo n'a pas pu être lue (fichier abîmé ou format non pris en charge) et a été ignorée.",
+    "unreadable_other": "{{count}} photos n'ont pas pu être lues (fichier abîmé ou format non pris en charge) et ont été ignorées."
   },
   "googlePhotos": {
     "accessDenied": "L'accès à Google Photos n'a pas été accordé",
@@ -812,14 +820,21 @@
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",
     "offline": "Connexion impossible. Vérifiez votre connexion internet et scannez à nouveau le QR code.",
-    "partial": "{{added}} photos sur {{total}} ajoutées — {{failed}} n'ont pas pu être envoyées. Sélectionnez à nouveau les photos manquantes.",
     "loading": "Chargement…",
     "title": "Ajoutez vos photos.",
     "intro": "Choisissez des photos sur votre téléphone — elles apparaîtront automatiquement dans votre album sur l'ordinateur.",
     "uploading": "Envoi en cours…",
     "choose": "Choisir des photos",
     "added_one": "{{count}} photo ajoutée — vous pouvez en ajouter d'autres ou fermer cette page.",
-    "added_other": "{{count}} photos ajoutées — vous pouvez en ajouter d'autres ou fermer cette page."
+    "added_other": "{{count}} photos ajoutées — vous pouvez en ajouter d'autres ou fermer cette page.",
+    "progress": "{{done}} / {{total}} photos envoyées",
+    "keepOpen": "Gardez cette page ouverte jusqu'à la fin. Si la connexion coupe, l'envoi reprend tout seul.",
+    "failed_one": "{{count}} photo n'a pas pu être envoyée à cause de la connexion.",
+    "failed_other": "{{count}} photos n'ont pas pu être envoyées à cause de la connexion.",
+    "resend_one": "Renvoyer la photo manquante",
+    "resend_other": "Renvoyer les {{count}} photos manquantes",
+    "unreadable_one": "{{count}} photo n'a pas pu être lue et a été ignorée.",
+    "unreadable_other": "{{count}} photos n'ont pas pu être lues et ont été ignorées."
   },
   "tour": {
     "help": "Guide",

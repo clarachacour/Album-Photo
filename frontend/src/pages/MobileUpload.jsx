@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
+import { uploadInBatches } from "@/lib/uploadBatches";
 
 export default function MobileUpload() {
   const { token } = useParams();
@@ -13,7 +14,10 @@ export default function MobileUpload() {
   const [uploading, setUploading] = useState(false);
   const [googleImporting, setGoogleImporting] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
-  const [uploadWarning, setUploadWarning] = useState(null);
+  const [progress, setProgress] = useState(null); // { done, total } while sending
+  // Photos the connection didn't let through, offered to be sent again.
+  const [failedFiles, setFailedFiles] = useState([]);
+  const [notices, setNotices] = useState([]);
   const fileInput = useRef();
 
   useEffect(() => {
@@ -96,63 +100,52 @@ export default function MobileUpload() {
     const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
     if (files.length === 0) return;
     setUploading(true);
-    setUploadWarning(null);
-    // Matches the desktop upload's own batching exactly (see handleFiles in
-    // PhotoUploadMethods.jsx) — this used to send fixed chunks of 6 files
-    // strictly one after another, which was both slower (no concurrency at
-    // all, versus desktop's 16 batches in flight at once — a meaningful
-    // difference on a phone's typically slower connection) and riskier (a
-    // fixed count ignores actual file size, so a handful of large modern
-    // phone photos in one chunk could exceed Cloud Run's ~32MB per-request
-    // limit and fail the whole chunk, which likely contributed to photos
-    // going missing).
-    const MAX_BATCH_BYTES = 20 * 1024 * 1024;
-    const MAX_BATCH_COUNT = 8;
-    const batches = [];
-    let i = 0;
-    while (i < files.length) {
-      const chunk = [];
-      let batchBytes = 0;
-      while (i < files.length && chunk.length < MAX_BATCH_COUNT && (chunk.length === 0 || batchBytes + files[i].size <= MAX_BATCH_BYTES)) {
-        chunk.push(files[i]);
-        batchBytes += files[i].size;
-        i++;
-      }
-      batches.push(chunk);
-    }
-    const BATCH_CONCURRENCY = 16;
-    let nextBatch = 0;
-    let added = 0;
-    let failed = 0;
-    const runNext = async () => {
-      while (nextBatch < batches.length) {
-        const chunk = batches[nextBatch++];
-        // Each batch's failure is caught here, on its own — so one bad
-        // batch (a network hiccup, a bad file in that batch) never stops
-        // this worker from moving on to its next batch, and never affects
-        // the other concurrent workers at all.
+    setNotices([]);
+    setFailedFiles([]);
+    setProgress({ done: 0, total: files.length });
+    // Same batching and retries as the computer upload (see uploadInBatches).
+    const res = await uploadInBatches(
+      files,
+      async (batch, { timeout }) => {
+        const form = new FormData();
+        batch.forEach((f) => form.append("files", f));
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
         try {
-          const form = new FormData();
-          chunk.forEach((f) => form.append("files", f));
-          const res = await fetch(`${API}/mobile-upload/${token}/photos`, { method: "POST", body: form });
-          if (!res.ok) throw new Error();
-          const data = await res.json();
-          added += data.uploaded || 0;
-          failed += (data.failed || 0) + Math.max(0, chunk.length - (data.uploaded || 0) - (data.failed || 0));
-        } catch {
-          failed += chunk.length;
+          const r = await fetch(`${API}/mobile-upload/${token}/photos`, { method: "POST", body: form, signal: controller.signal });
+          if (!r.ok) {
+            const detail = await r.json().then((d) => d?.detail, () => null);
+            throw Object.assign(new Error(`HTTP ${r.status}`), { response: { status: r.status, data: { detail } } });
+          }
+          const data = await r.json();
+          return { uploaded: data.uploaded || 0, limitReached: data.limit_reached };
+        } finally {
+          clearTimeout(timer);
         }
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, runNext));
-    setAddedCount((c) => c + added);
-    if (failed > 0) {
-      setUploadWarning(
-        t("mobileUpload.partial", { added, total: added + failed, failed })
-      );
-    }
+      },
+      { onProgress: setProgress }
+    );
+    setAddedCount((c) => c + res.uploaded);
+    setFailedFiles(res.failedFiles);
+    const notices = [];
+    if (res.errorDetail) notices.push(res.errorDetail);
+    if (res.limitReached) notices.push(t("photoUpload.limitReached"));
+    if (res.rejected > 0) notices.push(t("mobileUpload.unreadable", { count: res.rejected }));
+    setNotices(notices);
     setUploading(false);
+    setProgress(null);
   };
+
+  // Closing the page (or reloading it) in the middle would stop the upload.
+  useEffect(() => {
+    if (!uploading) return;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [uploading]);
 
   if (error) {
     return (
@@ -183,6 +176,18 @@ export default function MobileUpload() {
             {uploading ? t("mobileUpload.uploading") : t("mobileUpload.choose")}
           </span>
         </button>
+        {progress && (
+          <div className="mt-4" data-testid="upload-progress">
+            <div className="h-1.5 bg-[color:var(--ink)]/10 overflow-hidden">
+              <div
+                className="h-full bg-[color:var(--coral)] transition-all duration-300"
+                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
+              />
+            </div>
+            <p className="text-sm mt-3">{t("mobileUpload.progress", progress)}</p>
+            <p className="text-[color:var(--muted)] text-xs mt-1">{t("mobileUpload.keepOpen")}</p>
+          </div>
+        )}
         <input
           ref={fileInput}
           type="file"
@@ -206,11 +211,24 @@ export default function MobileUpload() {
           </div>
         )}
 
-        {uploadWarning && (
-          <p className="mt-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-            {uploadWarning}
-          </p>
+        {failedFiles.length > 0 && !uploading && (
+          <div className="mt-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-3" data-testid="upload-failed">
+            <p>{t("mobileUpload.failed", { count: failedFiles.length })}</p>
+            <button
+              type="button"
+              onClick={() => handleFiles(failedFiles)}
+              className="mt-2 text-xs font-semibold tracking-widest uppercase underline underline-offset-4"
+              data-testid="upload-resend"
+            >
+              {t("mobileUpload.resend", { count: failedFiles.length })}
+            </button>
+          </div>
         )}
+        {notices.map((notice) => (
+          <p key={notice} className="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            {notice}
+          </p>
+        ))}
 
         {addedCount > 0 && (
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-[color:var(--ink)]/80">

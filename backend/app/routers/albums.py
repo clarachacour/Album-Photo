@@ -344,9 +344,12 @@ async def add_more_photos(
     await reject_if_ordered(album_id)
 
     uploaded, limit_reached = await store_many_photos(album_id, user["id"], files)
-    new_ids = [p["id"] for p in uploaded]
+    # Photos the album already had (a batch sent again) are already on its pages.
+    new_ids = [p["id"] for p in uploaded if not p.get("already_uploaded")]
 
     if not new_ids:
+        if uploaded:
+            return {"status": album.get("status", "ready"), "added": len(uploaded), "limit_reached": limit_reached}
         raise HTTPException(status_code=400, detail="No valid photo could be added")
 
     await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
@@ -354,7 +357,7 @@ async def add_more_photos(
     # /albums/{id}/process (see its comment).
     await run_ai_processing_incremental(album_id, user["id"], new_ids)
     fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
-    return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(new_ids), "limit_reached": limit_reached}
+    return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(uploaded), "limit_reached": limit_reached}
 
 @router.get("/albums/{album_id}/export")
 async def export_pdf(album_id: str, auth: str = Query(None), authorization: str = Header(None)):

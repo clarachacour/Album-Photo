@@ -371,7 +371,15 @@
     "clickToBrowse": "or click to browse · JPG, PNG, WEBP",
     "fromPhone": "From your phone",
     "addedSoFar_one": "{{count}} photo added so far",
-    "addedSoFar_other": "{{count}} photos added so far"
+    "addedSoFar_other": "{{count}} photos added so far",
+    "progress": "{{done}} / {{total}} photos sent",
+    "keepOpen": "Keep this page open until the upload is finished. If the connection drops, it picks up again by itself.",
+    "failed_one": "{{count}} photo couldn't be sent because of the connection.",
+    "failed_other": "{{count}} photos couldn't be sent because of the connection.",
+    "resend_one": "Send the missing photo again",
+    "resend_other": "Send the {{count}} missing photos again",
+    "unreadable_one": "{{count}} photo couldn't be read (damaged file or unsupported format) and was skipped.",
+    "unreadable_other": "{{count}} photos couldn't be read (damaged files or unsupported format) and were skipped."
   },
   "googlePhotos": {
     "accessDenied": "Google Photos access was not granted",
@@ -812,14 +820,21 @@
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",
     "offline": "Couldn't connect. Check your internet connection and try scanning the QR code again.",
-    "partial": "{{added}} of {{total}} photos added — {{failed}} didn't make it. Try selecting the rest again.",
     "loading": "Loading…",
     "title": "Add your photos.",
     "intro": "Choose photos from your phone — they'll appear in your album on the computer automatically.",
     "uploading": "Uploading…",
     "choose": "Choose photos",
     "added_one": "{{count}} photo added — you can add more or close this page.",
-    "added_other": "{{count}} photos added — you can add more or close this page."
+    "added_other": "{{count}} photos added — you can add more or close this page.",
+    "progress": "{{done}} / {{total}} photos sent",
+    "keepOpen": "Keep this page open until it's finished. If the connection drops, it picks up again by itself.",
+    "failed_one": "{{count}} photo couldn't be sent because of the connection.",
+    "failed_other": "{{count}} photos couldn't be sent because of the connection.",
+    "resend_one": "Send the missing photo again",
+    "resend_other": "Send the {{count}} missing photos again",
+    "unreadable_one": "{{count}} photo couldn't be read and was skipped.",
+    "unreadable_other": "{{count}} photos couldn't be read and were skipped."
   },
   "tour": {
     "help": "Guide",
