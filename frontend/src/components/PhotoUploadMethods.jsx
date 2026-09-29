@@ -8,6 +8,7 @@ import { Upload, Smartphone } from "lucide-react";
 import { TID } from "@/constants/testIds";
 import { isMobileDevice } from "@/lib/device";
 import { uploadInBatches } from "@/lib/uploadBatches";
+import { preparePhoto } from "@/lib/preparePhoto";
 
 /**
  * The three ways to add photos to an album — drag & drop / file picker,
@@ -172,7 +173,8 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         files,
         async (batch, { timeout }) => {
           const form = new FormData();
-          batch.forEach((f) => form.append("files", f));
+          // Heavy photos are made lighter first (see preparePhoto).
+          (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
           const { data } = await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" }, timeout });
           return { uploaded: mode === "editor" ? data?.added : data?.uploaded, limitReached: data?.limit_reached };
         },

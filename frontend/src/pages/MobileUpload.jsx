@@ -5,6 +5,7 @@ import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import { uploadInBatches } from "@/lib/uploadBatches";
+import { preparePhoto } from "@/lib/preparePhoto";
 
 export default function MobileUpload() {
   const { token } = useParams();
@@ -108,7 +109,8 @@ export default function MobileUpload() {
       files,
       async (batch, { timeout }) => {
         const form = new FormData();
-        batch.forEach((f) => form.append("files", f));
+        // Heavy photos are made lighter first (see preparePhoto).
+        (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
         try {
