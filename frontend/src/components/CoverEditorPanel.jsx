@@ -439,7 +439,7 @@ export function CoverEditorPanel({
           {selectedItem.type === "image" && (
             <>
               <img
-                src={coverItemImageSrc(selectedItem)}
+                src={coverItemImageSrc(selectedItem, "medium")}
                 alt=""
                 className="w-full max-h-32 object-contain border border-[color:var(--border-soft)] bg-[color:var(--paper)]"
               />

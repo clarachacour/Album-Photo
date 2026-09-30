@@ -205,6 +205,7 @@ export default function PrintAlbum() {
           <div style={{ width: `${seamMm}mm`, height: `${ph}mm`, flexShrink: 0, background: "rgba(26,26,23,0.7)" }} />
           <div style={{ width: `${pw}mm`, height: `${ph}mm` }}>
             <CoverFrontPage
+              imageVariant="original"
               template={template}
               title={album.title}
               orientation={album.orientation}
@@ -249,6 +250,7 @@ export default function PrintAlbum() {
       {includeBackCover && !spread && (
         <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <CoverBackPage
+            imageVariant="original"
             template={template}
             country={album.country}
             orientation={album.orientation}
@@ -277,6 +279,7 @@ function CoverSpread({ layout, album, template, cover }) {
     >
       <div style={box(layout.back)}>
         <CoverBackPage
+          imageVariant="original"
           template={template}
           country={album.country}
           orientation={album.orientation}
@@ -289,6 +292,7 @@ function CoverSpread({ layout, album, template, cover }) {
       </div>
       <div style={box(layout.front)}>
         <CoverFrontPage
+          imageVariant="original"
           template={template}
           title={album.title}
           orientation={album.orientation}

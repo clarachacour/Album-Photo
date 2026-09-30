@@ -34,6 +34,8 @@ export function CoverFrontPage({
   onSelectCover,
   selectedItemId,
   titleSelected,
+  // "medium" on screen; the print page asks for the full "original".
+  imageVariant = "medium",
 }) {
   const containerRef = useRef(null);
   const containerWidth = useElementWidth(containerRef);
@@ -455,7 +457,7 @@ export function CoverFrontPage({
               >
                 {item.image_url && isPhoto ? (
                   <FramedPhoto
-                    src={coverItemImageSrc(item)}
+                    src={coverItemImageSrc(item, imageVariant)}
                     frameAspect={frameAspect}
                     photoAspect={item.photo_aspect}
                     zoom={scale}
@@ -466,7 +468,7 @@ export function CoverFrontPage({
                   />
                 ) : item.image_url ? (
                   <img
-                    src={coverItemImageSrc(item)}
+                    src={coverItemImageSrc(item, imageVariant)}
                     alt=""
                     className="w-full h-full pointer-events-none select-none"
                     style={{ objectFit: "contain" }}

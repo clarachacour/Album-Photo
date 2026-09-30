@@ -15,6 +15,8 @@ export function CoverBackPage({
   onUpdateItem,
   onSelectCover,
   selectedItemId,
+  // "medium" on screen; the print page asks for the full "original".
+  imageVariant = "medium",
 }) {
   const containerRef = useRef(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
@@ -144,7 +146,7 @@ export function CoverBackPage({
             >
               {item.image_url ? (
                 <img
-                  src={coverItemImageSrc(item)}
+                  src={coverItemImageSrc(item, imageVariant)}
                   alt=""
                   className="w-full h-full object-contain pointer-events-none select-none"
                   draggable={false}

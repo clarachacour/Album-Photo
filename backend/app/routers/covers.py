@@ -11,7 +11,7 @@ from app.core.auth import decode_token_for_album, get_current_user, token_claims
 from app.core.executors import run_blocking
 from app.db import db
 from app.services.albums import reject_if_ordered
-from app.services.photos import ALLOWED_MIME, store_image_with_thumbnail
+from app.services.photos import ALLOWED_MIME, cover_asset_medium, store_image_with_thumbnail
 from app.services.storage import get_object
 
 router = APIRouter()
@@ -123,14 +123,21 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
         raise HTTPException(status_code=403, detail="Access denied")
     if claims["album_id"] and f"/users/{user_id}/albums/{claims['album_id']}/" not in path:
         raise HTTPException(status_code=403, detail="Access denied")
-    served_path = path
-    served_content_type = None
+    # Each asset has its own file name and never changes: the browser can
+    # keep it for good instead of downloading it at every visit.
+    cache = {"Cache-Control": "private, max-age=31536000, immutable"}
     if variant == "thumb" and not path.endswith("_thumb.jpg"):
         candidate = path.rsplit(".", 1)[0] + "_thumb.jpg"
         try:
             data, ctype = await run_blocking(get_object, candidate)
-            return Response(content=data, media_type="image/jpeg")
+            return Response(content=data, media_type="image/jpeg", headers=cache)
         except Exception:
             pass  # no thumbnail on disk (asset predates this change, or generation failed) — fall back to original
-    data, ctype = await run_blocking(get_object, served_path)
-    return Response(content=data, media_type=served_content_type or ctype)
+    if variant == "medium":
+        # Covers on screen ("My albums", the editor): a lighter copy made
+        # once, instead of the full-resolution file kept for printing.
+        data = await run_blocking(cover_asset_medium, path)
+        if data:
+            return Response(content=data, media_type="image/webp", headers=cache)
+    data, ctype = await run_blocking(get_object, path)
+    return Response(content=data, media_type=ctype, headers=cache)

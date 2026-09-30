@@ -157,6 +157,32 @@ def generate_medium_variant(photo: dict):
         logger.error(f"Impossible de générer la variante 'medium' pour la photo {photo.get('id')}: {e}")
         return None, None
 
+def cover_asset_medium(path: str) -> Optional[bytes]:
+    """The on-screen copy of an image placed on a cover: at most
+    MEDIUM_MAX_DIMENSION_PX, WebP so a logo keeps its transparency. Made the
+    first time it's asked for, then kept next to the original. None when the
+    original is already small enough (or can't be read): serve it as is."""
+    medium_path = path.rsplit(".", 1)[0] + "_medium.webp"
+    try:
+        return get_object(medium_path)[0]
+    except Exception:
+        pass
+    try:
+        data, _ = get_object(path)
+        with Image.open(BytesIO(data)) as img:
+            if max(img.size) <= MEDIUM_MAX_DIMENSION_PX and len(data) <= 400_000:
+                return None
+            img = img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
+            img.thumbnail((MEDIUM_MAX_DIMENSION_PX, MEDIUM_MAX_DIMENSION_PX), Image.LANCZOS)
+            buf = BytesIO()
+            img.save(buf, format="WEBP", quality=85)
+        medium = buf.getvalue()
+        put_object(medium_path, medium, "image/webp")
+        return medium
+    except Exception as e:
+        logger.error(f"Impossible de préparer la copie écran de l'image de couverture {path}: {e}")
+        return None
+
 # The printing office's stated minimum is 300 ppi (360 ppi is their
 # target, 300 the floor they'll actually accept). 3000px was short of that
 # for a full-bleed photo on our largest actually-relevant format — a photo
