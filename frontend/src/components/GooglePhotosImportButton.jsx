@@ -126,6 +126,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
       const accessToken = tokenResponse.access_token;
       setBusy(true);
       let sessionId = null;
+      let pickerWindow = null;
       try {
         const sessionRes = await fetch("https://photospicker.googleapis.com/v1/sessions", {
           method: "POST",
@@ -143,11 +144,21 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
           duration: 15000,
           action: {
             label: t("googlePhotos.openButton"),
-            onClick: () => window.open(session.pickerUri, "_blank", "width=500,height=700"),
+            // "/autoclose": Google closes its window by itself once the
+            // selection is confirmed (otherwise it stays open on "Done!").
+            onClick: () => {
+              pickerWindow = window.open(`${session.pickerUri}/autoclose`, "_blank", "width=500,height=700");
+            },
           },
         });
 
         const done = await pollSession(accessToken, session.id);
+        // In case the window didn't close by itself.
+        try {
+          if (pickerWindow && !pickerWindow.closed) pickerWindow.close();
+        } catch {
+          /* already closed */
+        }
         if (!done) {
           toast.error(t("googlePhotos.selectionTimeout"));
           return;
