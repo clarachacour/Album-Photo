@@ -36,6 +36,7 @@ from app.services.cover_art import slim_cover
 from app.services.photos import store_many_photos
 from app.services.processing import (
     add_photos_to_layout,
+    version_query,
     rescue_layout,
     start_full_layout,
     trim_pages_to_target,
@@ -74,6 +75,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "cover": slim_cover(data.cover or {})[0],
         "created_at": now,
         "updated_at": now,
+        "version": 0,
     }
     await db.albums.insert_one(album)
     album.pop("_id", None)
@@ -161,10 +163,24 @@ async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(ge
     if data.size is not None and data.size not in ALLOWED_ALBUM_SIZES:
         raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    base_version = update.pop("base_version", None)
     if "cover" in update:
         update["cover"], _ = slim_cover(update["cover"])
     update["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.albums.update_one({"id": album_id}, {"$set": update})
+    # Every change to the album's content moves its version on. A save made
+    # on an older version (another tab or device saved in between, or photos
+    # were laid out meanwhile) would silently erase that other change: it's
+    # refused, and the editor asks the person what to keep.
+    query = {"id": album_id}
+    if base_version is not None:
+        query.update(version_query(base_version))
+    res = await db.albums.update_one(query, {"$set": update, "$inc": {"version": 1}})
+    if res.matched_count == 0:
+        current = await db.albums.find_one({"id": album_id}, {"_id": 0, "version": 1})
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "album_changed", "message": "This album was changed somewhere else in the meantime", "version": (current or {}).get("version", 0)},
+        )
     updated = await db.albums.find_one({"id": album_id}, {"_id": 0})
     return updated
 
@@ -268,7 +284,7 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
             final_pages, _ = await trim_pages_to_target(pages, data.target_pages)
         await db.albums.update_one(
             {"id": album_id},
-            {"$set": {"pages": final_pages, "target_pages": data.target_pages, "pages_below_target": len(final_pages) < data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {"pages": final_pages, "target_pages": data.target_pages, "pages_below_target": len(final_pages) < data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}, "$inc": {"version": 1}},
         )
         return {"pages": len(final_pages), "photos_repacked": 0}
 
@@ -297,7 +313,7 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
     final_pages = preserved_pages + new_pages
     await db.albums.update_one(
         {"id": album_id},
-        {"$set": {"pages": final_pages, "target_pages": data.target_pages, "pages_below_target": len(final_pages) < data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"pages": final_pages, "target_pages": data.target_pages, "pages_below_target": len(final_pages) < data.target_pages, "updated_at": datetime.now(timezone.utc).isoformat()}, "$inc": {"version": 1}},
     )
     return {"pages": len(final_pages), "photos_repacked": len(ordered_photos)}
 
@@ -335,14 +351,14 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
 async def get_status(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one(
         {"id": album_id, "user_id": user["id"]},
-        {"_id": 0, "status": 1, "id": 1, "user_id": 1, "google_import_result": 1, "layout_lock": 1, "layout_requested_at": 1},
+        {"_id": 0, "status": 1, "id": 1, "user_id": 1, "google_import_result": 1, "layout_lock": 1, "layout_requested_at": 1, "version": 1},
     )
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
     # Shown as processing but its run died: started again (see rescue_layout).
     if await rescue_layout(album):
-        album = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1, "google_import_result": 1}) or album
-    return {"status": album.get("status", "draft"), "google_import_result": album.get("google_import_result")}
+        album = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1, "google_import_result": 1, "version": 1}) or album
+    return {"status": album.get("status", "draft"), "google_import_result": album.get("google_import_result"), "version": album.get("version", 0)}
 
 @router.post("/albums/{album_id}/add-photos")
 async def add_more_photos(

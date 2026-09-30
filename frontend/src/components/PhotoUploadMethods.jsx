@@ -22,7 +22,7 @@ import { preparePhoto } from "@/lib/preparePhoto";
  *   incremental AI processing — `onProcessingStarted` is called so the
  *   caller can show its processing/progress UI.
  */
-export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted, afterMethodsRow, onImportingChange }) {
+export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, onPhotosChange, onProcessingStarted, beforeAlbumChange, afterMethodsRow, onImportingChange }) {
   const { t } = useTranslation();
   const [drag, setDrag] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -166,6 +166,8 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
     setFailedFiles([]);
     setProgress({ done: 0, total: files.length });
     try {
+      // The new pages go onto the saved album: edits in progress go first.
+      if (mode === "editor" && beforeAlbumChange) await beforeAlbumChange();
       const endpoint = mode === "editor" ? `/albums/${albumId}/add-photos` : `/albums/${albumId}/photos`;
       // Batching, retries after a dropped connection and how many batches
       // go at once: see uploadInBatches.

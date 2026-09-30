@@ -21,7 +21,7 @@ import { cryptoRandom } from "@/lib/cryptoRandom";
 import { fitItemToPhoto } from "@/lib/photoFit";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
-import { useAlbumSaving } from "@/hooks/useAlbumSaving";
+import { editableContent, useAlbumSaving } from "@/hooks/useAlbumSaving";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
 export default function AlbumEditor() {
@@ -79,25 +79,69 @@ export default function AlbumEditor() {
   const saver = useAlbumSaving({ albumId: id, album, autosave: Boolean(album && !processing && !album.was_ordered) });
   const saving = saver.status === "saving";
 
-  const loadAlbum = useCallback(async () => {
+  const loadedRef = useRef(false);
+  const dirtyRef = useRef(false);
+  dirtyRef.current = saver.dirty;
+
+  // Shows the album as it is on the server, without ever losing edits made
+  // here: unchanged on the server (same version) → only the photo list and
+  // such are refreshed; changed there while there are edits here → the
+  // person chooses (conflict banner). force: take the server's version.
+  const loadAlbum = useCallback(async ({ force = false } = {}) => {
     try {
+      // Edits waiting here go first; refused if the album changed meanwhile.
+      if (!force && loadedRef.current && dirtyRef.current && (await saver.save()) === "conflict") return;
       const { data } = await api.get(`/albums/${id}`);
-      albumHistory.resetState(data);
-      saver.markLoaded(data);
+      const unchanged = (data.version ?? 0) === saver.getVersion();
+      if (!force && loadedRef.current && unchanged) {
+        const serverFields = { ...data };
+        for (const key of Object.keys(editableContent(data))) delete serverFields[key];
+        albumHistory.mergeState(serverFields);
+      } else if (!force && loadedRef.current && dirtyRef.current) {
+        saver.markConflict();
+        return;
+      } else {
+        albumHistory.resetState(data);
+        saver.markLoaded(data);
+        loadedRef.current = true;
+      }
       if (data.status === "processing") {
         notifiedRef.current = false;
         setProcessing(true);
       } else setProcessing(false);
     } catch {
+      // Opening the album failed; a later refresh failing just leaves it as is.
+      if (loadedRef.current) return;
       toast.error(t("albumEditor.loadError"));
       nav("/dashboard");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, nav, saver.markLoaded]);
+  }, [id, nav, saver.markLoaded, saver.markConflict, saver.getVersion, saver.save]);
 
   useEffect(() => {
     loadAlbum();
   }, [loadAlbum]);
+
+  // Back on this tab: if the album was changed elsewhere (another tab or
+  // device) in the meantime, show that version (or ask, with edits here).
+  const { getVersion } = saver;
+  useEffect(() => {
+    const check = async () => {
+      if (document.visibilityState !== "visible" || !loadedRef.current) return;
+      try {
+        const { data } = await api.get(`/albums/${id}/status`);
+        if ((data.version ?? 0) !== getVersion()) loadAlbum();
+      } catch {
+        /* offline: checked again next time */
+      }
+    };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, [id, loadAlbum, getVersion]);
 
   useEffect(() => {
     if (!coverSel) return;
@@ -218,7 +262,7 @@ export default function AlbumEditor() {
     const result = await saver.save();
     if (!silent) {
       if (result === "saved") toast.success(t("common.saved"));
-      else toast.error(result === "locked" ? t("albumEditor.lockedError") : t("albumEditor.saveOffline"));
+      else if (result !== "conflict") toast.error(result === "locked" ? t("albumEditor.lockedError") : t("albumEditor.saveOffline"));
     } else if (result === "locked") {
       toast.error(t("albumEditor.lockedError"));
     } else if (result === "failed") {
@@ -457,6 +501,8 @@ export default function AlbumEditor() {
     if (!album) return;
     setRepacking(true);
     try {
+      // The pages are rebuilt from the saved album: edits here go first.
+      if ((await saver.save()) === "conflict") return;
       const { data } = await api.post(`/albums/${album.id}/repack-pages`, {
         target_pages: targetPages,
         keep_first_pages: keepFirstPages,
@@ -717,6 +763,33 @@ export default function AlbumEditor() {
               {t("albumEditor.offlineBanner")}
             </div>
           )}
+          {saver.status === "conflict" && (
+            <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" role="alert" data-testid="editor-conflict">
+              <span>{t("albumEditor.conflict.body")}</span>
+              <span className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => loadAlbum({ force: true })}
+                  className="text-xs font-semibold tracking-widest uppercase underline underline-offset-4"
+                  data-testid="editor-conflict-load"
+                >
+                  {t("albumEditor.conflict.loadLatest")}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const result = await saver.keepMine();
+                    if (result === "saved") toast.success(t("common.saved"));
+                    else if (result !== "conflict") toast.error(t("albumEditor.saveOffline"));
+                  }}
+                  className="text-xs font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+                  data-testid="editor-conflict-keep"
+                >
+                  {t("albumEditor.conflict.keepMine")}
+                </button>
+              </span>
+            </div>
+          )}
           {saver.recovered && !album.was_ordered && (
             <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" data-testid="editor-recovered">
               <span>{t("albumEditor.recovered.body")}</span>
@@ -880,6 +953,7 @@ export default function AlbumEditor() {
               mode="editor"
               photos={[]}
               onPhotosChange={() => loadAlbum()}
+              beforeAlbumChange={saver.save}
               onProcessingStarted={() => {
                 notifiedRef.current = false;
                 setProcessing(true);

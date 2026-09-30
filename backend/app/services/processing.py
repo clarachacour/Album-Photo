@@ -57,6 +57,14 @@ LAYOUT_HEARTBEAT_SECONDS = 30
 LAYOUT_LOCK_STALE_SECONDS = 180
 
 
+def version_query(version: int) -> dict:
+    """Matches an album still at this version (albums from before versions
+    existed count as version 0)."""
+    if version == 0:
+        return {"$or": [{"version": 0}, {"version": {"$exists": False}}]}
+    return {"version": version}
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -138,7 +146,7 @@ async def _full_layout(album_id: str):
 
     photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
     if not photos:
-        await db.albums.update_one({"id": album_id}, {"$set": {"pages": [title_page]}})
+        await db.albums.update_one({"id": album_id}, {"$set": {"pages": [title_page]}, "$inc": {"version": 1}})
         return
 
     selected, curation_stats = await curate_photos(photos)
@@ -149,7 +157,7 @@ async def _full_layout(album_id: str):
 
     await db.albums.update_one(
         {"id": album_id},
-        {"$set": {"pages": pages, "pages_below_target": fell_short, "curation_stats": curation_stats, "updated_at": _now()}}
+        {"$set": {"pages": pages, "pages_below_target": fell_short, "curation_stats": curation_stats, "updated_at": _now()}, "$inc": {"version": 1}},
     )
     # Every photo there was is laid out: none is waiting any more.
     await db.photos.update_many({"id": {"$in": [p["id"] for p in photos]}}, {"$unset": {"layout_pending": ""}})
@@ -288,15 +296,17 @@ async def _append_pages(album_id: str, new_photo_ids: List[str]):
     """Curates only the given photos (checking them for duplicates against
     what's already in the album too) and APPENDS new pages at the end —
     existing pages are left exactly as the user edited them. Only called
-    while holding the album's layout lock."""
-    album = await db.albums.find_one({"id": album_id}, {"_id": 0})
-    existing_pages = (album.get("pages") or []) if album else []
-    already_placed = _placed_photo_ids(existing_pages)
+    while holding the album's layout lock.
+
+    The person may save edits while the photos are being sorted: the new
+    pages are then added again onto the album as just saved, never onto
+    the copy read before (which would erase those edits)."""
     new_photos = await db.photos.find(
         {"id": {"$in": new_photo_ids}, "is_deleted": False}, {"_id": 0}
     ).to_list(5000)
-    new_photos = [p for p in new_photos if p["id"] not in already_placed]
-    if not new_photos:
+    album = await db.albums.find_one({"id": album_id}, {"_id": 0})
+    new_photos = [p for p in new_photos if p["id"] not in _placed_photo_ids((album or {}).get("pages") or [])]
+    if not album or not new_photos:
         return
 
     existing_selected = await db.photos.find(
@@ -306,21 +316,32 @@ async def _append_pages(album_id: str, new_photo_ids: List[str]):
 
     newly_selected, curation_stats = await curate_photos(new_photos, existing_selected)
 
-    orientation = album.get("orientation", "portrait") if album else "portrait"
-    target_pages = album.get("target_pages", 50) if album else 50
-    start_idx = len(existing_pages) % len(LAYOUT_PATTERN)
-    new_pages = deterministic_layout(newly_selected, orientation, pattern_start_idx=start_idx, content_pages_budget=max(0, target_pages - 1 - max(0, len(existing_pages) - 1)))
-    combined_pages, fell_short = await trim_pages_to_target(existing_pages + new_pages, target_pages)
-    # The album keeps the page count the person chose: photos that don't fit
-    # stay in "All your photos", and the editor says so (unplaced_added).
-    placed = _placed_photo_ids(combined_pages)
-    unplaced = [p["id"] for p in newly_selected if p["id"] not in placed]
+    for _ in range(5):
+        existing_pages = album.get("pages") or []
+        already_placed = _placed_photo_ids(existing_pages)
+        to_place = [p for p in newly_selected if p["id"] not in already_placed]
+        orientation = album.get("orientation", "portrait")
+        target_pages = album.get("target_pages", 50)
+        start_idx = len(existing_pages) % len(LAYOUT_PATTERN)
+        new_pages = deterministic_layout(to_place, orientation, pattern_start_idx=start_idx, content_pages_budget=max(0, target_pages - 1 - max(0, len(existing_pages) - 1)))
+        combined_pages, fell_short = await trim_pages_to_target(existing_pages + new_pages, target_pages)
+        # The album keeps the page count the person chose: photos that don't fit
+        # stay in "All your photos", and the editor says so (unplaced_added).
+        placed = _placed_photo_ids(combined_pages)
+        unplaced = [p["id"] for p in to_place if p["id"] not in placed]
 
-    await db.albums.update_one(
-        {"id": album_id},
-        {"$set": {
-            "pages": combined_pages, "pages_below_target": fell_short, "curation_stats": curation_stats, "updated_at": _now(),
-            "unplaced_added": len(unplaced), "unplaced_added_at": _now(),
-        }}
-    )
+        res = await db.albums.update_one(
+            {"id": album_id, **version_query(album.get("version", 0))},
+            {"$set": {
+                "pages": combined_pages, "pages_below_target": fell_short, "curation_stats": curation_stats, "updated_at": _now(),
+                "unplaced_added": len(unplaced), "unplaced_added_at": _now(),
+            }, "$inc": {"version": 1}},
+        )
+        if res.matched_count:
+            break
+        album = await db.albums.find_one({"id": album_id}, {"_id": 0})
+        if not album:
+            return
+    else:
+        raise RuntimeError("the album kept changing while its new pages were being added")
     logger.info(f"Incremental AI processing complete for album {album_id}: +{len(newly_selected)} photos, +{len(new_pages)} pages")

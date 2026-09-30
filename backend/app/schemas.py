@@ -149,6 +149,9 @@ class AlbumUpdate(BaseModel):
     # Pages people add by hand can go past target_pages.
     pages: Optional[List[Dict[str, Any]]] = Field(default=None, max_length=MAX_ALBUM_PAGES + 100)
     cover: Optional[Dict[str, Any]] = None
+    # The album's version the editor's changes were made on (see
+    # update_album): a save made on an older one is refused, not applied.
+    base_version: Optional[int] = Field(default=None, ge=0)
     # No status or cover_image_path: only the server sets them. A client
     # able to write cover_image_path could point it at another customer's
     # file and read it through the cover image endpoint. Unknown fields in

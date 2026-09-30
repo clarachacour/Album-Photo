@@ -13,9 +13,15 @@ import { api } from "@/lib/api";
  *   back the next time the album is opened — only if the album hasn't
  *   changed on the server since (new pages from added photos, a save from
  *   another device…), so a stale copy never overwrites newer work.
- * - The browser warns before leaving the page with unsaved edits.
+ * - Each save says which version of the album the edits were made on. If
+ *   the album changed elsewhere in between (another tab or device, photos
+ *   laid out), the server refuses it rather than erase that change: status
+ *   "conflict", nothing is saved until the person chooses (keepMine, or
+ *   loading the latest version).
+ * - Leaving the page or switching tab saves right away; the browser warns
+ *   before leaving with unsaved edits.
  *
- * status: "saved" | "unsaved" | "saving" | "offline" | "error" | "locked"
+ * status: "saved" | "unsaved" | "saving" | "offline" | "error" | "locked" | "conflict"
  */
 
 const AUTOSAVE_DELAY_MS = 4000;
@@ -63,10 +69,11 @@ export function useAlbumSaving({ albumId, album, autosave }) {
   const [recovered, setRecovered] = useState(null);
 
   const savedJsonRef = useRef(null); // content known to be on the server
-  const baseRef = useRef(null); // the server's updated_at that content matches
+  const baseRef = useRef(0); // the album version that content matches
   const albumRef = useRef(album);
   albumRef.current = album;
   const lockedRef = useRef(false);
+  const conflictRef = useRef(false);
 
   const currentJson = album ? JSON.stringify(editableContent(album)) : null;
   const dirty = Boolean(album && savedJsonRef.current !== null && currentJson !== savedJsonRef.current);
@@ -75,8 +82,9 @@ export function useAlbumSaving({ albumId, album, autosave }) {
   const markLoaded = useCallback(
     (data) => {
       savedJsonRef.current = JSON.stringify(editableContent(data));
-      baseRef.current = data.updated_at || null;
+      baseRef.current = data.version ?? 0;
       lockedRef.current = false;
+      conflictRef.current = false;
       setStatus("saved");
       const draft = readDraft(albumId);
       if (draft && draft.base === baseRef.current && JSON.stringify(draft.content) !== savedJsonRef.current) {
@@ -95,14 +103,15 @@ export function useAlbumSaving({ albumId, album, autosave }) {
   const saveNow = useCallback(async () => {
     const current = albumRef.current;
     if (!current || lockedRef.current) return lockedRef.current ? "locked" : "failed";
+    if (conflictRef.current) return "conflict";
     const content = editableContent(current);
     const json = JSON.stringify(content);
     if (json === savedJsonRef.current) return "saved";
     setStatus("saving");
     try {
-      const { data } = await api.patch(`/albums/${albumId}`, content);
+      const { data } = await api.patch(`/albums/${albumId}`, { ...content, base_version: baseRef.current });
       savedJsonRef.current = json;
-      baseRef.current = data?.updated_at || baseRef.current;
+      baseRef.current = data?.version ?? baseRef.current + 1;
       setLastSavedAt(new Date());
       const latest = albumRef.current ? editableContent(albumRef.current) : content;
       if (JSON.stringify(latest) !== json) writeDraft(albumId, { base: baseRef.current, content: latest });
@@ -114,6 +123,12 @@ export function useAlbumSaving({ albumId, album, autosave }) {
         lockedRef.current = true; // ordered in the meantime: can't be changed any more
         setStatus("locked");
         return "locked";
+      }
+      if (err?.response?.status === 409) {
+        conflictRef.current = true; // changed elsewhere: the person decides
+        writeDraft(albumId, { base: baseRef.current, content });
+        setStatus("conflict");
+        return "conflict";
       }
       setStatus(navigator.onLine === false ? "offline" : "error");
       return "failed";
@@ -138,7 +153,7 @@ export function useAlbumSaving({ albumId, album, autosave }) {
 
   // Save a few seconds after the last change.
   useEffect(() => {
-    if (!autosave || !dirty || lockedRef.current) return;
+    if (!autosave || !dirty || lockedRef.current || conflictRef.current) return;
     const timer = setTimeout(save, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [autosave, dirty, currentJson, save]);
@@ -164,6 +179,21 @@ export function useAlbumSaving({ albumId, album, autosave }) {
     };
   }, [save]);
 
+  // Switching tab or window (the Google Photos one included) or leaving the
+  // page: save now, so what's opened next starts from these edits.
+  useEffect(() => {
+    if (!autosave || !dirty) return;
+    const flush = () => document.visibilityState === "hidden" && save();
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("blur", save);
+    window.addEventListener("pagehide", save);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("blur", save);
+      window.removeEventListener("pagehide", save);
+    };
+  }, [autosave, dirty, save]);
+
   // Leaving with edits the server doesn't have yet.
   useEffect(() => {
     if (!dirty) return;
@@ -180,5 +210,39 @@ export function useAlbumSaving({ albumId, album, autosave }) {
     setRecovered(null);
   }, [albumId]);
 
-  return { status: dirty && status === "saved" ? "unsaved" : status, dirty, online, lastSavedAt, save, markLoaded, recovered, dismissRecovered, clearRecovered: () => setRecovered(null) };
+  /** The album changed on the server while there are edits here. */
+  const markConflict = useCallback(() => {
+    conflictRef.current = true;
+    setStatus("conflict");
+  }, []);
+
+  /** In a conflict: saves these edits over the latest version anyway. */
+  const keepMine = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/albums/${albumId}/status`);
+      baseRef.current = data.version ?? baseRef.current;
+    } catch {
+      return "failed";
+    }
+    conflictRef.current = false;
+    return save();
+  }, [albumId, save]);
+
+  /** The version of the album the edits here are based on. */
+  const getVersion = useCallback(() => baseRef.current, []);
+
+  return {
+    status: dirty && status === "saved" ? "unsaved" : status,
+    dirty,
+    online,
+    lastSavedAt,
+    save,
+    markLoaded,
+    markConflict,
+    keepMine,
+    getVersion,
+    recovered,
+    dismissRecovered,
+    clearRecovered: () => setRecovered(null),
+  };
 }

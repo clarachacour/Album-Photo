@@ -498,7 +498,8 @@
       "unsaved": "Modifications pas encore enregistrées",
       "offline": "Hors ligne — modifications gardées sur cet appareil",
       "error": "Enregistrement impossible — nouvel essai automatique…",
-      "locked": "Album commandé — il ne peut plus être modifié"
+      "locked": "Album commandé — il ne peut plus être modifié",
+      "conflict": "Modifié ailleurs — choisissez la version à garder"
     },
     "offlineBanner": "Vous êtes hors ligne. Vous pouvez continuer à modifier votre album : vos changements sont gardés sur cet appareil et seront enregistrés dès le retour de la connexion.",
     "recovered": {
@@ -512,7 +513,12 @@
     "unplacedPhotos_other": "Votre album est complet ({{pages}} pages) : {{count}} nouvelles photos n'ont pas pu être placées. Elles se trouvent dans « Toutes vos photos ». Pour les ajouter, augmentez le nombre de pages puis faites-les glisser dans les pages, ou remplacez des photos existantes.",
     "changePageCount": "Modifier le nombre de pages",
     "gotIt": "Compris",
-    "albumFull": "Votre album est complet ({{pages}} pages). Les photos que vous ajoutez iront dans « Toutes vos photos » : augmentez d'abord le nombre de pages pour que l'IA puisse les placer, ou faites-les glisser vous-même."
+    "albumFull": "Votre album est complet ({{pages}} pages). Les photos que vous ajoutez iront dans « Toutes vos photos » : augmentez d'abord le nombre de pages pour que l'IA puisse les placer, ou faites-les glisser vous-même.",
+    "conflict": {
+      "body": "Cet album a été modifié ailleurs entre-temps (un autre onglet, un autre appareil ou des photos ajoutées). Vos dernières modifications ici ne sont pas encore enregistrées.",
+      "loadLatest": "Charger la dernière version",
+      "keepMine": "Garder mes modifications"
+    }
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",

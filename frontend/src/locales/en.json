@@ -498,7 +498,8 @@
       "unsaved": "Changes not saved yet",
       "offline": "Offline — changes kept on this device",
       "error": "Couldn't save — trying again automatically…",
-      "locked": "Album ordered — it can no longer be edited"
+      "locked": "Album ordered — it can no longer be edited",
+      "conflict": "Changed somewhere else — choose which version to keep"
     },
     "offlineBanner": "You're offline. You can keep editing your album: your changes are kept on this device and will be saved as soon as the connection is back.",
     "recovered": {
@@ -512,7 +513,12 @@
     "unplacedPhotos_other": "Your album is full ({{pages}} pages): {{count}} new photos couldn't be placed. They're in \"All your photos\". To add them, increase the page count and drag them onto the pages, or replace existing photos.",
     "changePageCount": "Change page count",
     "gotIt": "Got it",
-    "albumFull": "Your album is full ({{pages}} pages). Photos you add will go to \"All your photos\": increase the page count first so the AI can place them, or drag them in yourself."
+    "albumFull": "Your album is full ({{pages}} pages). Photos you add will go to \"All your photos\": increase the page count first so the AI can place them, or drag them in yourself.",
+    "conflict": {
+      "body": "This album was changed somewhere else in the meantime (another tab, another device or added photos). Your latest changes here aren't saved yet.",
+      "loadLatest": "Load the latest version",
+      "keepMine": "Keep my changes"
+    }
   },
   "toolbars": {
     "editPhoto": "Edit photo",

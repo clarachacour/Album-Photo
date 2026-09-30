@@ -53,6 +53,17 @@ export function useHistoryState(initialValue) {
     setStateRaw(newValue);
   }, []);
 
+  // Fields the person doesn't edit (e.g. the album's photo list), updated
+  // without touching the undo history: applied to every step of it too, so
+  // undoing never brings back an outdated copy of them.
+  const mergeState = useCallback((fields) => {
+    const merge = (value) => (value && typeof value === "object" ? { ...value, ...fields } : value);
+    pastRef.current = pastRef.current.map(merge);
+    futureRef.current = futureRef.current.map(merge);
+    if (pendingRef.current !== null) pendingRef.current = merge(pendingRef.current);
+    setStateRaw(merge);
+  }, []);
+
   const undo = useCallback(() => {
     flushPending();
     if (pastRef.current.length === 0) return;
@@ -75,5 +86,5 @@ export function useHistoryState(initialValue) {
   const canUndo = () => pastRef.current.length > 0 || pendingRef.current !== null;
   const canRedo = () => futureRef.current.length > 0;
 
-  return [state, setState, { undo, redo, canUndo, canRedo, resetState }];
+  return [state, setState, { undo, redo, canUndo, canRedo, resetState, mergeState }];
 }
