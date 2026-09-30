@@ -13,8 +13,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Direct links to the photos in R2, sent with the album's photos (see
+// signed_urls.py on the server): kept here so every image on the page uses
+// them, whichever component shows it.
+const photoLinks = new Map();
+
+export function rememberPhotoLinks(photos) {
+  for (const p of photos || []) {
+    if (p?.id && p.urls) photoLinks.set(p.id, p.urls);
+  }
+}
+
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    if (Array.isArray(r?.data?.photos)) rememberPhotoLinks(r.data.photos);
+    return r;
+  },
   (err) => {
     if (err?.response?.status === 401) {
       localStorage.removeItem("album_token");
@@ -29,6 +43,11 @@ export function getToken() {
 }
 
 export function photoImageUrl(photoId, variant = "thumb") {
+  // Straight from R2 when there's a link still valid for at least an hour;
+  // otherwise through our server (a size not made yet, a page left open
+  // for days…).
+  const links = photoLinks.get(photoId);
+  if (links?.[variant] && Date.parse(links.expires_at) - Date.now() > 3600 * 1000) return links[variant];
   const t = getToken();
   return `${API}/photos/${photoId}/image?auth=${encodeURIComponent(t || "")}&variant=${variant}`;
 }

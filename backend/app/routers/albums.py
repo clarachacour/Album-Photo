@@ -33,6 +33,7 @@ from app.core.executors import pdf_render_executor
 from app.services.pdf import render_album_pdf_sync
 from app.services.pdf_legacy import export_pdf_reportlab_legacy
 from app.services.cover_art import slim_cover
+from app.services import signed_urls
 from app.services.photos import store_many_photos
 from app.services.processing import (
     add_photos_to_layout,
@@ -142,6 +143,12 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user_for_alb
     # other large-list query in this file already uses 5000, so this one
     # matches them instead of being the one exception.
     photos = await db.photos.find({"album_id": album_id, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(5000)
+    # Direct links: the page loads the photos from R2, not through here.
+    start = signed_urls.window_start()
+    for p in photos:
+        urls = signed_urls.photo_urls(p, start)
+        if urls:
+            p["urls"] = urls
     album["photos"] = _json_safe(photos)
     # Lets the editor show a clear "this album is locked" state and disable
     # its controls up front, instead of the person only finding out via a
