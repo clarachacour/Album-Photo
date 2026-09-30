@@ -1,35 +1,9 @@
 """Photos added to an album already laid out, several batches at once:
 every photo ends up on a page, once, and the album doesn't stay locked."""
 import asyncio
-import random
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
-
-@pytest.fixture()
-def slow_curation(monkeypatch):
-    """Curation that keeps every photo and takes a moment — long enough for
-    batches processed side by side to overlap, as they do for real."""
-    from app.services import processing
-
-    async def curate(photos, existing_selected=None):
-        await asyncio.sleep(random.uniform(0.01, 0.05))
-        return list(photos), {"total_in": len(photos)}
-
-    monkeypatch.setattr(processing, "curate_photos", curate)
-
-    # Real database calls take a few milliseconds: a moment between reading
-    # the pages and saving them, where another batch can slip in. The
-    # in-memory test database answers instantly, so it's made explicit here.
-    real_trim = processing.trim_pages_to_target
-
-    async def trim(pages, target_pages):
-        await asyncio.sleep(random.uniform(0.005, 0.02))
-        return await real_trim(pages, target_pages)
-
-    monkeypatch.setattr(processing, "trim_pages_to_target", trim)
 
 
 def _album(db, status="ready", pages=None):

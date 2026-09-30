@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from tests.test_api import _signup
-from tests.test_layout_queue import slow_curation  # noqa: F401 (fixture)
 
 SECRET = "task-secret"
 
