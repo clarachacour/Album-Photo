@@ -36,7 +36,8 @@ from app.services.cover_art import slim_cover
 from app.services.photos import store_many_photos
 from app.services.processing import (
     add_photos_to_layout,
-    run_ai_processing,
+    rescue_layout,
+    start_full_layout,
     trim_pages_to_target,
 )
 from app.services.storage import delete_object
@@ -322,24 +323,25 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
             status_code=400,
             detail=f"At least {minimum_required} photos are required for a {target_pages}-page album ({photo_count} uploaded)",
         )
-    # Awaited directly, not dispatched via background_tasks — Cloud Run's
-    # request-based billing throttles CPU hard once a request is
-    # considered "done", and a fire-and-forget background task counts as
-    # done the moment this endpoint returns. For a few hundred photos of
-    # real curation work (dedup comparisons, sharpness scoring), that
-    # throttling was turning a job of a couple of minutes into 10+ minutes
-    # that never seemed to finish. Keeping the request open for the whole
-    # duration keeps it on full CPU the whole time — the frontend already
-    # awaits this call before navigating, so no polling logic needs to
-    # change.
-    await run_ai_processing(album_id, user["id"])
-    return {"status": "processing", "photo_count": photo_count}
+    # Through the Cloud Tasks queue when there is one: the layout no longer
+    # depends on this request staying open on a weak connection. Otherwise
+    # awaited here, not left to background_tasks — Cloud Run throttles the
+    # CPU once the response is sent, which turned minutes into 10+.
+    queued = await start_full_layout(album_id, user["id"])
+    fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
+    return {"status": (fresh or {}).get("status", "processing"), "queued": queued, "photo_count": photo_count}
 
 @router.get("/albums/{album_id}/status")
 async def get_status(album_id: str, user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0, "status": 1, "id": 1, "google_import_result": 1})
+    album = await db.albums.find_one(
+        {"id": album_id, "user_id": user["id"]},
+        {"_id": 0, "status": 1, "id": 1, "user_id": 1, "google_import_result": 1, "layout_lock": 1, "layout_requested_at": 1},
+    )
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
+    # Shown as processing but its run died: started again (see rescue_layout).
+    if await rescue_layout(album):
+        album = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1, "google_import_result": 1}) or album
     return {"status": album.get("status", "draft"), "google_import_result": album.get("google_import_result")}
 
 @router.post("/albums/{album_id}/add-photos")

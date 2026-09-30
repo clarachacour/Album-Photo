@@ -259,6 +259,11 @@ export default function CreateAlbum() {
     return true;
   };
 
+  const mountedRef = useRef(true);
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
+
   const createAndProcess = async () => {
     if (!album) return;
     setBusy(true);
@@ -271,18 +276,39 @@ export default function CreateAlbum() {
     const interval = setInterval(() => {
       setCreationProgress((p) => (p < 90 ? p + (90 - p) * 0.06 : p));
     }, 400);
-    try {
-      await api.post(`/albums/${album.id}/process`);
+    const fail = (message) => {
       clearInterval(interval);
-      setCreationProgress(100);
-      toast.success(t("createAlbum.composingToast"));
-      setTimeout(() => nav(`/editor/${album.id}?processing=1`), 500);
-    } catch (err) {
-      clearInterval(interval);
-      toast.error(err?.response?.data?.detail || t("createAlbum.creationError"));
+      toast.error(message || t("createAlbum.creationError"));
       setBusy(false);
       setCreationProgress(0);
+    };
+    let status;
+    try {
+      const { data } = await api.post(`/albums/${album.id}/process`);
+      status = data?.status;
+    } catch (err) {
+      // No answer at all (connection dropped, timeout): the server may well
+      // be composing the album anyway — follow it rather than give up.
+      if (err?.response) return fail(err.response.data?.detail);
+      status = "processing";
     }
+    // The layout goes on on the server without this page: the page only
+    // follows it, and a weak connection just delays the news.
+    while (status === "processing") {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      if (!mountedRef.current) return;
+      try {
+        const { data } = await api.get(`/albums/${album.id}/status`);
+        status = data.status;
+      } catch {
+        /* connection lost for a moment: keep following */
+      }
+    }
+    if (status !== "ready") return fail();
+    clearInterval(interval);
+    setCreationProgress(100);
+    toast.success(t("createAlbum.composingToast"));
+    setTimeout(() => nav(`/editor/${album.id}?processing=1`), 500);
   };
 
   if (busy && step === 2) {

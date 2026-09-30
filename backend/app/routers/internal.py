@@ -11,6 +11,7 @@ from app.config import (
     UNFINISHED_ALBUM_REMINDER_DAYS,
 )
 from app.db import db
+from app.services.processing import resume_layout
 from app.services.orders import generate_order_pdf, purge_stale_pdf_generation_slots
 from app.services.email import (
     send_album_expiring_soon_email,
@@ -52,6 +53,24 @@ async def internal_generate_order_pdf(
     if not ok and not final_attempt:
         raise HTTPException(status_code=500, detail=f"PDF generation failed (attempt {attempt}), the queue will retry")
     return {"pdf_ready": ok, "attempt": attempt}
+
+
+# ---------- Album layout (called by the Cloud Tasks queue) ----------
+@router.post("/internal/albums/{album_id}/layout")
+async def internal_album_layout(album_id: str, x_cleanup_secret: str = Header(None)):
+    """Lays out the album (see start_full_layout and rescue_layout). A
+    layout that fails leaves the album in "error" for the person to retry:
+    no point in the queue trying the same photos again."""
+    if not CLEANUP_SECRET:
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
+    if x_cleanup_secret != CLEANUP_SECRET:
+        raise HTTPException(status_code=401, detail="Not authorized")
+    album = await db.albums.find_one({"id": album_id}, {"_id": 0, "user_id": 1})
+    if not album:
+        return {"skipped": "album not found"}
+    await resume_layout(album_id, album["user_id"])
+    fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
+    return {"status": (fresh or {}).get("status")}
 
 
 # ---------- Maintenance ----------
