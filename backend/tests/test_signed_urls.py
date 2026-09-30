@@ -1,6 +1,7 @@
 """Direct links to photos in R2: signed exactly like boto3 would, stable
 all day (so the browser cache works), and added to the album's photos."""
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
@@ -73,7 +74,7 @@ def test_album_photos_come_with_their_links(client, db, r2):
     from app.core.auth import decode_token
 
     user_id = decode_token(headers["Authorization"].split()[1])
-    asyncio.run(db.photos.insert_one({"id": "p1", "album_id": album_id, "user_id": user_id, "is_deleted": False, "thumbnail_path": "x/p1_thumb.jpg", "storage_path": "x/p1.jpg", "content_type": "image/jpeg"}))
+    asyncio.run(db.photos.insert_one({"id": str(uuid.uuid4()), "album_id": album_id, "user_id": user_id, "is_deleted": False, "thumbnail_path": "x/p1_thumb.jpg", "storage_path": "x/p1.jpg", "content_type": "image/jpeg"}))
     photo = client.get(f"/api/albums/{album_id}", headers=headers).json()["photos"][0]
     assert photo["urls"]["thumb"].startswith("https://acc123.r2.cloudflarestorage.com/album-photo/x/p1_thumb.jpg?")
     assert "print" in photo["urls"] and "medium" not in photo["urls"]

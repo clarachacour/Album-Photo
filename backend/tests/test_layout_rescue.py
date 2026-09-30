@@ -130,6 +130,6 @@ def test_a_long_run_keeps_its_lock_fresh(db, slow_curation, monkeypatch, client)
     monkeypatch.setattr(processing, "curate_photos", long_curation)
     album_id = str(uuid.uuid4())
     asyncio.run(db.albums.insert_one({"id": album_id, "user_id": "u1", "status": "draft", "target_pages": 4, "pages": []}))
-    asyncio.run(db.photos.insert_one({"id": "p1", "album_id": album_id, "user_id": "u1", "is_deleted": False, "width": 10, "height": 10}))
+    asyncio.run(db.photos.insert_one({"id": str(uuid.uuid4()), "album_id": album_id, "user_id": "u1", "is_deleted": False, "width": 10, "height": 10}))
     asyncio.run(processing.run_ai_processing(album_id, "u1"))
     assert len(set(seen)) > 1  # refreshed while the work went on
