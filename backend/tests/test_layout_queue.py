@@ -133,3 +133,25 @@ def test_a_failed_layout_frees_the_album(client, db, monkeypatch):
     album = asyncio.run(db.albums.find_one({"id": album_id}))
     assert album["status"] == "error" and "layout_lock" not in album
     assert asyncio.run(db.photos.count_documents({"id": {"$in": ids}, "layout_pending": True})) == 0  # no endless retry
+
+
+def test_a_full_album_keeps_its_page_count_and_says_how_many_did_not_fit(client, db, slow_curation):
+    from app.services.processing import add_photos_to_layout
+
+    title = {"id": "title", "items": []}
+    full = [title] + [{"id": f"p{i}", "items": [{"type": "photo", "photo_id": f"x{i}"}]} for i in range(23)]
+    album_id = _album(db, pages=full)
+    asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"target_pages": 24}}))
+    ids = _photos(db, album_id, 5)
+    asyncio.run(add_photos_to_layout(album_id, "u1", ids))
+    placed, album = _placed(db, album_id)
+    assert len(album["pages"]) == 24  # the page count chosen, not more
+    assert not set(ids) & set(placed)
+    assert album["unplaced_added"] == 5 and album["unplaced_added_at"]
+
+    # With room, everything is placed and the message goes away.
+    asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"target_pages": 40}}))
+    more = _photos(db, album_id, 3)
+    asyncio.run(add_photos_to_layout(album_id, "u1", more))
+    placed, album = _placed(db, album_id)
+    assert set(more) <= set(placed) and album["unplaced_added"] == 0

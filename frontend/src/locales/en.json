@@ -364,7 +364,6 @@
     "phoneComing": "Photos are coming in from your phone — keep adding more, or come back to this screen.",
     "phoneDone": "All the photos from your phone are in.",
     "limitReached": "This album has reached the 5,000-photo limit — some of your selected photos weren't added. Remove some to add more.",
-    "addingNew": "Adding your new photos…",
     "addError": "Could not add photos",
     "uploading": "Uploading…",
     "tapToChoose": "Tap to choose photos",
@@ -381,7 +380,9 @@
     "resend_one": "Send the missing photo again",
     "resend_other": "Send the {{count}} missing photos again",
     "unreadable_one": "{{count}} photo couldn't be read (damaged file or unsupported format) and was skipped.",
-    "unreadable_other": "{{count}} photos couldn't be read (damaged files or unsupported format) and were skipped."
+    "unreadable_other": "{{count}} photos couldn't be read (damaged files or unsupported format) and were skipped.",
+    "addedToAlbum_one": "{{count}} photo added at the end of your album",
+    "addedToAlbum_other": "{{count}} photos added at the end of your album"
   },
   "googlePhotos": {
     "accessDenied": "Google Photos access was not granted",
@@ -427,7 +428,7 @@
     "rearrangePhotos": "Rearrange the photos · drag and drop",
     "allYourPhotos": "All your photos · click or drag onto a page",
     "addMorePhotos": "Add more photos",
-    "addMorePhotosNote": "The AI will pick the best of your new photos and add pages at the end of your album.",
+    "addMorePhotosNote": "The AI will pick the best of your new photos and place them on new pages at the end of your album, up to the page count you chose.",
     "tools": "Tools",
     "undoTitle": "Undo (Ctrl+Z)",
     "redoTitle": "Redo (Ctrl+Y)",
@@ -506,7 +507,12 @@
       "dismiss": "Ignore"
     },
     "lowResolution": "Low resolution: this photo may print blurry in this frame. Make its frame smaller or zoom out, or pick another photo.",
-    "lowResolutionShort": "Low resolution"
+    "lowResolutionShort": "Low resolution",
+    "unplacedPhotos_one": "Your album is full ({{pages}} pages): {{count}} new photo couldn't be placed. It's in \"All your photos\". To add it, increase the page count and drag it onto a page, or replace an existing photo.",
+    "unplacedPhotos_other": "Your album is full ({{pages}} pages): {{count}} new photos couldn't be placed. They're in \"All your photos\". To add them, increase the page count and drag them onto the pages, or replace existing photos.",
+    "changePageCount": "Change page count",
+    "gotIt": "Got it",
+    "albumFull": "Your album is full ({{pages}} pages). Photos you add will go to \"All your photos\": increase the page count first so the AI can place them, or drag them in yourself."
   },
   "toolbars": {
     "editPhoto": "Edit photo",
@@ -976,7 +982,7 @@
       },
       "addPhotos": {
         "title": "Add more photos",
-        "body": "From your computer, your phone (QR code) or Google Photos. The AI picks the best ones and adds pages at the end of the album."
+        "body": "From your computer, your phone (QR code) or Google Photos. The AI picks the best ones and places them on new pages at the end of the album, up to the page count you chose."
       },
       "tools": {
         "title": "Your tools",

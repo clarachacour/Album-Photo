@@ -364,7 +364,6 @@
     "phoneComing": "Des photos arrivent depuis votre téléphone — continuez à en ajouter, ou revenez sur cet écran.",
     "phoneDone": "Toutes les photos de votre téléphone sont arrivées.",
     "limitReached": "Cet album a atteint la limite de 5000 photos — certaines de vos photos sélectionnées n'ont pas été ajoutées. Supprimez-en pour pouvoir en ajouter d'autres.",
-    "addingNew": "Ajout de vos nouvelles photos…",
     "addError": "Impossible d'ajouter les photos",
     "uploading": "Envoi en cours…",
     "tapToChoose": "Touchez pour choisir des photos",
@@ -381,7 +380,9 @@
     "resend_one": "Renvoyer la photo manquante",
     "resend_other": "Renvoyer les {{count}} photos manquantes",
     "unreadable_one": "{{count}} photo n'a pas pu être lue (fichier abîmé ou format non pris en charge) et a été ignorée.",
-    "unreadable_other": "{{count}} photos n'ont pas pu être lues (fichier abîmé ou format non pris en charge) et ont été ignorées."
+    "unreadable_other": "{{count}} photos n'ont pas pu être lues (fichier abîmé ou format non pris en charge) et ont été ignorées.",
+    "addedToAlbum_one": "{{count}} photo ajoutée à la fin de votre album",
+    "addedToAlbum_other": "{{count}} photos ajoutées à la fin de votre album"
   },
   "googlePhotos": {
     "accessDenied": "L'accès à Google Photos n'a pas été accordé",
@@ -427,7 +428,7 @@
     "rearrangePhotos": "Réorganiser les photos · glisser-déposer",
     "allYourPhotos": "Toutes vos photos · cliquez ou glissez sur une page",
     "addMorePhotos": "Ajouter d'autres photos",
-    "addMorePhotosNote": "L'IA choisira les meilleures de vos nouvelles photos et ajoutera des pages à la fin de votre album.",
+    "addMorePhotosNote": "L'IA choisira les meilleures de vos nouvelles photos et les placera dans de nouvelles pages à la fin de votre album, dans la limite du nombre de pages choisi.",
     "tools": "Outils",
     "undoTitle": "Annuler (Ctrl+Z)",
     "redoTitle": "Rétablir (Ctrl+Y)",
@@ -506,7 +507,12 @@
       "dismiss": "Ignorer"
     },
     "lowResolution": "Résolution faible : cette photo risque d'être floue à l'impression dans ce cadre. Réduisez son cadre ou son zoom, ou choisissez une autre photo.",
-    "lowResolutionShort": "Résolution faible"
+    "lowResolutionShort": "Résolution faible",
+    "unplacedPhotos_one": "Votre album est complet ({{pages}} pages) : {{count}} nouvelle photo n'a pas pu être placée. Elle se trouve dans « Toutes vos photos ». Pour l'ajouter, augmentez le nombre de pages puis faites-la glisser dans une page, ou remplacez une photo existante.",
+    "unplacedPhotos_other": "Votre album est complet ({{pages}} pages) : {{count}} nouvelles photos n'ont pas pu être placées. Elles se trouvent dans « Toutes vos photos ». Pour les ajouter, augmentez le nombre de pages puis faites-les glisser dans les pages, ou remplacez des photos existantes.",
+    "changePageCount": "Modifier le nombre de pages",
+    "gotIt": "Compris",
+    "albumFull": "Votre album est complet ({{pages}} pages). Les photos que vous ajoutez iront dans « Toutes vos photos » : augmentez d'abord le nombre de pages pour que l'IA puisse les placer, ou faites-les glisser vous-même."
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",
@@ -976,7 +982,7 @@
       },
       "addPhotos": {
         "title": "Ajouter d'autres photos",
-        "body": "Depuis votre ordinateur, votre téléphone (QR code) ou Google Photos. L'IA choisit les meilleures et ajoute des pages à la fin de l'album."
+        "body": "Depuis votre ordinateur, votre téléphone (QR code) ou Google Photos. L'IA choisit les meilleures et les place dans de nouvelles pages à la fin de l'album, dans la limite du nombre de pages choisi."
       },
       "tools": {
         "title": "Vos outils",

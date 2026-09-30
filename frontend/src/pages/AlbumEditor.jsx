@@ -35,6 +35,14 @@ export default function AlbumEditor() {
   const bookRef = useRef();
   const [album, setAlbum, albumHistory] = useHistoryState(null);
   const [showRepackForm, setShowRepackForm] = useState(false);
+  // "New photos that didn't fit" message, once closed, stays closed for that addition.
+  const [unplacedDismissedAt, setUnplacedDismissedAt] = useState(() => {
+    try {
+      return localStorage.getItem(`everbook_unplaced_seen_${id}`);
+    } catch {
+      return null;
+    }
+  });
   const [repacking, setRepacking] = useState(false);
   const albumRef = useRef(null);
   useEffect(() => {
@@ -673,6 +681,37 @@ export default function AlbumEditor() {
               {t("albumEditor.orderedBanner")}
             </div>
           )}
+          {album.unplaced_added > 0 && unplacedDismissedAt !== album.unplaced_added_at && !album.was_ordered && (
+            <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" data-testid="editor-unplaced">
+              <span>{t("albumEditor.unplacedPhotos", { count: album.unplaced_added, pages: album.target_pages })}</span>
+              <span className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRepackForm(true);
+                    document.querySelector(`[data-tour="page-nav"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className="text-xs font-semibold tracking-widest uppercase underline underline-offset-4"
+                >
+                  {t("albumEditor.changePageCount")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnplacedDismissedAt(album.unplaced_added_at);
+                    try {
+                      localStorage.setItem(`everbook_unplaced_seen_${id}`, album.unplaced_added_at);
+                    } catch {
+                      /* storage unavailable */
+                    }
+                  }}
+                  className="text-xs font-semibold tracking-widest uppercase text-[color:var(--muted)] hover:text-[color:var(--ink)]"
+                >
+                  {t("albumEditor.gotIt")}
+                </button>
+              </span>
+            </div>
+          )}
           {!saver.online && (
             <div className="w-full max-w-2xl mb-4 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" role="status" data-testid="editor-offline">
               {t("albumEditor.offlineBanner")}
@@ -831,6 +870,11 @@ export default function AlbumEditor() {
               curates just the new ones and appends new pages at the end. */}
           <div className="w-full mt-10 max-w-4xl" data-tour="add-photos">
             <div className="eyebrow mb-3 text-center">{t("albumEditor.addMorePhotos")}</div>
+            {album.target_pages && (album.pages || []).length >= album.target_pages && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4 text-center" data-testid="editor-album-full">
+                {t("albumEditor.albumFull", { pages: album.target_pages })}
+              </p>
+            )}
             <PhotoUploadMethods
               albumId={id}
               mode="editor"
@@ -948,7 +992,7 @@ export default function AlbumEditor() {
             <div className="eyebrow mb-3">{t("albumEditor.about")}</div>
             <div className="text-sm text-[color:var(--ink)]/70 space-y-1">
               <div>{t("albumEditor.pagesCount", { count: album.pages?.length || 0 })}</div>
-              <div>{t("albumEditor.photosUsed", { count: album.photos?.filter((p) => p.is_selected).length || 0 })}</div>
+              <div>{t("albumEditor.photosUsed", { count: new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo" && it.photo_id).map((it) => it.photo_id))).size })}</div>
               <div>{t("albumEditor.formatLine", { size: album.size, orientation: albumOrientation })}</div>
             </div>
           </div>

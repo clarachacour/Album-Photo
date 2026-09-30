@@ -197,9 +197,16 @@ async def _append_pages(album_id: str, new_photo_ids: List[str]):
     start_idx = len(existing_pages) % len(LAYOUT_PATTERN)
     new_pages = deterministic_layout(newly_selected, orientation, pattern_start_idx=start_idx, content_pages_budget=max(0, target_pages - 1 - max(0, len(existing_pages) - 1)))
     combined_pages, fell_short = await trim_pages_to_target(existing_pages + new_pages, target_pages)
+    # The album keeps the page count the person chose: photos that don't fit
+    # stay in "All your photos", and the editor says so (unplaced_added).
+    placed = _placed_photo_ids(combined_pages)
+    unplaced = [p["id"] for p in newly_selected if p["id"] not in placed]
 
     await db.albums.update_one(
         {"id": album_id},
-        {"$set": {"pages": combined_pages, "pages_below_target": fell_short, "curation_stats": curation_stats, "updated_at": _now()}}
+        {"$set": {
+            "pages": combined_pages, "pages_below_target": fell_short, "curation_stats": curation_stats, "updated_at": _now(),
+            "unplaced_added": len(unplaced), "unplaced_added_at": _now(),
+        }}
     )
     logger.info(f"Incremental AI processing complete for album {album_id}: +{len(newly_selected)} photos, +{len(new_pages)} pages")

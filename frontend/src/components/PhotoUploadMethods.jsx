@@ -185,9 +185,13 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       if (res.rejected > 0) toast.warning(t("photoUpload.unreadable", { count: res.rejected }), { duration: 8000 });
       setFailedFiles(res.failedFiles);
       if (mode === "editor") {
+        // The server has already placed them (or said the album is full):
+        // show the album as it is now, like after a Google Photos import.
         if (res.uploaded > 0) {
-          toast.success(t("photoUpload.addingNew"));
-          onProcessingStarted && onProcessingStarted();
+          const data = await handlePhoneOrGoogleUpdate();
+          if (data?.status !== "processing" && !(data?.unplaced_added > 0)) {
+            toast.success(t("photoUpload.addedToAlbum", { count: res.uploaded }));
+          }
         }
       } else {
         await refreshAlbum();
@@ -213,9 +217,12 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
 
   const handlePhoneOrGoogleUpdate = async () => {
     const data = await refreshAlbum();
+    // Still being laid out (photos arriving from another device, say):
+    // the editor waits for the end before showing the pages.
     if (mode === "editor" && data.status === "processing") {
       onProcessingStarted && onProcessingStarted();
     }
+    return data;
   };
 
   return (
