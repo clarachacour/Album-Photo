@@ -125,6 +125,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
       }
       const accessToken = tokenResponse.access_token;
       setBusy(true);
+      let sessionId = null;
       try {
         const sessionRes = await fetch("https://photospicker.googleapis.com/v1/sessions", {
           method: "POST",
@@ -132,6 +133,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
           body: "{}",
         });
         const session = await sessionRes.json();
+        sessionId = session.id;
         // Always a manual click-to-open, rather than trying to auto-open or
         // auto-navigate a window ourselves — that depended on timing around
         // Google's own consent flow and worked inconsistently. A button
@@ -210,6 +212,14 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
       } catch (err) {
         toast.error(err?.response?.data?.detail || t("googlePhotos.importFailed"));
       } finally {
+        // Done with the selection: close the picker session (Google's
+        // recommendation), so nothing stays open on the person's account.
+        if (sessionId) {
+          fetch(`https://photospicker.googleapis.com/v1/sessions/${sessionId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }).catch(() => {});
+        }
         setBusy(false);
       }
     };
