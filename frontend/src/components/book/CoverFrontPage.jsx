@@ -80,7 +80,7 @@ export function CoverFrontPage({
   // finished. Runs once per mount ([] deps, not re-derived from extras on
   // every render) specifically to avoid the repeated-firing risk
   // suspected in an earlier, per-render version of this same fix.
-  const [fontsSettled, setFontsSettled] = useState(false);
+  const [, setFontsSettled] = useState(false); // only there to draw again once the fonts are in
   useEffect(() => {
     if (typeof document === "undefined" || !document.fonts || !document.fonts.load) return;
     let cancelled = false;

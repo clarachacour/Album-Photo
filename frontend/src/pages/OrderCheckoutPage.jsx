@@ -66,6 +66,8 @@ export default function OrderCheckoutPage() {
         toast.error(t("checkout.loadError"));
       }
     })();
+    // Loaded once per album; nav and t don't change what's loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albumId]);
 
   const lowResCount = album ? lowResolutionItems(album).length : 0;

@@ -7,7 +7,7 @@
 // can see what they'll pay while they're still choosing) and
 // OrderCheckoutPage.jsx — previously each page kept its own copy of this
 // table, which is exactly the kind of duplication that quietly drifts out
-// of sync (see recommendedMinPhotos, which did).
+// of sync.
 
 export const PAGE_TIERS = [24, 50, 100, 150, 250];
 

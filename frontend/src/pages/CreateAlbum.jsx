@@ -661,26 +661,9 @@ function StepEdit({
   );
 }
 
-// Derived from LAYOUT_PATTERN's 7 templates (single_full=1, dual_vertical=2,
-// hero_strip=4, single_centered=1, quad_grid=4, triptych=3,
-// dual_horizontal=2 photos each) — kept in sync with the backend's layout
-// logic in backend/app/services/layout.py. A 1.3x margin accounts for photos the AI rejects as
-// duplicates or too blurry, so this is a recommendation, not a guarantee —
-// actual results still depend on the quality of what's uploaded.
-const AVG_PHOTOS_PER_PAGE = 17 / 7;
-const CURATION_SAFETY_MARGIN = 1.3;
-
-function recommendedMinPhotos(targetPages) {
-  const contentPages = Math.max(0, (targetPages || 0) - 1); // minus the title page
-  return Math.ceil(contentPages * AVG_PHOTOS_PER_PAGE * CURATION_SAFETY_MARGIN);
-}
-
 // The absolute floor: since the layout always uses at least 1 photo per
 // page, filling `targetPages` pages is mathematically impossible with
-// fewer than this many photos, no matter how good they are — unlike
-// recommendedMinPhotos (a soft heuristic accounting for expected curation
-// losses), this one is a hard guarantee and blocks proceeding rather than
-// just warning.
+// fewer than this many photos, no matter how good they are.
 function minimumRequiredPhotos(targetPages) {
   return Math.max(0, (targetPages || 0) - 1);
 }

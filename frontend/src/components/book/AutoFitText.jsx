@@ -43,6 +43,11 @@ export function AutoFitText({ baseFontSize, content }) {
     if (typeof window !== "undefined") window.__autoFitPending = Math.max(0, (window.__autoFitPending || 0) - 1);
   };
 
+  // Runs after every render on purpose (no dependency list): the text is
+  // measured as actually drawn, and a new render may have changed its box.
+  // A shrink is followed by one more render to check it; attemptsRef caps
+  // that at 6, so it can't go on forever.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !el.clientWidth || !el.clientHeight) {
@@ -68,7 +73,7 @@ export function AutoFitText({ baseFontSize, content }) {
     }
   });
 
-  useEffect(() => markSettled, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => markSettled, []);
 
   return (
     <span

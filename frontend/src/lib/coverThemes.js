@@ -12,7 +12,6 @@ import {
   TRAVEL_AUSTRALIA_ICON,
   TRAVEL_BARCELONA_ICON,
 } from "@/lib/themeAssets";
-import { CORAL_LOGO_URL } from "@/lib/coverAssets";
 
 // Spine logos, files in public/cover-art (see coverAssets.js).
 const RINGS_LOGO_URL = "/cover-art/rings-logo-v1.webp";

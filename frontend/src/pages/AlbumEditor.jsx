@@ -269,7 +269,7 @@ export default function AlbumEditor() {
       }
     }, 2500);
     return () => clearInterval(interval);
-  }, [processing, id, loadAlbum]);
+  }, [processing, id, loadAlbum, t]);
 
   const save = async (opts = {}) => {
     const { silent = false } = opts;

@@ -36,7 +36,6 @@ const CustomFlipbook = React.forwardRef(function CustomFlipbook({ pages, orienta
       }
       prevTotalRef.current = totalViews;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalViews]);
 
   useEffect(() => {
