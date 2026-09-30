@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --ssr src/prerender.jsx --outDir build-ssr && node scripts/prerender.mjs",
     "preview": "vite preview",
     "lint": "eslint src",
     "test": "vitest run"

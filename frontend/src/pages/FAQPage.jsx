@@ -31,6 +31,8 @@ export default function FAQPage() {
               <button
                 onClick={() => setOpenIdx(openIdx === i ? null : i)}
                 className="w-full flex items-center justify-between gap-4 py-6 text-left"
+                aria-expanded={openIdx === i}
+                aria-controls={`faq-answer-${i}`}
                 data-testid={`faq-question-${i}`}
               >
                 <span className="font-serif-display text-lg md:text-xl tracking-tight">{item.q}</span>
@@ -39,9 +41,10 @@ export default function FAQPage() {
                   className={`shrink-0 transition-transform ${openIdx === i ? "rotate-180" : ""}`}
                 />
               </button>
-              {openIdx === i && (
-                <p className="text-sm text-[color:var(--ink)]/70 leading-relaxed pb-6 pr-8">{item.a}</p>
-              )}
+              {/* Always in the page (hidden until opened): search engines read the answers too. */}
+              <p id={`faq-answer-${i}`} hidden={openIdx !== i} className="text-sm text-[color:var(--ink)]/70 leading-relaxed pb-6 pr-8">
+                {item.a}
+              </p>
             </div>
           ))}
         </div>

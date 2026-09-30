@@ -35,7 +35,10 @@ i18n
   });
 
 // The page's language, for search engines and screen readers.
-const setHtmlLang = (lng) => document.documentElement.setAttribute("lang", (lng || "en").slice(0, 2));
+const setHtmlLang = (lng) => {
+  // No document when the public pages are generated at build time.
+  if (typeof document !== "undefined") document.documentElement.setAttribute("lang", (lng || "en").slice(0, 2));
+};
 setHtmlLang(i18n.resolvedLanguage);
 i18n.on("languageChanged", setHtmlLang);
 

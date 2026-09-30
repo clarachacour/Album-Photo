@@ -11,7 +11,16 @@ import Footer from "@/components/Footer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazyPage } from "@/lib/lazyPage";
 import { showPendingFlash } from "@/lib/flash";
+// Public pages: part of the main code, not downloaded on demand. They are
+// also generated as HTML at build time (see prerender.jsx), and the page the
+// browser then draws is the same one, straight away, with no blank moment.
 import Landing from "@/pages/Landing";
+import FAQPage from "@/pages/FAQPage";
+import ContactPage from "@/pages/ContactPage";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import ReturnsPage from "@/pages/ReturnsPage";
+import ShippingPage from "@/pages/ShippingPage";
 const AuthPage = lazyPage(() => import("@/pages/AuthPage"));
 const Dashboard = lazyPage(() => import("@/pages/Dashboard"));
 const CreateAlbum = lazyPage(() => import("@/pages/CreateAlbum"));
@@ -28,13 +37,7 @@ const OrderDetailPage = lazyPage(() => import("@/pages/OrderDetailPage"));
 const OrderFeedback = lazyPage(() => import("@/pages/OrderFeedback"));
 const OrderCheckoutPage = lazyPage(() => import("@/pages/OrderCheckoutPage"));
 const AdminOrdersPage = lazyPage(() => import("@/pages/AdminOrdersPage"));
-const FAQPage = lazyPage(() => import("@/pages/FAQPage"));
-const ContactPage = lazyPage(() => import("@/pages/ContactPage"));
 const VerifyEmailPending = lazyPage(() => import("@/pages/VerifyEmailPending"));
-const TermsPage = lazyPage(() => import("@/pages/TermsPage"));
-const PrivacyPage = lazyPage(() => import("@/pages/PrivacyPage"));
-const ReturnsPage = lazyPage(() => import("@/pages/ReturnsPage"));
-const ShippingPage = lazyPage(() => import("@/pages/ShippingPage"));
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
 function AppChrome({ children }) {
@@ -75,10 +78,9 @@ function AppChrome({ children }) {
   );
 }
 
-function App() {
+/** Everything inside the router — also used to generate the public pages (prerender.jsx). */
+export function AppRoutes() {
   return (
-    <div className="App">
-      <BrowserRouter>
         <AuthProvider>
         <ConfirmProvider>
           <AppChrome>
@@ -195,6 +197,14 @@ function App() {
           </AppChrome>
         </ConfirmProvider>
         </AuthProvider>
+  );
+}
+
+function App() {
+  return (
+    <div className="App">
+      <BrowserRouter>
+        <AppRoutes />
       </BrowserRouter>
     </div>
   );
