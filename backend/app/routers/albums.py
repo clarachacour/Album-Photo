@@ -84,7 +84,9 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
 
 @router.get("/albums")
 async def list_albums(user: dict = Depends(get_current_user)):
-    cursor = db.albums.find({"user_id": user["id"]}, {"_id": 0}).sort("updated_at", -1)
+    # Only what "My albums" shows (cover, title, status…): the pages of
+    # every album made this list very heavy to load on a slow connection.
+    cursor = db.albums.find({"user_id": user["id"]}, {"_id": 0, "pages": 0, "curation_stats": 0}).sort("updated_at", -1)
     albums = await cursor.to_list(500)
     ordered_ids = set(await db.orders.distinct("album_id", {"user_id": user["id"]}))
     now = datetime.now(timezone.utc)

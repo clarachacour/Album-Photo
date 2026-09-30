@@ -54,6 +54,8 @@ def test_album_create_list_get(client, db):
 
     listed = client.get("/api/albums", headers=headers).json()
     assert [a["id"] for a in listed] == [album_id]
+    # "My albums" shows covers only: the pages stay on the server.
+    assert "pages" not in listed[0] and listed[0]["title"] == "Sicily" and "cover" in listed[0]
 
     album = client.get(f"/api/albums/{album_id}", headers=headers).json()
     assert album["title"] == "Sicily"
