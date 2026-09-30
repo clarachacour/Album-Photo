@@ -125,23 +125,37 @@ export default function AlbumEditor() {
   // Back on this tab: if the album was changed elsewhere (another tab or
   // device) in the meantime, show that version (or ask, with edits here).
   const { getVersion } = saver;
+  const checkForChanges = useCallback(async () => {
+    if (document.visibilityState !== "visible" || !loadedRef.current) return;
+    try {
+      const { data } = await api.get(`/albums/${id}/status`);
+      if ((data.version ?? 0) !== getVersion()) loadAlbum();
+    } catch {
+      /* offline: checked again next time */
+    }
+  }, [id, loadAlbum, getVersion]);
   useEffect(() => {
-    const check = async () => {
-      if (document.visibilityState !== "visible" || !loadedRef.current) return;
-      try {
-        const { data } = await api.get(`/albums/${id}/status`);
-        if ((data.version ?? 0) !== getVersion()) loadAlbum();
-      } catch {
-        /* offline: checked again next time */
-      }
+    // Checked again a moment later: the tab just left saves as it's left,
+    // and that save may land after the first check.
+    let later;
+    const check = () => {
+      checkForChanges();
+      clearTimeout(later);
+      later = setTimeout(checkForChanges, 2000);
     };
     document.addEventListener("visibilitychange", check);
     window.addEventListener("focus", check);
     return () => {
+      clearTimeout(later);
       document.removeEventListener("visibilitychange", check);
       window.removeEventListener("focus", check);
     };
-  }, [id, loadAlbum, getVersion]);
+  }, [checkForChanges]);
+  // The first edit on a copy that's already outdated: said at once, not
+  // only when the automatic save is refused a few seconds later.
+  useEffect(() => {
+    if (saver.dirty) checkForChanges();
+  }, [saver.dirty, checkForChanges]);
 
   useEffect(() => {
     if (!coverSel) return;
