@@ -315,7 +315,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     body = (
         f"Hi {name or ''},\n\n"
         f"Thanks for your order! We've received it and will start preparing your book.\n\n"
-        f"Order total: {total:.2f} {order.get('currency', 'usd').upper()}\n"
+        f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included)\n"
         f"Quantity: {order.get('quantity', 1)}\n\n"
         f"You can follow its status here:\n{order_url}\n\n"
         f"We'll email you again once it ships."
@@ -326,7 +326,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
-            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()}<br>"
+            f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included)<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
             f"<p>We'll email you again once it ships.</p>"
         ),

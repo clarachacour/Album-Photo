@@ -6,12 +6,14 @@ export default function TermsPage() {
   usePageMeta("terms");
   const { t } = useTranslation();
   const sections = t("legal.terms.sections", { returnObjects: true });
+  const intro = t("legal.terms.intro", { defaultValue: "" });
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[800px] mx-auto">
         <div className="eyebrow mb-3">{t("legal.terms.eyebrow")}</div>
         <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t("legal.terms.title")}</h1>
         <p className="text-sm text-[color:var(--muted)] mb-12">{t("legal.lastUpdated")}</p>
+        {intro && <p className="text-sm text-[color:var(--ink)]/70 leading-relaxed whitespace-pre-line mb-10">{intro}</p>}
         <div className="space-y-8">
           {sections.map((s, i) => (
             <div key={i}>

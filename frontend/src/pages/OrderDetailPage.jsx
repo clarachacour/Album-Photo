@@ -100,6 +100,7 @@ export default function OrderDetailPage() {
               <div>{t("orderDetail.format")}: {order.size} · {order.orientation}</div>
               <div>{t("orderDetail.quantity")}: {order.quantity}</div>
               <div>{t("orderDetail.unitPrice")}: {formatPrice(order.unit_price_cents, order.currency)}</div>
+              {order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
               <div className="font-medium text-[color:var(--ink)] pt-1">{t("orderDetail.total")}: {formatPrice(order.total_price_cents, order.currency)}</div>
               <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: new Date(order.created_at).toLocaleDateString(i18n.language) })}</div>
             </div>

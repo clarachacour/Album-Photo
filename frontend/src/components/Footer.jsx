@@ -39,12 +39,14 @@ export default function Footer() {
         <div>
           <div className="eyebrow mb-4 text-[color:var(--paper)]/70">{t("footer.company")}</div>
           <ul className="space-y-2.5 text-sm text-[color:var(--paper)]/60">
-            {/* Placeholders — replace with the real registered name, RC
-                number/jurisdiction, and address once confirmed; nothing
-                here should be invented on the business's behalf. */}
-            <li>{t("footer.legalNamePlaceholder")}</li>
-            <li>{t("footer.rcPlaceholder")}</li>
-            <li>{t("footer.addressPlaceholder")}</li>
+            <li>{t("footer.legalName")}</li>
+            <li>{t("footer.rc")}</li>
+            <li>{t("footer.address")}</li>
+            <li>
+              <a href={`mailto:${t("footer.email")}`} className="hover:text-[color:var(--coral)] transition-colors">
+                {t("footer.email")}
+              </a>
+            </li>
           </ul>
         </div>
       </div>

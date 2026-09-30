@@ -18,6 +18,15 @@ ORDER_PRICE_CENTS = {
     "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 250: 15900},
 }
 
+# Delivery (Lebanon only), per order, in cents. Shown at checkout — keep in
+# sync with SHIPPING_PRICE in frontend/src/lib/pricing.js.
+SHIPPING_PRICE_CENTS = 500
+
+# The version of the terms of sale the site shows (the "last updated" date
+# of legal.terms in the locale files). An order records the one the
+# customer accepted; change both together when the terms change.
+TERMS_VERSION = "2026-09-30"
+
 # Per extra page beyond the nearest lower tier, in cents — also a
 # placeholder until real per-page economics are confirmed.
 OVERAGE_PER_PAGE_CENTS = {"A5": 30, "A4": 45}

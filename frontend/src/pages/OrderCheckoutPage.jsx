@@ -5,7 +5,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { billedPageCount, computeUnitPrice } from "@/lib/pricing";
+import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, computeUnitPrice } from "@/lib/pricing";
+import { lowResolutionItems } from "@/lib/printQuality";
 
 export default function OrderCheckoutPage() {
   const { albumId } = useParams();
@@ -33,6 +34,9 @@ export default function OrderCheckoutPage() {
   // (a reopened tab, the back button, a reload while the first request is
   // still quietly pending) is server-side, in create_order.
   const [justPlaced, setJustPlaced] = useState(false);
+  // The terms of sale must be accepted to order (the order records which version).
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -64,8 +68,9 @@ export default function OrderCheckoutPage() {
     })();
   }, [albumId]);
 
+  const lowResCount = album ? lowResolutionItems(album).length : 0;
   const unitPrice = album ? computeUnitPrice(album.size || "A4", billedPageCount(album) || 50) : 0;
-  const total = unitPrice * quantity;
+  const total = unitPrice * quantity + SHIPPING_PRICE;
 
   const placeOrder = async (e) => {
     e.preventDefault();
@@ -76,12 +81,18 @@ export default function OrderCheckoutPage() {
         return;
       }
     }
+    if (!acceptedTerms) {
+      setTermsError(true);
+      toast.error(t("checkout.mustAcceptTerms"));
+      return;
+    }
     setJustPlaced(true);
     try {
       const { data } = await api.post("/orders", {
         album_id: albumId,
         quantity,
         shipping_address: address,
+        accepted_terms_version: TERMS_VERSION,
       });
       nav(`/orders/${data.id}`);
     } catch (err) {
@@ -203,6 +214,12 @@ export default function OrderCheckoutPage() {
               <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
                 {t("checkout.previewQuality")}
               </div>
+              {lowResCount > 0 && (
+                <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-low-res">
+                  {t("checkout.lowResolution", { count: lowResCount })}{" "}
+                  <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
+                </div>
+              )}
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[color:var(--muted)]">{t("checkout.quantity")}</span>
                 <input
@@ -214,15 +231,39 @@ export default function OrderCheckoutPage() {
                   className="w-16 border border-[color:var(--ink)]/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
                 />
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between mb-1">
                 <span className="text-[color:var(--muted)]">{t("checkout.unitPrice")}</span>
                 <span>${unitPrice.toFixed(2)}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-[color:var(--muted)]">{t("checkout.shipping")}</span>
+                <span>${SHIPPING_PRICE.toFixed(2)}</span>
+              </div>
+              <p className="text-xs text-[color:var(--muted)] mt-2" data-testid="checkout-delivery-time">{t("checkout.deliveryTime")}</p>
             </div>
             <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6">
               <span>{t("checkout.total")}</span>
               <span>${total.toFixed(2)}</span>
             </div>
+            <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-[color:var(--ink)]/80"}`}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                  if (e.target.checked) setTermsError(false);
+                }}
+                className="mt-0.5 accent-[color:var(--ink)]"
+                aria-invalid={termsError}
+                data-testid="accept-terms"
+              />
+              <span>
+                <Trans
+                  i18nKey="checkout.acceptTerms"
+                  components={{ terms: <Link to="/terms" target="_blank" rel="noopener" className="underline hover:text-[color:var(--coral)]" /> }}
+                />
+              </span>
+            </label>
             <button
               type="submit"
               form="checkout-form"

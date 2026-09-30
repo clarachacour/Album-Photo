@@ -5,6 +5,7 @@ import asyncio
 import pytest
 
 from tests.test_api import _signup
+from app.services.pricing import TERMS_VERSION
 
 
 def _album(client, headers, **fields):
@@ -103,10 +104,40 @@ def test_order_price_uses_the_real_page_count(client, db, monkeypatch):
     assert client.patch(f"/api/albums/{album_id}", json={"target_pages": 24}, headers=headers).status_code == 200
 
     address = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
-    res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": address}, headers=headers)
+    res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": address, "accepted_terms_version": TERMS_VERSION}, headers=headers)
     assert res.status_code == 200, res.text
     assert res.json()["unit_price_cents"] == compute_order_price_cents("A4", 250)
     assert res.json()["unit_price_cents"] > compute_order_price_cents("A4", 24)
+
+
+def test_order_needs_the_terms_and_records_them(client, db, monkeypatch):
+    """No order without ticking the current terms of sale; the order keeps
+    which version was accepted and when, and its total includes delivery."""
+    from app.routers import orders
+    from app.services.pricing import SHIPPING_PRICE_CENTS, compute_order_price_cents
+
+    async def no_pdf(order):
+        return None
+
+    monkeypatch.setattr(orders, "start_order_pdf_generation", no_pdf)
+    monkeypatch.setattr(orders, "send_order_confirmation_email", lambda *a, **k: None)
+    _, headers = _signup(client, db=db)
+    album_id = _album(client, headers, size="A4", target_pages=24)
+    asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"pages": [{"id": "1", "items": []}], "status": "ready"}}))
+    address = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
+
+    for accepted in (None, "", "2020-01-01"):
+        body = {"album_id": album_id, "shipping_address": address}
+        if accepted is not None:
+            body["accepted_terms_version"] = accepted
+        assert client.post("/api/orders", json=body, headers=headers).status_code == 400
+
+    res = client.post("/api/orders", json={"album_id": album_id, "quantity": 2, "shipping_address": address, "accepted_terms_version": TERMS_VERSION}, headers=headers)
+    assert res.status_code == 200, res.text
+    order = res.json()
+    assert order["terms_version"] == TERMS_VERSION and order["terms_accepted_at"]
+    assert order["shipping_price_cents"] == SHIPPING_PRICE_CENTS == 500
+    assert order["total_price_cents"] == 2 * compute_order_price_cents("A4", 24) + 500
 
 
 def test_billed_page_count():

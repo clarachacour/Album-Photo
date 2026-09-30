@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -37,6 +37,13 @@ export default function ContactPage() {
         <div className="mb-12">
           <div className="eyebrow mb-3">{t("contact.eyebrow")}</div>
           <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">{t("contact.title")}</h1>
+          <p className="text-sm text-[color:var(--muted)] mt-4">
+            <Trans
+              i18nKey="contact.orEmail"
+              values={{ email: "orders@everbook-album.com" }}
+              components={{ mail: <a href="mailto:orders@everbook-album.com" className="underline text-[color:var(--ink)]" /> }}
+            />
+          </p>
         </div>
 
         {sent ? (

@@ -32,3 +32,12 @@ export function computeUnitPrice(size, targetPages) {
 export function billedPageCount(album) {
   return Math.max(Number(album?.target_pages) || 0, (album?.pages || []).length);
 }
+
+// Delivery (Lebanon only), per order — keep in sync with SHIPPING_PRICE_CENTS
+// in backend/app/services/pricing.py, which charges it.
+export const SHIPPING_PRICE = 5;
+
+// Version of the terms of sale shown on the site (their "last updated"
+// date). Sent with an order when the customer ticks "I accept"; must match
+// TERMS_VERSION in backend/app/services/pricing.py.
+export const TERMS_VERSION = "2026-09-30";

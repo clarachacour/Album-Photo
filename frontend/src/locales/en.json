@@ -161,7 +161,8 @@
     "sending": "Sending…",
     "send": "Send message",
     "sentToast": "Message sent",
-    "errorToast": "Failed to send your message"
+    "errorToast": "Failed to send your message",
+    "orEmail": "For a question about an order, you can also email us directly at <mail>{{email}}</mail>."
   },
   "chooseTemplate": {
     "back": "Back",
@@ -234,7 +235,8 @@
     "unitPrice": "Unit price",
     "total": "Total",
     "placedOn": "Placed on {{date}}",
-    "shippingTo": "Shipping to"
+    "shippingTo": "Shipping to",
+    "shipping": "Delivery"
   },
   "account": {
     "eyebrow": "Account",
@@ -502,7 +504,9 @@
       "body": "Some changes from your last visit couldn't be saved. Do you want to get them back?",
       "restore": "Get them back",
       "dismiss": "Ignore"
-    }
+    },
+    "lowResolution": "Low resolution: this photo may print blurry in this frame. Make its frame smaller or zoom out, or pick another photo.",
+    "lowResolutionShort": "Low resolution"
   },
   "toolbars": {
     "editPhoto": "Edit photo",
@@ -556,43 +560,117 @@
     "returns": "Returns & Refunds",
     "shipping": "Shipping",
     "company": "Company",
-    "legalNamePlaceholder": "[Legal company name — to confirm]",
-    "rcPlaceholder": "[RC number — to confirm]",
-    "addressPlaceholder": "[Registered address — to confirm]",
+    "legalName": "EFFET DESIGN",
+    "rc": "CR no. 1015439",
+    "address": "Achrafieh, building 5134, Sioufi Street, Lebanon",
+    "email": "orders@everbook-album.com",
     "rightsReserved": "All rights reserved.",
     "madeIn": "Made in Lebanon"
   },
   "legal": {
-    "lastUpdated": "Last updated: [date to fill in when published]",
+    "lastUpdated": "Last updated: September 30, 2026",
     "terms": {
       "eyebrow": "Legal",
-      "title": "Terms & Conditions",
+      "title": "Terms of sale",
       "sections": [
         {
-          "heading": "1. About this service",
-          "body": "Everbook lets you upload your photos, automatically or manually lay them out into a printed photo book, and order a physical copy. [Legal company name] ([RC number]) operates this service from [registered address], Lebanon."
+          "heading": "1. Purpose",
+          "body": "Through the Site, the Company offers a service allowing users to select and upload their photographs, customise the layout of a photo album, where applicable with the help of artificial intelligence tools, order its printing and receive the printed album at the delivery address given when ordering.\n\nAlbums are made to order according to the choices the customer makes when customising their album, as finally approved by them.\n\nPrinting and, where applicable, all or part of the manufacturing or delivery may be carried out by partner providers selected by the Company, in particular a partner printing house located in Lebanon."
         },
         {
-          "heading": "2. Orders and pricing",
-          "body": "Prices are displayed in USD and include [specify: production only / production and delivery]. Placing an order is a commitment to pay the displayed price for the album as it appears at the moment of ordering — once an order is placed, the album can no longer be edited (see the editor for details)."
+          "heading": "2. Scope",
+          "body": "These Terms apply to any order placed on the Site by a consumer.\n\nThey are available to the customer before their order is finally confirmed.\n\nOrdering on the Site is reserved for persons with the legal capacity to enter into contracts. By ordering, the customer declares that they are of legal age in their country of residence or, failing that, are acting with the authorisation of their legal representative.\n\nThe Company reserves the right to change these Terms. The version that applies to an order is the one accepted by the customer when confirming that order.\n\nWhen the customer orders from a country other than Lebanon, any mandatory consumer-protection provisions of their country of habitual residence remain applicable, in accordance with article 22."
         },
         {
-          "heading": "3. Production and delivery",
-          "body": "Albums are produced to order after payment. Estimated production and delivery times are described on our Shipping page. We currently deliver within Lebanon only."
+          "heading": "3. Creating and customising the album",
+          "body": "The Site allows the customer to create a personalised photo album from the photographs they select and upload to the platform.\n\nDepending on the options offered on the Site, the customer may choose in particular:\n• the photographs included in the album;\n• their order and arrangement;\n• the album format;\n• the number of pages;\n• the cover;\n• the layout;\n• texts and other customisation elements;\n• and any other option offered on the Site.\n\nThe customer is responsible for checking their album before finally confirming their order, including where all or part of the selection or layout results from a suggestion generated by an artificial intelligence tool.\n\nIn particular, it is up to the customer to check the selected photographs, their orientation, framing and order, the inserted texts, spelling, the number of pages and the other customisation choices.\n\nThe digital representation of the album shown on the Site is a preview. Slight differences may exist between this preview and the printed product, notably in colours, brightness, contrast, framing or rendering, due in particular to the characteristics of screens, of the files provided and of the printing process.\n\nSuch differences are not a product defect when they remain within normal printing tolerances."
         },
         {
-          "heading": "4. Returns and defects",
-          "body": "Because each album is custom-made from your own photos, orders cannot be returned for a change of mind. See our Returns & Refunds page for what happens if your album arrives damaged or defective."
+          "heading": "4. Artificial intelligence assistance",
+          "body": "The Site may offer the customer features based on artificial intelligence tools, in particular to suggest a selection of photographs, an order, a layout or elements of the album's composition.\n\nThese features are an aid to creation. They do not replace the customer's choice: the customer can at any time change, complete or discard the suggestions made by these tools before finally confirming their order, in accordance with article 3.\n\nThe Company cannot guarantee that the suggestions generated by these tools fully match the customer's aesthetic or personal expectations. It is up to the customer to check the final result before printing.\n\nUnless the customer gives express and separate consent for this purpose, the photographs uploaded by the customer are not used to train, retrain or improve artificial intelligence models intended for any use other than processing the current order. How these tools process photographs is detailed in the Privacy Policy.\n\nThe layout or composition elements generated by the Site's artificial intelligence tools from the customer's choices may be used freely by the customer in their album; for the rest, they remain governed by article 18 on the Site's intellectual property."
         },
         {
-          "heading": "5. Your account and content",
-          "body": "You're responsible for the photos and text you upload. You retain ownership of your photos; we use them only to produce your order, as described in our Privacy Policy."
+          "heading": "5. Quality of photographs",
+          "body": "The quality of the printed product depends in particular on the quality and resolution of the files provided by the customer.\n\nWhen the Site indicates that a photograph has insufficient resolution or may lead to reduced print quality, a customer who nevertheless decides to keep that photograph accepts the corresponding risk.\n\nThe Company cannot be held liable for a quality defect directly attributable to a file of insufficient quality provided or approved by the customer.\n\nThis provision does not limit the Company's liability for a defect resulting from the printing process itself."
         },
         {
-          "heading": "6. Governing law",
-          "body": "These terms are governed by the laws of Lebanon. Any dispute will be submitted to the competent courts of [jurisdiction — to confirm, typically Beirut]."
+          "heading": "6. Content uploaded by the customer",
+          "body": "The customer remains the owner of the photographs and other content they upload to the Site.\n\nUploading content to the Site does not transfer any intellectual property to the Company.\n\nHowever, for the time strictly necessary to fulfil the order, the customer grants the Company a limited authorisation to use, reproduce, store and transmit the files concerned, including, where applicable, through the tools described in article 4, solely in order to create, print, check, manufacture and deliver the ordered album.\n\nThe Company may not use the customer's photographs for advertising, commercial or promotional purposes, nor to train artificial intelligence models other than as described in article 4, without the customer's prior, free and express consent."
+        },
+        {
+          "heading": "7. Rights to photographs and content",
+          "body": "The customer declares that they hold the rights and authorisations needed for the photographs, texts and other content they provide on the Site, including, where applicable, the consent of people recognisable in the photographs or, for minors shown in them, of their legal representatives.\n\nIn particular, the customer undertakes not to upload content that infringes intellectual property rights, image rights, privacy or any other right belonging to a third party.\n\nThe customer also undertakes not to use the service to create content that breaks the applicable laws.\n\nThe customer indemnifies the Company against any claim, action or judgment resulting from a breach of the declarations and undertakings in this article, to the extent permitted by the applicable law.\n\nThe Company reserves the right to refuse or cancel an order when it finds that content is manifestly unlawful or that printing it would be prohibited by law.\n\nIn that case, the financial consequences of the cancellation will be determined according to how far the order has progressed and the applicable mandatory legal provisions."
+        },
+        {
+          "heading": "8. Order",
+          "body": "Before ordering, the customer can view a preview of their album and the main characteristics of the selected product.\n\nThe customer is invited to check and, where needed, correct their order before finally confirming it.\n\nThe order becomes final after:\n• the customer has checked the order summary;\n• these Terms have been accepted;\n• the order has been confirmed; and\n• payment has been confirmed, when it is required immediately.\n\nAn order confirmation is sent to the customer electronically at the address given when ordering.\n\nThe Company reserves the right to refuse an order, in particular in the event of refused payment, suspected fraud, technical impossibility of manufacturing or manifestly unlawful content."
+        },
+        {
+          "heading": "9. Approval of the file before printing",
+          "body": "By finally approving their album, the customer confirms that the version shown, including any elements resulting from an artificial intelligence suggestion they accepted or changed, is the version they want printed.\n\nAfter this approval, and once the order has been sent to production, the customisation elements can in principle no longer be changed.\n\nAny change requested after approval will be considered by the Company, with no guarantee that it can be made."
+        },
+        {
+          "heading": "10. Prices",
+          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
+        },
+        {
+          "heading": "11. Payment",
+          "body": "Payment is made in cash or by bank card, using the payment methods shown on the Site at the time of ordering.\n\nPayment may be processed by a third-party payment provider. The Company does not intend to keep the customer's full card details when payment is processed directly by that provider.\n\nThe order may be suspended or cancelled if payment is refused or fails."
+        },
+        {
+          "heading": "12. Manufacturing",
+          "body": "As albums are personalised from the customer's choices and photographs, their manufacturing starts after the order has been confirmed and payment has been confirmed.\n\nThe Company may entrust the printing and manufacturing of the album to a partner printing house located in Lebanon.\n\nUsing a provider for printing does not change the consumer's rights towards the Company where the Company acts as the contractual seller of the album."
+        },
+        {
+          "heading": "13. Delivery",
+          "body": "Delivery is currently available in Lebanon only.\n\nProducts are delivered to the address given by the customer when ordering.\n\nThe customer is responsible for the accuracy and completeness of the delivery information they provide.\n\nThe available delivery areas and the corresponding costs are shown on the Site before the order is confirmed.\n\nThe estimated manufacturing and delivery time is shown to the customer before or when ordering. As a guide, manufacturing takes about 5 days and delivery 2 to 3 days.\n\nThe announced times may be affected by circumstances beyond the Company's control. In the event of a significant delay, the customer's rights are those provided by the applicable mandatory provisions of Lebanese law."
+        },
+        {
+          "heading": "14. Receipt – Damaged or non-conforming product",
+          "body": "The customer is invited to check the condition of their parcel and album on receipt.\n\nIf the album is damaged, has a printing defect or does not match the approved order, the customer is invited to contact the Company within 14 days of receipt at orders@everbook-album.com, giving their order number and, where possible, photographs showing the problem.\n\nWhere a defect or non-conformity is attributable to the Company or one of its providers, the Company will offer, depending on the circumstances and in accordance with the applicable law, a reprint, replacement, repair or refund of the product concerned.\n\nThis provision does not limit any mandatory right the consumer has under Lebanese law."
+        },
+        {
+          "heading": "15. Cancellation and right of withdrawal",
+          "body": "The albums offered on the Site are made to order from the customer's photographs, format, layout and other individual choices, including when these choices result in whole or in part from an artificial intelligence suggestion accepted by the customer.\n\nLaw no. 659/2005 on consumer protection grants consumers, for distance purchases, a right to cancel within ten (10) days, excluding in particular personalised or made-to-order goods (article 55 of Law no. 659/2005). The album ordered on the Site, made from the customer's own photographs and choices, falls under this exclusion.\n\nConsequently, the right of cancellation that applies by law to distance sales cannot be exercised by the customer for the personalised album once the order has been confirmed under the conditions of article 8.\n\nThe customer may nevertheless ask to cancel their order before manufacturing starts by contacting the Company at orders@everbook-album.com.\n\nThe Company will make its best efforts to stop the order. Cancellation cannot, however, be guaranteed once manufacturing has started.\n\nThis article does not deprive the customer of their rights when a product is defective, damaged or does not match the order."
+        },
+        {
+          "heading": "16. Personal data and photographs",
+          "body": "When the Site is used and orders are fulfilled, the Company may process in particular:\n• the customer's identification data;\n• their contact details;\n• their delivery address;\n• information about their orders;\n• the photographs and other files they upload, including, where applicable, images of identifiable individuals or minors;\n• the information needed for payment, within the limits required for the transaction.\n\nThis data is processed in accordance with the applicable Lebanese legislation, in particular Law no. 81/2018 on electronic transactions and personal data.\n\nUploaded photographs are used only to the extent necessary to provide the service, unless the customer expressly consents to another use.\n\nGiven the particular nature of some photographs (in particular when they show identifiable people or minors), the Company applies appropriate security and confidentiality measures. It does not use these photographs for facial recognition: automatic face detection is used only to frame photographs in the layout, without ever identifying the people shown.\n\nSome data and photographs may be sent to the providers involved in fulfilling the order, in particular the printing house and, where necessary, the delivery provider.\n\nThese providers must only receive the information needed to carry out their tasks.\n\nDetailed information on the collection, use, retention, sharing and deletion of personal data is given in the Privacy Policy available on the Site."
+        },
+        {
+          "heading": "17. Retention and deletion of photographs",
+          "body": "Uploaded photographs are kept according to the following rules:\n• album not ordered: it is automatically deleted, with its photographs, 30 days after it was created;\n• unused photographs: photographs uploaded but not included in the final layout of an ordered album are deleted once the order's print file has been generated;\n• ordered album: the album, its photographs and the order history are kept for as long as the customer's account exists, to allow a reprint, to let the customer find their album again, or to handle any complaint.\n\nThe customer can delete their account at any time from their account page (\"Delete my account\"): their account, albums and photographs are then permanently deleted. Information about past orders (amount, delivery address) is kept for accounting purposes, without any photograph. Deletion is not possible while an order is being manufactured or delivered.\n\nThe customer may also ask for their photographs to be deleted earlier once keeping them is no longer necessary to fulfil the order or to handle an ongoing complaint, as described in the Privacy Policy."
+        },
+        {
+          "heading": "18. Intellectual property of the Site",
+          "body": "The Site, its software, interface, graphic elements, layout templates, brand, logo, the artificial intelligence tools it uses and the other elements created by or for the Company are protected by the applicable intellectual property rights.\n\nNothing in these Terms grants the customer any ownership of these elements, except the right to use, in their album, the layout suggestions generated from their own content in accordance with article 4.\n\nThis provision does not affect the rights of the customer or of third parties in the photographs and content uploaded by the customer."
+        },
+        {
+          "heading": "19. Liability",
+          "body": "The Company is responsible for performing its obligations in accordance with the applicable law.\n\nHowever, it cannot be held liable for a defect resulting solely from:\n• a photograph or file of insufficient quality provided by the customer;\n• an error in text, selection, framing or layout approved by the customer, including when that error was already present in a suggestion generated by an artificial intelligence tool that the customer accepted without correcting it;\n• an incorrect delivery address provided by the customer;\n• use of the service contrary to these Terms or to the law;\n• or a force majeure event within the meaning of the applicable law.\n\nNothing in these Terms excludes or limits any liability that cannot legally be excluded or limited under Lebanese law."
+        },
+        {
+          "heading": "20. Force majeure",
+          "body": "Neither party can be held liable for a delay or failure to perform resulting from a force majeure event recognised as such by Lebanese law.\n\nThe party concerned informs the other party within a reasonable time of the event and its foreseeable consequences for the order.\n\nIf the impediment lasts so long that the order can no longer reasonably be fulfilled, the consequences of ending the contract are determined in accordance with the applicable law."
+        },
+        {
+          "heading": "21. Customer service and complaints",
+          "body": "For any question or complaint about an order, the customer can contact the Company:\nEmail: orders@everbook-album.com\n\nThe customer is invited to give their order number so that their request can be handled more easily."
+        },
+        {
+          "heading": "22. Applicable law",
+          "body": "These Terms and the orders placed through the Site are governed by Lebanese law.\n\nWhere the customer is a consumer habitually resident in a country other than Lebanon, the choice of Lebanese law cannot deprive them of the protection afforded by the mandatory provisions of the law of their country of residence that cannot be derogated from by contract."
+        },
+        {
+          "heading": "23. Dispute resolution",
+          "body": "In the event of a dispute, the customer is invited to first contact customer service to seek an amicable solution.\n\nFailing an amicable settlement, the dispute will be submitted to the competent courts in accordance with the rules of jurisdiction applicable under Lebanese law.\n\nNothing in this article can deprive a consumer of a mandatory rule of jurisdiction from which they benefit, in particular, where applicable, that of their country of habitual residence."
+        },
+        {
+          "heading": "24. General provisions",
+          "body": "If any provision of these Terms is declared void, unlawful or unenforceable, the other provisions remain applicable to the fullest extent permitted by law.\n\nThe Company's failure to exercise immediately a right under these Terms does not constitute a waiver of that right.\n\nThese Terms, together with the order confirmation and the other contractual documents expressly incorporated, form the agreement applicable to the order between the Company and the customer.\n\nThese Terms are written in French and translated into English. In case of any discrepancy between the two versions, the French version prevails."
         }
-      ]
+      ],
+      "intro": "These General Terms and Conditions of Sale (the \"Terms\") govern orders for personalised photo albums placed on the Everbook website, available at everbook-album.com (the \"Site\"), operated by EFFET DESIGN, registered with the Lebanese commercial registry under number 1015439, with its registered office at Achrafieh, building 5134, Sioufi Street, Lebanon (the \"Company\").\n\nBy placing an order on the Site, the customer acknowledges having read these Terms and accepts them.\n\nThe Site uses artificial intelligence tools to help the customer select, organise and/or lay out their photographs (see article 4). The use of these tools is presented to the customer transparently and does not affect their right to approve, change or reject any suggestion before their album is printed.\n\nThis is an English translation of the French Conditions Générales de Vente. In case of any discrepancy, the French version prevails."
     },
     "privacy": {
       "eyebrow": "Legal",
@@ -600,7 +678,7 @@
       "sections": [
         {
           "heading": "1. Who we are",
-          "body": "Everbook (\"we\", \"us\", \"our\") designs and prints custom photo albums, operated under [legal company name to confirm], registered in Lebanon under commercial registry number [RC number to confirm], with its registered address at [address to confirm]. This Privacy Policy explains what information we collect through everbook-album.com and our related mobile-friendly services (together, the \"Service\"), why we collect it, how long we keep it, who we share it with, and the choices you have. If you have questions about this policy or about your data, you can reach us through our Contact page."
+          "body": "Everbook (\"we\", \"us\", \"our\") designs and prints custom photo albums, operated by EFFET DESIGN, registered in Lebanon under commercial registry number 1015439, with its registered office at Achrafieh, building 5134, Sioufi Street, Lebanon. This Privacy Policy explains what information we collect through everbook-album.com and our related mobile-friendly services (together, the \"Service\"), why we collect it, how long we keep it, who we share it with, and the choices you have. If you have questions about this policy or about your data, you can reach us through our Contact page."
         },
         {
           "heading": "2. Information we collect",
@@ -608,7 +686,7 @@
         },
         {
           "heading": "3. How we use your information",
-          "body": "We use your information to: create and secure your account; let you build, save, and edit your album; process, produce, and ship your order; send you service emails — order confirmation, shipping and delivery updates, password reset and password-changed confirmations, and (only if you sign up with an email and password) a one-time email verification message; respond to your questions and feedback; and detect and prevent fraud, abuse, or technical problems. We do not use your photos or personal information for advertising, and we do not sell your data to third parties."
+          "body": "We use your information to: create and secure your account; let you build, save, and edit your album; process, produce, and ship your order; send you service emails — order confirmation, shipping and delivery updates, password reset and password-changed confirmations, and (only if you sign up with an email and password) a one-time email verification message; respond to your questions and feedback; and detect and prevent fraud, abuse, or technical problems. We do not use your photos or personal information for advertising, and we do not sell your data to third parties.\n\nTo frame your photos in the layout, automatic face detection finds where faces are in each picture. It never identifies anyone and is used for nothing else."
         },
         {
           "heading": "4. Google user data (Sign in with Google)",
@@ -616,7 +694,7 @@
         },
         {
           "heading": "5. How long we keep your information",
-          "body": "Draft albums: an album you have not ordered is automatically deleted, together with its photos, after 30 days of inactivity.\n\nOrdered albums: once you place an order, we keep the album, its photos, and the order record for as long as your account exists, so you can reorder or refer back to past orders, and so we can handle any after-sales question.\n\nUnused photos: photos you uploaded but did not include in your final layout are removed once your order's print file has been generated.\n\nAccount information: kept for as long as your account is active. You can delete your account at any time from your account page (\"Delete my account\"): your account, albums and photos are then permanently deleted. The records of your past orders (amount, shipping address) are kept, as the law requires for accounting. Deletion isn't possible while an order is still being made or delivered.\n\nContact and feedback messages: kept for as long as reasonably needed to handle your request and to keep a record of past support conversations."
+          "body": "Draft albums: an album you have not ordered is automatically deleted, together with its photos, 30 days after it was created.\n\nOrdered albums: once you place an order, we keep the album, its photos, and the order record for as long as your account exists, so you can reorder or refer back to past orders, and so we can handle any after-sales question.\n\nUnused photos: photos you uploaded but did not include in your final layout are removed once your order's print file has been generated.\n\nAccount information: kept for as long as your account is active. You can delete your account at any time from your account page (\"Delete my account\"): your account, albums and photos are then permanently deleted. The records of your past orders (amount, shipping address) are kept, as the law requires for accounting. Deletion isn't possible while an order is still being made or delivered.\n\nContact and feedback messages: kept for as long as reasonably needed to handle your request and to keep a record of past support conversations."
         },
         {
           "heading": "6. Who we share your information with",
@@ -654,11 +732,11 @@
         },
         {
           "heading": "2. Damaged or defective albums",
-          "body": "If your album arrives damaged, or if there's a genuine printing defect, contact us within [X days — to confirm] of delivery with photos of the issue. We'll review it and arrange a reprint or a refund as appropriate."
+          "body": "If your album arrives damaged, or if there's a genuine printing defect, email us at orders@everbook-album.com within 14 days of delivery with photos of the issue. We'll review it and arrange a reprint or a refund as appropriate."
         },
         {
           "heading": "3. How to reach us",
-          "body": "Use our Contact page with your order number and a description (and photos, if relevant) of the problem."
+          "body": "Email us at orders@everbook-album.com, or use our Contact page, with your order number and a description (and photos, if relevant) of the problem."
         }
       ]
     },
@@ -672,11 +750,11 @@
         },
         {
           "heading": "2. Production and delivery time",
-          "body": "[Estimated production time] once your order is placed, followed by [estimated delivery time] for delivery. You can follow your order's status from your Orders page."
+          "body": "Producing your album takes about 5 days once your order is placed, followed by 2 to 3 days for delivery. You can follow your order's status from your Orders page."
         },
         {
           "heading": "3. Delivery cost",
-          "body": "[Specify whether delivery is included in the displayed price or charged separately]."
+          "body": "Delivery within Lebanon costs USD 5 per order. This amount is shown in the summary before you order and included in the total."
         },
         {
           "heading": "4. If delivery fails",
@@ -828,7 +906,13 @@
     "unitPrice": "Unit price",
     "total": "Total",
     "placeOrder": "Place order",
-    "noPayment": "Online payment isn't set up yet — placing an order saves it and starts preparing your album. We'll follow up to complete payment."
+    "noPayment": "Online payment isn't set up yet — placing an order saves it and starts preparing your album. We'll follow up to complete payment.",
+    "shipping": "Delivery (Lebanon)",
+    "deliveryTime": "Production: 5 days · Delivery: 2–3 days",
+    "acceptTerms": "I have read and accept the <terms>Terms of sale</terms>.",
+    "mustAcceptTerms": "Please accept the terms of sale to place your order.",
+    "lowResolution_one": "{{count}} photo in your album may print blurry (marked ⚠ in the editor). If you keep it, you accept that risk.",
+    "lowResolution_other": "{{count}} photos in your album may print blurry (marked ⚠ in the editor). If you keep them, you accept that risk."
   },
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",

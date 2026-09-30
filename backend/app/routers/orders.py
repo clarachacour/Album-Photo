@@ -17,7 +17,7 @@ from app.services.orders import (
     ORDER_STATUS_SEQUENCE,
     start_order_pdf_generation,
 )
-from app.services.pricing import billed_page_count, compute_order_price_cents
+from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count, compute_order_price_cents
 from app.services.storage import get_r2_client
 
 router = APIRouter()
@@ -43,6 +43,10 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     existing_order = await db.orders.find_one({"album_id": data.album_id})
     if existing_order:
         raise HTTPException(status_code=409, detail="An order already exists for this album")
+    # The terms must have been accepted, in the version the site shows now
+    # (a page opened before they changed has to be reloaded).
+    if data.accepted_terms_version != TERMS_VERSION:
+        raise HTTPException(status_code=400, detail="Please accept the current terms of sale to place your order")
     unit_price = compute_order_price_cents(album.get("size", "A4"), billed_page_count(album))
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -55,7 +59,10 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "orientation": album.get("orientation", "portrait"),
         "quantity": data.quantity,
         "unit_price_cents": unit_price,
-        "total_price_cents": unit_price * data.quantity,
+        "shipping_price_cents": SHIPPING_PRICE_CENTS,
+        "total_price_cents": unit_price * data.quantity + SHIPPING_PRICE_CENTS,
+        "terms_version": TERMS_VERSION,
+        "terms_accepted_at": now,
         "currency": "usd",
         "shipping_address": data.shipping_address.dict(),
         "status": "pending_payment",

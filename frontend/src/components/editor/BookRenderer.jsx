@@ -43,6 +43,8 @@ export function BookRenderer({
   onUpdateCover,
   onSelectSpine,
 }) {
+  // Pixel size of each photo, for the low-resolution warning (see printQuality).
+  const photoSizes = new Map((album.photos || []).map((p) => [p.id, p]));
   const blank = (
     <div className={`w-full ${orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]"} bg-[color:var(--paper)]`} />
   );
@@ -129,6 +131,8 @@ export function BookRenderer({
         onStartAddText={onStartAddText}
         autoEditItemId={autoEditItemId}
         onTextEditHandled={onTextEditHandled}
+        photoSizes={photoSizes}
+        pageSize={album.size}
       />
     )),
     <React.Fragment key="blank-inner-back">{blank}</React.Fragment>,

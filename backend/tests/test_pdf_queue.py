@@ -5,6 +5,7 @@ import asyncio
 import pytest
 
 from tests.test_api import _signup
+from app.services.pricing import TERMS_VERSION
 
 ADDRESS = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
 
@@ -80,7 +81,7 @@ def test_order_is_confirmed_at_once_and_pdf_queued(client, db, queue):
     queued, generated = queue
     _, headers = _signup(client, db=db)
     album_id = _album_with_pages(client, db, headers)
-    res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": ADDRESS}, headers=headers)
+    res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=headers)
     assert res.status_code == 200, res.text
     order = res.json()
     assert queued == [order["id"]]
@@ -99,7 +100,7 @@ def test_unreachable_queue_falls_back_to_generating_now(client, db, queue, monke
     monkeypatch.setattr(order_service, "enqueue_order_pdf", broken)
     _, headers = _signup(client, db=db)
     album_id = _album_with_pages(client, db, headers)
-    res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": ADDRESS}, headers=headers)
+    res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=headers)
     assert res.status_code == 200, res.text
     assert generated == [res.json()["id"]]
 

@@ -101,6 +101,8 @@ class OrderCreate(BaseModel):
     album_id: Id
     quantity: int = Field(default=1, ge=1, le=20)
     shipping_address: ShippingAddress
+    # The version of the terms of sale the customer ticked "I accept" for.
+    accepted_terms_version: str = Field(default="", max_length=20)
 
 class AuthResponse(BaseModel):
     token: str

@@ -161,7 +161,8 @@
     "sending": "Envoi…",
     "send": "Envoyer le message",
     "sentToast": "Message envoyé",
-    "errorToast": "Impossible d'envoyer votre message"
+    "errorToast": "Impossible d'envoyer votre message",
+    "orEmail": "Pour une question sur une commande, vous pouvez aussi nous écrire directement à <mail>{{email}}</mail>."
   },
   "chooseTemplate": {
     "back": "Retour",
@@ -234,7 +235,8 @@
     "unitPrice": "Prix unitaire",
     "total": "Total",
     "placedOn": "Passée le {{date}}",
-    "shippingTo": "Livraison à"
+    "shippingTo": "Livraison à",
+    "shipping": "Livraison"
   },
   "account": {
     "eyebrow": "Compte",
@@ -502,7 +504,9 @@
       "body": "Des modifications faites lors de votre dernière visite n'avaient pas pu être enregistrées. Voulez-vous les récupérer ?",
       "restore": "Récupérer",
       "dismiss": "Ignorer"
-    }
+    },
+    "lowResolution": "Résolution faible : cette photo risque d'être floue à l'impression dans ce cadre. Réduisez son cadre ou son zoom, ou choisissez une autre photo.",
+    "lowResolutionShort": "Résolution faible"
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",
@@ -556,43 +560,117 @@
     "returns": "Retours & Remboursements",
     "shipping": "Livraison",
     "company": "Société",
-    "legalNamePlaceholder": "[Nom légal de la société — à confirmer]",
-    "rcPlaceholder": "[Numéro RC — à confirmer]",
-    "addressPlaceholder": "[Adresse enregistrée — à confirmer]",
+    "legalName": "EFFET DESIGN",
+    "rc": "RC n° 1015439",
+    "address": "Achrafieh, immeuble 5134, rue Sioufi, Liban",
+    "email": "orders@everbook-album.com",
     "rightsReserved": "Tous droits réservés.",
     "madeIn": "Fabriqué au Liban"
   },
   "legal": {
-    "lastUpdated": "Dernière mise à jour : [date à renseigner à la publication]",
+    "lastUpdated": "Dernière mise à jour : 30 septembre 2026",
     "terms": {
       "eyebrow": "Légal",
-      "title": "Conditions Générales de Vente",
+      "title": "Conditions générales de vente",
       "sections": [
         {
-          "heading": "1. À propos de ce service",
-          "body": "Everbook vous permet d'envoyer vos photos, de les mettre en page automatiquement ou manuellement dans un album photo imprimé, et de commander un exemplaire physique. [Nom légal de la société] ([numéro RC]) exploite ce service depuis [adresse enregistrée], Liban."
+          "heading": "1. Objet",
+          "body": "La Société propose, par l'intermédiaire du Site, un service permettant aux utilisateurs de sélectionner et télécharger leurs photographies, de personnaliser la mise en page d'un album photo le cas échéant avec l'assistance d'outils d'intelligence artificielle, de commander son impression et de recevoir l'album imprimé à l'adresse de livraison indiquée lors de la commande.\n\nLes albums sont fabriqués sur mesure conformément aux choix effectués par le client lors de la personnalisation de son album, tels que validés par lui en dernier ressort.\n\nL'impression et, le cas échéant, tout ou partie des opérations de fabrication ou de livraison peuvent être réalisées par des prestataires partenaires sélectionnés par la Société, notamment une imprimerie partenaire située au Liban."
         },
         {
-          "heading": "2. Commandes et tarifs",
-          "body": "Les prix sont affichés en dollars américains (USD) et incluent [à préciser : la production seule / la production et la livraison]. Passer une commande vous engage à payer le prix affiché pour l'album tel qu'il apparaît au moment de la commande — une fois la commande passée, l'album ne peut plus être modifié (voir l'éditeur pour le détail)."
+          "heading": "2. Champ d'application",
+          "body": "Les présentes CGV s'appliquent à toute commande passée sur le Site par un consommateur.\n\nElles sont accessibles au client avant la validation définitive de sa commande.\n\nLa commande sur le Site est réservée aux personnes juridiquement capables de contracter. En passant commande, le client déclare avoir la majorité légale requise dans son pays de résidence ou, à défaut, agir avec l'autorisation de son représentant légal.\n\nLa Société se réserve le droit de modifier les présentes CGV. La version applicable à une commande est celle acceptée par le client au moment de la validation de cette commande.\n\nLorsque le client passe commande depuis un pays autre que le Liban, les dispositions impératives de protection du consommateur éventuellement applicables dans son pays de résidence habituelle demeurent réservées, conformément à l'article 22."
         },
         {
-          "heading": "3. Production et livraison",
-          "body": "Les albums sont produits à la commande après paiement. Les délais estimés de production et de livraison sont décrits sur notre page Livraison. Nous livrons actuellement uniquement au Liban."
+          "heading": "3. Création et personnalisation de l'album",
+          "body": "Le Site permet au client de créer un album photo personnalisé à partir des photographies qu'il sélectionne et télécharge sur la plateforme.\n\nLe client peut notamment choisir, selon les options proposées sur le Site :\n• les photographies intégrées à l'album ;\n• leur ordre et leur disposition ;\n• le format de l'album ;\n• le nombre de pages ;\n• la couverture ;\n• la mise en page ;\n• les textes et autres éléments de personnalisation ;\n• et toute autre option proposée sur le Site.\n\nLe client est responsable de la vérification de son album avant la validation définitive de sa commande, y compris lorsque tout ou partie de la sélection ou de la mise en page résulte d'une proposition générée par un outil d'intelligence artificielle.\n\nIl lui appartient notamment de vérifier les photographies sélectionnées, leur orientation, leur cadrage, leur ordre, les textes insérés, l'orthographe, le nombre de pages et les autres choix de personnalisation.\n\nLa représentation numérique de l'album affichée sur le Site constitue une prévisualisation. De légères différences peuvent exister entre cette prévisualisation et le produit imprimé, notamment en matière de couleurs, de luminosité, de contraste, de cadrage ou de rendu, en raison notamment des caractéristiques des écrans, des fichiers transmis et du procédé d'impression.\n\nCes différences ne constituent pas un défaut du produit lorsqu'elles restent dans les tolérances normales d'impression."
         },
         {
-          "heading": "4. Retours et défauts",
-          "body": "Chaque album étant fabriqué sur-mesure à partir de vos propres photos, les commandes ne peuvent pas être retournées pour un simple changement d'avis. Consultez notre page Retours & Remboursements pour savoir ce qui se passe si votre album arrive endommagé ou présente un défaut."
+          "heading": "4. Assistance par intelligence artificielle",
+          "body": "Le Site peut proposer au client des fonctionnalités reposant sur des outils d'intelligence artificielle, notamment pour suggérer une sélection de photographies, un ordre, une mise en page ou des éléments de composition de l'album.\n\nCes fonctionnalités constituent une aide à la création. Elles ne se substituent pas au choix du client, qui conserve à tout moment la possibilité de modifier, compléter ou écarter les propositions faites par ces outils avant la validation définitive de sa commande, conformément à l'article 3.\n\nLa Société ne saurait garantir que les suggestions générées par ces outils correspondent en tous points aux attentes esthétiques ou personnelles du client. Il appartient à ce dernier de vérifier le résultat final avant impression.\n\nSauf consentement exprès et distinct du client recueilli à cet effet, les photographies téléchargées par le client ne sont pas utilisées pour entraîner, réentraîner ou améliorer des modèles d'intelligence artificielle destinés à un usage autre que le traitement de la commande en cours. Les modalités de traitement des photographies par ces outils sont précisées dans la Politique de confidentialité.\n\nLes éléments de mise en page ou de composition générés par les outils d'intelligence artificielle du Site à partir des choix du client peuvent être utilisés librement par ce dernier dans le cadre de son album ; ils demeurent, pour le surplus, régis par l'article 18 relatif à la propriété intellectuelle du Site."
         },
         {
-          "heading": "5. Votre compte et votre contenu",
-          "body": "Vous êtes responsable des photos et textes que vous envoyez. Vous conservez la propriété de vos photos ; nous les utilisons uniquement pour produire votre commande, comme décrit dans notre Politique de confidentialité."
+          "heading": "5. Qualité des photographies",
+          "body": "La qualité du produit imprimé dépend notamment de la qualité et de la résolution des fichiers transmis par le client.\n\nLorsque le Site signale qu'une photographie présente une résolution insuffisante ou qu'elle risque d'entraîner une qualité d'impression réduite, le client qui décide néanmoins de conserver cette photographie accepte le risque correspondant.\n\nLa Société ne pourra être tenue responsable d'un défaut de qualité directement imputable à un fichier de qualité insuffisante transmis ou validé par le client.\n\nCette disposition ne limite pas la responsabilité de la Société pour un défaut résultant du processus d'impression lui-même."
         },
         {
-          "heading": "6. Droit applicable",
-          "body": "Les présentes conditions sont régies par le droit libanais. Tout litige sera soumis aux tribunaux compétents de [juridiction — à confirmer, généralement Beyrouth]."
+          "heading": "6. Contenus téléchargés par le client",
+          "body": "Le client demeure propriétaire des photographies et autres contenus qu'il télécharge sur le Site.\n\nLe téléchargement de contenus sur le Site n'emporte aucun transfert de propriété intellectuelle au profit de la Société.\n\nLe client accorde toutefois à la Société, pour la durée strictement nécessaire à l'exécution de la commande, une autorisation limitée d'utiliser, reproduire, stocker et transmettre les fichiers concernés, y compris, le cas échéant, par le recours aux outils décrits à l'article 4, exclusivement afin de permettre la création, l'impression, le contrôle, la fabrication et la livraison de l'album commandé.\n\nLa Société ne pourra utiliser les photographies du client à des fins publicitaires, commerciales ou promotionnelles, ni à des fins d'entraînement de modèles d'intelligence artificielle autres que celles décrites à l'article 4, sans son consentement préalable, libre et exprès."
+        },
+        {
+          "heading": "7. Droits sur les photographies et contenus",
+          "body": "Le client déclare disposer des droits et autorisations nécessaires concernant les photographies, textes et autres contenus qu'il transmet sur le Site, y compris, le cas échéant, l'autorisation des personnes reconnaissables sur les photographies ou, pour les mineurs figurant sur celles-ci, de leurs représentants légaux.\n\nIl s'engage notamment à ne pas télécharger de contenu portant atteinte aux droits de propriété intellectuelle, au droit à l'image, à la vie privée ou à tout autre droit appartenant à un tiers.\n\nLe client s'engage également à ne pas utiliser le service pour créer un contenu contraire aux lois applicables.\n\nLe client garantit la Société contre toute réclamation, action ou condamnation résultant d'une violation par lui des déclarations et engagements figurant au présent article, dans la limite permise par le droit applicable.\n\nLa Société se réserve le droit de refuser ou d'annuler une commande lorsqu'elle constate qu'un contenu est manifestement illicite ou que son impression serait interdite par la loi.\n\nDans ce cas, les conséquences financières de l'annulation seront déterminées en fonction de l'état d'avancement de la commande et des dispositions légales impératives applicables."
+        },
+        {
+          "heading": "8. Commande",
+          "body": "Avant de passer commande, le client peut consulter un aperçu de son album et les principales caractéristiques du produit sélectionné.\n\nLe client est invité à vérifier et, le cas échéant, à corriger sa commande avant sa validation définitive.\n\nLa commande devient définitive après :\n• la vérification par le client du récapitulatif de sa commande ;\n• l'acceptation des présentes CGV ;\n• la validation de la commande ; et\n• la confirmation du paiement lorsque celui-ci est exigé immédiatement.\n\nUne confirmation de commande est adressée au client par voie électronique à l'adresse renseignée lors de la commande.\n\nLa Société se réserve le droit de refuser une commande notamment en cas de paiement refusé, de suspicion de fraude, d'impossibilité technique de fabrication ou de contenu manifestement illicite."
+        },
+        {
+          "heading": "9. Validation du fichier avant impression",
+          "body": "En validant définitivement son album, le client confirme que la version affichée, y compris les éléments éventuellement issus d'une suggestion d'intelligence artificielle qu'il a acceptée ou modifiée, correspond à la version qu'il souhaite faire imprimer.\n\nAprès cette validation et dès lors que la commande est transmise en production, les éléments de personnalisation ne peuvent en principe plus être modifiés.\n\nToute demande de modification effectuée après validation sera examinée par la Société sans garantie qu'elle puisse être prise en compte."
+        },
+        {
+          "heading": "10. Prix",
+          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
+        },
+        {
+          "heading": "11. Paiement",
+          "body": "Le paiement est effectué en espèces ou par carte bancaire, selon les modes de paiement indiqués sur le Site au moment de la commande.\n\nLe paiement peut être traité par un prestataire de paiement tiers. La Société n'a pas vocation à conserver les données bancaires complètes du client lorsque le paiement est directement traité par ce prestataire.\n\nLa commande peut être suspendue ou annulée en cas de refus ou d'échec du paiement."
+        },
+        {
+          "heading": "12. Fabrication",
+          "body": "Les albums étant personnalisés à partir des choix et photographies du client, leur fabrication commence après validation de la commande et confirmation du paiement.\n\nLa Société peut confier l'impression et la fabrication de l'album à une imprimerie partenaire située au Liban.\n\nLe recours à un prestataire pour l'impression ne modifie pas les droits du consommateur à l'égard de la Société dans les cas où celle-ci agit comme vendeur contractuel de l'album."
+        },
+        {
+          "heading": "13. Livraison",
+          "body": "La livraison est actuellement assurée uniquement au Liban.\n\nLes produits sont livrés à l'adresse indiquée par le client lors de sa commande.\n\nLe client est responsable de l'exactitude et de l'exhaustivité des informations de livraison qu'il fournit.\n\nLes zones de livraison disponibles et les frais correspondants sont indiqués sur le Site avant la validation de la commande.\n\nLe délai estimatif de fabrication et de livraison est indiqué au client avant ou au moment de la commande. À titre indicatif, la fabrication prend environ 5 jours et la livraison 2 à 3 jours.\n\nLes délais annoncés peuvent être affectés par des circonstances indépendantes de la volonté de la Société. En cas de retard significatif, les droits du client sont ceux prévus par les dispositions impératives du droit libanais applicable."
+        },
+        {
+          "heading": "14. Réception – Produit endommagé ou non conforme",
+          "body": "Le client est invité à vérifier l'état de son colis et de l'album dès sa réception.\n\nEn cas d'album endommagé, présentant un défaut d'impression ou ne correspondant pas à la commande validée, le client est invité à contacter la Société, dans un délai de 14 jours à compter de la réception, à l'adresse orders@everbook-album.com, en indiquant son numéro de commande et en fournissant, lorsque cela est possible, des photographies permettant d'identifier le problème.\n\nLorsqu'un défaut ou une non-conformité est imputable à la Société ou à l'un de ses prestataires, la Société proposera, selon les circonstances et conformément au droit applicable, la réimpression, le remplacement, la réparation ou le remboursement du produit concerné.\n\nLa présente disposition ne limite aucun droit impératif dont bénéficie le consommateur en vertu du droit libanais."
+        },
+        {
+          "heading": "15. Annulation et droit de rétractation",
+          "body": "Les albums proposés sur le Site sont fabriqués sur mesure à partir des photographies, du format, de la mise en page et des autres choix individuels du client, y compris lorsque ces choix résultent en tout ou partie d'une suggestion d'intelligence artificielle acceptée par le client.\n\nLa loi n°659/2005 relative à la protection du consommateur reconnaît au consommateur, pour les achats conclus à distance, une faculté d'annulation dans un délai de dix (10) jours, à l'exclusion, notamment, des commandes personnalisées ou fabriquées sur mesure (article 55 de la loi n°659/2005). L'album commandé sur le Site, fabriqué à partir des photographies et choix propres au client, relève de cette exclusion.\n\nEn conséquence, le droit d'annulation applicable de plein droit aux ventes à distance ne peut pas être exercé par le client pour l'album personnalisé une fois la commande validée dans les conditions de l'article 8.\n\nLe client peut néanmoins demander l'annulation de sa commande avant le commencement de la fabrication en contactant la Société à l'adresse orders@everbook-album.com.\n\nLa Société fera ses meilleurs efforts pour interrompre la commande. L'annulation ne pourra toutefois être garantie lorsque la fabrication a déjà commencé.\n\nLe présent article ne prive pas le client de ses droits lorsqu'un produit est défectueux, endommagé ou non conforme à la commande."
+        },
+        {
+          "heading": "16. Données personnelles et photographies",
+          "body": "Dans le cadre de l'utilisation du Site et de l'exécution des commandes, la Société peut traiter notamment :\n• les données d'identification du client ;\n• ses coordonnées ;\n• son adresse de livraison ;\n• les informations relatives à ses commandes ;\n• les photographies et autres fichiers qu'il télécharge, y compris, le cas échéant, des images de personnes physiques identifiables ou de mineurs ;\n• les informations nécessaires au paiement, dans les limites nécessaires à la transaction.\n\nCes données sont traitées conformément à la législation libanaise applicable, notamment la loi n°81/2018 relative aux transactions électroniques et aux données à caractère personnel.\n\nLes photographies téléchargées sont utilisées uniquement dans la mesure nécessaire à la fourniture du service, sauf consentement exprès du client pour une autre utilisation.\n\nCompte tenu de la nature particulière de certaines photographies (notamment lorsqu'elles représentent des personnes identifiables ou des mineurs), la Société met en œuvre des mesures de sécurité et de confidentialité adaptées. Elle n'utilise pas ces photographies à des fins de reconnaissance faciale : une détection automatique des visages est uniquement utilisée pour cadrer les photographies dans la mise en page, sans jamais identifier les personnes représentées.\n\nCertaines données et photographies peuvent être transmises aux prestataires intervenant dans l'exécution de la commande, notamment l'imprimerie et, lorsque nécessaire, le prestataire chargé de la livraison.\n\nCes prestataires ne doivent recevoir que les informations nécessaires à l'exécution de leurs missions.\n\nLes modalités détaillées concernant la collecte, l'utilisation, la conservation, le partage et la suppression des données personnelles sont décrites dans la Politique de confidentialité disponible sur le Site."
+        },
+        {
+          "heading": "17. Conservation et suppression des photographies",
+          "body": "Les photographies téléchargées sont conservées selon les règles suivantes :\n• album non commandé : il est supprimé automatiquement, avec ses photographies, 30 jours après sa création ;\n• photographies non utilisées : les photographies téléchargées mais non intégrées à la mise en page finale d'un album commandé sont supprimées une fois le fichier d'impression de la commande généré ;\n• album commandé : l'album, ses photographies et l'historique de la commande sont conservés aussi longtemps que le compte du client existe, afin de permettre une réimpression, au client de retrouver son album ou de traiter une éventuelle réclamation.\n\nLe client peut à tout moment supprimer son compte depuis sa page de compte (« Supprimer mon compte ») : son compte, ses albums et ses photographies sont alors supprimés définitivement. Les informations relatives aux commandes passées (montant, adresse de livraison) sont conservées pour les besoins de la comptabilité, sans aucune photographie. La suppression n'est pas possible tant qu'une commande est en cours de fabrication ou de livraison.\n\nLe client peut également demander la suppression anticipée de ses photographies dès lors que leur conservation n'est plus nécessaire à l'exécution de la commande ou au traitement d'une réclamation en cours, selon les modalités précisées dans la Politique de confidentialité."
+        },
+        {
+          "heading": "18. Propriété intellectuelle du Site",
+          "body": "Le Site, son logiciel, son interface, ses éléments graphiques, ses modèles de mise en page, sa marque, son logo, les outils d'intelligence artificielle qu'il met en œuvre et les autres éléments créés par ou pour la Société sont protégés par les droits de propriété intellectuelle applicables.\n\nAucune disposition des présentes CGV n'accorde au client un droit de propriété sur ces éléments, à l'exception du droit d'utiliser, dans le cadre de son album, les propositions de mise en page générées à partir de ses propres contenus conformément à l'article 4.\n\nCette disposition est sans incidence sur les droits appartenant au client ou à des tiers sur les photographies et contenus téléchargés par le client."
+        },
+        {
+          "heading": "19. Responsabilité",
+          "body": "La Société est responsable de l'exécution de ses obligations conformément au droit applicable.\n\nElle ne saurait toutefois être responsable d'un défaut résultant exclusivement :\n• d'une photographie ou d'un fichier de qualité insuffisante fourni par le client ;\n• d'une erreur de texte, de sélection, de cadrage ou de mise en page validée par le client, y compris lorsque cette erreur figurait déjà dans une proposition générée par un outil d'intelligence artificielle que le client a acceptée sans la corriger ;\n• d'une adresse de livraison erronée communiquée par le client ;\n• d'une utilisation du service contraire aux présentes CGV ou à la loi ;\n• ou d'un événement de force majeure au sens du droit applicable.\n\nAucune disposition des présentes CGV ne saurait exclure ou limiter une responsabilité qui ne peut légalement être exclue ou limitée en vertu du droit libanais."
+        },
+        {
+          "heading": "20. Force majeure",
+          "body": "Aucune partie ne pourra être tenue responsable d'un retard ou d'une inexécution résultant d'un événement de force majeure reconnu comme tel par le droit libanais.\n\nLa partie concernée informe l'autre partie dans un délai raisonnable de l'événement et de ses conséquences prévisibles sur l'exécution de la commande.\n\nSi l'empêchement se prolonge de manière telle que l'exécution de la commande n'est plus raisonnablement possible, les conséquences de la cessation du contrat sont déterminées conformément au droit applicable."
+        },
+        {
+          "heading": "21. Service client et réclamations",
+          "body": "Pour toute question ou réclamation relative à une commande, le client peut contacter la Société :\nE-mail : orders@everbook-album.com\n\nLe client est invité à communiquer son numéro de commande afin de faciliter le traitement de sa demande."
+        },
+        {
+          "heading": "22. Droit applicable",
+          "body": "Les présentes CGV et les commandes conclues par l'intermédiaire du Site sont régies par le droit libanais.\n\nLorsque le client a la qualité de consommateur et réside habituellement dans un pays autre que le Liban, le choix du droit libanais ne saurait avoir pour effet de le priver de la protection que lui assurent les dispositions impératives auxquelles il ne peut être dérogé par contrat en vertu du droit de son pays de résidence."
+        },
+        {
+          "heading": "23. Règlement des litiges",
+          "body": "En cas de différend, le client est invité à contacter préalablement le service client afin de rechercher une solution amiable.\n\nÀ défaut de règlement amiable, le litige sera soumis aux juridictions compétentes conformément aux règles de compétence applicables en droit libanais.\n\nAucune stipulation du présent article ne saurait priver un consommateur d'une règle impérative de compétence juridictionnelle dont il bénéficie, notamment, le cas échéant, celle de son pays de résidence habituelle."
+        },
+        {
+          "heading": "24. Dispositions générales",
+          "body": "Si l'une des dispositions des présentes CGV est déclarée nulle, illégale ou inapplicable, les autres dispositions demeurent applicables dans toute la mesure permise par la loi.\n\nLe fait pour la Société de ne pas exercer immédiatement un droit résultant des présentes CGV ne constitue pas une renonciation à ce droit.\n\nLes présentes CGV constituent, avec la confirmation de commande et les autres documents contractuels expressément incorporés, l'accord applicable à la commande entre la Société et le client.\n\nLes présentes CGV sont rédigées en français et traduites en anglais. En cas de divergence entre les deux versions, la version française prévaut."
         }
-      ]
+      ],
+      "intro": "Les présentes Conditions Générales de Vente (« CGV ») régissent les commandes d'albums photo personnalisés effectuées sur le site internet Everbook, accessible à l'adresse everbook-album.com (le « Site »), exploité par EFFET DESIGN, immatriculée au registre du commerce libanais sous le numéro 1015439, dont le siège social est situé Achrafieh, immeuble 5134, rue Sioufi, Liban (la « Société »).\n\nEn passant une commande sur le Site, le client reconnaît avoir pris connaissance des présentes CGV et les accepter.\n\nLe Site fait appel à des outils d'intelligence artificielle pour assister le client dans la sélection, l'organisation et/ou la mise en page de ses photographies (voir article 4). Le recours à ces outils est présenté au client de manière transparente et n'affecte pas son droit de valider, modifier ou refuser toute proposition avant l'impression de son album."
     },
     "privacy": {
       "eyebrow": "Mentions légales",
@@ -600,7 +678,7 @@
       "sections": [
         {
           "heading": "1. Qui sommes-nous",
-          "body": "Everbook (« nous ») conçoit et imprime des albums photo personnalisés, exploité sous le nom [raison sociale à confirmer], immatriculé au Liban sous le numéro de registre du commerce [numéro RC à confirmer], dont le siège social est situé [adresse à confirmer]. Cette politique de confidentialité explique quelles informations nous collectons via everbook-album.com et nos services associés (ensemble, le « Service »), pourquoi nous les collectons, combien de temps nous les conservons, avec qui nous les partageons, et les choix qui s'offrent à vous. Pour toute question concernant cette politique ou vos données, vous pouvez nous contacter via notre page Contact."
+          "body": "Everbook (« nous ») conçoit et imprime des albums photo personnalisés, exploité par EFFET DESIGN, immatriculé au Liban sous le numéro de registre du commerce 1015439, dont le siège social est situé Achrafieh, immeuble 5134, rue Sioufi, Liban. Cette politique de confidentialité explique quelles informations nous collectons via everbook-album.com et nos services associés (ensemble, le « Service »), pourquoi nous les collectons, combien de temps nous les conservons, avec qui nous les partageons, et les choix qui s'offrent à vous. Pour toute question concernant cette politique ou vos données, vous pouvez nous contacter via notre page Contact."
         },
         {
           "heading": "2. Informations que nous collectons",
@@ -608,7 +686,7 @@
         },
         {
           "heading": "3. Comment nous utilisons vos informations",
-          "body": "Nous utilisons vos informations pour : créer et sécuriser votre compte ; vous permettre de composer, enregistrer et modifier votre album ; traiter, fabriquer et expédier votre commande ; vous envoyer des e-mails de service — confirmation de commande, suivi d'expédition et de livraison, confirmations de réinitialisation et de changement de mot de passe, et (uniquement si vous créez un compte avec une adresse e-mail et un mot de passe) un e-mail de vérification d'adresse e-mail ; répondre à vos questions et retours ; et détecter et prévenir la fraude, les abus ou les problèmes techniques. Nous n'utilisons pas vos photos ni vos informations personnelles à des fins publicitaires, et nous ne vendons pas vos données à des tiers."
+          "body": "Nous utilisons vos informations pour : créer et sécuriser votre compte ; vous permettre de composer, enregistrer et modifier votre album ; traiter, fabriquer et expédier votre commande ; vous envoyer des e-mails de service — confirmation de commande, suivi d'expédition et de livraison, confirmations de réinitialisation et de changement de mot de passe, et (uniquement si vous créez un compte avec une adresse e-mail et un mot de passe) un e-mail de vérification d'adresse e-mail ; répondre à vos questions et retours ; et détecter et prévenir la fraude, les abus ou les problèmes techniques. Nous n'utilisons pas vos photos ni vos informations personnelles à des fins publicitaires, et nous ne vendons pas vos données à des tiers.\n\nPour cadrer vos photos dans la mise en page, une détection automatique des visages repère leur position dans l'image. Elle n'identifie jamais les personnes et n'est utilisée à aucune autre fin."
         },
         {
           "heading": "4. Données utilisateur Google (connexion avec Google)",
@@ -616,7 +694,7 @@
         },
         {
           "heading": "5. Durée de conservation de vos informations",
-          "body": "Albums en cours de création : un album que vous n'avez pas commandé est automatiquement supprimé, avec ses photos, après 30 jours d'inactivité.\n\nAlbums commandés : une fois votre commande passée, nous conservons l'album, ses photos et l'historique de la commande aussi longtemps que votre compte existe, afin que vous puissiez recommander ou retrouver vos commandes passées, et pour pouvoir traiter toute question après-vente.\n\nPhotos non utilisées : les photos que vous avez téléversées mais qui n'ont pas été incluses dans votre mise en page finale sont supprimées une fois le fichier d'impression de votre commande généré.\n\nInformations de compte : conservées aussi longtemps que votre compte est actif. Vous pouvez supprimer votre compte à tout moment depuis votre page de compte (« Supprimer mon compte ») : votre compte, vos albums et vos photos sont alors supprimés définitivement. Les enregistrements de vos commandes passées (montant, adresse de livraison) sont conservés, comme la loi l'impose pour la comptabilité. La suppression n'est pas possible tant qu'une commande est en cours de fabrication ou de livraison.\n\nMessages de contact et de retour : conservés aussi longtemps que raisonnablement nécessaire pour traiter votre demande et conserver un historique des échanges avec notre support."
+          "body": "Albums en cours de création : un album que vous n'avez pas commandé est automatiquement supprimé, avec ses photos, 30 jours après sa création.\n\nAlbums commandés : une fois votre commande passée, nous conservons l'album, ses photos et l'historique de la commande aussi longtemps que votre compte existe, afin que vous puissiez recommander ou retrouver vos commandes passées, et pour pouvoir traiter toute question après-vente.\n\nPhotos non utilisées : les photos que vous avez téléversées mais qui n'ont pas été incluses dans votre mise en page finale sont supprimées une fois le fichier d'impression de votre commande généré.\n\nInformations de compte : conservées aussi longtemps que votre compte est actif. Vous pouvez supprimer votre compte à tout moment depuis votre page de compte (« Supprimer mon compte ») : votre compte, vos albums et vos photos sont alors supprimés définitivement. Les enregistrements de vos commandes passées (montant, adresse de livraison) sont conservés, comme la loi l'impose pour la comptabilité. La suppression n'est pas possible tant qu'une commande est en cours de fabrication ou de livraison.\n\nMessages de contact et de retour : conservés aussi longtemps que raisonnablement nécessaire pour traiter votre demande et conserver un historique des échanges avec notre support."
         },
         {
           "heading": "6. Avec qui nous partageons vos informations",
@@ -654,11 +732,11 @@
         },
         {
           "heading": "2. Albums endommagés ou défectueux",
-          "body": "Si votre album arrive endommagé, ou en cas de véritable défaut d'impression, contactez-nous dans les [X jours — à confirmer] suivant la livraison avec des photos du problème. Nous l'examinerons et organiserons une réimpression ou un remboursement selon le cas."
+          "body": "Si votre album arrive endommagé, ou en cas de véritable défaut d'impression, écrivez-nous à orders@everbook-album.com dans les 14 jours suivant la livraison avec des photos du problème. Nous l'examinerons et organiserons une réimpression ou un remboursement selon le cas."
         },
         {
           "heading": "3. Comment nous contacter",
-          "body": "Utilisez notre page Contact en indiquant votre numéro de commande et une description (avec photos, si pertinent) du problème."
+          "body": "Écrivez-nous à orders@everbook-album.com, ou utilisez notre page Contact, en indiquant votre numéro de commande et une description (avec photos, si pertinent) du problème."
         }
       ]
     },
@@ -672,11 +750,11 @@
         },
         {
           "heading": "2. Délai de production et de livraison",
-          "body": "[Délai de production estimé] une fois la commande passée, suivi de [délai de livraison estimé] pour la livraison. Vous pouvez suivre le statut de votre commande depuis votre page Commandes."
+          "body": "La fabrication de votre album prend environ 5 jours une fois la commande passée, puis la livraison 2 à 3 jours. Vous pouvez suivre le statut de votre commande depuis votre page Commandes."
         },
         {
           "heading": "3. Frais de livraison",
-          "body": "[Préciser si la livraison est incluse dans le prix affiché ou facturée séparément]."
+          "body": "La livraison au Liban coûte 5 USD par commande. Ce montant est indiqué dans le récapitulatif avant la commande et inclus dans le total."
         },
         {
           "heading": "4. En cas d'échec de livraison",
@@ -828,7 +906,13 @@
     "unitPrice": "Prix unitaire",
     "total": "Total",
     "placeOrder": "Commander",
-    "noPayment": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous commençons à préparer votre album. Nous vous recontacterons pour le paiement."
+    "noPayment": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous commençons à préparer votre album. Nous vous recontacterons pour le paiement.",
+    "shipping": "Livraison (Liban)",
+    "deliveryTime": "Fabrication : 5 jours · Livraison : 2 à 3 jours",
+    "acceptTerms": "J'ai lu et j'accepte les <terms>Conditions générales de vente</terms>.",
+    "mustAcceptTerms": "Veuillez accepter les conditions générales de vente pour commander.",
+    "lowResolution_one": "{{count}} photo de votre album risque d'être floue à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
+    "lowResolution_other": "{{count}} photos de votre album risquent d'être floues à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",
