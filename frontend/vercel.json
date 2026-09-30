@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/((?!assets/|cover-art/).*)",
-      "destination": "/app.html"
+      "destination": "/app"
     }
   ],
   "headers": [

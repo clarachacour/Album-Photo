@@ -5,7 +5,12 @@
 //   build/faq.html, …         the other public pages (served at /faq… on
 //                             Vercel thanks to "cleanUrls")
 //   build/app.html            the empty page for every other address (the
-//                             app draws it in the browser; see vercel.json)
+//                             app draws it in the browser). vercel.json
+//                             rewrites to "/app", not "/app.html": with
+//                             cleanUrls, "/app.html" answers with a redirect
+//                             to "/app", which would replace the address the
+//                             visitor asked for (a reload of /dashboard
+//                             showed "page not found").
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
