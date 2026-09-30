@@ -16,6 +16,7 @@ from app.services.email import (
     send_album_expiring_soon_email,
     send_unfinished_album_reminder_email,
 )
+from app.services.backup import backup_database
 from app.services.storage import delete_object
 
 router = APIRouter()
@@ -163,3 +164,15 @@ async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
         deleted_count += 1
 
     return {"checked": len(candidates), "deleted": deleted_count, "retention_days": DRAFT_ALBUM_RETENTION_DAYS}
+
+
+# ---------- Daily database backup (Cloud Scheduler) ----------
+@router.post("/internal/backup")
+async def internal_backup(x_cleanup_secret: str = Header(None)):
+    """Copies the whole database to R2 (see app/services/backup.py). Meant
+    to be called once a day by Cloud Scheduler, like the cleanup above."""
+    if not CLEANUP_SECRET:
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
+    if x_cleanup_secret != CLEANUP_SECRET:
+        raise HTTPException(status_code=401, detail="Not authorized")
+    return await backup_database()

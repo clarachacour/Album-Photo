@@ -100,6 +100,16 @@ def delete_prefix(prefix: str) -> int:
             deleted += len(keys)
     return deleted
 
+def list_folders(prefix: str) -> list:
+    """The "folders" directly under prefix (e.g. "backups/" → the backup
+    dates), each ending with "/"."""
+    if not prefix or not prefix.endswith("/"):
+        raise ValueError("prefix must end with '/'")
+    folders = []
+    for page in get_r2_client().get_paginator("list_objects_v2").paginate(Bucket=R2_BUCKET_NAME, Prefix=prefix, Delimiter="/"):
+        folders += [p["Prefix"] for p in page.get("CommonPrefixes", [])]
+    return folders
+
 def delete_object(path: str) -> None:
     """Deletes one object from R2. Never raises — a missing/already-deleted
     object is not an error for a cleanup operation, and callers (order-time

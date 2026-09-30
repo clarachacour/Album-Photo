@@ -86,6 +86,8 @@ PDF_TASKS_QUEUE = os.environ.get("PDF_TASKS_QUEUE")
 # only after the last one.
 PDF_TASK_MAX_ATTEMPTS = int(os.environ.get("PDF_TASK_MAX_ATTEMPTS", "3"))
 DRAFT_ALBUM_RETENTION_DAYS = int(os.environ.get("DRAFT_ALBUM_RETENTION_DAYS", "30"))
+# Daily database backups (POST /internal/backup) kept in R2 for this many days.
+BACKUP_RETENTION_DAYS = int(os.environ.get("BACKUP_RETENTION_DAYS", "30"))
 # First nudge once an album has sat untouched this many days; the second,
 # stronger warning fires this many days before the purge above actually
 # deletes it (see /internal/remind-unfinished-albums).
