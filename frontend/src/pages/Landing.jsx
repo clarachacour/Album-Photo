@@ -1,11 +1,15 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { TID } from "@/constants/testIds";
-
-const TemplateGallery = lazy(() => import("@/components/landing/TemplateGallery"));
 import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { lazyPage } from "@/lib/lazyPage";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// Reloads the page once if its code can't be downloaded (a release since
+// the page was opened, a dropped connection) — see lazyPage.
+const TemplateGallery = lazyPage(() => import("@/components/landing/TemplateGallery"));
 
 export default function Landing() {
   usePageMeta("landing");
@@ -138,9 +142,12 @@ export default function Landing() {
 
           {/* Loaded after the first paint: the templates list (with the
               cover logos) is a large file the top of the page doesn't need. */}
-          <Suspense fallback={<div className="min-h-[600px]" />}>
-            <TemplateGallery />
-          </Suspense>
+          {/* If it still can't load, the rest of the page stays usable. */}
+          <ErrorBoundary renderFallback={() => null}>
+            <Suspense fallback={<div className="min-h-[600px]" />}>
+              <TemplateGallery />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </section>
 
