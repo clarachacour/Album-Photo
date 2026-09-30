@@ -35,8 +35,8 @@ from app.services.pdf_legacy import export_pdf_reportlab_legacy
 from app.services.cover_art import slim_cover
 from app.services.photos import store_many_photos
 from app.services.processing import (
+    add_photos_to_layout,
     run_ai_processing,
-    run_ai_processing_incremental,
     trim_pages_to_target,
 )
 from app.services.storage import delete_object
@@ -322,7 +322,6 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
             status_code=400,
             detail=f"At least {minimum_required} photos are required for a {target_pages}-page album ({photo_count} uploaded)",
         )
-    await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
     # Awaited directly, not dispatched via background_tasks — Cloud Run's
     # request-based billing throttles CPU hard once a request is
     # considered "done", and a fire-and-forget background task counts as
@@ -368,10 +367,10 @@ async def add_more_photos(
             return {"status": album.get("status", "ready"), "added": len(uploaded), "limit_reached": limit_reached}
         raise HTTPException(status_code=400, detail="No valid photo could be added")
 
-    await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
     # Awaited, not background-tasked — same throttling issue as
-    # /albums/{id}/process (see its comment).
-    await run_ai_processing_incremental(album_id, user["id"], new_ids)
+    # /albums/{id}/process (see its comment). Several batches arrive at
+    # once: one of them lays out every batch's photos (see processing.py).
+    await add_photos_to_layout(album_id, user["id"], new_ids)
     fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
     return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(uploaded), "limit_reached": limit_reached}
 

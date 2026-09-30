@@ -26,7 +26,7 @@ from app.services.photos import (
     print_needs_conversion,
     store_many_photos,
 )
-from app.services.processing import run_ai_processing_incremental
+from app.services.processing import add_photos_to_layout
 from app.services.storage import get_object
 
 router = APIRouter()
@@ -60,12 +60,11 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
     # creation wizard the album is still a fresh draft — photos just land
     # in the pool, and the wizard's own "Start AI" step processes
     # everything (this batch plus every other one) together, once.
-    if uploaded and album.get("status") == "ready":
-        await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
+    if uploaded and album.get("status") != "draft":
         # Awaited, not background-tasked — same throttling issue as
-        # /albums/{id}/process (see its comment). Each batch is already
-        # small (~20 photos), so this stays quick even run inline.
-        await run_ai_processing_incremental(album_id, user["id"], [p["id"] for p in uploaded])
+        # /albums/{id}/process (see its comment). One of the batches lays
+        # out every batch's photos (see processing.py).
+        await add_photos_to_layout(album_id, user["id"], [p["id"] for p in uploaded])
 
     return {"uploaded": len(uploaded), "total": len(data.items), "limit_reached": limit_reached}
 

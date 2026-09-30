@@ -12,7 +12,7 @@ from app.schemas import GooglePhotosImportInput, MobileUploadSessionOut, MobileU
 from app.services.albums import reject_if_ordered
 from app.services.google_photos import import_google_photos_items
 from app.services.photos import store_many_photos
-from app.services.processing import run_ai_processing_incremental
+from app.services.processing import add_photos_to_layout
 
 router = APIRouter()
 
@@ -113,8 +113,7 @@ async def mobile_upload_photos(token: str, files: List[UploadFile] = File(...)):
         # is "Add more photos" from the editor, not the initial creation
         # wizard), curate and append pages for these right away. During the
         # wizard, photos just land in the pool until "Start AI" is clicked.
-        if album and album.get("status") == "ready":
-            await db.albums.update_one({"id": session["album_id"]}, {"$set": {"status": "processing"}})
+        if album and album.get("status") != "draft":
             # Awaited directly, not background-tasked — this used to be
             # background_tasks.add_task, the same pattern that Cloud Run
             # was found to silently kill mid-run for PDF generation (see
@@ -122,7 +121,7 @@ async def mobile_upload_photos(token: str, files: List[UploadFile] = File(...)):
             # because the work is AI curation instead of a PDF. A slower
             # response that reliably finishes beats a fast one that might
             # quietly never finish at all.
-            await run_ai_processing_incremental(session["album_id"], session["user_id"], [p["id"] for p in uploaded])
+            await add_photos_to_layout(session["album_id"], session["user_id"], [p["id"] for p in uploaded])
     return {"uploaded": len(uploaded), "failed": len(files) - len(uploaded), "limit_reached": limit_reached}
 
 @router.post("/mobile-upload/{token}/import/google-photos")
@@ -140,8 +139,7 @@ async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput)
 
     if uploaded:
         album = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
-        if album and album.get("status") == "ready":
-            await db.albums.update_one({"id": album_id}, {"$set": {"status": "processing"}})
-            await run_ai_processing_incremental(album_id, session["user_id"], [p["id"] for p in uploaded])
+        if album and album.get("status") != "draft":
+            await add_photos_to_layout(album_id, session["user_id"], [p["id"] for p in uploaded])
 
     return {"uploaded": len(uploaded), "failed": len(data.items) - len(uploaded), "limit_reached": limit_reached}
