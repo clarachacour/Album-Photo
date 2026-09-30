@@ -18,6 +18,7 @@ from app.services.email import (
 )
 from app.services.backup import backup_database
 from app.services.storage import delete_object
+from app.core.executors import run_email
 
 router = APIRouter()
 
@@ -105,7 +106,7 @@ async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
             continue
         user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0})
         if user and user.get("email"):
-            send_unfinished_album_reminder_email(user["email"], user.get("name"), album)
+            await run_email(send_unfinished_album_reminder_email, user["email"], user.get("name"), album)
         await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 1}})
         stage1_sent += 1
 
@@ -117,7 +118,7 @@ async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
         days_left = max(1, (purge_at - now).days)
         user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0})
         if user and user.get("email"):
-            send_album_expiring_soon_email(user["email"], user.get("name"), album, days_left)
+            await run_email(send_album_expiring_soon_email, user["email"], user.get("name"), album, days_left)
         await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 2}})
         stage2_sent += 1
 

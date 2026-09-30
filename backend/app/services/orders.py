@@ -11,6 +11,7 @@ from app.core.executors import (
     pdf_render_executor,
     photo_processing_executor,
     run_blocking,
+    run_email,
 )
 from app.db import db
 from app.services.email import (
@@ -172,7 +173,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
                 {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
             )
             order["status"] = "printing"
-            send_printer_order_email(order)
+            await run_email(send_printer_order_email, order)
             # Only a genuinely successful, first-time order — a real PDF a
             # printer will actually receive — has "the book is done,
             # unused photos can go" become true. Excluded from the status
@@ -190,7 +191,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
         if final_attempt:
             fresh_failed = await db.orders.find_one({"id": order_id}, {"_id": 0})
             if fresh_failed:
-                send_pdf_generation_failed_email(fresh_failed, str(e))
+                await run_email(send_pdf_generation_failed_email, fresh_failed, str(e))
         return False
     finally:
         await _release_pdf_generation_slot(order_id)

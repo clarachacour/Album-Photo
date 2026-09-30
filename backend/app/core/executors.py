@@ -1,5 +1,6 @@
 """Thread pools used to run blocking work off the event loop."""
 import asyncio
+import functools
 from concurrent.futures import ThreadPoolExecutor
 
 from app.config import MAX_CONCURRENT_PDF_GENERATIONS, UPLOAD_CONCURRENCY
@@ -65,3 +66,17 @@ def run_blocking(fn, *args):
     concurrent threads than there are cores, since each one spends nearly
     all its time waiting rather than computing."""
     return asyncio.get_event_loop().run_in_executor(r2_io_executor, fn, *args)
+
+
+# Sending an email (smtplib) waits on the mail server — up to its 10 s
+# timeout. Called straight from an async endpoint, that wait froze the
+# whole worker, every other visitor included (see run_blocking). Emails go
+# through this pool instead: the request still waits for its own email (a
+# background send could be cut off once the response is sent, on Cloud
+# Run), but nobody else does.
+email_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="email")
+
+
+async def run_email(fn, *args, **kwargs):
+    """Runs one of the send_*_email functions without blocking the server."""
+    return await asyncio.get_event_loop().run_in_executor(email_executor, functools.partial(fn, *args, **kwargs))

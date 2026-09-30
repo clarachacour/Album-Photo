@@ -10,6 +10,7 @@ from app.core.security import client_ip
 from app.db import db
 from app.schemas import ContactInput
 from app.services.email import send_email
+from app.core.executors import run_email
 
 router = APIRouter()
 
@@ -33,7 +34,8 @@ async def submit_contact(data: ContactInput, request: Request):
     # email sending isn't set up (already logged by send_email in that case).
     support_email = os.environ.get("SUPPORT_EMAIL")
     if support_email:
-        send_email(
+        await run_email(
+            send_email,
             support_email,
             f"[Contact] {data.subject}",
             f"From: {data.name} <{data.email}>\n\n{data.message}",

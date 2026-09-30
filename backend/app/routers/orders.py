@@ -19,6 +19,7 @@ from app.services.orders import (
 )
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count, compute_order_price_cents
 from app.services.storage import get_r2_client
+from app.core.executors import run_email
 
 router = APIRouter()
 
@@ -88,7 +89,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # own wording already fits this ("we've received it and will start
     # preparing your book" — never claims the PDF is done), so only the
     # trigger moved, not the text.
-    send_order_confirmation_email(user.get("email"), user.get("name"), order_doc)
+    await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), order_doc)
     # Through the Cloud Tasks queue when configured: the customer gets
     # their answer at once and a failed generation is retried (background
     # work inside this request doesn't survive on Cloud Run). Without the
@@ -141,7 +142,7 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
             {"$set": {"status": "ready_for_delivery", "updated_at": now}, "$push": {"status_history": {"status": "ready_for_delivery", "at": now}}},
         )
         order["status"] = "ready_for_delivery"
-        send_delivery_pickup_email(order)
+        await run_email(send_delivery_pickup_email, order)
     return HTMLResponse("<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
                          "<h2>Thanks — the delivery company has been notified.</h2></body></html>")
 

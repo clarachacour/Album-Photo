@@ -20,6 +20,7 @@ from app.services.orders import (
     start_order_pdf_generation,
 )
 from app.services.storage import get_r2_client
+from app.core.executors import run_email
 
 router = APIRouter()
 
@@ -161,7 +162,7 @@ async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_cur
         raise HTTPException(status_code=404, detail="Order not found")
     if not order.get("pdf_ready") or not order.get("pdf_path"):
         raise HTTPException(status_code=400, detail="This order's PDF is not ready yet — regenerate it first")
-    send_printer_order_email(order)
+    await run_email(send_printer_order_email, order)
     return {"sent": True}
 
 # Which customer email (if any) fires automatically when an order moves
@@ -201,5 +202,5 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
     if email_fn:
         customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
         if customer:
-            email_fn(customer.get("email"), customer.get("name"), fresh)
+            await run_email(email_fn, customer.get("email"), customer.get("name"), fresh)
     return fresh
