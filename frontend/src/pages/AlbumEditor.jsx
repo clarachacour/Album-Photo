@@ -23,6 +23,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
 import { editableContent, useAlbumSaving } from "@/hooks/useAlbumSaving";
 import { parseDate } from "@/lib/dates";
+import { snapToSameSize, spreadPhotoFrames } from "@/lib/sizeMatch";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
 export default function AlbumEditor() {
@@ -301,6 +302,21 @@ export default function AlbumEditor() {
   };
 
   const updateItemById = (pageIdx, itemId, patch) => {
+    // Resizing a photo frame: a width or height close to another frame's
+    // on the spread snaps to it, and both are marked (see sizeMatch). The
+    // edge alignment below then leaves that axis alone.
+    const sizeLock = { w: false, h: false };
+    const resized = album?.pages?.[pageIdx]?.items?.find((it) => it.id === itemId);
+    if (resized?.type === "photo" && patch.w !== undefined && patch.h !== undefined && patch.x === undefined && patch.y === undefined) {
+      const s = snapToSameSize(patch.w, patch.h, spreadPhotoFrames(album.pages, pageIdx, itemId), {
+        maxW: 1 - (resized.x ?? 0),
+        maxH: 1 - (resized.y ?? 0),
+      });
+      patch = { ...patch, w: s.w, h: s.h };
+      sizeLock.w = s.snappedW;
+      sizeLock.h = s.snappedH;
+      setSizeMatch(s.matches.length ? { itemId, pageIdx, matches: s.matches } : null);
+    }
     setAlbum((prev) => {
       if (!prev) return prev;
       const newPages = [...prev.pages];
@@ -327,12 +343,12 @@ export default function AlbumEditor() {
         // whether the *moving* edge (x+w or y+h) lines up with a sibling's
         // edge/center instead, using the same guide-line mechanism as a
         // move.
-        if (updatedPatch.w !== undefined && updatedPatch.x === undefined) {
+        if (updatedPatch.w !== undefined && updatedPatch.x === undefined && !sizeLock.w) {
           const s = computeResizeAlignSnap(it.x ?? 0, updatedPatch.w, siblings, "x");
           updatedPatch.w = s.value;
           guideX = s.guide;
         }
-        if (updatedPatch.h !== undefined && updatedPatch.y === undefined) {
+        if (updatedPatch.h !== undefined && updatedPatch.y === undefined && !sizeLock.h) {
           const s = computeResizeAlignSnap(it.y ?? 0, updatedPatch.h, siblings, "y");
           updatedPatch.h = s.value;
           guideY = s.guide;
@@ -413,6 +429,8 @@ export default function AlbumEditor() {
   // click "Swap" (or double-click a photo) to mark it as the source, then
   // click any other photo anywhere in the book to complete the swap.
   const [swapSource, setSwapSource] = useState(null); // { pageIdx, itemId } | null
+  // While a photo frame is resized: the frames it now shares a size with.
+  const [sizeMatch, setSizeMatch] = useState(null); // { itemId, pageIdx, matches: [{ id, pageIndex, kind }] } | null
   const [placingPhotoId, setPlacingPhotoId] = useState(null); // gallery photo armed for click-to-place
 
   const handleSwapAction = (pageIdx, itemId) => {
@@ -849,6 +867,8 @@ export default function AlbumEditor() {
             onUpdateItem={updateItemById}
             onDeleteItem={deleteItemById}
             swapSourceItemId={swapSource?.itemId}
+            sizeMatch={sizeMatch}
+            onItemDragEnd={() => setSizeMatch(null)}
             onSwapAction={handleSwapAction}
             onAddPhotoAt={addPhotoAt}
             onReplacePhoto={replacePhotoInItem}

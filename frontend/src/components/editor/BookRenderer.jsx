@@ -15,6 +15,8 @@ export function BookRenderer({
   onUpdateItem,
   onDeleteItem,
   swapSourceItemId,
+  sizeMatch,
+  onItemDragEnd,
   onSwapAction,
   onAddPhotoAt,
   onReplacePhoto,
@@ -115,6 +117,8 @@ export function BookRenderer({
         onUpdateItem={(itemId, patch) => onUpdateItem(i, itemId, patch)}
         onDeleteItem={(itemId) => onDeleteItem(i, itemId)}
         swapSourceItemId={swapSourceItemId}
+        sizeMatch={sizeMatch}
+        onItemDragEnd={onItemDragEnd}
         onSwapAction={onSwapAction}
         onAddPhotoAt={(photoId, box) => onAddPhotoAt(i, photoId, box)}
         onReplacePhoto={(itemId, photoId) => onReplacePhoto(i, itemId, photoId)}

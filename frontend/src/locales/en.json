@@ -538,6 +538,11 @@
     "deleteText": "Delete this text"
   },
   "albumPage": {
+    "sameSize": {
+      "both": "Same size",
+      "w": "Same width",
+      "h": "Same height"
+    },
     "resize": "Resize",
     "changeLayout": "Change this page's layout — how many photos it holds and how they're arranged",
     "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",

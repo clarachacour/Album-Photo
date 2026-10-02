@@ -25,6 +25,8 @@ export function AlbumPage({
   onUpdateItem,
   onDeleteItem,
   swapSourceItemId,
+  sizeMatch, // while a frame is resized: the frames it shares a size with (see lib/sizeMatch)
+  onItemDragEnd,
   onSwapAction,
   onAddPhotoAt,
   onReplacePhoto,
@@ -69,7 +71,19 @@ export function AlbumPage({
 
   const handlePhotoDragStateChange = (item, isDragging) => {
     setDraggingId(isDragging ? item.id : null);
+    if (!isDragging && onItemDragEnd) onItemDragEnd();
   };
+
+  // Frames of this page sharing their size with the one being resized
+  // (it may be on the facing page): id → "both" | "w" | "h".
+  const sizeMarks = new Map();
+  if (editable && sizeMatch) {
+    for (const m of sizeMatch.matches) if (m.pageIndex === pageIndex) sizeMarks.set(m.id, m.kind);
+    if (sizeMatch.pageIdx === pageIndex) {
+      const kinds = new Set(sizeMatch.matches.map((m) => m.kind));
+      sizeMarks.set(sizeMatch.itemId, kinds.has("both") || (kinds.has("w") && kinds.has("h")) ? "both" : kinds.has("w") ? "w" : "h");
+    }
+  }
 
   const handleDragOver = (e) => {
     if (!editable) return;
@@ -211,6 +225,17 @@ export function AlbumPage({
                     <TriangleAlert size={11} aria-hidden="true" />
                     {isSel && <span>{t("albumEditor.lowResolutionShort")}</span>}
                   </span>
+                )}
+                {sizeMarks.has(item.id) && (
+                  <>
+                    <div className="absolute inset-0 z-20 pointer-events-none outline outline-2 outline-dashed outline-[color:var(--coral)] outline-offset-[-2px]" />
+                    <span
+                      className="absolute top-1 left-1 z-20 pointer-events-none bg-[color:var(--coral)] text-[color:var(--paper)] text-[10px] font-semibold leading-none px-1.5 py-1 rounded-sm"
+                      data-testid={`size-match-${item.id}`}
+                    >
+                      {t(`albumPage.sameSize.${sizeMarks.get(item.id)}`)}
+                    </span>
+                  </>
                 )}
                 {inCrop && !isEmpty && (
                   <PhotoPanOverlay

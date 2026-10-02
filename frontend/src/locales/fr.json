@@ -538,6 +538,11 @@
     "deleteText": "Supprimer ce texte"
   },
   "albumPage": {
+    "sameSize": {
+      "both": "Même taille",
+      "w": "Même largeur",
+      "h": "Même hauteur"
+    },
     "resize": "Redimensionner",
     "changeLayout": "Changer la mise en page de cette page — combien de photos elle contient et comment elles sont disposées",
     "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
