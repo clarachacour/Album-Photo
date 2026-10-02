@@ -43,6 +43,10 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   // already on their phone tapping it would just be shown a QR code for
   // the phone they're already holding.
   const onPhone = React.useRef(isMobileDevice()).current;
+  // Sending many photos from an Android phone is slower than from a computer
+  // (photos kept in Google's cloud are downloaded again first, a phone sends
+  // more slowly): said up front, with the faster ways.
+  const onAndroid = React.useRef(typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent)).current;
   // The polling effect below only re-runs when phoneSession/albumId
   // change, not on every showQR toggle — reading showQR directly inside
   // its setInterval callback would see whatever it was when the effect
@@ -230,6 +234,11 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
 
   return (
     <div>
+      {onAndroid && (
+        <p className="mb-4 text-sm text-[color:var(--ink)]/80 bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2" data-testid="android-upload-tip">
+          {t("photoUpload.androidTip")}
+        </p>
+      )}
       <div
         data-testid={TID.photoDropzone}
         onDragOver={(e) => {

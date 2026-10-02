@@ -382,7 +382,8 @@
     "unreadable_one": "{{count}} photo couldn't be read (damaged file or unsupported format) and was skipped.",
     "unreadable_other": "{{count}} photos couldn't be read (damaged files or unsupported format) and were skipped.",
     "addedToAlbum_one": "{{count}} photo added at the end of your album",
-    "addedToAlbum_other": "{{count}} photos added at the end of your album"
+    "addedToAlbum_other": "{{count}} photos added at the end of your album",
+    "androidTip": "Tip: from an Android phone, sending many photos can take several minutes. For a faster, more comfortable experience, we recommend using a computer, or the “From Google Photos” button below, which transfers your photos directly without going through your phone."
   },
   "googlePhotos": {
     "accessDenied": "Google Photos access was not granted",

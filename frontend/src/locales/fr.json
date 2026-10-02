@@ -382,7 +382,8 @@
     "unreadable_one": "{{count}} photo n'a pas pu être lue (fichier abîmé ou format non pris en charge) et a été ignorée.",
     "unreadable_other": "{{count}} photos n'ont pas pu être lues (fichier abîmé ou format non pris en charge) et ont été ignorées.",
     "addedToAlbum_one": "{{count}} photo ajoutée à la fin de votre album",
-    "addedToAlbum_other": "{{count}} photos ajoutées à la fin de votre album"
+    "addedToAlbum_other": "{{count}} photos ajoutées à la fin de votre album",
+    "androidTip": "Conseil : depuis un téléphone Android, l'envoi de nombreuses photos peut prendre plusieurs minutes. Pour une création plus rapide et plus confortable, nous vous conseillons d'utiliser un ordinateur, ou le bouton « Depuis Google Photos » ci-dessous, qui transfère vos photos directement sans passer par votre téléphone."
   },
   "googlePhotos": {
     "accessDenied": "L'accès à Google Photos n'a pas été accordé",
