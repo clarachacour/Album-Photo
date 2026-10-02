@@ -2,14 +2,15 @@
  * Makes a heavy photo lighter before it's sent, so an upload on a slow
  * connection takes a fraction of the time — with no loss at print time:
  *
- * - Only JPEGs above 1.5 MB are touched; anything else is sent as is.
- * - The size stays within what the server keeps anyway (5000 px on the
- *   long side, see MAX_STORED_DIMENSION_PX in the backend) and within
- *   16 million pixels (the largest canvas older iPhones can draw), which is
- *   still well above an A4 page printed at 300 dpi (3508 × 2480).
- * - Saved again as a JPEG at quality 0.92 (the server then stores it at 90,
- *   see STORED_IMAGE_QUALITY in the backend): phones save theirs at a much
- *   higher setting, which is where most of the weight goes.
+ * - Only JPEGs above 1 MB are touched; anything else is sent as is.
+ * - At most 3600 px on the long side: a full A4 page printed at 300 dpi
+ *   (the printer's standard) needs 3508 px, and A4 is our largest format.
+ *   Also within 16 million pixels (the largest canvas older iPhones can
+ *   draw).
+ * - Saved again as a JPEG at quality 0.90, the quality the server stores
+ *   photos at anyway (STORED_IMAGE_QUALITY in the backend): phones save
+ *   theirs at a much higher setting, which is where most of the weight goes.
+ *   On a phone's slow upload, this halves the time it takes.
  * - The EXIF data (date taken, GPS position — used to put the album in
  *   chronological order) is copied over from the original. The rotation is
  *   applied to the pixels, so the EXIF orientation is reset to "normal".
@@ -18,10 +19,10 @@
  *   memory), the original is sent.
  */
 
-const MIN_BYTES = 1.5 * 1024 * 1024;
-const MAX_SIDE = 5000;
+const MIN_BYTES = 1024 * 1024;
+const MAX_SIDE = 3600;
 const MAX_PIXELS = 16_000_000;
-const QUALITY = 0.92;
+const QUALITY = 0.9;
 const MIN_GAIN = 0.9; // keep the lighter version only below 90 % of the original
 const MAX_AT_ONCE = 2; // a decoded 12 MP photo takes ~50 MB of memory
 

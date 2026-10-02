@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
-import { uploadInBatches } from "@/lib/uploadBatches";
+import axios from "axios";
+import { postBatch, uploadInBatches } from "@/lib/uploadBatches";
 import { isImageFile } from "@/lib/imageFiles";
 import { preparePhoto } from "@/lib/preparePhoto";
 
@@ -108,23 +109,13 @@ export default function MobileUpload() {
     // Same batching and retries as the computer upload (see uploadInBatches).
     const res = await uploadInBatches(
       files,
-      async (batch, { timeout }) => {
+      async (batch, { onSent }) => {
         const form = new FormData();
         // Heavy photos are made lighter first (see preparePhoto).
         (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeout);
-        try {
-          const r = await fetch(`${API}/mobile-upload/${token}/photos`, { method: "POST", body: form, signal: controller.signal });
-          if (!r.ok) {
-            const detail = await r.json().then((d) => d?.detail, () => null);
-            throw Object.assign(new Error(`HTTP ${r.status}`), { response: { status: r.status, data: { detail } } });
-          }
-          const data = await r.json();
-          return { uploaded: data.uploaded || 0, limitReached: data.limit_reached };
-        } finally {
-          clearTimeout(timer);
-        }
+        // Plain axios: the phone isn't signed in, the link's token is the key.
+        const { data } = await postBatch(axios, `${API}/mobile-upload/${token}/photos`, form, { onSent });
+        return { uploaded: data?.uploaded || 0, limitReached: data?.limit_reached };
       },
       { onProgress: setProgress }
     );
@@ -184,7 +175,7 @@ export default function MobileUpload() {
             <div className="h-1.5 bg-[color:var(--ink)]/10 overflow-hidden">
               <div
                 className="h-full bg-[color:var(--coral)] transition-all duration-300"
-                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
+                style={{ width: `${progress.total ? ((progress.partial ?? progress.done) / progress.total) * 100 : 0}%` }}
               />
             </div>
             <p className="text-sm mt-3">{t("mobileUpload.progress", progress)}</p>

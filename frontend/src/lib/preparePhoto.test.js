@@ -44,19 +44,25 @@ describe("EXIF", () => {
 });
 
 describe("targetSize", () => {
-  it("keeps a 12 MP phone photo as is", () => {
-    expect(targetSize(4032, 3024)).toEqual({ width: 4032, height: 3024 });
+  it("brings a 12 MP phone photo to 3600 px, still above a full A4 page at 300 dpi", () => {
+    const { width, height } = targetSize(4032, 3024);
+    expect(width).toBe(3600);
+    expect(height).toBeGreaterThan(2480);
   });
 
-  it("brings a 48 MP photo down to 16 million pixels, still above A4 at 300 dpi", () => {
+  it("brings a 48 MP photo down the same way", () => {
     const { width, height } = targetSize(8064, 6048);
     expect(width * height).toBeLessThanOrEqual(16_000_000);
     expect(Math.min(width, height)).toBeGreaterThan(2480);
     expect(Math.max(width, height)).toBeGreaterThan(3508);
   });
 
-  it("never goes over 5000 px on the long side", () => {
-    expect(targetSize(9000, 1000).width).toBe(5000);
+  it("keeps a photo that's already small enough as is", () => {
+    expect(targetSize(3000, 2000)).toEqual({ width: 3000, height: 2000 });
+  });
+
+  it("never goes over 3600 px on the long side", () => {
+    expect(targetSize(9000, 1000).width).toBe(3600);
   });
 });
 

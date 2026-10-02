@@ -8,7 +8,7 @@ import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import { Upload, Smartphone } from "lucide-react";
 import { TID } from "@/constants/testIds";
 import { isMobileDevice } from "@/lib/device";
-import { uploadInBatches } from "@/lib/uploadBatches";
+import { postBatch, uploadInBatches } from "@/lib/uploadBatches";
 import { preparePhoto } from "@/lib/preparePhoto";
 
 /**
@@ -174,11 +174,11 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
       // go at once: see uploadInBatches.
       const res = await uploadInBatches(
         files,
-        async (batch, { timeout }) => {
+        async (batch, { onSent }) => {
           const form = new FormData();
           // Heavy photos are made lighter first (see preparePhoto).
           (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
-          const { data } = await api.post(endpoint, form, { headers: { "Content-Type": "multipart/form-data" }, timeout });
+          const { data } = await postBatch(api, endpoint, form, { onSent, config: { headers: { "Content-Type": "multipart/form-data" } } });
           return { uploaded: mode === "editor" ? data?.added : data?.uploaded, limitReached: data?.limit_reached };
         },
         { onProgress: setProgress }
@@ -256,7 +256,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
             <div className="h-1.5 bg-[color:var(--ink)]/10 overflow-hidden">
               <div
                 className="h-full bg-[color:var(--coral)] transition-all duration-300"
-                style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
+                style={{ width: `${progress.total ? ((progress.partial ?? progress.done) / progress.total) * 100 : 0}%` }}
               />
             </div>
             <p className="text-sm mt-3">{t("photoUpload.progress", progress)}</p>

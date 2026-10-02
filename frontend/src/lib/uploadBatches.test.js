@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { makeBatches, uploadInBatches } from "@/lib/uploadBatches";
+import { describe, expect, it, vi } from "vitest";
+import { makeBatches, postBatch, uploadInBatches } from "@/lib/uploadBatches";
 
 const MB = 1024 * 1024;
 const photo = (name, size = MB) => ({ name, size });
@@ -10,12 +10,12 @@ const networkError = () => Object.assign(new Error("Network Error"), { response:
 const httpError = (status, detail) => Object.assign(new Error("HTTP"), { response: { status, data: { detail } } });
 
 describe("makeBatches", () => {
-  it("keeps at most 8 photos per batch", () => {
-    expect(makeBatches(photos(20)).map((b) => b.length)).toEqual([8, 8, 4]);
+  it("keeps at most 6 photos per batch", () => {
+    expect(makeBatches(photos(20)).map((b) => b.length)).toEqual([6, 6, 6, 2]);
   });
 
-  it("keeps each batch under 20 MB, even with big photos", () => {
-    expect(makeBatches(photos(5, 7 * MB)).map((b) => b.length)).toEqual([2, 2, 1]);
+  it("keeps each batch under 12 MB, even with big photos", () => {
+    expect(makeBatches(photos(5, 5 * MB)).map((b) => b.length)).toEqual([2, 2, 1]);
   });
 
   it("sends a photo bigger than the limit on its own", () => {
@@ -70,8 +70,8 @@ describe("uploadInBatches", () => {
   });
 
   it("counts photos the server couldn't read", async () => {
-    const res = await uploadInBatches(photos(8), async (files) => ({ uploaded: files.length - 2 }), fast);
-    expect(res).toMatchObject({ uploaded: 6, rejected: 2 });
+    const res = await uploadInBatches(photos(6), async (files) => ({ uploaded: files.length - 2 }), fast);
+    expect(res).toMatchObject({ uploaded: 4, rejected: 2 });
   });
 
   it("stops sending once the album is full", async () => {
@@ -116,5 +116,54 @@ describe("uploadInBatches", () => {
     }, fast);
     expect(most).toBeGreaterThan(4);
     expect(most).toBeLessThanOrEqual(16);
+  });
+});
+
+describe("progress while a batch is on its way", () => {
+  it("moves the bar as the bytes go out, not only when a batch is done", async () => {
+    const seen = [];
+    await uploadInBatches(photos(6), async (files, { onSent }) => {
+      onSent(0.5);
+      return { uploaded: files.length };
+    }, { onProgress: (p) => seen.push(p.partial) });
+    expect(seen.some((v) => v > 0 && v < 6)).toBe(true);
+    expect(seen.at(-1)).toBe(6);
+  });
+});
+
+describe("postBatch", () => {
+  it("gives up when nothing moves for a minute, not after a fixed time", async () => {
+    vi.useFakeTimers();
+    let aborted = false;
+    const client = {
+      post: (url, form, { signal, onUploadProgress }) =>
+        new Promise((resolve, reject) => {
+          // Slow but steady: a little more every 30 s, for 5 minutes.
+          let loaded = 0;
+          const tick = setInterval(() => {
+            loaded += 10;
+            onUploadProgress({ loaded, total: 100 });
+            if (loaded >= 100) {
+              clearInterval(tick);
+              resolve({ data: { uploaded: 1 } });
+            }
+          }, 30_000);
+          signal.addEventListener("abort", () => {
+            aborted = true;
+            clearInterval(tick);
+            reject(new Error("aborted"));
+          });
+        }),
+    };
+    const slow = postBatch(client, "/x", null);
+    await vi.advanceTimersByTimeAsync(300_000);
+    await expect(slow).resolves.toEqual({ data: { uploaded: 1 } });
+    expect(aborted).toBe(false);
+
+    const stuck = postBatch({ post: (url, form, { signal }) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")))) }, "/x", null);
+    const failed = expect(stuck).rejects.toThrow("aborted");
+    await vi.advanceTimersByTimeAsync(61_000);
+    await failed;
+    vi.useRealTimers();
   });
 });

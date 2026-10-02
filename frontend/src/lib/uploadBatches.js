@@ -2,8 +2,8 @@
  * Sends photos to the server in batches, built to hold up on a weak or
  * unstable connection (think Lebanese wifi) without slowing down a good one:
  *
- * - Batches of at most 8 photos / 20 MB (Cloud Run refuses requests over
- *   ~32 MB).
+ * - Batches of at most 6 photos / 12 MB (Cloud Run refuses requests over
+ *   ~32 MB; a smaller batch also costs less to send again).
  * - A batch that fails because of the connection or the server is sent
  *   again, up to 5 times, waiting a little longer each time (and until the
  *   device is back online). The server skips a photo it already has, so
@@ -13,8 +13,14 @@
  *   and is halved after each failure (weak connection: requests stop
  *   competing with each other until they all time out).
  *
- * send(files, { timeout }) sends one batch and resolves to
- * { uploaded, limitReached } — or throws (an axios error, or an Error with
+ * - A batch is given up on only when nothing moves for a minute (see
+ *   postBatch), not after a fixed time: on a phone's slow upload, several
+ *   batches sharing the connection can each take many minutes and still be
+ *   going fine.
+ *
+ * send(files, { onSent }) sends one batch — calling onSent(fraction) as its
+ * bytes go out, for the progress bar — and resolves to
+ * { uploaded, limitReached }, or throws (an axios error, or an Error with
  * a `status`).
  *
  * Resolves to:
@@ -29,8 +35,8 @@
  *   errorDetail  the server's message for a refusal that retrying can't fix
  */
 
-const MAX_BATCH_BYTES = 20 * 1024 * 1024;
-const MAX_BATCH_COUNT = 8;
+const MAX_BATCH_BYTES = 12 * 1024 * 1024;
+const MAX_BATCH_COUNT = 6;
 
 export function makeBatches(files) {
   const batches = [];
@@ -60,11 +66,35 @@ export function isRetryable(err) {
   return !status || status >= 500 || status === 408 || status === 429;
 }
 
-// Long enough for a 20 MB batch on a very slow connection (~40 KB/s),
-// short enough that a request stuck forever is eventually given up on.
-export function batchTimeout(files) {
-  const bytes = files.reduce((sum, f) => sum + f.size, 0);
-  return 60_000 + Math.round(bytes / 40);
+const STALL_MS = 60_000; // no byte sent for this long: the connection is gone
+const PROCESSING_MS = 180_000; // all sent: time left for the server to store the photos
+
+/**
+ * Posts one batch with `client` (an axios instance). Aborted when no byte
+ * has gone out for STALL_MS, or the server hasn't answered PROCESSING_MS
+ * after the last one — however long a slow but working upload takes.
+ */
+export async function postBatch(client, url, form, { onSent, config = {} } = {}) {
+  const controller = new AbortController();
+  let timer;
+  const arm = (ms) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => controller.abort(), ms);
+  };
+  arm(STALL_MS);
+  try {
+    return await client.post(url, form, {
+      ...config,
+      signal: controller.signal,
+      onUploadProgress: (e) => {
+        const fraction = e.total ? Math.min(1, e.loaded / e.total) : 0;
+        if (onSent) onSent(fraction);
+        arm(fraction >= 1 ? PROCESSING_MS : STALL_MS);
+      },
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -104,7 +134,14 @@ export async function uploadInBatches(files, send, options = {}) {
   let finish;
   const finished = new Promise((resolve) => (finish = resolve));
 
-  const report = () => onProgress && onProgress({ done, total });
+  // Batches on their way: how much of each has gone out (0 to 1).
+  const sending = new Map();
+  const report = () => {
+    if (!onProgress) return;
+    let partial = done;
+    for (const [job, fraction] of sending) partial += job.files.length * fraction * 0.95; // the rest once stored
+    onProgress({ done, total, partial: Math.min(total, partial) });
+  };
 
   const pump = () => {
     if (result.limitReached) queue.length = 0; // no room left: don't send the rest
@@ -116,7 +153,13 @@ export async function uploadInBatches(files, send, options = {}) {
     active++;
     const started = Date.now();
     try {
-      const res = await send(job.files, { timeout: batchTimeout(job.files) });
+      sending.set(job, 0);
+      const res = await send(job.files, {
+        onSent: (fraction) => {
+          sending.set(job, fraction);
+          report();
+        },
+      });
       const uploaded = Math.min(job.files.length, res?.uploaded ?? job.files.length);
       result.uploaded += uploaded;
       if (res?.limitReached) result.limitReached = true;
@@ -143,6 +186,7 @@ export async function uploadInBatches(files, send, options = {}) {
         done += job.files.length;
       }
     } finally {
+      sending.delete(job);
       active--;
       report();
       pump();
