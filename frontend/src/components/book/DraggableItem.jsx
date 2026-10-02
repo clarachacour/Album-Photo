@@ -97,6 +97,10 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     top: `${item.y * 100}%`,
     width: `${item.w * 100}%`,
     height: `${item.h * 100}%`,
+    // On a touch screen, a selected frame follows the finger instead of the
+    // page scrolling (which used to cut the move short). Unselected frames
+    // leave the page scrollable: tap to select, then drag.
+    ...(editable && selected ? { touchAction: "none" } : {}),
     ...extraStyle,
   };
   const ring = editable && selected ? "outline outline-2 outline-[color:var(--coral)]" : "";
@@ -114,7 +118,8 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       {children}
       {editable && selected && (
         <div
-          className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-[color:var(--coral)] cursor-nwse-resize z-10 rounded-sm"
+          // after: a larger invisible area around the small square, easy to catch with a finger
+          className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-[color:var(--coral)] cursor-nwse-resize z-10 rounded-sm touch-none after:content-[''] after:absolute after:-inset-3"
           onPointerDown={onResizePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

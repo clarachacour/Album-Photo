@@ -5,6 +5,7 @@ import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import { uploadInBatches } from "@/lib/uploadBatches";
+import { isImageFile } from "@/lib/imageFiles";
 import { preparePhoto } from "@/lib/preparePhoto";
 
 export default function MobileUpload() {
@@ -98,7 +99,7 @@ export default function MobileUpload() {
   }, [sending, info, token]);
 
   const handleFiles = async (fileList) => {
-    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(fileList).filter(isImageFile);
     if (files.length === 0) return;
     setUploading(true);
     setNotices([]);

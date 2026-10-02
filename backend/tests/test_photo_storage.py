@@ -47,3 +47,13 @@ def test_a_png_stays_a_png_with_its_transparency(app, monkeypatch):
     stored = Image.open(io.BytesIO(_stored(monkeypatch, buf.getvalue(), "image/png")))
     assert stored.format == "PNG"
     assert stored.mode == "RGBA"
+
+
+def test_a_photo_with_no_type_is_recognised_by_its_name(app):
+    # Windows and some Android phones send an iPhone HEIC photo with no type.
+    from app.services.photos import guess_image_type
+
+    assert guess_image_type("IMG_0001.HEIC", "application/octet-stream") == "image/heic"
+    assert guess_image_type("photo.JPG", "") == "image/jpeg"
+    assert guess_image_type("photo.jpg", "image/png") == "image/png"  # a real type wins
+    assert guess_image_type("clip.mp4", "video/mp4") == "video/mp4"  # still refused afterwards

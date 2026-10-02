@@ -259,11 +259,29 @@ def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: 
         "phash": ahash_to_str(compute_ahash(data)),
     }
 
+_TYPES_BY_EXTENSION = {
+    "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp",
+    "heic": "image/heic", "heif": "image/heif",
+}
+
+
+def guess_image_type(filename: str, content_type: str) -> str:
+    """Some browsers (Windows, some Android phones) don't know HEIC and send
+    an iPhone photo with no type, or as "application/octet-stream": its
+    file name says what it is."""
+    content_type = (content_type or "").lower()
+    if content_type in ALLOWED_MIME:
+        return content_type
+    ext = (filename or "").rsplit(".", 1)[-1].lower()
+    return _TYPES_BY_EXTENSION.get(ext, content_type)
+
+
 async def store_new_photo(album_id: str, user_id: str, filename: str, content_type: str, data: bytes) -> Optional[dict]:
     """Shared logic to persist one photo (bytes already in hand) as a Photo
     document — used by the normal upload endpoint, the phone QR upload, and
     the Google Photos import, so all three go through the exact same
     EXIF/hash/storage pipeline."""
+    content_type = guess_image_type(filename, content_type)
     if content_type not in ALLOWED_MIME:
         # Previously a silent return — a photo rejected here (an
         # unsupported format: a GIF, a video misselected alongside real

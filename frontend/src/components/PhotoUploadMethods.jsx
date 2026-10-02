@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { api, photoImageUrl } from "@/lib/api";
+import { isImageFile } from "@/lib/imageFiles";
 import { toast } from "sonner";
 import MobileUploadQR from "@/components/MobileUploadQR";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
@@ -160,7 +161,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   };
 
   const handleFiles = async (fileList) => {
-    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    const files = Array.from(fileList).filter(isImageFile);
     if (files.length === 0 || !albumId || uploading) return;
     setUploading(true);
     setFailedFiles([]);

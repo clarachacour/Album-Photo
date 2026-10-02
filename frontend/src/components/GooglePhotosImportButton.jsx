@@ -127,6 +127,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
       setBusy(true);
       let sessionId = null;
       let pickerWindow = null;
+      let openToastId = null;
       try {
         const sessionRes = await fetch("https://photospicker.googleapis.com/v1/sessions", {
           method: "POST",
@@ -140,8 +141,10 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
         // Google's own consent flow and worked inconsistently. A button
         // click is always a trusted user gesture, so this opens reliably
         // every time, at the cost of one extra click.
-        toast.info(t("googlePhotos.chooseInstructions"), {
-          duration: 15000,
+        // Stays until the selection is over: on a phone, the Google consent
+        // screens alone can take longer than a few seconds.
+        openToastId = toast.info(t("googlePhotos.chooseInstructions"), {
+          duration: Infinity,
           action: {
             label: t("googlePhotos.openButton"),
             // "/autoclose": Google closes its window by itself once the
@@ -153,6 +156,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
         });
 
         const done = await pollSession(accessToken, session.id);
+        toast.dismiss(openToastId);
         // In case the window didn't close by itself.
         try {
           if (pickerWindow && !pickerWindow.closed) pickerWindow.close();
@@ -223,6 +227,7 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
       } catch (err) {
         toast.error(err?.response?.data?.detail || t("googlePhotos.importFailed"));
       } finally {
+        if (openToastId !== null) toast.dismiss(openToastId);
         // Done with the selection: close the picker session (Google's
         // recommendation), so nothing stays open on the person's account.
         if (sessionId) {

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
 import { Download, ExternalLink, RefreshCw, Bug } from "lucide-react";
+import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 
 function formatPrice(cents, currency = "usd") {
@@ -165,7 +166,7 @@ export default function AdminOrdersPage() {
                   return (
                     <tr key={o.id} className="border-b border-[color:var(--border-soft)] align-top">
                       <td className="p-3 whitespace-nowrap text-[color:var(--ink)]/70">
-                        {o.created_at ? new Date(o.created_at).toLocaleDateString() : "—"}
+                        {o.created_at ? parseDate(o.created_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-3">
                         <div className="font-medium">{addr.full_name || "—"}</div>

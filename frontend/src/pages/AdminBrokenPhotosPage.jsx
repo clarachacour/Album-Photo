@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { parseDate } from "@/lib/dates";
 import { Search, Wrench } from "lucide-react";
 
 /**
@@ -119,7 +120,7 @@ export default function AdminBrokenPhotosPage() {
                           <td className="p-3 whitespace-nowrap">Page {b.page_index + 1}</td>
                           <td className="p-3 font-mono">{b.original_filename || "— (no record at all)"}</td>
                           <td className="p-3 text-[color:var(--ink)]/70">
-                            {b.taken_at ? new Date(b.taken_at).toLocaleDateString() : "—"}
+                            {b.taken_at ? parseDate(b.taken_at).toLocaleDateString() : "—"}
                           </td>
                         </tr>
                       ))}

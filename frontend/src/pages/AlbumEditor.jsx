@@ -22,6 +22,7 @@ import { fitItemToPhoto } from "@/lib/photoFit";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
 import { editableContent, useAlbumSaving } from "@/hooks/useAlbumSaving";
+import { parseDate } from "@/lib/dates";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
 export default function AlbumEditor() {
@@ -58,7 +59,7 @@ export default function AlbumEditor() {
   const sortedAlbumPhotos = useMemo(() => {
     const photos = album?.photos || [];
     return [...photos].sort((a, b) => {
-      if (a.taken_at && b.taken_at) return new Date(a.taken_at) - new Date(b.taken_at);
+      if (a.taken_at && b.taken_at) return parseDate(a.taken_at) - parseDate(b.taken_at);
       if (a.taken_at) return -1;
       if (b.taken_at) return 1;
       return 0;

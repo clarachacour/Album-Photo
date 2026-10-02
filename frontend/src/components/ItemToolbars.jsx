@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
@@ -14,13 +14,30 @@ const TOOLBAR_FONTS = [
 const TOOLBAR_COLORS = ["#1A1A17", "#F9F8F6", "#E07A5F", "#3D405B", "#81B29A"];
 
 function ToolbarShell({ x, y, w, children, wide }) {
+  // Centred above the item, but slid sideways when that would put part of
+  // it off the screen (a photo against the edge of a page, on a phone).
+  const ref = useRef(null);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const left = rect.left - shift;
+    const right = rect.right - shift;
+    const margin = 4;
+    let next = 0;
+    if (left < margin) next = margin - left;
+    else if (right > window.innerWidth - margin) next = window.innerWidth - margin - right;
+    if (Math.abs(next - shift) > 0.5) setShift(next);
+  }, [x, y, w, wide, shift]);
   return (
     <div
+      ref={ref}
       className={`absolute z-40 flex items-center gap-1 bg-[color:var(--ink)] text-[color:var(--paper)] px-1.5 py-1 shadow-lg rounded-sm ${wide ? "flex-wrap max-w-[260px]" : ""}`}
       style={{
         left: `${(x + w / 2) * 100}%`,
         top: `${y * 100}%`,
-        transform: "translate(-50%, calc(-100% - 8px))",
+        transform: `translate(calc(-50% + ${shift}px), calc(-100% - 8px))`,
       }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
@@ -163,7 +180,7 @@ export function PhotoPanOverlay({ focalX, focalY, onPan }) {
 
   return (
     <div
-      className="absolute inset-0 cursor-move"
+      className="absolute inset-0 cursor-move touch-none"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

@@ -9,6 +9,7 @@ import { coverImageUrl } from "@/lib/api";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { Plus, Trash2, ArrowUpRight } from "lucide-react";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { parseDate } from "@/lib/dates";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Dashboard() {
@@ -65,7 +66,7 @@ export default function Dashboard() {
   const formatDate = (iso) => {
     if (!iso) return "—";
     try {
-      return new Date(iso).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" });
+      return parseDate(iso).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" });
     } catch {
       return "—";
     }

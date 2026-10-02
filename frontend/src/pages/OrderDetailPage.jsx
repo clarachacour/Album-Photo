@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { parseDate } from "@/lib/dates";
 import { Check, ArrowLeft } from "lucide-react";
 
 function formatPrice(cents, currency = "usd") {
@@ -102,7 +103,7 @@ export default function OrderDetailPage() {
               <div>{t("orderDetail.unitPrice")}: {formatPrice(order.unit_price_cents, order.currency)}</div>
               {order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
               <div className="font-medium text-[color:var(--ink)] pt-1">{t("orderDetail.total")}: {formatPrice(order.total_price_cents, order.currency)}</div>
-              <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: new Date(order.created_at).toLocaleDateString(i18n.language) })}</div>
+              <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: parseDate(order.created_at).toLocaleDateString(i18n.language) })}</div>
             </div>
           </div>
           <div>

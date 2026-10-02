@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Package } from "lucide-react";
+import { parseDate } from "@/lib/dates";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 function formatPrice(cents, currency = "usd") {
@@ -73,7 +74,7 @@ export default function OrdersPage() {
                 <div>
                   <div className="font-serif-display text-xl tracking-tight mb-1">{o.album_title}</div>
                   <div className="text-xs text-[color:var(--muted)]">
-                    {o.size} · {o.orientation} · {t("orders.qty")} {o.quantity} · {new Date(o.created_at).toLocaleDateString(i18n.language)}
+                    {o.size} · {o.orientation} · {t("orders.qty")} {o.quantity} · {parseDate(o.created_at).toLocaleDateString(i18n.language)}
                   </div>
                 </div>
                 <div className="text-right shrink-0">

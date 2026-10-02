@@ -14,6 +14,14 @@
     --border-soft: #E2DFD8;
 }
 
+/* iPhone Safari zooms into any field whose text is under 16px when it's
+   tapped, and the page stays zoomed in. Touch screens get 16px fields. */
+@media (pointer: coarse) {
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):not([class*="text-lg"]):not([class*="xl"]) {
+        font-size: 16px !important;
+    }
+}
+
 body {
     margin: 0;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
