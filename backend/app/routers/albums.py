@@ -19,7 +19,15 @@ from fastapi import (
 from fastapi.responses import Response
 
 from app.config import DRAFT_ALBUM_RETENTION_DAYS, FRONTEND_URL
-from app.core.auth import create_print_token, decode_token, get_current_user, get_current_user_for_album
+from app.core.auth import (
+    album_scope,
+    create_print_token,
+    decode_token,
+    get_current_user,
+    get_current_user_for_album,
+    is_admin,
+    is_admin_id,
+)
 from app.db import db
 from app.schemas import AlbumCreate, AlbumUpdate, RepackPagesInput
 from app.services.albums import reject_if_ordered
@@ -130,7 +138,7 @@ def _json_safe(value):
 
 @router.get("/albums/{album_id}")
 async def get_album(album_id: str, user: dict = Depends(get_current_user_for_album)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0})
+    album = await db.albums.find_one({"id": album_id, **album_scope(user)}, {"_id": 0})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
     await _slim_stored_cover(album)
@@ -160,15 +168,17 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user_for_alb
     # showing the album as locked even after reject_if_ordered has been
     # told to allow edits on it — the two would disagree.
     has_order = await db.orders.find_one({"album_id": album_id}) is not None
-    album["was_ordered"] = has_order and not album.get("admin_unlocked")
+    album["was_ordered"] = has_order and not album.get("admin_unlocked") and not is_admin(user)
+    # The admin working on a customer's album: the editor says so.
+    album["admin_editing"] = is_admin(user) and album.get("user_id") != user["id"]
     return album
 
 @router.patch("/albums/{album_id}")
 async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    album = await db.albums.find_one({"id": album_id, **album_scope(user)})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
-    await reject_if_ordered(album_id)
+    await reject_if_ordered(album_id, user=user)
     if data.size is not None and data.size not in ALLOWED_ALBUM_SIZES:
         raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
@@ -235,10 +245,10 @@ async def repack_pages(album_id: str, data: RepackPagesInput, user: dict = Depen
     mathematically impossible to place all of them — this refuses outright
     rather than silently dropping photos in that case, same principle as
     the minimum-photos-required check at album creation."""
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    album = await db.albums.find_one({"id": album_id, **album_scope(user)})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
-    await reject_if_ordered(album_id)
+    await reject_if_ordered(album_id, user=user)
     pages = album.get("pages") or []
     if not pages:
         raise HTTPException(status_code=400, detail="This album has no pages yet")
@@ -359,7 +369,7 @@ async def start_processing(album_id: str, background_tasks: BackgroundTasks, use
 @router.get("/albums/{album_id}/status")
 async def get_status(album_id: str, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one(
-        {"id": album_id, "user_id": user["id"]},
+        {"id": album_id, **album_scope(user)},
         {"_id": 0, "status": 1, "id": 1, "user_id": 1, "google_import_result": 1, "layout_lock": 1, "layout_requested_at": 1, "version": 1},
     )
     if not album:
@@ -420,12 +430,15 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    album = await db.albums.find_one({"id": album_id, "user_id": user_id}, {"_id": 0})
+    scope = {} if await is_admin_id(user_id) else {"user_id": user_id}
+    album = await db.albums.find_one({"id": album_id, **scope}, {"_id": 0})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
 
     try:
-        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={create_print_token(user_id, album_id)}"
+        # The print page opens the album as its owner (the admin may be
+        # previewing a customer's album).
+        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={create_print_token(album['user_id'], album_id)}"
         loop = asyncio.get_event_loop()
         pdf_bytes = await loop.run_in_executor(
             pdf_render_executor, render_album_pdf_sync, print_url, len(album.get("pages") or []), f"Export {album_id} :"

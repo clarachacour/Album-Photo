@@ -418,6 +418,7 @@
     "coverImageRemoved": "Image de couverture supprimée",
     "coverImageRemoveError": "Impossible de supprimer l'image de couverture",
     "loadingAlbum": "Chargement de l'album…",
+    "adminBanner": "Mode admin : vous modifiez l'album d'une cliente. Vos changements s'enregistrent dans son album ; il reste verrouillé de son côté. Une fois terminé, régénérez le PDF de la commande depuis l'admin.",
     "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande.",
     "previewQualityNote": "Cet aperçu est affiché en qualité réduite pour un chargement rapide — votre livre imprimé sera exporté en pleine résolution d'impression.",
     "previousPage": "Page précédente",

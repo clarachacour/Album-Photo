@@ -742,6 +742,11 @@ export default function AlbumEditor() {
               {t("albumEditor.orderedBanner")}
             </div>
           )}
+          {album.admin_editing && (
+            <div className="w-full max-w-2xl mb-4 text-xs text-[color:var(--paper)] bg-[color:var(--ink)] rounded px-3 py-2" data-testid="editor-admin-banner">
+              {t("albumEditor.adminBanner")}
+            </div>
+          )}
           {album.unplaced_added > 0 && unplacedDismissedAt !== album.unplaced_added_at && !album.was_ordered && (
             <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" data-testid="editor-unplaced">
               <span>{t("albumEditor.unplacedPhotos", { count: album.unplaced_added, pages: album.target_pages })}</span>
@@ -1024,15 +1029,18 @@ export default function AlbumEditor() {
                   : t(`albumEditor.saveStatus.${saver.status}`)}
               </p>
             )}
-            <button
-              data-testid={TID.editorExportPdf}
-              onClick={goToOrder}
-              disabled={saving}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2.5 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
-            >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <ShoppingBag size={14} />}
-              <span className="text-sm font-semibold tracking-widest uppercase">{t("albumEditor.orderThisAlbum")}</span>
-            </button>
+            {/* Not for the admin fixing a customer's album: it's hers to order. */}
+            {!album.admin_editing && (
+              <button
+                data-testid={TID.editorExportPdf}
+                onClick={goToOrder}
+                disabled={saving}
+                className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-2.5 hover:bg-[color:var(--coral)] transition-colors disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <ShoppingBag size={14} />}
+                <span className="text-sm font-semibold tracking-widest uppercase">{t("albumEditor.orderThisAlbum")}</span>
+              </button>
+            )}
             <button
               data-testid={TID.editorAddText}
               onClick={() => setPlacingText((v) => !v)}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { Download, ExternalLink, RefreshCw, Bug } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Bug, Pencil } from "lucide-react";
 import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 
@@ -180,6 +180,14 @@ export default function AdminOrdersPage() {
                       <td className="p-3">
                         <Link to={`/orders/${o.id}`} className="hover:text-[color:var(--coral)] inline-flex items-center gap-1">
                           {o.album_title || "Album"} <ExternalLink size={12} />
+                        </Link>
+                        {/* Fix the album before it's printed, then regenerate the PDF. */}
+                        <Link
+                          to={`/editor/${o.album_id}`}
+                          data-testid={`admin-edit-album-${o.id}`}
+                          className="mt-1 flex items-center gap-1 text-xs underline underline-offset-2 text-[color:var(--muted)] hover:text-[color:var(--coral)]"
+                        >
+                          <Pencil size={11} /> Edit album
                         </Link>
                       </td>
                       <td className="p-3 whitespace-nowrap">{o.size} · {o.orientation}</td>

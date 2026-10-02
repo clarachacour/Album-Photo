@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Uplo
 from fastapi.responses import Response
 
 from app.config import APP_NAME
-from app.core.auth import decode_token_for_album, get_current_user, token_claims
+from app.core.auth import album_scope, decode_token_for_album, get_current_user, is_admin_id, token_claims
 from app.core.executors import run_blocking
 from app.db import db
 from app.services.albums import reject_if_ordered
@@ -73,7 +73,8 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
     user_id = decode_token_for_album(token, album_id) if token else None
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    album = await db.albums.find_one({"id": album_id, "user_id": user_id})
+    scope = {} if await is_admin_id(user_id) else {"user_id": user_id}
+    album = await db.albums.find_one({"id": album_id, **scope})
     if not album or not album.get("cover_image_path"):
         raise HTTPException(status_code=404, detail="No custom cover")
     path = album["cover_image_path"]
@@ -87,10 +88,10 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
 # ---------- Cover element assets (logo / added images on the cover) ----------
 @router.post("/albums/{album_id}/cover-assets")
 async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
+    album = await db.albums.find_one({"id": album_id, **album_scope(user)})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
-    await reject_if_ordered(album_id)
+    await reject_if_ordered(album_id, user=user)
     content_type = file.content_type or "image/png"
     if content_type not in ALLOWED_MIME:
         raise HTTPException(status_code=400, detail="Unsupported image format")
@@ -101,7 +102,10 @@ async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: 
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "png"
     asset_id = str(uuid.uuid4())
-    path = f"{APP_NAME}/users/{user['id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
+    # Kept with the album owner's files (the admin may be adding it to a
+    # customer's cover): the print page, which opens the album as its owner,
+    # can then read it.
+    path = f"{APP_NAME}/users/{album['user_id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
     loop = asyncio.get_event_loop()
     result, thumb_path, _, _ = await loop.run_in_executor(None, store_image_with_thumbnail, path, data, content_type)
     return {"storage_path": result["path"], "thumbnail_path": thumb_path}
@@ -118,8 +122,11 @@ async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None),
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = claims["user_id"]
     # Safety: only serve assets that belong to the requesting user (and,
-    # for a print key, to its album).
-    if f"/users/{user_id}/" not in path or ".." in path:
+    # for a print key, to its album) — or any, to the admin signed in.
+    if ".." in path:
+        raise HTTPException(status_code=403, detail="Access denied")
+    admin = claims["album_id"] is None and await is_admin_id(user_id)
+    if f"/users/{user_id}/" not in path and not admin:
         raise HTTPException(status_code=403, detail="Access denied")
     if claims["album_id"] and f"/users/{user_id}/albums/{claims['album_id']}/" not in path:
         raise HTTPException(status_code=403, detail="Access denied")

@@ -418,6 +418,7 @@
     "coverImageRemoved": "Cover image removed",
     "coverImageRemoveError": "Failed to remove cover image",
     "loadingAlbum": "Loading album…",
+    "adminBanner": "Admin mode: you're editing a customer's album. Your changes are saved to their album; it stays locked on their side. When you're done, regenerate the order's PDF from the admin page.",
     "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order.",
     "previewQualityNote": "This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.",
     "previousPage": "Previous page",

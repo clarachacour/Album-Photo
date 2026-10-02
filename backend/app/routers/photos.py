@@ -14,7 +14,7 @@ from fastapi import (
 )
 from fastapi.responses import Response
 
-from app.core.auth import get_current_user, token_claims
+from app.core.auth import get_current_user, is_admin_id, token_claims
 from app.core.executors import run_blocking
 from app.db import db
 from app.schemas import GooglePhotosImportInput
@@ -79,7 +79,10 @@ async def get_photo_image(photo_id: str, auth: str = Query(None), authorization:
     claims = token_claims(token) if token else None
     if not claims:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    photo = await db.photos.find_one({"id": photo_id, "user_id": claims["user_id"], "is_deleted": False})
+    # The admin, signed in, sees the photos of any album (see album_scope).
+    admin = claims["album_id"] is None and await is_admin_id(claims["user_id"])
+    owner = {} if admin else {"user_id": claims["user_id"]}
+    photo = await db.photos.find_one({"id": photo_id, **owner, "is_deleted": False})
     # A print key only opens the photos of its album.
     if not photo or claims["album_id"] not in (None, photo.get("album_id")):
         raise HTTPException(status_code=404, detail="Photo not found")

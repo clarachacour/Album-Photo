@@ -173,6 +173,24 @@ async def get_current_user(user: dict = Depends(get_current_user_raw)) -> dict:
         raise HTTPException(status_code=403, detail="Please verify your email address before continuing.")
     return user
 
+def is_admin(user: dict | None) -> bool:
+    return bool(ADMIN_EMAIL) and bool(user) and user.get("email") == ADMIN_EMAIL
+
+
+def album_scope(user: dict) -> dict:
+    """The albums this person may open: their own; every album for the
+    admin, who sometimes has to fix a customer's ordered album before it
+    goes to print (opened from the admin orders page)."""
+    return {} if is_admin(user) else {"user_id": user["id"]}
+
+
+async def is_admin_id(user_id: str) -> bool:
+    """is_admin for the image routes, which only have the user id of a key."""
+    if not ADMIN_EMAIL or not user_id:
+        return False
+    return bool(await db.users.find_one({"id": user_id, "email": ADMIN_EMAIL}, {"_id": 1}))
+
+
 def require_admin(user: dict):
     """Every admin endpoint below hand-checks this rather than something
     reusable via Depends() — deliberately simple for a single-admin
