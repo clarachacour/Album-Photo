@@ -39,7 +39,7 @@ export default function TopNav() {
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
         <Link to="/" data-testid={TID.navBrand} className="group">
           <div className="flex items-baseline gap-2">
-            <span className="font-serif-display text-2xl font-medium tracking-tight text-[color:var(--ink)]">Everbook</span>
+            <span className="font-serif-display text-xl sm:text-2xl font-medium tracking-tight text-[color:var(--ink)]">Everbook</span>
           </div>
         </Link>
         {user && (

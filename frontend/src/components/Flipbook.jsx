@@ -104,11 +104,14 @@ const CustomFlipbook = React.forwardRef(function CustomFlipbook({ pages, orienta
             <div className="absolute inset-0 grid grid-cols-2 gap-0 book-shadow bg-[color:var(--paper)]">
               <div className="relative overflow-visible page-inner-shadow">{current.pages[0]}</div>
               <div className="relative overflow-visible page-inner-shadow-right">{current.pages[1]}</div>
-              {/* The spine — the visible binding/gutter between the two pages */}
+              {/* The spine — the visible binding/gutter between the two pages.
+                  Drawn over the pages' inner edges: in proportion to the book
+                  (at most 14px), so on a phone it doesn't hide a visible part
+                  of each page and make centred items look off-centre. */}
               <div
                 className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-10"
                 style={{
-                  width: "14px",
+                  width: "min(14px, 1.2%)",
                   background: "linear-gradient(90deg, rgba(0,0,0,0.16), rgba(0,0,0,0.03) 35%, rgba(0,0,0,0.03) 65%, rgba(0,0,0,0.16))",
                 }}
               />
