@@ -26,6 +26,7 @@ export function AlbumPage({
   onDeleteItem,
   swapSourceItemId,
   sizeMatch, // while a frame is resized: the frames it shares a size with (see lib/sizeMatch)
+  spacingMarks, // while an item is moved: equal spaces on this page (see lib/spacingGuides)
   onItemDragEnd,
   onSwapAction,
   onAddPhotoAt,
@@ -372,6 +373,32 @@ export function AlbumPage({
         guideX={page?.align_guide_x}
         guideY={page?.align_guide_y}
       />
+      {/* Equal spaces: a measure line with an end tick on each side. */}
+      {editable && draggingId && (spacingMarks || []).map((m, i) =>
+        m.axis === "x" ? (
+          <div
+            key={i}
+            className="absolute z-30 pointer-events-none"
+            style={{ left: `${m.from * 100}%`, width: `${(m.to - m.from) * 100}%`, top: `${m.at * 100}%` }}
+            data-testid="spacing-mark"
+          >
+            <div className="absolute inset-x-0 top-0 border-t border-[color:var(--coral)]" />
+            <div className="absolute left-0 -top-1.5 h-3 border-l border-[color:var(--coral)]" />
+            <div className="absolute right-0 -top-1.5 h-3 border-r border-[color:var(--coral)]" />
+          </div>
+        ) : (
+          <div
+            key={i}
+            className="absolute z-30 pointer-events-none"
+            style={{ top: `${m.from * 100}%`, height: `${(m.to - m.from) * 100}%`, left: `${m.at * 100}%` }}
+            data-testid="spacing-mark"
+          >
+            <div className="absolute inset-y-0 left-0 border-l border-[color:var(--coral)]" />
+            <div className="absolute top-0 -left-1.5 w-3 border-t border-[color:var(--coral)]" />
+            <div className="absolute bottom-0 -left-1.5 w-3 border-b border-[color:var(--coral)]" />
+          </div>
+        )
+      )}
       {editable && (onApplyLayout || onStartAddText || onDeletePage) && (
         <div data-tour="page-tools" className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "right-1 md:-right-9" : "left-1 md:-left-9"} z-30 flex flex-col gap-2`}>
           {onApplyLayout && (

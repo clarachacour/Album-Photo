@@ -16,6 +16,7 @@ export function BookRenderer({
   onDeleteItem,
   swapSourceItemId,
   sizeMatch,
+  spacingMarks,
   onItemDragEnd,
   onSwapAction,
   onAddPhotoAt,
@@ -118,6 +119,7 @@ export function BookRenderer({
         onDeleteItem={(itemId) => onDeleteItem(i, itemId)}
         swapSourceItemId={swapSourceItemId}
         sizeMatch={sizeMatch}
+        spacingMarks={spacingMarks?.pageIdx === i ? spacingMarks.marks : null}
         onItemDragEnd={onItemDragEnd}
         onSwapAction={onSwapAction}
         onAddPhotoAt={(photoId, box) => onAddPhotoAt(i, photoId, box)}

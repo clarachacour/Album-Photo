@@ -24,6 +24,7 @@ import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
 import { editableContent, useAlbumSaving } from "@/hooks/useAlbumSaving";
 import { parseDate } from "@/lib/dates";
 import { snapToSameSize, spreadPhotoFrames } from "@/lib/sizeMatch";
+import { spacingSnap } from "@/lib/spacingGuides";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
 export default function AlbumEditor() {
@@ -317,6 +318,26 @@ export default function AlbumEditor() {
       sizeLock.h = s.snappedH;
       setSizeMatch(s.matches.length ? { itemId, pageIdx, matches: s.matches } : null);
     }
+    // Moving an item: equal spacing (margins, spaces between items, see
+    // spacingGuides) competes with edge/centre alignment; the closer wins,
+    // and the equal spaces are marked while it moves.
+    const moveSnap = {};
+    if (resized && patch.x !== undefined && patch.y !== undefined && patch.w === undefined && patch.h === undefined) {
+      const others = album.pages[pageIdx].items.filter((it) => it.id !== itemId && it.w != null && it.h != null);
+      const w = resized.w ?? 0;
+      const h = resized.h ?? 0;
+      const marks = [];
+      for (const [axis, pos, size, cross, crossSize] of [["x", patch.x, w, patch.y, h], ["y", patch.y, h, patch.x, w]]) {
+        const align = computeAlignSnap(pos, size, others, axis);
+        const spacing = spacingSnap(pos, size, cross, crossSize, others, axis);
+        if (spacing && (align.guide === null || spacing.diff <= Math.abs(align.value - pos) + 1e-9)) {
+          const sameAsAlign = align.guide !== null && Math.abs(align.value - spacing.value) < 1e-9;
+          moveSnap[axis] = { value: spacing.value, guide: sameAsAlign ? align.guide : null };
+          marks.push(...spacing.marks);
+        }
+      }
+      setSpacingMarks(marks.length ? { pageIdx, marks } : null);
+    }
     setAlbum((prev) => {
       if (!prev) return prev;
       const newPages = [...prev.pages];
@@ -329,12 +350,12 @@ export default function AlbumEditor() {
         const currentW = updatedPatch.w ?? it.w ?? 0;
         const currentH = updatedPatch.h ?? it.h ?? 0;
         if (updatedPatch.x !== undefined) {
-          const s = computeAlignSnap(updatedPatch.x, currentW, siblings, "x");
+          const s = moveSnap.x ?? computeAlignSnap(updatedPatch.x, currentW, siblings, "x");
           updatedPatch.x = s.value;
           guideX = s.guide;
         }
         if (updatedPatch.y !== undefined) {
-          const s = computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
+          const s = moveSnap.y ?? computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
           updatedPatch.y = s.value;
           guideY = s.guide;
         }
@@ -431,6 +452,8 @@ export default function AlbumEditor() {
   const [swapSource, setSwapSource] = useState(null); // { pageIdx, itemId } | null
   // While a photo frame is resized: the frames it now shares a size with.
   const [sizeMatch, setSizeMatch] = useState(null); // { itemId, pageIdx, matches: [{ id, pageIndex, kind }] } | null
+  // While an item is moved: the equal spaces to mark (see spacingGuides).
+  const [spacingMarks, setSpacingMarks] = useState(null); // { pageIdx, marks: [{ axis, from, to, at }] } | null
   const [placingPhotoId, setPlacingPhotoId] = useState(null); // gallery photo armed for click-to-place
 
   const handleSwapAction = (pageIdx, itemId) => {
@@ -868,7 +891,11 @@ export default function AlbumEditor() {
             onDeleteItem={deleteItemById}
             swapSourceItemId={swapSource?.itemId}
             sizeMatch={sizeMatch}
-            onItemDragEnd={() => setSizeMatch(null)}
+            spacingMarks={spacingMarks}
+            onItemDragEnd={() => {
+              setSizeMatch(null);
+              setSpacingMarks(null);
+            }}
             onSwapAction={handleSwapAction}
             onAddPhotoAt={addPhotoAt}
             onReplacePhoto={replacePhotoInItem}
