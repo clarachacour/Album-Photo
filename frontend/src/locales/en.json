@@ -85,6 +85,7 @@
     "welcomeToast": "Welcome to Everbook!",
     "welcomeBackToast": "Welcome back!",
     "genericError": "An error occurred",
+    "networkError": "Couldn't reach Everbook. Check your internet connection, turn off any ad blocker, then try again.",
     "login": {
       "title": "Welcome back !",
       "subtitle": "Sign in to access your albums."

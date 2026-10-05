@@ -85,6 +85,7 @@
     "welcomeToast": "Bienvenue sur Everbook !",
     "welcomeBackToast": "Content de vous revoir !",
     "genericError": "Une erreur est survenue",
+    "networkError": "Impossible de joindre Everbook. Vérifiez votre connexion internet, désactivez un éventuel bloqueur de publicités, puis réessayez.",
     "login": {
       "title": "Content de vous revoir !",
       "subtitle": "Connectez-vous pour accéder à vos albums."

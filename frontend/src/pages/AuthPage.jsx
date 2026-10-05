@@ -8,6 +8,7 @@ import SocialAuthButtons from "@/components/SocialAuthButtons";
 import PasswordInput from "@/components/PasswordInput";
 import { Loader2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { apiErrorMessage } from "@/lib/apiError";
 
 export default function AuthPage() {
   usePageMeta("auth");
@@ -53,7 +54,7 @@ export default function AuthPage() {
       // confirmed, which goes to the "check your inbox" screen (via /dashboard).
       nav(signedIn?.email_verified === false ? "/dashboard" : "/");
     } catch (err) {
-      toast.error(err?.response?.data?.detail || t("auth.genericError"));
+      toast.error(apiErrorMessage(err, t));
     } finally {
       setBusy(false);
     }
