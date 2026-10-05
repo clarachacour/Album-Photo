@@ -29,8 +29,13 @@ export function CoverBackPage({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${aspect} flex flex-col items-center justify-between p-8`}
-      style={{ background: bg, containerType: "inline-size" }}
+      className={`relative w-full ${aspect} flex flex-col items-center justify-between`}
+      // The padding is a share of the cover's width, not a fixed 32px: text
+      // sizes are in cqw, a share of the width *inside* this padding, so a
+      // fixed padding took ~15% of the cover in the editor but ~8% in the
+      // PDF, and the texts came out ~8% larger in print (wrapping and
+      // getting cut). 7.4% is what 32px was on the editor's cover.
+      style={{ background: bg, containerType: "inline-size", padding: "7.4%" }}
       onClick={(e) => {
         if (!editable) return;
         if (e.target === e.currentTarget) onSelectCover && onSelectCover();
@@ -41,7 +46,7 @@ export function CoverBackPage({
       <div />
       {extras.length === 0 && !cover.hide_back_text && (
         <div className="text-center">
-          <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "clamp(10px, 3.2cqw, 18px)" }}>
+          <div className="font-sans font-semibold tracking-[0.32em] uppercase" style={{ color: text, fontSize: "max(10px, 3.2cqw)" }}>
             {country || ""}
           </div>
         </div>
@@ -54,7 +59,8 @@ export function CoverBackPage({
           content just swapped to "Everbook" — that meant it could be
           deleted like any other text, which defeats the point of a brand
           mark that's supposed to always be there. */}
-      <div className="font-sans text-xs tracking-widest pointer-events-none select-none" style={{ color: text }}>
+      {/* In proportion to the cover (12px on the editor's cover), like everything else on it. */}
+      <div className="font-sans tracking-widest pointer-events-none select-none" style={{ color: text, fontSize: "max(8px, 3.25cqw)" }}>
         Everbook
       </div>
 
