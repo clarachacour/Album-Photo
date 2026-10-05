@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COVER_THEMES, spineLogoSource } from "@/lib/coverThemes";
+import { COVER_THEMES, spineLogoSource, templateFormat } from "@/lib/coverThemes";
 
 const templates = COVER_THEMES.flatMap((t) => t.templates);
 const logoOf = (id) => templates.find((t) => t.id === id).cover.spine_logo_image;
@@ -32,5 +32,15 @@ describe("spine logo", () => {
 
   it("no template shows the spine year any more", () => {
     for (const tpl of templates) expect(tpl.cover).not.toHaveProperty("spine_year_hidden");
+  });
+});
+
+describe("templateFormat", () => {
+  it("starts Family albums in A5 portrait, the others in the default format", () => {
+    for (const id of ["family-plain", "family-mom", "family-dad"]) {
+      expect(templateFormat(id)).toEqual({ size: "A5", orientation: "portrait" });
+    }
+    expect(templateFormat("travel-sicily")).toBeNull();
+    expect(templateFormat(null)).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_COVER, defaultLogoItem, getTemplate } from "@/lib/coverTemplates";
-import { findTemplate } from "@/lib/coverThemes";
+import { findTemplate, templateFormat } from "@/lib/coverThemes";
 import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
@@ -89,8 +89,9 @@ export default function CreateAlbum() {
   const resumeAlbumId = params.get("albumId");
   const chosenTemplate = findTemplate(params.get("template"));
   const [step, setStep] = useState(0);
-  const [size, setSize] = useState("A4");
-  const [orientation, setOrientation] = useState("portrait");
+  const startFormat = templateFormat(params.get("template"));
+  const [size, setSize] = useState(startFormat?.size || "A4");
+  const [orientation, setOrientation] = useState(startFormat?.orientation || "portrait");
   const [targetPages, setTargetPages] = useState(50);
   const [album, setAlbum, albumHistory] = useHistoryState(null); // created once we leave the Format step
   const [coverSel, setCoverSel] = useState(null);

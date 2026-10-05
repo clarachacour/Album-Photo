@@ -358,6 +358,8 @@ export const COVER_THEMES = [
   {
     id: "family",
     label: "Family",
+    // Format already chosen on the Format step for these templates (still changeable there).
+    format: { size: "A5", orientation: "portrait" },
     templates: [
       {
         id: "family-plain",
@@ -536,6 +538,12 @@ export const COVER_THEMES = [
     ],
   },
 ];
+
+/** The format ({size, orientation}) a template's theme starts albums in, or null. */
+export function templateFormat(templateId) {
+  const theme = COVER_THEMES.find((th) => th.templates.some((t) => t.id === templateId));
+  return theme?.format || null;
+}
 
 export function findTemplate(templateId) {
   for (const theme of COVER_THEMES) {
