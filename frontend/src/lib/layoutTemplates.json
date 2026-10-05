@@ -1,0 +1,392 @@
+{
+  "_about": "Page templates for the automatic layout and the editor's layout menu, per page orientation. Generated: 12 mm margins and 6 mm gaps on an A4 page, stored as fractions of the page. Keep backend/app/services/layout_templates.json identical (a test checks it).",
+  "max_crop": 0.1,
+  "portrait": {
+    "p_full": {
+      "label_fr": "1 photo pleine page",
+      "label_en": "1 full-page photo",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.0404,
+          "w": 0.88571,
+          "h": 0.91919
+        }
+      ]
+    },
+    "p_one_wide": {
+      "label_fr": "1 photo horizontale",
+      "label_en": "1 landscape photo",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.26515,
+          "w": 0.88571,
+          "h": 0.4697
+        }
+      ]
+    },
+    "p_two_wide": {
+      "label_fr": "2 photos horizontales",
+      "label_en": "2 landscape photos",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.0404,
+          "w": 0.88571,
+          "h": 0.44949
+        },
+        {
+          "x": 0.05714,
+          "y": 0.5101,
+          "w": 0.88571,
+          "h": 0.44949
+        }
+      ]
+    },
+    "p_two_tall": {
+      "label_fr": "2 photos verticales",
+      "label_en": "2 portrait photos",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.29798,
+          "w": 0.42857,
+          "h": 0.40404
+        },
+        {
+          "x": 0.51429,
+          "y": 0.29798,
+          "w": 0.42857,
+          "h": 0.40404
+        }
+      ]
+    },
+    "p_wide_top_two": {
+      "label_fr": "1 grande + 2 en bas",
+      "label_en": "1 large + 2 below",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.0404,
+          "w": 0.88571,
+          "h": 0.4697
+        },
+        {
+          "x": 0.05714,
+          "y": 0.5303,
+          "w": 0.42857,
+          "h": 0.42929
+        },
+        {
+          "x": 0.51429,
+          "y": 0.5303,
+          "w": 0.42857,
+          "h": 0.42929
+        }
+      ]
+    },
+    "p_wide_bottom_two": {
+      "label_fr": "2 en haut + 1 grande",
+      "label_en": "2 above + 1 large",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.4899,
+          "w": 0.88571,
+          "h": 0.4697
+        },
+        {
+          "x": 0.05714,
+          "y": 0.0404,
+          "w": 0.42857,
+          "h": 0.42929
+        },
+        {
+          "x": 0.51429,
+          "y": 0.0404,
+          "w": 0.42857,
+          "h": 0.42929
+        }
+      ]
+    },
+    "p_three_wide": {
+      "label_fr": "3 photos horizontales",
+      "label_en": "3 landscape photos",
+      "slots": [
+        {
+          "x": 0.22381,
+          "y": 0.0404,
+          "w": 0.55238,
+          "h": 0.29293
+        },
+        {
+          "x": 0.22381,
+          "y": 0.35354,
+          "w": 0.55238,
+          "h": 0.29293
+        },
+        {
+          "x": 0.22381,
+          "y": 0.66667,
+          "w": 0.55238,
+          "h": 0.29293
+        }
+      ]
+    },
+    "p_grid": {
+      "label_fr": "4 photos (grille)",
+      "label_en": "4 photos (grid)",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.08586,
+          "w": 0.42857,
+          "h": 0.40404
+        },
+        {
+          "x": 0.51429,
+          "y": 0.08586,
+          "w": 0.42857,
+          "h": 0.40404
+        },
+        {
+          "x": 0.05714,
+          "y": 0.5101,
+          "w": 0.42857,
+          "h": 0.40404
+        },
+        {
+          "x": 0.51429,
+          "y": 0.5101,
+          "w": 0.42857,
+          "h": 0.40404
+        }
+      ]
+    },
+    "p_four_wide": {
+      "label_fr": "4 photos horizontales",
+      "label_en": "4 landscape photos",
+      "slots": [
+        {
+          "x": 0.05714,
+          "y": 0.26263,
+          "w": 0.42857,
+          "h": 0.22727
+        },
+        {
+          "x": 0.51429,
+          "y": 0.26263,
+          "w": 0.42857,
+          "h": 0.22727
+        },
+        {
+          "x": 0.05714,
+          "y": 0.5101,
+          "w": 0.42857,
+          "h": 0.22727
+        },
+        {
+          "x": 0.51429,
+          "y": 0.5101,
+          "w": 0.42857,
+          "h": 0.22727
+        }
+      ]
+    }
+  },
+  "landscape": {
+    "l_full": {
+      "label_fr": "1 photo pleine page",
+      "label_en": "1 full-page photo",
+      "slots": [
+        {
+          "x": 0.0404,
+          "y": 0.05714,
+          "w": 0.91919,
+          "h": 0.88571
+        }
+      ]
+    },
+    "l_one_tall": {
+      "label_fr": "1 photo verticale",
+      "label_en": "1 portrait photo",
+      "slots": [
+        {
+          "x": 0.26515,
+          "y": 0.05714,
+          "w": 0.4697,
+          "h": 0.88571
+        }
+      ]
+    },
+    "l_two_tall": {
+      "label_fr": "2 photos verticales",
+      "label_en": "2 portrait photos",
+      "slots": [
+        {
+          "x": 0.0404,
+          "y": 0.05714,
+          "w": 0.44949,
+          "h": 0.88571
+        },
+        {
+          "x": 0.5101,
+          "y": 0.05714,
+          "w": 0.44949,
+          "h": 0.88571
+        }
+      ]
+    },
+    "l_two_wide": {
+      "label_fr": "2 photos horizontales",
+      "label_en": "2 landscape photos",
+      "slots": [
+        {
+          "x": 0.0404,
+          "y": 0.26161,
+          "w": 0.44949,
+          "h": 0.47679
+        },
+        {
+          "x": 0.5101,
+          "y": 0.26161,
+          "w": 0.44949,
+          "h": 0.47679
+        }
+      ]
+    },
+    "l_tall_left_two": {
+      "label_fr": "1 grande + 2 à droite",
+      "label_en": "1 large + 2 on the right",
+      "slots": [
+        {
+          "x": 0.0404,
+          "y": 0.05714,
+          "w": 0.4697,
+          "h": 0.88571
+        },
+        {
+          "x": 0.5303,
+          "y": 0.05714,
+          "w": 0.42929,
+          "h": 0.42857
+        },
+        {
+          "x": 0.5303,
+          "y": 0.51429,
+          "w": 0.42929,
+          "h": 0.42857
+        }
+      ]
+    },
+    "l_tall_right_two": {
+      "label_fr": "1 grande + 2 à gauche",
+      "label_en": "1 large + 2 on the left",
+      "slots": [
+        {
+          "x": 0.4899,
+          "y": 0.05714,
+          "w": 0.4697,
+          "h": 0.88571
+        },
+        {
+          "x": 0.0404,
+          "y": 0.05714,
+          "w": 0.42929,
+          "h": 0.42857
+        },
+        {
+          "x": 0.0404,
+          "y": 0.51429,
+          "w": 0.42929,
+          "h": 0.42857
+        }
+      ]
+    },
+    "l_three_tall": {
+      "label_fr": "3 photos verticales",
+      "label_en": "3 portrait photos",
+      "slots": [
+        {
+          "x": 0.0404,
+          "y": 0.22381,
+          "w": 0.29293,
+          "h": 0.55238
+        },
+        {
+          "x": 0.35354,
+          "y": 0.22381,
+          "w": 0.29293,
+          "h": 0.55238
+        },
+        {
+          "x": 0.66667,
+          "y": 0.22381,
+          "w": 0.29293,
+          "h": 0.55238
+        }
+      ]
+    },
+    "l_grid": {
+      "label_fr": "4 photos (grille)",
+      "label_en": "4 photos (grid)",
+      "slots": [
+        {
+          "x": 0.08586,
+          "y": 0.05714,
+          "w": 0.40404,
+          "h": 0.42857
+        },
+        {
+          "x": 0.5101,
+          "y": 0.05714,
+          "w": 0.40404,
+          "h": 0.42857
+        },
+        {
+          "x": 0.08586,
+          "y": 0.51429,
+          "w": 0.40404,
+          "h": 0.42857
+        },
+        {
+          "x": 0.5101,
+          "y": 0.51429,
+          "w": 0.40404,
+          "h": 0.42857
+        }
+      ]
+    },
+    "l_four_tall": {
+      "label_fr": "4 photos verticales",
+      "label_en": "4 portrait photos",
+      "slots": [
+        {
+          "x": 0.0404,
+          "y": 0.29762,
+          "w": 0.21465,
+          "h": 0.40476
+        },
+        {
+          "x": 0.27525,
+          "y": 0.29762,
+          "w": 0.21465,
+          "h": 0.40476
+        },
+        {
+          "x": 0.5101,
+          "y": 0.29762,
+          "w": 0.21465,
+          "h": 0.40476
+        },
+        {
+          "x": 0.74495,
+          "y": 0.29762,
+          "w": 0.21465,
+          "h": 0.40476
+        }
+      ]
+    }
+  }
+}

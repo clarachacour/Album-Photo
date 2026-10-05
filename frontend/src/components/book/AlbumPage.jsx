@@ -10,7 +10,7 @@ import { DraggableItem } from "@/components/book/DraggableItem";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 import { FramedPhoto } from "@/components/book/FramedPhoto";
-import { minZoom, pageAspect } from "@/lib/photoFit";
+import { isCropped, minZoom, pageAspect, wholePhotoFields } from "@/lib/photoFit";
 
 /**
  * AlbumPage renders one printable page with draggable + resizable items.
@@ -257,6 +257,11 @@ export function AlbumPage({
                   onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
                   onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
+                  onShowWhole={
+                    isCropped(item, photoSizes?.get(item.photo_id), orientation)
+                      ? () => onUpdateItem && onUpdateItem(item.id, wholePhotoFields(item, photoSizes?.get(item.photo_id), orientation))
+                      : undefined
+                  }
                 />
               )}
               {isSel && editable && isEmpty && (
@@ -446,6 +451,7 @@ export function AlbumPage({
       )}
       {showLayoutPicker && (
         <LayoutPicker
+          orientation={orientation}
           onClose={() => setShowLayoutPicker(false)}
           onChoose={(patternName) => {
             onApplyLayout(patternName);

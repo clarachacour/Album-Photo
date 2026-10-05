@@ -524,6 +524,7 @@
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",
+    "showWholePhoto": "Afficher la photo entière",
     "clickToSwap": "Cliquez sur une autre photo pour l'échanger",
     "swapWithAnother": "Échanger avec une autre photo",
     "sendBackward": "Envoyer vers l'arrière",

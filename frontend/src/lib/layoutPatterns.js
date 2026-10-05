@@ -1,63 +1,36 @@
-// Mirrors the backend's deterministic_layout patterns exactly, so a layout
-// picked manually looks identical (proportion-wise) to whatever the AI
-// might have generated with the same pattern name.
-const M = 0.05;
-const USABLE = 1.0 - 2 * M;
+// Page templates for each page orientation — the same file the backend's
+// automatic layout reads (layoutTemplates.json, made by
+// backend/scripts/gen_layout_templates.py; a backend test checks both copies
+// are identical), so a layout picked by hand looks exactly like one the AI
+// would have made.
+import templates from "./layoutTemplates.json";
 
-export const LAYOUT_PATTERNS = {
-  single_full: {
-    label: "1 photo",
-    slots: [{ x: M, y: M, w: USABLE, h: USABLE }],
-  },
-  single_centered: {
-    label: "1 photo (centered)",
-    slots: [{ x: 0.15, y: 0.15, w: 0.7, h: 0.7 }],
-  },
-  dual_horizontal: {
-    label: "2 photos (stacked)",
-    slots: [
-      { x: M, y: M, w: USABLE, h: (USABLE - 0.04) / 2 },
-      { x: M, y: M + (USABLE - 0.04) / 2 + 0.04, w: USABLE, h: (USABLE - 0.04) / 2 },
-    ],
-  },
-  dual_vertical: {
-    label: "2 photos (side by side)",
-    slots: [
-      { x: M, y: M, w: (USABLE - 0.04) / 2, h: USABLE },
-      { x: M + (USABLE - 0.04) / 2 + 0.04, y: M, w: (USABLE - 0.04) / 2, h: USABLE },
-    ],
-  },
-  triptych: {
-    label: "3 photos",
-    slots: [
-      { x: M, y: M, w: USABLE * 0.58, h: USABLE },
-      { x: M + USABLE * 0.58 + 0.03, y: M, w: USABLE * 0.39, h: (USABLE - 0.03) / 2 },
-      { x: M + USABLE * 0.58 + 0.03, y: M + (USABLE - 0.03) / 2 + 0.03, w: USABLE * 0.39, h: (USABLE - 0.03) / 2 },
-    ],
-  },
-  quad_grid: {
-    label: "4 photos (grid)",
-    slots: [
-      { x: M, y: M, w: (USABLE - 0.03) / 2, h: (USABLE - 0.03) / 2 },
-      { x: M + (USABLE - 0.03) / 2 + 0.03, y: M, w: (USABLE - 0.03) / 2, h: (USABLE - 0.03) / 2 },
-      { x: M, y: M + (USABLE - 0.03) / 2 + 0.03, w: (USABLE - 0.03) / 2, h: (USABLE - 0.03) / 2 },
-      { x: M + (USABLE - 0.03) / 2 + 0.03, y: M + (USABLE - 0.03) / 2 + 0.03, w: (USABLE - 0.03) / 2, h: (USABLE - 0.03) / 2 },
-    ],
-  },
-  hero_strip: {
-    label: "4 photos (hero + strip)",
-    slots: [
-      { x: M, y: M, w: USABLE, h: USABLE * 0.62 },
-      { x: M, y: M + USABLE * 0.62 + 0.03, w: (USABLE - 0.06) / 3, h: USABLE * 0.35 },
-      { x: M + (USABLE - 0.06) / 3 + 0.03, y: M + USABLE * 0.62 + 0.03, w: (USABLE - 0.06) / 3, h: USABLE * 0.35 },
-      { x: M + 2 * ((USABLE - 0.06) / 3 + 0.03), y: M + USABLE * 0.62 + 0.03, w: (USABLE - 0.06) / 3, h: USABLE * 0.35 },
-    ],
-  },
-};
+/** Fraction of a photo a frame may cut off to fill its slot exactly. */
+export const MAX_CROP = templates.max_crop;
 
-export const LAYOUT_GROUPS = [
-  { count: 1, patterns: ["single_full", "single_centered"] },
-  { count: 2, patterns: ["dual_horizontal", "dual_vertical"] },
-  { count: 3, patterns: ["triptych"] },
-  { count: 4, patterns: ["quad_grid", "hero_strip"] },
-];
+/** { name: { label_fr, label_en, slots: [{ x, y, w, h }] } } for a page orientation. */
+export function layoutTemplates(orientation) {
+  return templates[orientation === "landscape" ? "landscape" : "portrait"];
+}
+
+/** Templates grouped by photo count, for the layout menu: [{ count, patterns: [name] }]. */
+export function layoutGroups(orientation) {
+  const groups = new Map();
+  for (const [name, template] of Object.entries(layoutTemplates(orientation))) {
+    const count = template.slots.length;
+    if (!groups.has(count)) groups.set(count, []);
+    groups.get(count).push(name);
+  }
+  return [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([count, patterns]) => ({ count, patterns }));
+}
+
+export function templateLabel(template, language) {
+  return (language || "").startsWith("fr") ? template.label_fr : template.label_en;
+}
+
+/** The one-photo, full-page template (a new blank page). */
+export function fullPageTemplate(orientation) {
+  const all = layoutTemplates(orientation);
+  const name = orientation === "landscape" ? "l_full" : "p_full";
+  return { name, ...all[name] };
+}

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getTemplate } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import { makeCoverEditingActions, computeAlignSnap, computeResizeAlignSnap } from "@/lib/coverEditing";
-import { LAYOUT_PATTERNS } from "@/lib/layoutPatterns";
+import { fullPageTemplate, layoutTemplates } from "@/lib/layoutPatterns";
 import { useHistoryState } from "@/lib/useHistoryState";
 import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
@@ -349,12 +349,15 @@ export default function AlbumEditor() {
         const updatedPatch = { ...patch };
         const currentW = updatedPatch.w ?? it.w ?? 0;
         const currentH = updatedPatch.h ?? it.h ?? 0;
-        if (updatedPatch.x !== undefined) {
+        // A frame placed by the editor itself (with its slot, e.g. "show the
+        // whole photo") goes exactly where it's put: no snapping.
+        const placed = patch.slot !== undefined;
+        if (updatedPatch.x !== undefined && !placed) {
           const s = moveSnap.x ?? computeAlignSnap(updatedPatch.x, currentW, siblings, "x");
           updatedPatch.x = s.value;
           guideX = s.guide;
         }
-        if (updatedPatch.y !== undefined) {
+        if (updatedPatch.y !== undefined && !placed) {
           const s = moveSnap.y ?? computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
           updatedPatch.y = s.value;
           guideY = s.guide;
@@ -520,10 +523,11 @@ export default function AlbumEditor() {
   const addBlankPage = () => {
     setAlbum((prev) => {
       if (!prev) return prev;
-      const slot = LAYOUT_PATTERNS.single_full.slots[0];
+      const template = fullPageTemplate(prev.orientation);
+      const slot = template.slots[0];
       const newPage = {
         id: cryptoRandom(),
-        layout: "single_full",
+        layout: template.name,
         items: [
           {
             id: cryptoRandom(),
@@ -574,10 +578,11 @@ export default function AlbumEditor() {
   };
 
   const applyLayoutToPage = (pageIdx, patternName) => {
-    const pattern = LAYOUT_PATTERNS[patternName];
-    if (!pattern) return;
     setAlbum((prev) => {
       if (!prev) return prev;
+      // Templates drawn for this album's page orientation (see layoutPatterns).
+      const pattern = layoutTemplates(prev.orientation)[patternName];
+      if (!pattern) return prev;
       const existingItems = prev.pages[pageIdx].items || [];
       const existingPhotos = existingItems.filter((it) => it.type === "photo");
       const otherItems = existingItems.filter((it) => it.type !== "photo");
@@ -601,7 +606,7 @@ export default function AlbumEditor() {
       });
       const leftoverPhotos = existingPhotos.slice(pattern.slots.length); // kept untouched if the new layout has fewer slots
       const newPages = [...prev.pages];
-      newPages[pageIdx] = { ...newPages[pageIdx], items: [...reflowedPhotos, ...leftoverPhotos, ...otherItems] };
+      newPages[pageIdx] = { ...newPages[pageIdx], layout: patternName, items: [...reflowedPhotos, ...leftoverPhotos, ...otherItems] };
       return { ...prev, pages: newPages };
     });
   };
@@ -610,16 +615,19 @@ export default function AlbumEditor() {
     setAlbum((prev) => {
       if (!prev) return prev;
       const newPages = [...prev.pages];
+      const photo = prev.photos?.find((p) => p.id === photoId);
       newPages[pageIdx] = {
         ...newPages[pageIdx],
         items: newPages[pageIdx].items.map((it) =>
           it.id === itemId
             ? {
                 ...it,
-                ...fitItemToPhoto(it, prev.photos?.find((p) => p.id === photoId), prev.orientation),
+                ...fitItemToPhoto(it, photo, prev.orientation),
                 photo_id: photoId,
-                focal_x: 0.5,
-                focal_y: 0.5,
+                // Centred on the face found in it, if any (the crop rule
+                // relies on it to never cut a face).
+                focal_x: photo?.ai_focal_x ?? 0.5,
+                focal_y: photo?.ai_focal_y ?? 0.5,
                 scale: 1,
               }
             : it

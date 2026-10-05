@@ -1,5 +1,8 @@
 """Page layouts: the title page and the automatic photo layout."""
+import json
+import math
 import uuid
+from pathlib import Path
 from typing import Dict, List, Optional
 
 
@@ -54,14 +57,26 @@ def make_title_page(title: str, lang: str = "en") -> dict:
         ],
     }
 
-LAYOUT_PATTERN = ["single_full", "dual_vertical", "hero_strip", "single_centered", "quad_grid", "triptych", "dual_horizontal"]
+# Page templates for each orientation (see layout_templates.json, made by
+# scripts/gen_layout_templates.py — the editor's layout menu reads an
+# identical copy): drawn for a portrait page and for a landscape page, with
+# the same margins and gaps in millimetres on every side.
+_TEMPLATES = json.loads((Path(__file__).with_name("layout_templates.json")).read_text(encoding="utf-8"))
 
-TEMPLATE_PHOTO_COUNT = {
-    "single_full": 1, "single_centered": 1,
-    "dual_vertical": 2, "dual_horizontal": 2,
-    "triptych": 3,
-    "quad_grid": 4, "hero_strip": 4,
-}
+# A photo may lose at most this much (fraction of its width or height) to
+# fill its frame exactly; beyond that it keeps its own shape instead.
+MAX_CROP = _TEMPLATES["max_crop"]
+# A detected face is never cut into: its centre must stay at least this far
+# (fraction of the photo) from an edge the frame cuts.
+FACE_MARGIN = 0.12
+
+
+def templates_for(orientation: str) -> Dict[str, dict]:
+    return _TEMPLATES["landscape" if orientation == "landscape" else "portrait"]
+
+
+TEMPLATE_PHOTO_COUNT = {name: len(t["slots"]) for o in ("portrait", "landscape") for name, t in _TEMPLATES[o].items()}
+LAYOUT_PATTERN = list(TEMPLATE_PHOTO_COUNT)  # kept for callers that only use its length
 
 def fit_box_to_photo(slot: dict, photo_aspect: Optional[float], page_aspect_wh: float) -> dict:
     """Largest box with the photo's own proportions that fits inside `slot`,
@@ -89,86 +104,78 @@ def fit_box_to_photo(slot: dict, photo_aspect: Optional[float], page_aspect_wh: 
         "h": h,
     }
 
+def _photo_aspect(photo: dict) -> Optional[float]:
+    w, h = photo.get("width"), photo.get("height")
+    return w / h if w and h and h > 0 else None
+
+
+def _face_safe(photo: dict, photo_aspect: float, frame_aspect: float) -> bool:
+    """Whether filling a frame of frame_aspect leaves a detected face whole.
+    The editor shows the photo like CSS object-position at the focal point
+    (the face, see compute_face_focal_point): along the cut axis, a window
+    of `kept` of the photo starting at focal * (1 - kept)."""
+    if not photo.get("ai_has_face"):
+        return True
+    if photo_aspect >= frame_aspect:  # cut on the left and right
+        kept, focal = frame_aspect / photo_aspect, photo.get("ai_focal_x", 0.5)
+    else:  # cut at the top and bottom
+        kept, focal = photo_aspect / frame_aspect, photo.get("ai_focal_y", 0.5)
+    start = focal * (1 - kept)
+    return focal - start >= FACE_MARGIN and (start + kept) - focal >= FACE_MARGIN
+
+
+def frame_for(slot: dict, photo: dict, page_aspect_wh: float) -> dict:
+    """The frame of a photo placed in `slot`: the whole slot when filling it
+    costs at most MAX_CROP of the photo and never cuts into a detected face
+    — so frames line up exactly with the template — otherwise the photo's
+    own shape inside the slot (nothing cut). The photo itself is never
+    altered: the editor can always show it whole again."""
+    aspect = _photo_aspect(photo)
+    if not aspect:
+        return dict(slot)
+    slot_aspect = (slot["w"] / slot["h"]) * page_aspect_wh
+    cut = 1 - min(slot_aspect / aspect, aspect / slot_aspect)
+    if cut <= MAX_CROP + 1e-9 and _face_safe(photo, aspect, slot_aspect):
+        return {k: slot[k] for k in ("x", "y", "w", "h")}
+    return fit_box_to_photo(slot, aspect, page_aspect_wh)
+
+
 def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx: int = 0, content_pages_budget: Optional[int] = None) -> List[dict]:
-    """Distribute photos across pages with varied layouts.
-    Returns a list of pages (each with items containing photo refs and positions in normalized 0-1 coordinates).
+    """Lays photos out on pages, in order, choosing for each page the
+    template (for this page orientation, see layout_templates.json) that
+    the next photos fill best: portrait photos go to tall frames, landscape
+    ones to wide frames.
+
+    For each page, every template that fits the remaining page budget is
+    tried with the next few photos (the best-shaped ones are picked among
+    them, see best_slot_assignment), and scored on:
+    - how much of the page the photos actually cover (frames that would
+      cut too much keep the photo's shape, leaving white around it);
+    - how close its photo count is to what's needed to fill the pages left;
+    - variety: a template used on the last pages scores lower.
 
     content_pages_budget, when given, is how many content pages (not
     counting the title page) this call must land on exactly — the page
-    count the person chose and is being charged for. Without it, the
-    layout just cycles LAYOUT_PATTERN and produces however many pages the
-    photos happen to fill at that pattern's ~2.4 photos/page average,
-    which routinely undershot a much larger chosen page count with no way
-    to recover afterwards. With a budget, template picks are capped page
-    by page so there's always at least 1 photo left for every remaining
-    page, guaranteeing the exact target whenever there are at least as
-    many photos as pages to fill.
+    count the person chose and is being charged for. Template picks are
+    capped page by page so there's always at least 1 photo left for every
+    remaining page, guaranteeing the exact target whenever there are at
+    least as many photos as pages to fill. pattern_start_idx is no longer
+    used (kept for callers).
     """
-    M = 0.05  # Marge globale de 5%
-    usable = 1.0 - (2 * M)  # Espace utile de 0.9 (90% de la page)
-
-    layouts = {
-        "single_full": [
-            {"x": M, "y": M, "w": usable, "h": usable}
-        ],
-        "single_centered": [
-            {"x": 0.15, "y": 0.15, "w": 0.7, "h": 0.7}
-        ],
-        "dual_horizontal": [
-            {"x": M, "y": M, "w": usable, "h": (usable - 0.04) / 2},
-            {"x": M, "y": M + (usable - 0.04) / 2 + 0.04, "w": usable, "h": (usable - 0.04) / 2},
-        ],
-        "dual_vertical": [
-            {"x": M, "y": M, "w": (usable - 0.04) / 2, "h": usable},
-            {"x": M + (usable - 0.04) / 2 + 0.04, "y": M, "w": (usable - 0.04) / 2, "h": usable},
-        ],
-        "triptych": [
-            {"x": M, "y": M, "w": usable * 0.58, "h": usable},
-            {"x": M + usable * 0.58 + 0.03, "y": M, "w": usable * 0.39, "h": (usable - 0.03) / 2},
-            {"x": M + usable * 0.58 + 0.03, "y": M + (usable - 0.03) / 2 + 0.03, "w": usable * 0.39, "h": (usable - 0.03) / 2},
-        ],
-        "quad_grid": [
-            {"x": M, "y": M, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
-            {"x": M + (usable - 0.03) / 2 + 0.03, "y": M, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
-            {"x": M, "y": M + (usable - 0.03) / 2 + 0.03, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
-            {"x": M + (usable - 0.03) / 2 + 0.03, "y": M + (usable - 0.03) / 2 + 0.03, "w": (usable - 0.03) / 2, "h": (usable - 0.03) / 2},
-        ],
-        "hero_strip": [
-            {"x": M, "y": M, "w": usable, "h": usable * 0.62},
-            {"x": M, "y": M + usable * 0.62 + 0.03, "w": (usable - 0.06) / 3, "h": usable * 0.35},
-            {"x": M + (usable - 0.06) / 3 + 0.03, "y": M + usable * 0.62 + 0.03, "w": (usable - 0.06) / 3, "h": usable * 0.35},
-            {"x": M + 2 * ((usable - 0.06) / 3 + 0.03), "y": M + usable * 0.62 + 0.03, "w": (usable - 0.06) / 3, "h": usable * 0.35},
-        ],
-    }
-
-    # Alternate layouts to create diversity
-    pattern = LAYOUT_PATTERN
-
+    templates = templates_for(orientation)
     # A4/A5 share the same aspect ratio (ISO 216) — only orientation matters here.
     page_aspect_wh = 1.4142 if orientation == "landscape" else 0.7071
 
-    def photo_aspect(p: dict) -> float:
-        w, h = p.get("width"), p.get("height")
-        if w and h and h > 0:
-            return w / h
-        return 1.0  # unknown dimensions → treat as neutral, no strong preference
+    def aspect_or_neutral(p: dict) -> float:
+        return _photo_aspect(p) or 1.0  # unknown dimensions → no strong preference
 
     def best_slot_assignment(slots: List[dict], candidates: List[dict]) -> Dict[int, int]:
         """Greedily pairs each slot with whichever candidate photo's aspect
         ratio fits it best (smallest log-ratio mismatch), so a portrait photo
-        doesn't end up forced into a wide landscape slot (and vice versa) —
-        that mismatch is what causes heavy, awkward cropping. Photos with a
+        doesn't end up in a wide frame (and vice versa). Photos with a
         detected face (ai_has_face, see curate_photos) get an extra cost
-        penalty for a poorly-matching slot — the crop can be centered on the
-        face (see compute_face_focal_point), but that only helps if the
-        slot's own shape isn't wildly different from the photo's to begin
-        with; the slot CHOICE, not just where the crop is centered within
-        it, is what determines how much of the photo (and how much risk to
-        the face) has to be cropped away. This can mean a face photo "loses"
-        the closest-matching slot to a non-face photo that matched it even
-        better — an intentional trade, since the non-face photo has nothing
-        at risk from a so-so match."""
-        import math
+        penalty for a poorly-matching slot, since a bad match is what puts
+        a face at risk."""
         FACE_MISMATCH_PENALTY = 2.5
         slot_aspects = [(s["w"] / s["h"]) * page_aspect_wh for s in slots]
         remaining_slots = list(range(len(slots)))
@@ -178,9 +185,11 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
             best = None
             for si in remaining_slots:
                 for ci in remaining_candidates:
-                    cost = abs(math.log(slot_aspects[si] / photo_aspect(candidates[ci])))
+                    cost = abs(math.log(slot_aspects[si] / aspect_or_neutral(candidates[ci])))
                     if candidates[ci].get("ai_has_face"):
                         cost *= FACE_MISMATCH_PENALTY
+                    # Ties (identical shapes): keep the album's order.
+                    cost += ci * 1e-6
                     if best is None or cost < best[0]:
                         best = (cost, si, ci)
             _, si, ci = best
@@ -189,47 +198,53 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
             remaining_candidates.remove(ci)
         return assignment
 
+    COUNT_WEIGHT = 0.12  # per photo away from the count the remaining pages need
+    REPEAT_PENALTY = {1: 0.30, 2: 0.15, 3: 0.08}  # template used 1, 2, 3 pages ago
     LOOKAHEAD_EXTRA = 4  # how many extra upcoming photos to consider per page, for better shape matches
-    pages = []
+    pages: List[dict] = []
     remaining = list(photos)
-    p_idx = pattern_start_idx
     while remaining:
         if content_pages_budget is not None:
             remaining_budget = content_pages_budget - len(pages)
             if remaining_budget <= 0:
                 break  # target already reached — leftover photos stay unused rather than overshooting
             max_template_size = max(1, len(remaining) - (remaining_budget - 1))
+            target_count = len(remaining) / remaining_budget
         else:
             max_template_size = 4
+            target_count = 2.5
 
-        tries = 0
-        while TEMPLATE_PHOTO_COUNT[pattern[p_idx % len(pattern)]] > max_template_size and tries < len(pattern):
-            p_idx += 1
-            tries += 1
-        layout_name = pattern[p_idx % len(pattern)]
-        if TEMPLATE_PHOTO_COUNT[layout_name] > max_template_size:
-            layout_name = "single_full"  # always fits — guarantees forward progress even at a 1-photo-per-page budget
-
-        slots = layouts[layout_name]
-        window_size = min(len(remaining), len(slots) + LOOKAHEAD_EXTRA)
-        candidates = remaining[:window_size]
-        assignment = best_slot_assignment(slots, candidates)
-        if not assignment:
+        best = None
+        for name, template in templates.items():
+            slots = template["slots"]
+            if len(slots) > max_template_size or len(slots) > len(remaining):
+                continue
+            candidates = remaining[: len(slots) + LOOKAHEAD_EXTRA]
+            assignment = best_slot_assignment(slots, candidates)
+            frames = {si: frame_for(slots[si], candidates[ci], page_aspect_wh) for si, ci in assignment.items()}
+            covered = sum(f["w"] * f["h"] for f in frames.values())
+            recent = [p["layout"] for p in pages[-3:]][::-1]
+            repeat = next((REPEAT_PENALTY[i + 1] for i, used in enumerate(recent) if used == name), 0)
+            score = covered - COUNT_WEIGHT * abs(len(slots) - target_count) - repeat
+            if best is None or score > best[0]:
+                best = (score, name, slots, candidates, assignment, frames)
+        if best is None:
             break
+        _, layout_name, slots, candidates, assignment, frames = best
+
         items = []
         for slot_idx, slot in enumerate(slots):
             if slot_idx not in assignment:
                 continue
             photo = candidates[assignment[slot_idx]]
-            box = fit_box_to_photo(slot, photo_aspect(photo) if photo.get("width") else None, page_aspect_wh)
             items.append({
                 "id": str(uuid.uuid4()),
                 "type": "photo",
                 "photo_id": photo["id"],
-                **box,
+                **frames[slot_idx],
                 # The area this frame may use: when another photo is put in
                 # it later (swap, replace), the frame is refitted inside
-                # this slot rather than inside its current, shrunken box.
+                # this slot rather than inside its current box.
                 "slot": {k: slot[k] for k in ("x", "y", "w", "h")},
                 "focal_x": photo.get("ai_focal_x", 0.5),
                 "focal_y": photo.get("ai_focal_y", 0.5),
@@ -244,5 +259,4 @@ def deterministic_layout(photos: List[dict], orientation: str, pattern_start_idx
         # queue for the next page in their original relative order.
         used_ids = {candidates[ci]["id"] for ci in assignment.values()}
         remaining = [p for p in remaining if p["id"] not in used_ids]
-        p_idx += 1
     return pages

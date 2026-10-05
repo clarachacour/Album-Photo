@@ -1,12 +1,12 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { LAYOUT_PATTERNS, LAYOUT_GROUPS } from "@/lib/layoutPatterns";
+import { layoutGroups, layoutTemplates, templateLabel } from "@/lib/layoutPatterns";
 import { X } from "lucide-react";
 
-function LayoutThumb({ name }) {
-  const { slots } = LAYOUT_PATTERNS[name];
+function LayoutThumb({ slots }) {
   return (
-    <svg viewBox="0 0 100 100" className="w-full h-full">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
       <rect x="0" y="0" width="100" height="100" fill="var(--paper)" />
       {slots.map((s, i) => (
         <rect
@@ -30,9 +30,14 @@ function LayoutThumb({ name }) {
  * empty placeholders the user fills by dragging photos onto them, and each
  * frame can still be freely moved/resized afterward like any other.
  */
-export default function LayoutPicker({ onChoose, onClose }) {
-  const { t } = useTranslation();
-  return (
+export default function LayoutPicker({ onChoose, onClose, orientation = "portrait" }) {
+  const { t, i18n } = useTranslation();
+  // Templates drawn for this page's orientation, shown in its proportions.
+  const templates = layoutTemplates(orientation);
+  const thumbAspect = orientation === "landscape" ? "aspect-[1.414/1] max-w-[150px]" : "aspect-[1/1.414] max-w-[110px]";
+  // Rendered on <body>: inside the book, the page-turn 3D transform made
+  // "fixed" relative to the book, and the menu was cut off under the header.
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={onClose}>
       <div
         className="bg-[color:var(--paper)] max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto"
@@ -47,7 +52,7 @@ export default function LayoutPicker({ onChoose, onClose }) {
         <p className="text-sm text-[color:var(--ink)]/70 mb-6">
           {t("layoutPicker.instructions")}
         </p>
-        {LAYOUT_GROUPS.map((group) => (
+        {layoutGroups(orientation).map((group) => (
           <div key={group.count} className="mb-6">
             <div className="eyebrow mb-3 text-[color:var(--muted)]">{t("layoutPicker.photoCount", { count: group.count })}</div>
             <div className="grid grid-cols-2 gap-3">
@@ -58,16 +63,17 @@ export default function LayoutPicker({ onChoose, onClose }) {
                   data-testid={`layout-option-${name}`}
                   className="border border-[color:var(--border-soft)] hover:border-[color:var(--coral)] transition-colors p-3 flex flex-col items-center gap-2"
                 >
-                  <div className="w-full aspect-[3/4] max-w-[110px]">
-                    <LayoutThumb name={name} />
+                  <div className={`w-full ${thumbAspect}`}>
+                    <LayoutThumb slots={templates[name].slots} />
                   </div>
-                  <span className="text-xs text-[color:var(--ink)]/70">{LAYOUT_PATTERNS[name].label}</span>
+                  <span className="text-xs text-[color:var(--ink)]/70">{templateLabel(templates[name], i18n.language)}</span>
                 </button>
               ))}
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

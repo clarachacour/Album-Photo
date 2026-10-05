@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown } from "lucide-react";
+import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown, Expand } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
 
 const TOOLBAR_FONTS = [
@@ -61,7 +61,7 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
 }
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, emptyFrame, hideSwap, hideReorder }) {
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder }) {
   const { t } = useTranslation();
   return (
     <ToolbarShell x={x} y={y} w={w}>
@@ -70,6 +70,12 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
           <ToolbarButton onClick={onEdit} title={t("toolbars.editPhoto")} tid="frame-edit-btn">
             <Pencil size={14} />
           </ToolbarButton>
+          {/* Only when the frame hides part of the photo (see isCropped). */}
+          {onShowWhole && (
+            <ToolbarButton onClick={onShowWhole} title={t("toolbars.showWholePhoto")} tid="frame-show-whole-btn">
+              <Expand size={14} />
+            </ToolbarButton>
+          )}
           {!hideSwap && (
             <ToolbarButton
               onClick={onSwap}

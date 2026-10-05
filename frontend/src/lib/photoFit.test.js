@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampZoom, coverSize, fitBoxToAspect, fitItemToPhoto, minZoom, pageAspect, photoRect } from "@/lib/photoFit";
+import { clampZoom, coverSize, fitBoxToAspect, fitItemToPhoto, isCropped, minZoom, pageAspect, photoRect, wholePhotoFields } from "@/lib/photoFit";
 
 const realAspect = (box, orientation) => (box.w / box.h) * pageAspect(orientation);
 
@@ -72,5 +72,25 @@ describe("fitItemToPhoto", () => {
 
   it("an empty frame takes its whole slot", () => {
     expect(fitItemToPhoto({ x: 0.2, y: 0.2, w: 0.1, h: 0.1, slot }, null, "portrait")).toMatchObject(slot);
+  });
+
+  it("a photo that loses at most 10 % fills its slot exactly", () => {
+    // slot 0.707 on a portrait page, 3:4 photo: ~6 % cut on the sides
+    const fields = fitItemToPhoto({ ...slot }, portrait, "portrait");
+    expect(fields).toMatchObject(slot);
+    expect(isCropped(fields, portrait, "portrait")).toBe(true);
+  });
+
+  it("never cuts into a face near the edge", () => {
+    const face = { ...portrait, ai_has_face: true, ai_focal_x: 0.05, ai_focal_y: 0.5 };
+    expect(realAspect(fitItemToPhoto({ ...slot }, face, "portrait"), "portrait")).toBeCloseTo(0.75, 6);
+  });
+
+  it("'show the whole photo' gives the frame the photo's shape again", () => {
+    const filled = { ...slot, ...fitItemToPhoto({ ...slot }, portrait, "portrait"), scale: 1.4 };
+    const whole = { ...filled, ...wholePhotoFields(filled, portrait, "portrait") };
+    expect(realAspect(whole, "portrait")).toBeCloseTo(0.75, 6);
+    expect(whole.scale).toBe(1);
+    expect(isCropped(whole, portrait, "portrait")).toBe(false);
   });
 });
