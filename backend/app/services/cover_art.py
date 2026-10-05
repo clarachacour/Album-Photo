@@ -36,10 +36,17 @@ _BY_PREFIX = [
 ]
 
 
-def slim_image(value):
-    """The file address for one of our embedded logos; anything else as is."""
-    if not isinstance(value, str) or not value.startswith("data:image/"):
-        return value
+# Files redrawn since: the old address → the new file. The travel icons were
+# traced from small pictures, into straight segments on a whole-unit grid
+# that looked pixelated in a zoomed PDF; v2 has the same drawing in smooth
+# curves. A file is never changed in place (browsers keep it for a year).
+_REDRAWN = {
+    f"/cover-art/travel-{name}-v1.svg": f"/cover-art/travel-{name}-v2.svg"
+    for name in ("sicily", "hawaii", "thailand", "paros", "morocco", "barcelona")
+}
+
+
+def _embedded_file(value):
     url = _BY_HASH.get(hashlib.sha256(value.encode()).hexdigest())
     if url:
         return url
@@ -47,6 +54,16 @@ def slim_image(value):
         if value.startswith(prefix):
             return url
     return value
+
+
+def slim_image(value):
+    """The file address for one of our embedded logos (its latest drawing);
+    anything else as is."""
+    if not isinstance(value, str):
+        return value
+    if value.startswith("data:image/"):
+        value = _embedded_file(value)
+    return _REDRAWN.get(value, value)
 
 
 def slim_cover(cover):
