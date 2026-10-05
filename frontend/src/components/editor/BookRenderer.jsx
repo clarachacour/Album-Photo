@@ -67,6 +67,7 @@ export function BookRenderer({
       >
         <CoverSpine
           title={album.title}
+          templateId={album.cover_template_id}
           template={template}
           cover={album.cover || {}}
           editable={!album.was_ordered}

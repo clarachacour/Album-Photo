@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COVER_THEMES, spineLogoSource, templateFormat } from "@/lib/coverThemes";
+import { COVER_THEMES, spineCentred, spineLogoSource, templateFormat } from "@/lib/coverThemes";
 
 const templates = COVER_THEMES.flatMap((t) => t.templates);
 const logoOf = (id) => templates.find((t) => t.id === id).cover.spine_logo_image;
@@ -42,5 +42,13 @@ describe("templateFormat", () => {
     }
     expect(templateFormat("travel-sicily")).toBeNull();
     expect(templateFormat(null)).toBeNull();
+  });
+});
+
+describe("spineCentred", () => {
+  it("keeps travel spines as designed and centres the others", () => {
+    expect(spineCentred("travel-sicily")).toBe(false);
+    expect(spineCentred("family-dad")).toBe(true);
+    expect(spineCentred("default")).toBe(true);
   });
 });

@@ -81,6 +81,8 @@ export const COVER_THEMES = [
   {
     id: "travel",
     label: "Travel",
+    // Spine title at the top, as designed, rather than centred (see CoverSpine).
+    spineCentred: false,
     templates: [
       {
         id: "travel-sicily",
@@ -543,6 +545,12 @@ export const COVER_THEMES = [
 export function templateFormat(templateId) {
   const theme = COVER_THEMES.find((th) => th.templates.some((t) => t.id === templateId));
   return theme?.format || null;
+}
+
+/** Whether a template's spine elements are shown centred in its height. */
+export function spineCentred(templateId) {
+  const theme = COVER_THEMES.find((th) => th.templates.some((t) => t.id === templateId));
+  return theme?.spineCentred ?? true;
 }
 
 export function findTemplate(templateId) {

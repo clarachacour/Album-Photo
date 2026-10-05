@@ -606,6 +606,7 @@ function StepEdit({
           />
           <CoverSpine
             title={album.title}
+            templateId={album.cover_template_id}
             template={template}
             cover={cover}
             editable

@@ -1,7 +1,7 @@
 import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { measureDomTextWidth } from "@/components/book/textMeasure";
-import { spineLogoSource } from "@/lib/coverThemes";
+import { spineCentred, spineLogoSource } from "@/lib/coverThemes";
 import { spineArrangedByHand } from "@/lib/coverDefaults";
 
 /** Tracks an element's live pixel height via ResizeObserver. */
@@ -139,7 +139,7 @@ function useFitSpineFontSize({ containerHeight, maxFontPx, boxHeightFraction, ti
  * the cover they can be dragged, resized and restyled (font, size), and
  * the title can be hidden.
  */
-export function CoverSpine({ title, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectSubtitle, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
+export function CoverSpine({ title, templateId, template, cover = {}, editable = false, selectedZone, onSelectTitle, onSelectSubtitle, onSelectCaption, onSelectLogo, onSelectDivider, onUpdateCover }) {
   const containerRef = useRef(null);
   const containerHeight = useElementHeight(containerRef);
   const containerWidth = useElementWidth(containerRef);
@@ -467,11 +467,13 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
   const groupTop = spans.length ? Math.min(...spans.map((s) => s[0])) : 0;
   const groupBottom = spans.length ? Math.max(...spans.map((s) => s[1])) : 1;
   const manual = spineArrangedByHand(cover);
-  const shift = manual || !containerHeight ? 0 : (1 - (groupBottom - groupTop)) / 2 - groupTop;
+  // Some themes keep their designed places (travel: title at the top).
+  const centred = !manual && spineCentred(templateId);
+  const shift = centred && containerHeight ? (1 - (groupBottom - groupTop)) / 2 - groupTop : 0;
   const shown = (item) => ({ ...item, y: item.y + shift });
   const updateSpine = (patch) => {
     if (!onUpdateCover) return;
-    if (manual) return onUpdateCover({ ...patch, spine_layout_manual: true });
+    if (!centred) return onUpdateCover(manual ? { ...patch, spine_layout_manual: true } : patch);
     onUpdateCover({
       spine_layout_manual: true,
       spine_title_y: titleItem.y + shift, spine_title_h: titleItem.h,
