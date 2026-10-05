@@ -96,3 +96,14 @@ describe("defaultSpineBox", () => {
     });
   });
 });
+
+describe("defaultSpineBox after a spine element was moved by hand", () => {
+  it("puts the whole spine back in its centred layout", () => {
+    const template = ALL_TEMPLATES.find((t) => t.cover.spine_logo_y != null);
+    const album = { cover_template_id: template.id, cover: { spine_layout_manual: true, spine_title_y: 0.5, spine_logo_y: 0.9 } };
+    const result = defaultSpineBox(album, "spine_title");
+    expect(result.spine_layout_manual).toBeNull();
+    expect(result.spine_title_y).toBe(template.cover.spine_title_y ?? null);
+    expect(result.spine_logo_y).toBe(template.cover.spine_logo_y);
+  });
+});

@@ -31,11 +31,26 @@ export function defaultTitleBox(album) {
   };
 }
 
+const SPINE_PREFIXES = ["spine_title", "spine_subtitle", "spine_caption", "spine_divider", "spine_logo"];
+
+/** Whether the spine's elements were placed by hand (then they're not centred). */
+export function spineArrangedByHand(cover) {
+  cover = cover || {};
+  // Albums arranged before centring existed: a text's height is only ever
+  // saved by moving or resizing it.
+  return cover.spine_layout_manual ?? ["title", "subtitle", "caption", "divider"].some((k) => cover[`spine_${k}_h`] != null);
+}
+
 // Spine elements (prefix "spine_title", "spine_subtitle", "spine_caption"…):
 // the template's own position, or null to let CoverSpine place it itself.
+// Once one was moved by hand the whole spine holds fixed positions (see
+// spine_layout_manual in CoverSpine): resetting puts every element back, in
+// the centred group.
 export function defaultSpineBox(album, prefix) {
   const tpl = templateCover(album) || {};
-  return Object.fromEntries(["x", "y", "w", "h"].map((k) => [`${prefix}_${k}`, tpl[`${prefix}_${k}`] ?? null]));
+  const boxOf = (p) => ["x", "y", "w", "h"].map((k) => [`${p}_${k}`, tpl[`${p}_${k}`] ?? null]);
+  if (!spineArrangedByHand(album?.cover)) return Object.fromEntries(boxOf(prefix));
+  return { ...Object.fromEntries(SPINE_PREFIXES.flatMap(boxOf)), spine_layout_manual: null };
 }
 
 // Elements of the same kind are matched in order (the 2nd photo frame of

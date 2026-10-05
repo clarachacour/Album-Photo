@@ -2,6 +2,7 @@ import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { measureDomTextWidth } from "@/components/book/textMeasure";
 import { spineLogoSource } from "@/lib/coverThemes";
+import { spineArrangedByHand } from "@/lib/coverDefaults";
 
 /** Tracks an element's live pixel height via ResizeObserver. */
 function useElementHeight(ref) {
@@ -449,13 +450,46 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
     ? `${fittedSubtitleFontSizePx}px`
     : `${(((cover.spine_subtitle_size || 9) / 608) * 100).toFixed(2)}cqh`;
 
+  // The spine's elements are shown as one group centred in its height (the
+  // positions above only stack them: the overlap guards push them towards
+  // the bottom). Once the person moves or resizes one of them, the
+  // positions on screen are saved as they are (spine_layout_manual) and
+  // centring stops, so nothing moves under their hand.
+  const showLogo = cover.spine_logo_image && !cover.spine_logo_hidden;
+  const showDivider = cover.spine_title_caption_divider && !cover.spine_divider_hidden;
+  const spans = [
+    !cover.spine_title_hidden && [titleItem.y, titleItem.y + titleItem.h],
+    cover.spine_subtitle && [subtitleItem.y, subtitleItem.y + subtitleItem.h],
+    showDivider && [dividerItem.y, dividerItem.y + dividerItem.h],
+    cover.spine_caption && [captionItem.y, captionItem.y + visualCaptionH],
+    showLogo && [logoItem.y, logoItem.y + logoItem.h],
+  ].filter(Boolean);
+  const groupTop = spans.length ? Math.min(...spans.map((s) => s[0])) : 0;
+  const groupBottom = spans.length ? Math.max(...spans.map((s) => s[1])) : 1;
+  const manual = spineArrangedByHand(cover);
+  const shift = manual || !containerHeight ? 0 : (1 - (groupBottom - groupTop)) / 2 - groupTop;
+  const shown = (item) => ({ ...item, y: item.y + shift });
+  const updateSpine = (patch) => {
+    if (!onUpdateCover) return;
+    if (manual) return onUpdateCover({ ...patch, spine_layout_manual: true });
+    onUpdateCover({
+      spine_layout_manual: true,
+      spine_title_y: titleItem.y + shift, spine_title_h: titleItem.h,
+      spine_subtitle_y: subtitleItem.y + shift, spine_subtitle_h: subtitleItem.h,
+      spine_caption_y: captionItem.y + shift, spine_caption_h: captionItem.h,
+      spine_divider_y: dividerItem.y + shift, spine_divider_h: dividerItem.h,
+      spine_logo_x: logoItem.x, spine_logo_y: logoItem.y + shift, spine_logo_w: logoItem.w, spine_logo_h: logoItem.h,
+      ...patch,
+    });
+  };
+
   return (
     <div ref={containerRef} data-tour="cover-spine" className="relative h-full" style={{ background: bg, containerType: "size" }}>
       <div className="absolute inset-0 grain pointer-events-none" />
       {!cover.spine_title_hidden && (
         <DraggableItem
-          item={titleItem}
-          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_title_y: patch.y ?? titleItem.y, spine_title_h: patch.h ?? titleItem.h })}
+          item={shown(titleItem)}
+          onChange={(patch) => updateSpine({ spine_title_y: patch.y ?? titleItem.y + shift, spine_title_h: patch.h ?? titleItem.h })}
           onSelect={() => onSelectTitle && onSelectTitle()}
           onDoubleClick={() => setTitleEditing(true)}
           selected={selectedZone === "spine-title"}
@@ -510,8 +544,8 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
       )}
       {cover.spine_subtitle && (
         <DraggableItem
-          item={subtitleItem}
-          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_subtitle_y: patch.y ?? subtitleItem.y, spine_subtitle_h: patch.h ?? subtitleItem.h })}
+          item={shown(subtitleItem)}
+          onChange={(patch) => updateSpine({ spine_subtitle_y: patch.y ?? subtitleItem.y + shift, spine_subtitle_h: patch.h ?? subtitleItem.h })}
           onSelect={() => onSelectSubtitle && onSelectSubtitle()}
           onDoubleClick={() => setSubtitleEditing(true)}
           selected={selectedZone === "spine-subtitle"}
@@ -564,10 +598,10 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
           )}
         </DraggableItem>
       )}
-      {cover.spine_title_caption_divider && !cover.spine_divider_hidden && (
+      {showDivider && (
         <DraggableItem
-          item={dividerItem}
-          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_divider_y: patch.y ?? dividerItem.y, spine_divider_h: patch.h ?? dividerItem.h })}
+          item={shown(dividerItem)}
+          onChange={(patch) => updateSpine({ spine_divider_y: patch.y ?? dividerItem.y + shift, spine_divider_h: patch.h ?? dividerItem.h })}
           onSelect={() => onSelectDivider && onSelectDivider()}
           selected={selectedZone === "spine-divider"}
           containerRef={containerRef}
@@ -593,8 +627,8 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
       )}
       {cover.spine_caption && (
         <DraggableItem
-          item={{ ...captionItem, h: visualCaptionH }}
-          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_caption_y: patch.y ?? captionItem.y, spine_caption_h: patch.h ?? captionItem.h })}
+          item={shown({ ...captionItem, h: visualCaptionH })}
+          onChange={(patch) => updateSpine({ spine_caption_y: patch.y ?? captionItem.y + shift, spine_caption_h: patch.h ?? captionItem.h })}
           onSelect={() => onSelectCaption && onSelectCaption()}
           onDoubleClick={() => setCaptionEditing(true)}
           selected={selectedZone === "spine-caption"}
@@ -649,10 +683,10 @@ export function CoverSpine({ title, template, cover = {}, editable = false, sele
           )}
         </DraggableItem>
       )}
-      {cover.spine_logo_image && !cover.spine_logo_hidden && (
+      {showLogo && (
         <DraggableItem
-          item={logoItem}
-          onChange={(patch) => onUpdateCover && onUpdateCover({ spine_logo_x: patch.x ?? logoItem.x, spine_logo_y: patch.y ?? logoItem.y, spine_logo_w: patch.w ?? logoItem.w, spine_logo_h: patch.h ?? logoItem.h })}
+          item={shown(logoItem)}
+          onChange={(patch) => updateSpine({ spine_logo_x: patch.x ?? logoItem.x, spine_logo_y: patch.y ?? logoItem.y + shift, spine_logo_w: patch.w ?? logoItem.w, spine_logo_h: patch.h ?? logoItem.h })}
           onSelect={() => onSelectLogo && onSelectLogo()}
           selected={selectedZone === "spine-logo"}
           containerRef={containerRef}
