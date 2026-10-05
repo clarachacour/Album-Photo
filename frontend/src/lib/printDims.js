@@ -53,13 +53,15 @@ export function spineRatio(size, orientation, numPages) {
 // visible faces (panelW × panelH) keep the page's proportions, so the
 // cover designs drop in unchanged, just scaled.
 //
-// Formats and page counts without a template here still get the older
-// layout (spine + front on the first sheet, back cover on the last) —
-// add each template as the printer sends it.
-const PRINTER_COVER_TEMPLATES = [
-  // Template_A4_1-50pgs.pdf: 475 × 330 mm trimmed.
-  { size: "A4", orientation: "portrait", minPages: 1, maxPages: 50, bleed: 5, wrap: 20, panelW: 205, panelH: 290, hinge: 9, spine: 7 },
-];
+// Formats and page counts without a template here get the original layout
+// (spine + front on the first sheet, back cover on the last).
+
+// Template_A4_1-50pgs.pdf: 475 × 330 mm trimmed. Not in use: the owner went
+// back to the original cover layout for every album. Put it back in the list
+// below to use it again.
+export const TEMPLATE_A4_1_50 = { size: "A4", orientation: "portrait", minPages: 1, maxPages: 50, bleed: 5, wrap: 20, panelW: 205, panelH: 290, hinge: 9, spine: 7 };
+
+const PRINTER_COVER_TEMPLATES = [];
 
 /** The printer's cover template for this album, or null when there is none yet. */
 export function printerCoverTemplate(size, orientation, numPages) {
