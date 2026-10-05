@@ -111,3 +111,17 @@ def test_older_albums_get_the_redrawn_travel_icon_when_read(client, db):
     assert got["cover"]["extra_items"][0]["image_url"] == "/cover-art/travel-sicily-v2.svg"
     stored = asyncio.run(db.albums.find_one({"id": album_id}))
     assert stored["cover"]["extra_items"][0]["image_url"] == "/cover-art/travel-sicily-v2.svg"
+
+
+def test_oldest_albums_get_the_vector_icon_from_its_tag():
+    old_png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAAEWCAYAAACQU/BvAAD"
+    cover = {"extra_items": [
+        {"id": "a", "type": "image", "image_url": old_png, "asset": "travel_sicily"},
+        {"id": "b", "type": "image", "image_url": old_png, "asset": "travel_australia"},
+        {"id": "c", "type": "image", "image_url": old_png},  # someone's own picture: kept
+    ]}
+    slim, changed = slim_cover(cover)
+    assert changed
+    assert [i["image_url"] for i in slim["extra_items"]] == [
+        "/cover-art/travel-sicily-v2.svg", "/cover-art/travel-australia-v1.svg", old_png,
+    ]

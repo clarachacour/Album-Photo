@@ -46,6 +46,15 @@ _REDRAWN = {
 }
 
 
+# The travel icon each template item is tagged with (item["asset"]). The
+# oldest albums hold an earlier, small picture of the icon (a 225×278 PNG,
+# blurry in print) that no table above knows: the tag says which icon it is.
+_ICON_BY_ASSET = {
+    **{f"travel_{name}": f"/cover-art/travel-{name}-v2.svg" for name in ("sicily", "hawaii", "thailand", "paros", "morocco", "barcelona")},
+    "travel_australia": "/cover-art/travel-australia-v1.svg",
+}
+
+
 def _embedded_file(value):
     url = _BY_HASH.get(hashlib.sha256(value.encode()).hexdigest())
     if url:
@@ -86,6 +95,8 @@ def slim_cover(cover):
         for item in items:
             if isinstance(item, dict) and "image_url" in item:
                 new = slim_image(item["image_url"])
+                if isinstance(new, str) and new.startswith("data:image/") and item.get("asset") in _ICON_BY_ASSET:
+                    new = _ICON_BY_ASSET[item["asset"]]
                 if new != item["image_url"]:
                     item = {**item, "image_url": new}
                     changed = True
