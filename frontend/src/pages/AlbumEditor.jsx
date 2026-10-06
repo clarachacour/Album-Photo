@@ -734,7 +734,8 @@ export default function AlbumEditor() {
     let idx = 0;
     for (const p of album.pages) {
       const newItems = p.items.map((it) => {
-        if (it.type !== "photo") return it;
+        // Empty frames aren't in the tray: they keep their place, empty.
+        if (it.type !== "photo" || !it.photo_id) return it;
         const newPhotoId = newPhotoIdSequence[idx] ?? it.photo_id;
         idx += 1;
         return { ...it, photo_id: newPhotoId };
@@ -748,7 +749,7 @@ export default function AlbumEditor() {
     const seq = [];
     for (const p of album?.pages || []) {
       for (const it of p.items || []) {
-        if (it.type === "photo") seq.push(it.photo_id);
+        if (it.type === "photo" && it.photo_id) seq.push(it.photo_id);
       }
     }
     return seq;
