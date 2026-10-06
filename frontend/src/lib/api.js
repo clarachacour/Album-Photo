@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const BACKEND_URL = (import.meta.env.REACT_APP_BACKEND_URL || "").replace(/\/+$/, "");
+// Trailing slashes and a trailing dot are dropped: "https://x.run.app." is a
+// valid name for Chrome and Firefox, but Safari can't reach it (sign-ups
+// failed on iPhone with a network error while every other browser worked).
+const BACKEND_URL = (import.meta.env.REACT_APP_BACKEND_URL || "").trim().replace(/[/.]+$/, "");
 export const API = `${BACKEND_URL}/api`;
 
 export const api = axios.create({
