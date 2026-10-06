@@ -5,7 +5,11 @@ const t = (k) => ({ "auth.networkError": "NETWORK", "auth.genericError": "GENERI
 
 describe("apiErrorMessage", () => {
   it("says the server couldn't be reached when there was no answer", () => {
-    expect(apiErrorMessage(new Error("Network Error"), t)).toBe("NETWORK");
+    const err = Object.assign(new Error("Network Error"), { isAxiosError: true, code: "ERR_NETWORK" });
+    expect(apiErrorMessage(err, t)).toBe("NETWORK (ERR_NETWORK)");
+  });
+  it("names an error of the page itself instead of blaming the network", () => {
+    expect(apiErrorMessage(new TypeError("x is undefined"), t)).toBe("GENERIC (TypeError: x is undefined)");
   });
   it("shows the server's own message", () => {
     expect(apiErrorMessage({ response: { status: 400, data: { detail: "Email already registered" } } }, t)).toBe("Email already registered");

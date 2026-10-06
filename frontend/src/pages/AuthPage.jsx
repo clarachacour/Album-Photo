@@ -9,6 +9,7 @@ import PasswordInput from "@/components/PasswordInput";
 import { Loader2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { apiErrorMessage } from "@/lib/apiError";
+import { reportError } from "@/lib/monitoring";
 
 export default function AuthPage() {
   usePageMeta("auth");
@@ -55,6 +56,8 @@ export default function AuthPage() {
       nav(signedIn?.email_verified === false ? "/dashboard" : "/");
     } catch (err) {
       toast.error(apiErrorMessage(err, t));
+      // Server answers are in its own logs; anything else only shows up here.
+      if (!err?.response) reportError(err, { where: "auth", mode, code: err?.code, url: err?.config?.url, baseURL: err?.config?.baseURL });
     } finally {
       setBusy(false);
     }
