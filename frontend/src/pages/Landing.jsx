@@ -110,12 +110,12 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How the sorting actually works */}
-      <section className="py-24 md:py-32 px-6 md:px-12">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="max-w-2xl mb-16">
-            <div className="eyebrow mb-4">{t("landing.sorting.eyebrow")}</div>
-            <h2 className="font-serif-display text-4xl md:text-6xl tracking-tight leading-[1] mb-6">
+      {/* How the sorting works: a short title beside four short points */}
+      <section className="py-14 md:py-20 px-6 md:px-12">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          <div className="lg:col-span-4">
+            <div className="eyebrow mb-3">{t("landing.sorting.eyebrow")}</div>
+            <h2 className="font-serif-display text-3xl md:text-4xl tracking-tight leading-[1.05] mb-4">
               {t("landing.sorting.title_line1")}<br />
               <em className="not-italic text-[color:var(--muted)]">{t("landing.sorting.title_highlight")}</em>
             </h2>
@@ -124,12 +124,12 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-14">
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
             {t("landing.sorting.steps", { returnObjects: true }).map((s, i) => (
-              <div key={i} className="flex gap-5 items-start">
-                <div className="mt-1 text-[color:var(--coral)] shrink-0">{sortingIcons[i]}</div>
+              <div key={i} className="flex gap-4 items-start">
+                <div className="mt-0.5 text-[color:var(--coral)] shrink-0">{sortingIcons[i]}</div>
                 <div>
-                  <h3 className="font-serif-display text-xl mb-2">{s.title}</h3>
+                  <h3 className="font-serif-display text-lg mb-1">{s.title}</h3>
                   <p className="text-[color:var(--ink)]/70 leading-relaxed text-sm">{s.body}</p>
                 </div>
               </div>
