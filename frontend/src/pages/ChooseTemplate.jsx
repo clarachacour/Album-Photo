@@ -34,7 +34,7 @@ export default function ChooseTemplate() {
         </button>
         {COVER_THEMES.map((theme) => (
           <div key={theme.id} className="mb-16">
-            <h2 className="font-serif-display text-2xl mb-5">{theme.label}</h2>
+            <h2 className="font-serif-display text-2xl mb-5">{t(`landing.templates.themes.${theme.id}`, { defaultValue: theme.label })}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
               {theme.templates.map((tpl) => (
                 <button

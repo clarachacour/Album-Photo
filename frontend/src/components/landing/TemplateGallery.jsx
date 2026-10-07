@@ -1,11 +1,13 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { COVER_THEMES } from "@/lib/coverThemes";
 
 /** The cover templates shown on the landing page, grouped by theme. */
 export default function TemplateGallery() {
+  const { t } = useTranslation();
   return COVER_THEMES.map((theme) => (
     <div key={theme.id} className="mb-14">
-      <h3 className="font-serif-display text-2xl mb-5">{theme.label}</h3>
+      <h3 className="font-serif-display text-2xl mb-5">{t(`landing.templates.themes.${theme.id}`, { defaultValue: theme.label })}</h3>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {theme.templates.map((tpl) => (
           <div key={tpl.id} className="shrink-0 w-40 md:w-48">

@@ -15,46 +15,56 @@
       "title_line1": "Un album photo",
       "title_highlight": "signé",
       "title_line2": "par vos souvenirs.",
-      "subtitle": "Envoyez vos photos, et nous les transformerons en un album imprimé raffiné, pensé pour traverser le temps et être gardé précieusement.",
-      "cta": "Créer mon album"
+      "subtitle": "Déposez toutes vos photos, même en vrac. Everbook enlève les doublons et les photos floues, les range par date et par lieu, et met votre album en page en quelques minutes. Vous ajustez ce que vous voulez — on l'imprime et on vous le livre.",
+      "cta": "Créer mon album",
+      "image_alt": "Albums photo imprimés Everbook",
+      "perks": [
+        "Gratuit jusqu'à la commande",
+        "À partir de {{price}} $",
+        "Livré au Liban en ~1 semaine"
+      ]
     },
     "process": {
       "steps": [
         {
-          "title": "Vous envoyez",
-          "body": "Toutes vos photos, sans les trier — doublons, flous, HDR. On accepte tout."
+          "title": "Vous déposez",
+          "body": "Toutes vos photos, sans les trier : doublons, rafales, photos ratées. On s'en occupe."
         },
         {
-          "title": "On trie",
-          "body": "Gemini analyse chaque photo : composition, doublons, regroupement par scène."
+          "title": "On trie et on met en page",
+          "body": "Doublons et photos floues écartés, le reste rangé par date et par lieu, puis mis en page automatiquement."
         },
         {
-          "title": "Vous feuilletez",
-          "body": "Un aperçu 3D, des mises en page variées, et un export PDF haute résolution."
+          "title": "Vous personnalisez",
+          "body": "Couverture, textes, photos, mise en page : tout se modifie, avec un aperçu du livre qui se feuillette."
+        },
+        {
+          "title": "On imprime et on livre",
+          "body": "Fabrication en ~5 jours, livraison en 2 à 3 jours chez vous au Liban."
         }
       ]
     },
     "sorting": {
-      "eyebrow": "Comment fonctionne le tri",
-      "title_line1": "Ce qui arrive vraiment",
-      "title_highlight": "à vos photos.",
-      "intro": "Vous pouvez tout envoyer — des centaines de photos, des doublons, des rafales quasi identiques, quelques photos floues — sans avoir à faire le tri vous-même. Voici exactement ce qu'on fait pour transformer tout ça en album, étape par étape, sans jamais toucher à la résolution des images que vous imprimerez réellement.",
+      "eyebrow": "Le tri",
+      "title_line1": "Envoyez tout.",
+      "title_highlight": "On garde le meilleur.",
+      "intro": "Des centaines de photos, des rafales, quelques ratées ? Pas besoin de trier avant.",
       "steps": [
         {
-          "title": "Repérer les quasi-doublons et les rafales",
-          "body": "Chaque photo reçoit une empreinte visuelle, et les photos prises à quelques instants d'intervalle sont comparées entre elles. Les images quasi identiques — le même instant photographié deux ou trois fois — sont regroupées automatiquement."
+          "title": "Les doublons repérés",
+          "body": "Les photos quasi identiques sont regroupées."
         },
         {
-          "title": "Choisir la plus nette",
-          "body": "Dans chaque groupe, on mesure directement la netteté et on garde la photo la plus nette. Les autres sont mises de côté discrètement, jamais supprimées."
+          "title": "La plus nette gardée",
+          "body": "Dans chaque groupe, on garde la meilleure."
         },
         {
-          "title": "Trier par date et par lieu",
-          "body": "Les photos distinctes restantes sont ensuite classées chronologiquement. Quand une photo porte une donnée de localisation, elle est regroupée avec les autres prises au même endroit avant d'être triée par heure — pour que votre album suive l'ordre réel des événements, lieu par lieu."
+          "title": "Le bon ordre",
+          "body": "Vos photos suivent le fil de vos journées, lieu par lieu."
         },
         {
-          "title": "Écarter les ratés évidents",
-          "body": "Les photos manifestement floues — bougé important, doigt devant l'objectif — sont laissées de côté dans la mise en page automatique, sur la base du même test de netteté utilisé pour départager les quasi-doublons. Rien n'est jamais supprimé définitivement — tout ce qui est mis de côté pendant le tri reste disponible pour être rajouté dans l'éditeur si vous n'êtes pas d'accord."
+          "title": "Rien n'est supprimé",
+          "body": "Une photo écartée peut toujours être remise dans l'éditeur."
         }
       ]
     },
@@ -62,12 +72,18 @@
       "eyebrow": "Modèles",
       "title_line1": "Partez d'un thème.",
       "title_highlight": "Faites-le vôtre.",
-      "intro": "Choisissez une base pour votre voyage, votre couple, votre famille, ou une célébration — puis personnalisez chaque détail dans l'éditeur : couleurs, titre, photos, mise en page."
+      "intro": "Choisissez une base pour votre voyage, votre couple, votre famille, ou une célébration — puis personnalisez chaque détail dans l'éditeur : couleurs, titre, photos, mise en page.",
+      "themes": {
+        "travel": "Voyage",
+        "couple": "Couple",
+        "family": "Famille",
+        "celebrations": "Célébrations"
+      }
     },
     "footer": {
-      "title_line1": "Prêt·e à concevoir",
-      "title_line2": "votre édition ?",
-      "cta": "Créer mon album photo"
+      "title_line1": "Vos plus beaux souvenirs",
+      "title_line2": "méritent d'être imprimés.",
+      "cta": "Créer mon album — gratuit jusqu'à la commande"
     }
   },
   "auth": {
@@ -795,8 +811,8 @@
   },
   "meta": {
     "landing": {
-      "title": "Everbook — vos photos, en livre imprimé",
-      "description": "Transformez vos photos en un beau livre photo imprimé, mis en page pour vous en quelques minutes. Choisissez une couverture, ajoutez vos photos, on s'occupe du reste."
+      "title": "Everbook — votre livre photo imprimé, mis en page pour vous",
+      "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban. À partir de 25 $."
     },
     "faq": {
       "title": "Questions fréquentes",

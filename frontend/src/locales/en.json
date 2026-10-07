@@ -15,46 +15,56 @@
       "title_line1": "A photo book",
       "title_highlight": "signed",
       "title_line2": "by your memories.",
-      "subtitle": "Upload your photos, and we'll turn them into a refined printed album, crafted to feel timeless and made to be kept",
-      "cta": "Create my album"
+      "subtitle": "Drop in all your photos, even unsorted. Everbook removes duplicates and blurry shots, puts the rest in order by date and place, and lays out your album in minutes. Adjust anything you like — we print it and deliver it to you.",
+      "cta": "Create my album",
+      "image_alt": "Printed Everbook photo albums",
+      "perks": [
+        "Free until you order",
+        "From ${{price}}",
+        "Delivered in Lebanon in ~1 week"
+      ]
     },
     "process": {
       "steps": [
         {
-          "title": "You upload",
-          "body": "All your photos, unorganized — duplicates, blurry shots, HDR. We accept everything."
+          "title": "You drop in",
+          "body": "All your photos, unsorted: duplicates, bursts, missed shots. We take care of it."
         },
         {
-          "title": "We sort",
-          "body": "Gemini analyzes each shot: composition, duplicates, and grouping by scene."
+          "title": "We sort and lay out",
+          "body": "Duplicates and blurry shots set aside, the rest ordered by date and place, then laid out automatically."
         },
         {
-          "title": "You flip",
-          "body": "A 3D preview, varied layouts, and a high-resolution PDF export."
+          "title": "You personalize",
+          "body": "Cover, text, photos, layout: everything can be changed, with a preview of the book you can flip through."
+        },
+        {
+          "title": "We print and deliver",
+          "body": "Made in ~5 days, delivered in 2 to 3 days to your door in Lebanon."
         }
       ]
     },
     "sorting": {
-      "eyebrow": "How the sorting works",
-      "title_line1": "What actually happens",
-      "title_highlight": "to your photos.",
-      "intro": "You can upload everything — hundreds of photos, duplicates, near-identical bursts, the odd blurry shot — and skip the sorting yourself. Here's exactly what we do to turn that into a book, step by step, without ever touching the resolution of the images you'll actually print.",
+      "eyebrow": "Sorting",
+      "title_line1": "Send everything.",
+      "title_highlight": "We keep the best.",
+      "intro": "Hundreds of photos, bursts, a few misses? No need to sort them first.",
       "steps": [
         {
-          "title": "Finding near-duplicates and bursts",
-          "body": "Every photo gets a visual fingerprint, and shots taken close together in time are compared to each other. Near-identical frames — the same moment shot two or three times — are grouped together automatically."
+          "title": "Duplicates spotted",
+          "body": "Near-identical photos are grouped together."
         },
         {
-          "title": "Picking the sharpest one",
-          "body": "Within each group, we measure focus and clarity directly and keep the sharpest frame. The rest are quietly set aside rather than deleted."
+          "title": "The sharpest kept",
+          "body": "In each group, we keep the best one."
         },
         {
-          "title": "Sorting by date and place",
-          "body": "The surviving, distinct photos are then ordered chronologically. Where a photo carries location data, it's grouped with others taken at the same place before sorting by time — so your book follows the order things actually happened, place by place."
+          "title": "The right order",
+          "body": "Your photos follow the course of your days, place by place."
         },
         {
-          "title": "Filtering out clear misses",
-          "body": "Shots that are dramatically out of focus — severe motion blur, a finger over the lens — are left out of the automatic layout, based on the same sharpness check used to pick between near-duplicates. Nothing is ever permanently deleted — everything set aside during sorting stays available for you to add back in the editor if you disagree."
+          "title": "Nothing is deleted",
+          "body": "A photo set aside can always be put back in the editor."
         }
       ]
     },
@@ -62,12 +72,18 @@
       "eyebrow": "Templates",
       "title_line1": "Start from a theme.",
       "title_highlight": "Make it yours.",
-      "intro": "Pick a starting look for your trip, your couple, your family, or a celebration — then customize every detail in the book editor: colors, title, photos, layout."
+      "intro": "Pick a starting look for your trip, your couple, your family, or a celebration — then customize every detail in the book editor: colors, title, photos, layout.",
+      "themes": {
+        "travel": "Travel",
+        "couple": "Couple",
+        "family": "Family",
+        "celebrations": "Celebrations"
+      }
     },
     "footer": {
-      "title_line1": "Ready to design",
-      "title_line2": "your edition?",
-      "cta": "Create my photo album"
+      "title_line1": "Your best memories",
+      "title_line2": "deserve to be printed.",
+      "cta": "Create my album — free until you order"
     }
   },
   "auth": {
@@ -795,8 +811,8 @@
   },
   "meta": {
     "landing": {
-      "title": "Everbook — your photos, as a printed book",
-      "description": "Turn your photos into a beautifully designed printed photo book, laid out for you in minutes. Choose a cover, add your photos, we take care of the rest."
+      "title": "Everbook — your printed photo book, laid out for you",
+      "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon. From $25."
     },
     "faq": {
       "title": "Frequently asked questions",

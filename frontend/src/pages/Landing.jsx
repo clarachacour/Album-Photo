@@ -2,10 +2,14 @@ import React, { Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { TID } from "@/constants/testIds";
-import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks } from "lucide-react";
+import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Truck, Check, Undo2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { lazyPage } from "@/lib/lazyPage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PRICE_TABLE } from "@/lib/pricing";
+
+// Cheapest album, for the "From $…" on the home page: follows the price table.
+const FROM_PRICE = Math.min(...Object.values(PRICE_TABLE).flatMap((tiers) => Object.values(tiers)));
 
 // Reloads the page once if its code can't be downloaded (a release since
 // the page was opened, a dropped connection) — see lazyPage.
@@ -31,8 +35,8 @@ export default function Landing() {
     }
   };
 
-  const processIcons = [<Wand2 size={22} />, <Sparkles size={22} />, <BookOpen size={22} />];
-  const sortingIcons = [<Images size={20} />, <ScanEye size={20} />, <Sparkles size={20} />, <ListChecks size={20} />];
+  const processIcons = [<Wand2 size={22} />, <Sparkles size={22} />, <BookOpen size={22} />, <Truck size={22} />];
+  const sortingIcons = [<Images size={20} />, <ScanEye size={20} />, <ListChecks size={20} />, <Undo2 size={20} />];
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)]">
@@ -61,6 +65,14 @@ export default function Landing() {
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[color:var(--ink)]/70" data-testid="landing-perks">
+              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE }).map((perk) => (
+                <li key={perk} className="inline-flex items-center gap-1.5">
+                  <Check size={14} className="text-[color:var(--coral)]" />
+                  {perk}
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* No fade-in here: this photo is the largest thing on screen, and
@@ -69,7 +81,7 @@ export default function Landing() {
             <div className="max-w-md mx-auto md:ml-auto">
               <img
                 src="/hero-shelf.webp"
-                alt="Printed photo albums on a shelf"
+                alt={t("landing.hero.image_alt")}
                 width={760}
                 height={1024}
                 fetchPriority="high"
@@ -82,7 +94,7 @@ export default function Landing() {
 
       {/* Process strip */}
       <section className="border-y border-[color:var(--border-soft)] py-16 md:py-24 bg-white">
-        <div className="max-w-[1400px] mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-12">
           {t("landing.process.steps", { returnObjects: true }).map((s, i) => (
             <div key={i} className="flex gap-6 items-start">
               <div className="font-serif-display text-4xl text-[color:var(--coral)]">{String(i + 1).padStart(2, "0")}</div>
@@ -154,7 +166,7 @@ export default function Landing() {
       {/* Footer CTA */}
       <section className="py-24 md:py-32 px-6 md:px-12 bg-[color:var(--ink)] text-[color:var(--paper)]">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-end justify-between gap-8">
-          <h2 className="font-serif-display text-5xl md:text-7xl leading-[0.95] max-w-2xl">
+          <h2 className="font-serif-display text-5xl md:text-7xl leading-[0.95] max-w-4xl">
             {t("landing.footer.title_line1")}<br />{t("landing.footer.title_line2")}
           </h2>
           <button
