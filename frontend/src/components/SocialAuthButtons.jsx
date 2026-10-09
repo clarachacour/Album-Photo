@@ -3,6 +3,8 @@ import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { inAppBrowser } from "@/lib/inAppBrowser";
+import { InAppSignInNotice } from "@/components/OpenInBrowser";
 
 const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID;
 const APPLE_CLIENT_ID = import.meta.env.REACT_APP_APPLE_CLIENT_ID;
@@ -27,9 +29,12 @@ export default function SocialAuthButtons() {
   const googleBtnRef = useRef(null);
   const [appleReady, setAppleReady] = useState(false);
   const nav = useNavigate();
+  // In Instagram, Messenger… Google's and Apple's windows never come back to
+  // the site: the person is asked to open it in their browser instead.
+  const [inApp] = useState(() => inAppBrowser());
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || inApp) return;
     // Google's own button ("Continuer avec Google" / "Continue with
     // Google") is rendered entirely by Google's SDK, not by us — i18next
     // has no influence over it. Google's script reads its display language
@@ -67,7 +72,7 @@ export default function SocialAuthButtons() {
   }, []);
 
   useEffect(() => {
-    if (!APPLE_CLIENT_ID || !APPLE_REDIRECT_URI) return;
+    if (!APPLE_CLIENT_ID || !APPLE_REDIRECT_URI || inApp) return;
     loadScript(
       "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js",
       "apple-identity-script"
@@ -83,7 +88,7 @@ export default function SocialAuthButtons() {
         setAppleReady(true);
       })
       .catch(() => {});
-  }, []);
+  }, [inApp]);
 
   const handleAppleClick = async () => {
     try {
@@ -102,6 +107,23 @@ export default function SocialAuthButtons() {
 
   if (!GOOGLE_CLIENT_ID && !(APPLE_CLIENT_ID && APPLE_REDIRECT_URI)) return null;
 
+  const divider = (
+    <div className="flex items-center gap-3 py-1">
+      <div className="flex-1 h-px bg-[color:var(--border-soft)]" />
+      <span className="eyebrow text-[color:var(--muted)]">{t("auth.social.or")}</span>
+      <div className="flex-1 h-px bg-[color:var(--border-soft)]" />
+    </div>
+  );
+
+  if (inApp) {
+    return (
+      <div className="space-y-3 mb-2">
+        <InAppSignInNotice platform={inApp} />
+        {divider}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {GOOGLE_CLIENT_ID && <div ref={googleBtnRef} data-testid="google-signin-button" />}
@@ -118,11 +140,7 @@ export default function SocialAuthButtons() {
           <span className="text-sm font-semibold tracking-widest uppercase">{t("auth.social.continueWithApple")}</span>
         </button>
       )}
-      <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 h-px bg-[color:var(--border-soft)]" />
-        <span className="eyebrow text-[color:var(--muted)]">{t("auth.social.or")}</span>
-        <div className="flex-1 h-px bg-[color:var(--border-soft)]" />
-      </div>
+      {divider}
     </div>
   );
 }

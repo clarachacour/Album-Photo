@@ -65,8 +65,8 @@ export default function AuthPage() {
 
   return (
     <main className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-      {/* Left: form */}
-      <div className="flex items-center justify-center p-8 md:p-16 bg-[color:var(--paper)]">
+      {/* Left: form (pt-24: clear of the menu bar when it's taller than the screen) */}
+      <div className="flex items-center justify-center px-8 pt-24 pb-8 md:p-16 bg-[color:var(--paper)]">
         <div className="w-full max-w-md">
           <Link to="/" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
             ← {t("auth.back")}

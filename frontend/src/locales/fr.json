@@ -1058,5 +1058,18 @@
         "body": "Cliquez ici à tout moment pour relancer ce guide."
       }
     }
+  },
+  "inApp": {
+    "banner": "Pour créer votre album sans souci, ouvrez Everbook dans votre navigateur plutôt que dans l'application.",
+    "signIn": "La connexion avec Google ne fonctionne pas dans le navigateur d'Instagram ou de Messenger. Ouvrez Everbook dans votre navigateur pour continuer avec Google.",
+    "howAndroid": "Ou touchez ⋮ en haut à droite, puis « Ouvrir dans Chrome ».",
+    "howIos": "Ou touchez ⋯ en haut à droite, puis « Ouvrir dans le navigateur ».",
+    "openChrome": "Ouvrir dans Chrome",
+    "openSafari": "Ouvrir dans Safari",
+    "copyLink": "Copier le lien",
+    "copied": "Lien copié : collez-le dans votre navigateur.",
+    "copyFailed": "Impossible de copier le lien",
+    "orEmail": "Vous pouvez aussi créer votre compte ici avec votre e-mail et un mot de passe.",
+    "close": "Fermer"
   }
 }

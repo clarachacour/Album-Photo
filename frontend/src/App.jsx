@@ -11,6 +11,8 @@ import Footer from "@/components/Footer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazyPage } from "@/lib/lazyPage";
 import { showPendingFlash } from "@/lib/flash";
+import { leaveAppBrowser } from "@/lib/inAppBrowser";
+import { InAppBrowserBanner } from "@/components/OpenInBrowser";
 // Public pages: part of the main code, not downloaded on demand. They are
 // also generated as HTML at build time (see prerender.jsx), and the page the
 // browser then draws is the same one, straight away, with no blank moment.
@@ -46,6 +48,9 @@ function AppChrome({ children }) {
     showPendingFlash();
   }, []);
   const isPrintRoute = location.pathname.startsWith("/print/");
+  useEffect(() => {
+    if (!isPrintRoute) leaveAppBrowser();
+  }, [isPrintRoute]);
   if (isPrintRoute) {
     // The PDF server waits for data-print-ready or data-print-error: a crash
     // is reported at once instead of waiting for its timeout.
@@ -60,6 +65,8 @@ function AppChrome({ children }) {
       <TopNav />
       <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
       <Footer />
+      {/* The sign-in page has its own notice, in place of Google's button. */}
+      {location.pathname !== "/auth" && <InAppBrowserBanner />}
       <Toaster
         position="top-center"
         toastOptions={{

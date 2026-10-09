@@ -1058,5 +1058,18 @@
         "body": "Click here at any time to replay this guide."
       }
     }
+  },
+  "inApp": {
+    "banner": "To make your album without trouble, open Everbook in your browser rather than in the app.",
+    "signIn": "Google sign-in doesn't work in Instagram's or Messenger's browser. Open Everbook in your browser to continue with Google.",
+    "howAndroid": "Or tap ⋮ at the top right, then \"Open in Chrome\".",
+    "howIos": "Or tap ⋯ at the top right, then \"Open in browser\".",
+    "openChrome": "Open in Chrome",
+    "openSafari": "Open in Safari",
+    "copyLink": "Copy link",
+    "copied": "Link copied: paste it in your browser.",
+    "copyFailed": "Couldn't copy the link",
+    "orEmail": "You can also create your account here with your email and a password.",
+    "close": "Close"
   }
 }
