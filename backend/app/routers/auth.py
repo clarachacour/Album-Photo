@@ -1,4 +1,5 @@
 """Authentication routes: signup, login, password, OAuth, profile."""
+import asyncio
 import json
 import logging
 import uuid
@@ -7,8 +8,6 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token as google_id_token
 from pymongo.errors import DuplicateKeyError
 
 from app.config import ADMIN_EMAIL, APPLE_CLIENT_ID, FRONTEND_URL, GOOGLE_CLIENT_ID
@@ -19,6 +18,7 @@ from app.core.auth import (
     get_current_user_raw,
     hash_password,
     upsert_oauth_user,
+    verify_google_token,
     verify_password,
 )
 from app.core.rate_limit import (
@@ -193,7 +193,8 @@ async def google_auth(data: GoogleAuthInput):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=500, detail="Google sign-in is not configured on this server (GOOGLE_CLIENT_ID missing)")
     try:
-        idinfo = google_id_token.verify_oauth2_token(data.credential, google_requests.Request(), GOOGLE_CLIENT_ID)
+        # In a thread: the server keeps answering others meanwhile.
+        idinfo = await asyncio.to_thread(verify_google_token, data.credential, GOOGLE_CLIENT_ID)
     except Exception as e:
         logger.error(f"Jeton Google invalide : {e}")
         raise HTTPException(status_code=401, detail="Invalid Google token")

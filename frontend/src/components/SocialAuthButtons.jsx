@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { inAppBrowser } from "@/lib/inAppBrowser";
 import { InAppSignInNotice } from "@/components/OpenInBrowser";
+import { Loader2 } from "lucide-react";
 
 const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID;
 const APPLE_CLIENT_ID = import.meta.env.REACT_APP_APPLE_CLIENT_ID;
@@ -28,6 +29,9 @@ export default function SocialAuthButtons() {
   const { t, i18n } = useTranslation();
   const googleBtnRef = useRef(null);
   const [appleReady, setAppleReady] = useState(false);
+  // Between Google's window closing and the home page: the server checks
+  // the sign-in (a few seconds when it was asleep), the page says so.
+  const [signingIn, setSigningIn] = useState(false);
   const nav = useNavigate();
   // In Instagram, Messenger… Google's and Apple's windows never come back to
   // the site: the person is asked to open it in their browser instead.
@@ -51,12 +55,15 @@ export default function SocialAuthButtons() {
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: async (response) => {
+            setSigningIn(true);
             try {
               await loginWithGoogle(response.credential);
               toast.success(t("auth.welcomeToast"));
               nav("/");
             } catch (err) {
               toast.error(err?.response?.data?.detail || t("auth.social.googleFailed"));
+            } finally {
+              setSigningIn(false);
             }
           },
         });
@@ -126,6 +133,12 @@ export default function SocialAuthButtons() {
 
   return (
     <div className="space-y-3">
+      {signingIn && (
+        <div role="status" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[color:var(--paper)]/90">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="eyebrow">{t("auth.social.signingIn")}</span>
+        </div>
+      )}
       {GOOGLE_CLIENT_ID && <div ref={googleBtnRef} data-testid="google-signin-button" />}
       {appleReady && (
         <button

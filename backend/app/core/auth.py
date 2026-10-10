@@ -8,6 +8,8 @@ import bcrypt
 import jwt
 import requests
 from fastapi import Depends, HTTPException
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pymongo.errors import DuplicateKeyError
 
@@ -85,6 +87,37 @@ def get_apple_public_key(kid: str):
         if key["kid"] == kid:
             return key
     return None
+
+class _CachedGoogleRequest(google_requests.Request):
+    """Google's public keys (to check a sign-in) kept for an hour instead of
+    downloaded again at every sign-in, over one kept-open connection."""
+
+    def __init__(self):
+        super().__init__(session=requests.Session())
+        self.cache = {}
+
+    def __call__(self, url, method="GET", **kwargs):
+        if method != "GET":
+            return super().__call__(url, method=method, **kwargs)
+        hit = self.cache.get(url)
+        if hit and _time.time() - hit[0] < 3600:
+            return hit[1]
+        response = super().__call__(url, method=method, **kwargs)
+        if response.status == 200:
+            self.cache[url] = (_time.time(), response)
+        return response
+
+_google_request = _CachedGoogleRequest()
+
+def verify_google_token(credential: str, client_id: str) -> dict:
+    """The verified content of a Google sign-in. Blocking: run it in a thread."""
+    try:
+        return google_id_token.verify_oauth2_token(credential, _google_request, client_id)
+    except ValueError:
+        # Google changes its keys now and then: a token signed with a newer
+        # key than the ones kept is checked again with fresh keys.
+        _google_request.cache.clear()
+        return google_id_token.verify_oauth2_token(credential, _google_request, client_id)
 
 async def upsert_oauth_user(email: str, name: str, provider: str) -> tuple:
     """Returns (user, is_new) — is_new is what callers use to decide

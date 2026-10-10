@@ -131,7 +131,8 @@
       "googleFailed": "Échec de la connexion Google",
       "appleFailed": "Échec de la connexion Apple",
       "continueWithApple": "Continuer avec Apple",
-      "or": "ou"
+      "or": "ou",
+      "signingIn": "Connexion…"
     }
   },
   "faq": {

@@ -131,7 +131,8 @@
       "googleFailed": "Google sign-in failed",
       "appleFailed": "Apple sign-in failed",
       "continueWithApple": "Continue with Apple",
-      "or": "or"
+      "or": "or",
+      "signingIn": "Signing in…"
     }
   },
   "faq": {

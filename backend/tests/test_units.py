@@ -58,3 +58,30 @@ def test_half_written_font_file_is_repaired(tmp_path):
         env=env, capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+# ---------- Google sign-in ----------
+def test_google_keys_are_downloaded_once_and_again_after_a_key_change(monkeypatch):
+    from app.core import auth
+
+    downloads = []
+    fresh = auth._CachedGoogleRequest()
+    monkeypatch.setattr(auth, "_google_request", fresh)
+    monkeypatch.setattr(
+        auth.google_requests.Request,
+        "__call__",
+        lambda self, url, method="GET", **kw: downloads.append(url) or type("R", (), {"status": 200, "data": b"{}"})(),
+    )
+
+    def verify(token, request, audience):
+        request("https://www.googleapis.com/oauth2/v1/certs")
+        if token == "signed-with-new-key" and len(downloads) < 2:
+            raise ValueError("Certificate for key id not found")
+        return {"email": "a@b.c"}
+
+    monkeypatch.setattr(auth.google_id_token, "verify_oauth2_token", verify)
+    auth.verify_google_token("t1", "client")
+    auth.verify_google_token("t2", "client")
+    assert len(downloads) == 1  # kept between sign-ins
+    assert auth.verify_google_token("signed-with-new-key", "client") == {"email": "a@b.c"}
+    assert len(downloads) == 2  # fetched again once, not on every attempt
