@@ -21,12 +21,15 @@ from app.schemas import GooglePhotosImportInput
 from app.services.albums import reject_if_ordered
 from app.services.google_photos import import_google_photos_items
 from app.services.photos import (
+    BRIGHTEN_GAMMA,
+    brightened_copy,
     generate_medium_variant,
     generate_print_variant,
     print_needs_conversion,
     store_many_photos,
 )
 from app.services.processing import add_photos_to_layout
+from app.services import signed_urls
 from app.services.storage import get_object
 
 router = APIRouter()
@@ -67,6 +70,25 @@ async def import_google_photos(album_id: str, data: GooglePhotosImportInput, bac
         await add_photos_to_layout(album_id, user["id"], [p["id"] for p in uploaded])
 
     return {"uploaded": len(uploaded), "total": len(data.items), "limit_reached": limit_reached}
+
+@router.post("/albums/{album_id}/photos/{photo_id}/brighten")
+async def brighten_photo(album_id: str, photo_id: str, level: str = Query("light"), user: dict = Depends(get_current_user)):
+    """A lighter copy of a dark photo, for the editor to put in its frame
+    (see brightened_copy)."""
+    if level not in BRIGHTEN_GAMMA:
+        raise HTTPException(status_code=400, detail="Unknown level")
+    album = await db.albums.find_one({"id": album_id, "user_id": user["id"]}, {"_id": 0, "id": 1})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+    await reject_if_ordered(album_id)
+    photo = await db.photos.find_one({"id": photo_id, "album_id": album_id, "is_deleted": False}, {"_id": 0})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    copy = await brightened_copy(photo, level)
+    urls = signed_urls.photo_urls(copy, signed_urls.window_start())
+    if urls:
+        copy["urls"] = urls
+    return copy
 
 @router.get("/photos/{photo_id}/image")
 async def get_photo_image(photo_id: str, auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):

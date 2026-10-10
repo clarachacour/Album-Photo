@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, coverImageUrl } from "@/lib/api";
+import { api, coverImageUrl, rememberPhotoLinks } from "@/lib/api";
 import { toast } from "sonner";
 import { getTemplate } from "@/lib/coverTemplates";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
@@ -59,7 +59,8 @@ export default function AlbumEditor() {
   // fuller location-clustering logic, which is really about how photos
   // land on album PAGES, not about sorting a flat browsing list.
   const sortedAlbumPhotos = useMemo(() => {
-    const photos = album?.photos || [];
+    // Brightened copies (see brightenPhoto) aren't photos of their own.
+    const photos = (album?.photos || []).filter((p) => !p.derived_from);
     return [...photos].sort((a, b) => {
       if (a.taken_at && b.taken_at) return parseDate(a.taken_at) - parseDate(b.taken_at);
       if (a.taken_at) return -1;
@@ -611,6 +612,38 @@ export default function AlbumEditor() {
     });
   };
 
+  // "Brighten" on a dark photo: the server makes a lighter copy at full
+  // resolution (so the PDF prints it sharp), which takes the frame's place
+  // with the same framing; level null puts the original back.
+  const [brighteningItemId, setBrighteningItemId] = useState(null);
+  const brightenPhoto = async (pageIdx, itemId, level) => {
+    const item = album?.pages?.[pageIdx]?.items?.find((it) => it.id === itemId);
+    const photo = album?.photos?.find((p) => p.id === item?.photo_id);
+    if (!photo) return;
+    let target = level === null ? album.photos.find((p) => p.id === photo.derived_from) : null;
+    if (level !== null) {
+      setBrighteningItemId(itemId);
+      try {
+        ({ data: target } = await api.post(`/albums/${id}/photos/${photo.id}/brighten`, null, { params: { level } }));
+        rememberPhotoLinks([target]);
+      } catch {
+        toast.error(t("albumEditor.brightenFailed"));
+        return;
+      } finally {
+        setBrighteningItemId(null);
+      }
+    }
+    if (!target) return;
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const photos = prev.photos.some((p) => p.id === target.id) ? prev.photos : [...prev.photos, target];
+      const pages = prev.pages.map((pg, i) =>
+        i !== pageIdx ? pg : { ...pg, items: pg.items.map((it) => (it.id === itemId ? { ...it, photo_id: target.id } : it)) }
+      );
+      return { ...prev, photos, pages };
+    });
+  };
+
   const replacePhotoInItem = (pageIdx, itemId, photoId) => {
     setAlbum((prev) => {
       if (!prev) return prev;
@@ -909,6 +942,8 @@ export default function AlbumEditor() {
             onAddPhotoAt={addPhotoAt}
             onReplacePhoto={replacePhotoInItem}
             onReorderLayer={reorderItemLayer}
+            onBrighten={brightenPhoto}
+            brighteningItemId={brighteningItemId}
             onApplyLayout={applyLayoutToPage}
             onDeletePage={deletePage}
             placingPhotoId={placingPhotoId}

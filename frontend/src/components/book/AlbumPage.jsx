@@ -32,6 +32,8 @@ export function AlbumPage({
   onAddPhotoAt,
   onReplacePhoto,
   onReorderLayer,
+  onBrighten,
+  brighteningItemId,
   onApplyLayout,
   onDeletePage,
   placingPhotoId,
@@ -259,6 +261,15 @@ export function AlbumPage({
                   onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
                   onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
+                  brighten={
+                    onBrighten && (dark || photoSizes?.get(item.photo_id)?.derived_from)
+                      ? {
+                          level: photoSizes?.get(item.photo_id)?.brighten_level || null,
+                          busy: brighteningItemId === item.id,
+                          onPick: (level) => onBrighten(item.id, level),
+                        }
+                      : undefined
+                  }
                   onShowWhole={
                     isCropped(item, photoSizes?.get(item.photo_id), orientation)
                       ? () => onUpdateItem && onUpdateItem(item.id, wholePhotoFields(item, photoSizes?.get(item.photo_id), orientation))

@@ -539,8 +539,9 @@
       "loadLatest": "Load the latest version",
       "keepMine": "Keep my changes"
     },
-    "tooDark": "Dark photo: it may print even darker (paper gives back less light than a screen). Brighten it on your phone and add it again, or choose another photo.",
-    "tooDarkShort": "Dark photo"
+    "tooDark": "Dark photo: it may print even darker (paper gives back less light than a screen). Select it and tap ☀ to brighten it, or choose another photo.",
+    "tooDarkShort": "Dark photo",
+    "brightenFailed": "Couldn't brighten this photo, try again."
   },
   "toolbars": {
     "editPhoto": "Edit photo",
@@ -556,7 +557,13 @@
     "bold": "Bold",
     "textColor": "Text color",
     "hexPlaceholder": "#RRGGBB",
-    "deleteText": "Delete this text"
+    "deleteText": "Delete this text",
+    "brighten": "Brighten the photo",
+    "brightenLevels": {
+      "original": "Original photo",
+      "light": "Brighten a little",
+      "strong": "Brighten a lot"
+    }
   },
   "albumPage": {
     "sameSize": {

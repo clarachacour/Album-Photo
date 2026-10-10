@@ -55,7 +55,7 @@ async def import_google_photos_items(album_id: str, user_id: str, items: list, a
     (stored, limit_reached) — same MAX_PHOTOS_PER_ALBUM enforcement as
     store_many_photos, since this is a separate path into the same
     photos collection and would otherwise bypass the cap entirely."""
-    current_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
+    current_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False, "derived_from": {"$exists": False}})
     if current_count >= MAX_PHOTOS_PER_ALBUM:
         raise HTTPException(status_code=400, detail=f"This album already has {current_count} photos, the maximum of {MAX_PHOTOS_PER_ALBUM} per album. Remove some before adding more.")
     room_left = MAX_PHOTOS_PER_ALBUM - current_count

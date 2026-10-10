@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown, Expand } from "lucide-react";
+import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2 } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
 
 const TOOLBAR_FONTS = [
@@ -61,8 +61,9 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
 }
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder }) {
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten }) {
   const { t } = useTranslation();
+  const [brightenOpen, setBrightenOpen] = useState(false);
   return (
     <ToolbarShell x={x} y={y} w={w}>
       {!emptyFrame && (
@@ -70,6 +71,33 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
           <ToolbarButton onClick={onEdit} title={t("toolbars.editPhoto")} tid="frame-edit-btn">
             <Pencil size={14} />
           </ToolbarButton>
+          {/* A dark photo (or a brightened copy): lighter copies to choose
+              from, or back to the original. */}
+          {brighten && (
+            <div className="relative">
+              <ToolbarButton onClick={() => setBrightenOpen((v) => !v)} title={t("toolbars.brighten")} tid="frame-brighten-btn">
+                {brighten.busy ? <Loader2 size={14} className="animate-spin" /> : <Sun size={14} className={brighten.level ? "text-amber-300" : ""} />}
+              </ToolbarButton>
+              {brightenOpen && !brighten.busy && (
+                <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 flex flex-col bg-[color:var(--ink)] rounded-sm shadow-lg py-1 min-w-[150px]" data-testid="frame-brighten-menu">
+                  {[null, "light", "strong"].map((level) => (
+                    <button
+                      key={level || "original"}
+                      type="button"
+                      onClick={() => {
+                        setBrightenOpen(false);
+                        if (level !== brighten.level) brighten.onPick(level);
+                      }}
+                      className={`text-left text-xs px-3 py-1.5 hover:bg-white/20 ${level === brighten.level ? "text-amber-300" : ""}`}
+                      data-testid={`frame-brighten-${level || "original"}`}
+                    >
+                      {t(`toolbars.brightenLevels.${level || "original"}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {/* Only when the frame hides part of the photo (see isCropped). */}
           {onShowWhole && (
             <ToolbarButton onClick={onShowWhole} title={t("toolbars.showWholePhoto")} tid="frame-show-whole-btn">

@@ -260,6 +260,80 @@ def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: 
         **(compute_brightness(data) or {}),
     }
 
+# "Brighten" in the editor: how much the dark tones are lifted (a gamma
+# curve: shadows rise a lot, light tones barely move, white stays white).
+BRIGHTEN_GAMMA = {"light": 1.3, "strong": 1.7}
+
+
+def brighten_image(img: Image.Image, level: str) -> Image.Image:
+    """An underexposed photo made lighter: its brightest tones are first
+    brought up to white (an underexposed photo has no real white), then the
+    dark tones are lifted. Same pixel size."""
+    img = img.convert("RGB")
+    levels = sorted(img.convert("L").resize((128, 128)).tobytes())
+    white = max(levels[int(len(levels) * 0.995)], 1)
+    gain = min(255 / white, 2.5)
+    gamma = BRIGHTEN_GAMMA[level]
+    lut = [round(255 * (min(v * gain, 255) / 255) ** (1 / gamma)) for v in range(256)]
+    return img.point(lut * 3)
+
+
+def _store_brightened_sync(original: dict, level: str, new_id: str) -> dict:
+    data, _ = get_object(original["storage_path"])
+    with Image.open(BytesIO(data)) as img:
+        out = brighten_image(img, level)
+    buf = BytesIO()
+    out.save(buf, format="JPEG", quality=STORED_IMAGE_QUALITY)
+    jpeg = buf.getvalue()
+    path = f"{APP_NAME}/users/{original['user_id']}/albums/{original['album_id']}/{new_id}.jpg"
+    result, thumb_path, w, h = store_image_with_thumbnail(path, jpeg, "image/jpeg")
+    return {
+        "storage_path": result["path"],
+        "thumbnail_path": thumb_path,
+        "size": result.get("size", len(jpeg)),
+        "width": w,
+        "height": h,
+        "content_hash": hashlib.sha256(jpeg).hexdigest(),
+        **(compute_brightness(jpeg) or {}),
+    }
+
+
+async def brightened_copy(photo: dict, level: str) -> dict:
+    """A lighter copy of a photo (see brighten_image), always made from the
+    original, kept as its own photo so the PDF prints it at full resolution.
+    The copy isn't one of the album's photos: no AI layout, not counted, not
+    in "All your photos" (derived_from). Made once per original and level."""
+    original_id = photo.get("derived_from") or photo["id"]
+    existing = await db.photos.find_one(
+        {"derived_from": original_id, "brighten_level": level, "is_deleted": False}, {"_id": 0}
+    )
+    if existing:
+        return existing
+    original = photo if original_id == photo["id"] else await db.photos.find_one({"id": original_id}, {"_id": 0})
+    if not original:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    new_id = str(uuid.uuid4())
+    loop = asyncio.get_event_loop()
+    stored = await loop.run_in_executor(photo_processing_executor, _store_brightened_sync, original, level, new_id)
+    keep = ("album_id", "user_id", "original_filename", "ai_score", "ai_description", "ai_group", "ai_focal_x", "ai_focal_y", "taken_at", "gps_lat", "gps_lng", "phash")
+    doc = {
+        **{k: original.get(k) for k in keep},
+        **stored,
+        "id": new_id,
+        "content_type": "image/jpeg",
+        "derived_from": original_id,
+        "brighten_level": level,
+        "ai_is_reject": False,
+        "is_selected": False,
+        "is_duplicate": False,
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.photos.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
 def _brightness_of_stored(photo: dict) -> dict:
     data, _ = get_object(photo.get("thumbnail_path") or photo["storage_path"])
     # None for a photo that can't be read, so it isn't tried again.
@@ -416,7 +490,7 @@ async def store_many_photos(album_id: str, user_id: str, files: List[UploadFile]
     batch would push it past) MAX_PHOTOS_PER_ALBUM — the caller doesn't need
     its own check, and the person gets a real, specific reason rather than
     photos that silently uploaded but were never actually usable."""
-    current_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False})
+    current_count = await db.photos.count_documents({"album_id": album_id, "is_deleted": False, "derived_from": {"$exists": False}})
     if current_count >= MAX_PHOTOS_PER_ALBUM:
         raise HTTPException(status_code=400, detail=f"This album already has {current_count} photos, the maximum of {MAX_PHOTOS_PER_ALBUM} per album. Remove some before adding more.")
     room_left = MAX_PHOTOS_PER_ALBUM - current_count

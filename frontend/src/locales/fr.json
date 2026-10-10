@@ -539,8 +539,9 @@
       "loadLatest": "Charger la dernière version",
       "keepMine": "Garder mes modifications"
     },
-    "tooDark": "Photo sombre : elle risque de sortir encore plus sombre à l'impression (le papier rend moins de lumière qu'un écran). Éclaircissez-la sur votre téléphone puis ajoutez-la à nouveau, ou choisissez une autre photo.",
-    "tooDarkShort": "Photo sombre"
+    "tooDark": "Photo sombre : elle risque de sortir encore plus sombre à l'impression (le papier rend moins de lumière qu'un écran). Sélectionnez-la puis touchez ☀ pour l'éclaircir, ou choisissez une autre photo.",
+    "tooDarkShort": "Photo sombre",
+    "brightenFailed": "Impossible d'éclaircir cette photo, réessayez."
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",
@@ -556,7 +557,13 @@
     "bold": "Gras",
     "textColor": "Couleur du texte",
     "hexPlaceholder": "#RRVVBB",
-    "deleteText": "Supprimer ce texte"
+    "deleteText": "Supprimer ce texte",
+    "brighten": "Éclaircir la photo",
+    "brightenLevels": {
+      "original": "Photo d'origine",
+      "light": "Éclaircir un peu",
+      "strong": "Éclaircir beaucoup"
+    }
   },
   "albumPage": {
     "sameSize": {

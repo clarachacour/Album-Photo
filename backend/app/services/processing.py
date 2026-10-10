@@ -144,7 +144,8 @@ async def _full_layout(album_id: str):
     existing_pages = (album.get("pages") or []) if album else []
     title_page = existing_pages[0] if existing_pages else make_title_page(album.get("title") if album else None)
 
-    photos = await db.photos.find({"album_id": album_id, "is_deleted": False}, {"_id": 0}).to_list(5000)
+    # Brightened copies (derived_from) aren't photos of their own.
+    photos = await db.photos.find({"album_id": album_id, "is_deleted": False, "derived_from": {"$exists": False}}, {"_id": 0}).to_list(5000)
     if not photos:
         await db.albums.update_one({"id": album_id}, {"$set": {"pages": [title_page]}, "$inc": {"version": 1}})
         return
