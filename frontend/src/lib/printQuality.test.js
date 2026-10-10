@@ -47,13 +47,14 @@ describe("lowResolutionItems", () => {
 });
 
 describe("isTooDark", () => {
-  it("flags an underexposed photo", () => {
-    expect(isTooDark({ brightness: 0.16, highlights: 0.3 })).toBe(true);
-    expect(isTooDark({ brightness: 0.08, highlights: 0.9 })).toBe(true);
+  it("flags a dark photo, even with a few bright lights in it", () => {
+    // Evening restaurant photos that did print too dark.
+    expect(isTooDark({ brightness: 0.215, highlights: 0.49 })).toBe(true);
+    expect(isTooDark({ brightness: 0.167, highlights: 0.49 })).toBe(true);
   });
 
   it("leaves a sunset, a normal photo or an unmeasured one alone", () => {
-    expect(isTooDark({ brightness: 0.2, highlights: 0.7 })).toBe(false);
+    expect(isTooDark({ brightness: 0.31, highlights: 0.6 })).toBe(false);
     expect(isTooDark({ brightness: 0.45, highlights: 0.8 })).toBe(false);
     expect(isTooDark({ width: 4000, height: 3000 })).toBe(false);
   });

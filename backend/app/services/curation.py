@@ -87,10 +87,9 @@ def extract_exif_info(data: bytes) -> dict:
 
 
 def compute_brightness(data: bytes) -> Optional[dict]:
-    """How light a photo is, to warn that it may print dark: its mean
-    lightness and the lightness its brightest tenth reaches (both 0-1). A
-    sunset (dark overall, bright sky) keeps a high "highlights"; an
-    underexposed photo has both low."""
+    """How light a photo is, to warn that it may print dark (see isTooDark in
+    the frontend's printQuality.js): its mean lightness, and the lightness
+    its brightest tenth reaches (both 0-1)."""
     try:
         img = Image.open(BytesIO(data))
         img.draft("L", (64, 64))

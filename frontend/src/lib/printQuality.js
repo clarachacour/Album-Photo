@@ -44,12 +44,14 @@ export function lowResolutionItems(album) {
 }
 
 // Photos that risk printing dark: paper shows less light than a screen, so
-// an underexposed photo comes out darker still. Measured at upload
-// (brightness: mean lightness, highlights: that of the brightest tenth, 0-1).
-// A sunset or a night shot with lights keeps bright highlights: not flagged.
+// a dark photo comes out darker still. Measured at upload (brightness: mean
+// lightness, 0-1). Calibrated on photos that did print too dark (evening
+// restaurant photos, 0.17 and 0.22, flagged even with lamps and city lights
+// in them) and ones that printed well (0.31 and up, a sunset included).
+export const MIN_PRINT_BRIGHTNESS = 0.25;
+
 export function isTooDark(photo) {
-  if (photo?.brightness == null) return false;
-  return photo.brightness < 0.12 || (photo.brightness < 0.22 && (photo.highlights ?? 1) < 0.45);
+  return photo?.brightness != null && photo.brightness < MIN_PRINT_BRIGHTNESS;
 }
 
 /** Photo frames of the album whose photo risks printing dark. */
