@@ -320,6 +320,8 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
             "frames, or the same subject photographed seconds apart). Others may just be visually "
             "similar in a generic way — for example several different sunsets, or different patches "
             "of open water or sky — without being the same photographed moment. "
+            "Photos of the same people in the same place with only a slightly different pose, "
+            "expression or framing are the same moment: group them together. "
             "Group the photo numbers so photos in the same group are the same shot/moment, and "
             "photos in different groups are genuinely different photos. "
             "Respond with ONLY a JSON array of arrays of integers (every number 0.."
@@ -461,6 +463,17 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
             return dist <= BURST_HASH_THRESHOLD
         return dist <= HASH_THRESHOLD
 
+    def _is_burst(cluster):
+        """Shot one after another, seconds apart: the same moment, whatever
+        changed in between (a smile, a step, a hand). Not left to the AI,
+        which tends to call a slightly different pose a different photo
+        (three photos taken a second apart under an arch all ended up in an
+        album)."""
+        times = sorted(taken_at_cache.get(p["id"]) for p in cluster if taken_at_cache.get(p["id"]))
+        if len(times) < len(cluster):
+            return False
+        return all((b - a).total_seconds() <= BURST_SECONDS for a, b in zip(times, times[1:]))
+
     clusters: List[List[dict]] = [[e] for e in existing_selected]
     for p in new_photos:
         placed = False
@@ -516,7 +529,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
                  for i, a in enumerate(new_in_cluster) for b in new_in_cluster[i + 1:]),
                 default=0,
             )
-            if max_dist <= AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH:
+            if max_dist <= AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH or _is_burst(new_in_cluster):
                 passthrough.append(cluster)
                 continue
             needs_ai.append(cluster)
