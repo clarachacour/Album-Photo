@@ -66,6 +66,14 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
     for o in orders:
         queued = bool(o.get("pdf_queued_at")) and o["pdf_queued_at"] > queue_cutoff and not o.get("pdf_ready")
         o["pdf_generating"] = o["id"] in active_slot_order_ids or queued
+    # Who ordered it: a digital album has no delivery address to tell.
+    users = {
+        u["id"]: u
+        async for u in db.users.find({"id": {"$in": list({o["user_id"] for o in orders if o.get("user_id")})}}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+    }
+    for o in orders:
+        customer = users.get(o.get("user_id")) or {}
+        o["customer"] = {"name": customer.get("name"), "email": customer.get("email")}
     return orders
 
 @router.get("/admin/orders/{order_id}/pdf")

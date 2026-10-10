@@ -40,6 +40,15 @@ export function billedPageCount(album) {
   return (album?.pages || []).length || Number(album?.target_pages) || PAGE_TIERS[0];
 }
 
+// A digital album (the PDF to download) costs the printed album's price
+// minus this — keep in sync with DIGITAL_DISCOUNT_CENTS in
+// backend/app/services/pricing.py, which charges it.
+export const DIGITAL_DISCOUNT = 15;
+
+export function computeDigitalPrice(size, pageCount) {
+  return Math.max(0, computeUnitPrice(size, pageCount) - DIGITAL_DISCOUNT);
+}
+
 // Delivery (Lebanon only), per order — keep in sync with SHIPPING_PRICE_CENTS
 // in backend/app/services/pricing.py, which charges it.
 export const SHIPPING_PRICE = 5;

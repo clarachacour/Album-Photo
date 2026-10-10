@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeUnitPrice } from "@/lib/pricing";
+import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 export default function OrderCheckoutPage() {
@@ -13,7 +13,14 @@ export default function OrderCheckoutPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [album, setAlbum] = useState(null);
+  // "print": the printed book, delivered. "digital": the album as a PDF to
+  // download. One order of each per album: once one is ordered, only the
+  // other is offered (and the printed book after the digital album has
+  // what was paid for it taken off).
+  const [kind, setKind] = useState(searchParams.get("kind") === "digital" ? "digital" : "print");
+  const [orderedKinds, setOrderedKinds] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [address, setAddress] = useState({
     full_name: user?.name || "",
@@ -53,11 +60,15 @@ export default function OrderCheckoutPage() {
         if (data.was_ordered) {
           try {
             const { data: orders } = await api.get("/orders");
-            const existing = (orders || []).find((o) => o.album_id === albumId);
-            if (existing) {
-              nav(`/orders/${existing.id}`, { replace: true });
+            const mine = (orders || []).filter((o) => o.album_id === albumId && o.status !== "cancelled");
+            const byKind = Object.fromEntries(mine.map((o) => [o.kind || "print", o]));
+            if (byKind.print && byKind.digital) {
+              nav(`/orders/${mine[0].id}`, { replace: true });
               return;
             }
+            setOrderedKinds(byKind);
+            if (byKind.print) setKind("digital");
+            if (byKind.digital) setKind("print");
           } catch {
             /* fall through to showing the form; create_order's own guard still applies */
           }
@@ -74,12 +85,17 @@ export default function OrderCheckoutPage() {
   const darkCount = album ? darkPhotoItems(album).length : 0;
   const pageCount = album ? billedPageCount(album) : 0;
   const tier = billedTier(pageCount);
-  const unitPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
-  const total = unitPrice * quantity + SHIPPING_PRICE;
+  const digital = kind === "digital";
+  const printPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
+  const digitalPrice = album ? computeDigitalPrice(album.size || "A4", pageCount) : 0;
+  const unitPrice = digital ? digitalPrice : printPrice;
+  // The digital album already ordered is taken off the printed book.
+  const credit = !digital && orderedKinds.digital ? Math.min(orderedKinds.digital.total_price_cents / 100, unitPrice * quantity) : 0;
+  const total = digital ? digitalPrice : unitPrice * quantity + SHIPPING_PRICE - credit;
 
   const placeOrder = async (e) => {
     e.preventDefault();
-    const required = ["full_name", "phone", "street", "city"];
+    const required = digital ? [] : ["full_name", "phone", "street", "city"];
     for (const field of required) {
       if (!address[field]?.trim()) {
         toast.error(t("checkout.requiredFields"));
@@ -95,8 +111,8 @@ export default function OrderCheckoutPage() {
     try {
       const { data } = await api.post("/orders", {
         album_id: albumId,
-        quantity,
-        shipping_address: address,
+        kind,
+        ...(digital ? {} : { quantity, shipping_address: address }),
         accepted_terms_version: TERMS_VERSION,
       });
       nav(`/orders/${data.id}`);
@@ -149,7 +165,7 @@ export default function OrderCheckoutPage() {
         <div className="max-w-[500px] mx-auto text-center animate-fade-up">
           <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t("checkout.placedTitle")}</h1>
           <p className="text-[color:var(--ink)]/70">
-            <Trans i18nKey="checkout.placedBody" values={{ title: album.title }} components={{ b: <span className="font-semibold" /> }} />
+            <Trans i18nKey={digital ? "checkout.placedBodyDigital" : "checkout.placedBody"} values={{ title: album.title }} components={{ b: <span className="font-semibold" /> }} />
           </p>
         </div>
       </main>
@@ -170,6 +186,42 @@ export default function OrderCheckoutPage() {
 
         <div className="grid md:grid-cols-[1fr_320px] gap-12">
           <form onSubmit={placeOrder} id="checkout-form" noValidate>
+            <div className="eyebrow mb-4">{t("checkout.kindTitle")}</div>
+            <div className="grid sm:grid-cols-2 gap-3 mb-10" role="radiogroup" data-testid="checkout-kind">
+              {[
+                { value: "print", price: printPrice, extra: t("checkout.kindPrintExtra", { price: SHIPPING_PRICE.toFixed(2) }) },
+                { value: "digital", price: digitalPrice, extra: t("checkout.kindDigitalExtra") },
+              ].map((option) => {
+                const taken = Boolean(orderedKinds[option.value]);
+                const chosen = kind === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={chosen}
+                    disabled={taken}
+                    onClick={() => setKind(option.value)}
+                    data-testid={`checkout-kind-${option.value}`}
+                    className={`text-left border p-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      chosen ? "border-[color:var(--ink)] bg-white" : "border-[color:var(--ink)]/20 hover:border-[color:var(--ink)]/50"
+                    }`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold">{t(`checkout.kind.${option.value}`)}</span>
+                      <span>${option.price.toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-[color:var(--muted)] mt-1">{taken ? t("checkout.kindAlreadyOrdered") : option.extra}</p>
+                  </button>
+                );
+              })}
+            </div>
+            {digital ? (
+              <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed" data-testid="checkout-digital-note">
+                {t("checkout.digitalNote")}
+              </p>
+            ) : (
+            <>
             <div className="eyebrow mb-6">{t("checkout.shippingAddress")}</div>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div className="md:col-span-2">
@@ -198,6 +250,8 @@ export default function OrderCheckoutPage() {
               </div>
             </div>
             <p className="text-xs text-[color:var(--muted)] mt-1">{t("checkout.required")}</p>
+            </>
+            )}
           </form>
 
           <aside className="border border-[color:var(--border-soft)] p-6 h-fit">
@@ -217,6 +271,8 @@ export default function OrderCheckoutPage() {
                   {t(tier === 24 ? "checkout.billedMinimum" : "checkout.billedTier", { count: pageCount, tier })}
                 </div>
               )}
+              {!digital && (
+              <>
               <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
                 {t("checkout.previewQuality")}
               </div>
@@ -251,7 +307,21 @@ export default function OrderCheckoutPage() {
                 <span className="text-[color:var(--muted)]">{t("checkout.shipping")}</span>
                 <span>${SHIPPING_PRICE.toFixed(2)}</span>
               </div>
+              {credit > 0 && (
+                <div className="flex justify-between" data-testid="checkout-credit">
+                  <span className="text-[color:var(--muted)]">{t("checkout.digitalCredit")}</span>
+                  <span>−${credit.toFixed(2)}</span>
+                </div>
+              )}
               <p className="text-xs text-[color:var(--muted)] mt-2" data-testid="checkout-delivery-time">{t("checkout.deliveryTime")}</p>
+              </>
+              )}
+              {digital && (
+                <div className="flex justify-between">
+                  <span className="text-[color:var(--muted)]">{t("checkout.kind.digital")}</span>
+                  <span>${digitalPrice.toFixed(2)}</span>
+                </div>
+              )}
             </div>
             <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6">
               <span>{t("checkout.total")}</span>
@@ -285,7 +355,7 @@ export default function OrderCheckoutPage() {
               {t("checkout.placeOrder")}
             </button>
             <p className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed">
-              {t("checkout.noPayment")}
+              {t(digital ? "checkout.noPaymentDigital" : "checkout.noPayment")}
             </p>
           </aside>
         </div>

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { parseDate } from "@/lib/dates";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, Download, Loader2 } from "lucide-react";
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -14,7 +14,21 @@ export default function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const { t, i18n } = useTranslation();
+
+  // A digital album, once paid: a fresh link to its PDF at each click.
+  const download = async () => {
+    setDownloading(true);
+    try {
+      const { data } = await api.get(`/orders/${id}/download`);
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || t("orderDetail.downloadError"));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -40,6 +54,7 @@ export default function OrderDetailPage() {
   if (!order) return null;
 
   const addr = order.shipping_address || {};
+  const digital = order.kind === "digital";
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
@@ -55,7 +70,22 @@ export default function OrderDetailPage() {
 
         {order.status === "pending_payment" && (
           <div className="border border-[color:var(--coral)]/40 bg-[color:var(--coral)]/5 p-5 mb-10 text-sm">
-            {t("orderDetail.paymentNotice")}
+            {t(digital ? "orderDetail.paymentNoticeDigital" : "orderDetail.paymentNotice")}
+          </div>
+        )}
+
+        {digital && order.status === "available" && (
+          <div className="border border-[color:var(--ink)]/15 bg-white p-5 mb-10 flex flex-wrap items-center justify-between gap-4" data-testid="order-download">
+            <p className="text-sm">{t("orderDetail.digitalReady")}</p>
+            <button
+              type="button"
+              onClick={download}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] px-5 py-2.5 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-60"
+            >
+              {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {t("orderDetail.downloadPdf")}
+            </button>
           </div>
         )}
 
@@ -98,14 +128,17 @@ export default function OrderDetailPage() {
           <div>
             <div className="eyebrow mb-4">{t("orderDetail.orderDetails")}</div>
             <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
+              <div>{t(`checkout.kind.${digital ? "digital" : "print"}`)}</div>
               <div>{t("orderDetail.format")}: {order.size} · {order.orientation}</div>
-              <div>{t("orderDetail.quantity")}: {order.quantity}</div>
+              {!digital && <div>{t("orderDetail.quantity")}: {order.quantity}</div>}
               <div>{t("orderDetail.unitPrice")}: {formatPrice(order.unit_price_cents, order.currency)}</div>
-              {order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
+              {!digital && order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
+              {order.credit_cents > 0 && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
               <div className="font-medium text-[color:var(--ink)] pt-1">{t("orderDetail.total")}: {formatPrice(order.total_price_cents, order.currency)}</div>
               <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: parseDate(order.created_at).toLocaleDateString(i18n.language) })}</div>
             </div>
           </div>
+          {!digital && (
           <div>
             <div className="eyebrow mb-4">{t("orderDetail.shippingTo")}</div>
             <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
@@ -116,6 +149,7 @@ export default function OrderDetailPage() {
               {addr.phone && <div className="pt-1">{addr.phone}</div>}
             </div>
           </div>
+          )}
         </div>
       </div>
     </main>

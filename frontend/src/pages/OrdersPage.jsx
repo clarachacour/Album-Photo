@@ -18,6 +18,7 @@ const STATUS_COLORS = {
   printing: "text-[color:var(--coral)]",
   shipped: "text-emerald-600",
   delivered: "text-emerald-700",
+  available: "text-emerald-700",
   cancelled: "text-red-500",
 };
 
@@ -74,7 +75,10 @@ export default function OrdersPage() {
                 <div>
                   <div className="font-serif-display text-xl tracking-tight mb-1">{o.album_title}</div>
                   <div className="text-xs text-[color:var(--muted)]">
-                    {o.size} · {o.orientation} · {t("orders.qty")} {o.quantity} · {parseDate(o.created_at).toLocaleDateString(i18n.language)}
+                    {o.kind === "digital"
+                      ? `${t("checkout.kind.digital")} · ${o.size} · ${o.orientation}`
+                      : `${o.size} · ${o.orientation} · ${t("orders.qty")} ${o.quantity}`}{" "}
+                    · {parseDate(o.created_at).toLocaleDateString(i18n.language)}
                   </div>
                 </div>
                 <div className="text-right shrink-0">

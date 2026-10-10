@@ -235,7 +235,8 @@
       "ready_for_delivery": "Ready for delivery",
       "shipped": "Shipped",
       "delivered": "Delivered",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "available": "Ready to download"
     }
   },
   "orderDetail": {
@@ -254,7 +255,11 @@
     "total": "Total",
     "placedOn": "Placed on {{date}}",
     "shippingTo": "Shipping to",
-    "shipping": "Delivery"
+    "shipping": "Delivery",
+    "paymentNoticeDigital": "Your digital album is ready on our end. We'll contact you for payment: once it's confirmed, you'll get an email and can download it here.",
+    "digitalReady": "Your album is ready. Download it as many times as you like.",
+    "downloadPdf": "Download PDF",
+    "downloadError": "Couldn't download the album, please try again."
   },
   "account": {
     "eyebrow": "Account",
@@ -437,7 +442,7 @@
     "coverImageRemoveError": "Failed to remove cover image",
     "loadingAlbum": "Loading album…",
     "adminBanner": "Admin mode: you're editing a customer's album. Your changes are saved to their album; it stays locked on their side. When you're done, regenerate the order's PDF from the admin page.",
-    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order.",
+    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order. You can still order the other version (printed book or PDF) with \"Order this album\".",
     "previewQualityNote": "This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.",
     "previousPage": "Previous page",
     "nextPage": "Next page",
@@ -964,7 +969,19 @@
     "tooDark_one": "{{count}} photo in your album may print dark (marked ⚠ in the editor). If you keep it, you accept this risk.",
     "tooDark_other": "{{count}} photos in your album may print dark (marked ⚠ in the editor). If you keep them, you accept this risk.",
     "billedMinimum": "Your album has {{count}} pages: it's billed as a 24-page album, the minimum. You can still add pages at no extra cost.",
-    "billedTier": "Your album has {{count}} pages: it's billed as a {{tier}}-page album. You can still add pages at no extra cost up to {{tier}}."
+    "billedTier": "Your album has {{count}} pages: it's billed as a {{tier}}-page album. You can still add pages at no extra cost up to {{tier}}.",
+    "kind": {
+      "print": "Printed book",
+      "digital": "Digital album (PDF)"
+    },
+    "kindTitle": "Your album",
+    "kindPrintExtra": "Printed, bound and delivered to you in Lebanon (+${{price}} delivery).",
+    "kindDigitalExtra": "Your album as a PDF to download and keep — no printing or delivery.",
+    "kindAlreadyOrdered": "Already ordered.",
+    "digitalNote": "You'll get your album as a PDF: the cover, all your pages and the back cover, in screen quality, to view on your phone, tablet or computer and to share. It can be downloaded as soon as your payment is confirmed, with no time limit, from \"My orders\".",
+    "digitalCredit": "Digital album already paid",
+    "noPaymentDigital": "Online payment isn't available yet — your order is saved and we'll contact you for payment. Your PDF can be downloaded as soon as it's confirmed.",
+    "placedBodyDigital": "Thanks — we're preparing the PDF of <b>{{title}}</b>. It can be downloaded as soon as your payment is confirmed."
   },
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",

@@ -235,7 +235,8 @@
       "ready_for_delivery": "Prête pour l'envoi",
       "shipped": "Expédiée",
       "delivered": "Livrée",
-      "cancelled": "Annulée"
+      "cancelled": "Annulée",
+      "available": "Prêt à télécharger"
     }
   },
   "orderDetail": {
@@ -254,7 +255,11 @@
     "total": "Total",
     "placedOn": "Passée le {{date}}",
     "shippingTo": "Livraison à",
-    "shipping": "Livraison"
+    "shipping": "Livraison",
+    "paymentNoticeDigital": "Votre album numérique est prêt de notre côté. Nous vous recontactons pour le paiement : dès sa confirmation, vous recevrez un email et pourrez le télécharger ici.",
+    "digitalReady": "Votre album est prêt. Téléchargez-le autant de fois que vous voulez.",
+    "downloadPdf": "Télécharger le PDF",
+    "downloadError": "Impossible de télécharger l'album, réessayez."
   },
   "account": {
     "eyebrow": "Compte",
@@ -437,7 +442,7 @@
     "coverImageRemoveError": "Impossible de supprimer l'image de couverture",
     "loadingAlbum": "Chargement de l'album…",
     "adminBanner": "Mode admin : vous modifiez l'album d'une cliente. Vos changements s'enregistrent dans son album ; il reste verrouillé de son côté. Une fois terminé, régénérez le PDF de la commande depuis l'admin.",
-    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande.",
+    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande. Vous pouvez encore commander l'autre version (livre imprimé ou PDF) avec « Commander cet album ».",
     "previewQualityNote": "Cet aperçu est affiché en qualité réduite pour un chargement rapide — votre livre imprimé sera exporté en pleine résolution d'impression.",
     "previousPage": "Page précédente",
     "nextPage": "Page suivante",
@@ -964,7 +969,19 @@
     "tooDark_one": "{{count}} photo de votre album risque de sortir sombre à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
     "tooDark_other": "{{count}} photos de votre album risquent de sortir sombres à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
     "billedMinimum": "Votre album compte {{count}} pages : il est facturé comme un album de 24 pages, le minimum. Vous pouvez encore ajouter des pages sans frais.",
-    "billedTier": "Votre album compte {{count}} pages : il est facturé comme un album de {{tier}} pages. Vous pouvez encore ajouter des pages sans frais jusqu'à {{tier}}."
+    "billedTier": "Votre album compte {{count}} pages : il est facturé comme un album de {{tier}} pages. Vous pouvez encore ajouter des pages sans frais jusqu'à {{tier}}.",
+    "kind": {
+      "print": "Livre imprimé",
+      "digital": "Album numérique (PDF)"
+    },
+    "kindTitle": "Votre album",
+    "kindPrintExtra": "Imprimé, relié et livré chez vous au Liban (+{{price}} $ de livraison).",
+    "kindDigitalExtra": "Votre album en PDF, à télécharger et à garder — sans impression ni livraison.",
+    "kindAlreadyOrdered": "Déjà commandé.",
+    "digitalNote": "Vous recevrez votre album en PDF : la couverture, toutes vos pages et la 4e de couverture, en qualité écran, à regarder sur votre téléphone, votre tablette ou votre ordinateur et à partager. Il sera téléchargeable dès la confirmation de votre paiement, sans limite de temps, depuis « Mes commandes ».",
+    "digitalCredit": "Album numérique déjà payé",
+    "noPaymentDigital": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous vous recontacterons pour le paiement. Votre PDF sera téléchargeable dès sa confirmation.",
+    "placedBodyDigital": "Merci — nous préparons le PDF de <b>{{title}}</b>. Il sera téléchargeable dès la confirmation de votre paiement."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",

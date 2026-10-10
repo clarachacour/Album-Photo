@@ -299,6 +299,9 @@ export default function AlbumEditor() {
     // showing as a stale page count that never seemed to update.
     // The PDF is made from the saved album: never go on to the order with
     // edits that didn't reach the server.
+    // Already ordered: nothing to save (it's locked), the other version
+    // (printed book or PDF) can still be ordered.
+    if (album?.was_ordered) return nav(`/order/${id}`);
     if (!(await save({ silent: true }))) return;
     nav(`/order/${id}`);
   };

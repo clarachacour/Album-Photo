@@ -18,6 +18,7 @@ const STATUS_COLORS = {
   ready_for_delivery: "text-[color:var(--coral)]",
   shipped: "text-emerald-600",
   delivered: "text-emerald-700",
+  available: "text-emerald-700",
   cancelled: "text-red-500",
 };
 
@@ -31,9 +32,14 @@ const STATUS_LABELS = {
   ready_for_delivery: "Ready for delivery",
   shipped: "Shipped",
   delivered: "Delivered",
+  available: "Ready to download",
   cancelled: "Cancelled",
 };
-const ALL_STATUSES = Object.keys(STATUS_LABELS);
+// The statuses each kind of order goes through (status_sequence in
+// backend/app/services/orders.py). A digital album (the PDF) is handed to
+// the customer, by email, the moment it's marked paid.
+const PRINT_STATUSES = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered", "cancelled"];
+const DIGITAL_STATUSES = ["pending_payment", "paid", "available", "cancelled"];
 
 
 /**
@@ -87,7 +93,11 @@ export default function AdminOrdersPage() {
     try {
       const { data } = await api.patch(`/admin/orders/${orderId}/status`, { status });
       setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
-      if (status === "shipped" || status === "delivered") {
+      if (data.kind === "digital" && data.status === "available") {
+        toast.success("Customer emailed — their PDF is ready to download");
+      } else if (data.kind === "digital" && status === "paid") {
+        toast.success("Marked paid — the customer gets their PDF as soon as it's made");
+      } else if (status === "shipped" || status === "delivered") {
         toast.success(`Customer notified — order marked ${STATUS_LABELS[status].toLowerCase()}`);
       }
     } catch (err) {
@@ -151,6 +161,7 @@ export default function AdminOrdersPage() {
                   <th className="p-3">Customer</th>
                   <th className="p-3">Ship to</th>
                   <th className="p-3">Album</th>
+                  <th className="p-3">Type</th>
                   <th className="p-3">Format</th>
                   <th className="p-3">Qty</th>
                   <th className="p-3">Total</th>
@@ -169,8 +180,9 @@ export default function AdminOrdersPage() {
                         {o.created_at ? parseDate(o.created_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-3">
-                        <div className="font-medium">{addr.full_name || "—"}</div>
+                        <div className="font-medium">{addr.full_name || o.customer?.name || "—"}</div>
                         <div className="text-xs text-[color:var(--ink)]/60">{addr.phone || ""}</div>
+                        {o.customer?.email && <div className="text-xs text-[color:var(--ink)]/60 break-all">{o.customer.email}</div>}
                       </td>
                       <td className="p-3 text-[color:var(--ink)]/70">
                         {addr.street}{addr.building ? `, ${addr.building}` : ""}<br />
@@ -190,6 +202,9 @@ export default function AdminOrdersPage() {
                           <Pencil size={11} /> Edit album
                         </Link>
                       </td>
+                      <td className="p-3 whitespace-nowrap">
+                        {o.kind === "digital" ? <span className="font-semibold text-[color:var(--coral)]">PDF</span> : "Print"}
+                      </td>
                       <td className="p-3 whitespace-nowrap">{o.size} · {o.orientation}</td>
                       <td className="p-3">{o.quantity}</td>
                       <td className="p-3 whitespace-nowrap">{formatPrice(o.total_price_cents, o.currency)}</td>
@@ -200,7 +215,7 @@ export default function AdminOrdersPage() {
                           onChange={(e) => updateStatus(o.id, e.target.value)}
                           className={`text-xs font-semibold uppercase tracking-widest bg-transparent border border-[color:var(--border-soft)] px-2 py-1 disabled:opacity-60 ${STATUS_COLORS[o.status] || ""}`}
                         >
-                          {ALL_STATUSES.map((s) => (
+                          {(o.kind === "digital" ? DIGITAL_STATUSES : PRINT_STATUSES).map((s) => (
                             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                           ))}
                         </select>
