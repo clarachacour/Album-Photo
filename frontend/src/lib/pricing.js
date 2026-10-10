@@ -18,19 +18,26 @@ export const PRICE_TABLE = {
 
 export const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45 };
 
-export function computeUnitPrice(size, targetPages) {
-  const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
-  if (tierPrices[targetPages] != null) return tierPrices[targetPages];
-  const lowerTiers = PAGE_TIERS.filter((t) => t <= targetPages);
-  const baseTier = lowerTiers.length ? Math.max(...lowerTiers) : Math.min(...PAGE_TIERS);
-  const extraPages = Math.max(0, targetPages - baseTier);
-  return tierPrices[baseTier] + extraPages * (OVERAGE_PER_PAGE[size] || OVERAGE_PER_PAGE.A4);
+// The tier an album of pageCount pages is billed as (billed_tier in the
+// backend): the smallest one that holds it (24 at least: 15 pages → 24,
+// 35 → 50); past the largest, the page count itself.
+export function billedTier(pageCount) {
+  const pages = Math.max(1, Number(pageCount) || PAGE_TIERS[0]);
+  return PAGE_TIERS.find((t) => t >= pages) ?? pages;
 }
 
-// Mirrors billed_page_count in backend/app/services/pricing.py: the page
-// count chosen at creation, or the album's real page count if it has more.
+export function computeUnitPrice(size, pageCount) {
+  const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
+  const tier = billedTier(pageCount);
+  if (tierPrices[tier] != null) return tierPrices[tier];
+  const largest = PAGE_TIERS[PAGE_TIERS.length - 1];
+  return tierPrices[largest] + (tier - largest) * (OVERAGE_PER_PAGE[size] || OVERAGE_PER_PAGE.A4);
+}
+
+// Mirrors billed_page_count in backend/app/services/pricing.py: the album's
+// real page count (the chosen one only while it has no pages yet).
 export function billedPageCount(album) {
-  return Math.max(Number(album?.target_pages) || 0, (album?.pages || []).length);
+  return (album?.pages || []).length || Number(album?.target_pages) || PAGE_TIERS[0];
 }
 
 // Delivery (Lebanon only), per order — keep in sync with SHIPPING_PRICE_CENTS

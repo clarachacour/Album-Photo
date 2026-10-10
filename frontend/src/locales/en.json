@@ -357,7 +357,7 @@
       "landscapeLower": "landscape",
       "pageCount": "Number of pages",
       "custom": "Custom",
-      "customPagesNote": "pages — priced above the nearest standard tier",
+      "customPagesNote": "pages — billed as the next standard tier up (35 pages = the 50-page price)",
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "per copy"
@@ -949,7 +949,6 @@
     "summary": "Order summary",
     "format": "Format",
     "pages": "Pages",
-    "shortAlbum": "Your album has {{count}} pages. You'll still be charged the {{target}}-page price.",
     "previewQuality": "The preview you edited is shown at reduced quality for fast loading — the book we print for you will be at full print resolution.",
     "quantity": "Quantity",
     "unitPrice": "Unit price",
@@ -963,7 +962,9 @@
     "lowResolution_one": "{{count}} photo in your album may print blurry (marked ⚠ in the editor). If you keep it, you accept that risk.",
     "lowResolution_other": "{{count}} photos in your album may print blurry (marked ⚠ in the editor). If you keep them, you accept that risk.",
     "tooDark_one": "{{count}} photo in your album may print dark (marked ⚠ in the editor). If you keep it, you accept this risk.",
-    "tooDark_other": "{{count}} photos in your album may print dark (marked ⚠ in the editor). If you keep them, you accept this risk."
+    "tooDark_other": "{{count}} photos in your album may print dark (marked ⚠ in the editor). If you keep them, you accept this risk.",
+    "billedMinimum": "Your album has {{count}} pages: it's billed as a 24-page album, the minimum. You can still add pages at no extra cost.",
+    "billedTier": "Your album has {{count}} pages: it's billed as a {{tier}}-page album. You can still add pages at no extra cost up to {{tier}}."
   },
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",

@@ -2,9 +2,10 @@
 
 
 
-# Fixed page-count tiers the user picks from at album creation. A "custom"
-# page count (not one of these) is priced at the nearest lower tier plus a
-# per-page surcharge — see compute_order_price_cents.
+# Fixed page-count tiers the user picks from at album creation. An album is
+# billed at the smallest tier that holds its real page count (15 pages → 24,
+# 35 → 50); beyond the largest tier, a per-page surcharge is added — see
+# compute_order_price_cents.
 PAGE_TIERS = [24, 50, 100, 150, 250]
 
 # Price by format AND page tier, in cents — server-side only, the client
@@ -27,25 +28,31 @@ SHIPPING_PRICE_CENTS = 500
 # customer accepted; change both together when the terms change.
 TERMS_VERSION = "2026-09-30"
 
-# Per extra page beyond the nearest lower tier, in cents — also a
-# placeholder until real per-page economics are confirmed.
+# Per extra page beyond the largest tier, in cents — also a placeholder
+# until real per-page economics are confirmed.
 OVERAGE_PER_PAGE_CENTS = {"A5": 30, "A4": 45}
 
 def billed_page_count(album: dict) -> int:
-    """Pages the order is charged for: the page count chosen at creation,
-    or the album's real page count if it has more. target_pages can be
-    changed by the client, so it alone can't decide the price (a 250-page
-    album was ordered at the 24-page price)."""
-    return max(int(album.get("target_pages") or 0), len(album.get("pages") or []))
+    """Pages the order is charged for: the album's real page count (the
+    page count chosen at creation only when there are no pages yet). It
+    can't be set by the client: a 250-page album was once ordered at the
+    24-page price by lowering the chosen count."""
+    pages = len(album.get("pages") or [])
+    return pages or int(album.get("target_pages") or PAGE_TIERS[0])
 
 
-def compute_order_price_cents(size: str, target_pages: int) -> int:
+def billed_tier(page_count: int) -> int:
+    """The tier an album of page_count pages is billed as: the smallest one
+    that holds it (24 at least); past the largest, the page count itself."""
+    page_count = max(1, int(page_count or PAGE_TIERS[0]))
+    return next((t for t in PAGE_TIERS if t >= page_count), page_count)
+
+
+def compute_order_price_cents(size: str, page_count: int) -> int:
     size = size if size in ORDER_PRICE_CENTS else "A4"
     tier_prices = ORDER_PRICE_CENTS[size]
-    target_pages = max(1, int(target_pages or PAGE_TIERS[0]))
-    if target_pages in tier_prices:
-        return tier_prices[target_pages]
-    lower_tiers = [t for t in PAGE_TIERS if t <= target_pages]
-    base_tier = max(lower_tiers) if lower_tiers else min(PAGE_TIERS)
-    extra_pages = max(0, target_pages - base_tier)
-    return tier_prices[base_tier] + extra_pages * OVERAGE_PER_PAGE_CENTS[size]
+    tier = billed_tier(page_count)
+    if tier in tier_prices:
+        return tier_prices[tier]
+    largest = PAGE_TIERS[-1]
+    return tier_prices[largest] + (tier - largest) * OVERAGE_PER_PAGE_CENTS[size]

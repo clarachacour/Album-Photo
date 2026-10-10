@@ -357,7 +357,7 @@
       "landscapeLower": "paysage",
       "pageCount": "Nombre de pages",
       "custom": "Personnalisé",
-      "customPagesNote": "pages — tarifé au-dessus du palier standard le plus proche",
+      "customPagesNote": "pages — facturé comme le palier standard supérieur (35 pages = prix de 50)",
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "par exemplaire"
@@ -949,7 +949,6 @@
     "summary": "Récapitulatif",
     "format": "Format",
     "pages": "Pages",
-    "shortAlbum": "Votre album compte {{count}} pages. Le prix appliqué reste celui de {{target}} pages.",
     "previewQuality": "L'aperçu que vous avez modifié est affiché en qualité réduite pour un chargement rapide — le livre imprimé sera en pleine résolution.",
     "quantity": "Quantité",
     "unitPrice": "Prix unitaire",
@@ -963,7 +962,9 @@
     "lowResolution_one": "{{count}} photo de votre album risque d'être floue à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
     "lowResolution_other": "{{count}} photos de votre album risquent d'être floues à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
     "tooDark_one": "{{count}} photo de votre album risque de sortir sombre à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
-    "tooDark_other": "{{count}} photos de votre album risquent de sortir sombres à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque."
+    "tooDark_other": "{{count}} photos de votre album risquent de sortir sombres à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
+    "billedMinimum": "Votre album compte {{count}} pages : il est facturé comme un album de 24 pages, le minimum. Vous pouvez encore ajouter des pages sans frais.",
+    "billedTier": "Votre album compte {{count}} pages : il est facturé comme un album de {{tier}} pages. Vous pouvez encore ajouter des pages sans frais jusqu'à {{tier}}."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",

@@ -143,9 +143,9 @@ def test_order_needs_the_terms_and_records_them(client, db, monkeypatch):
 def test_billed_page_count():
     from app.services.pricing import billed_page_count
 
-    assert billed_page_count({"target_pages": 50, "pages": [{}] * 30}) == 50  # chosen tier, album fell short
+    assert billed_page_count({"target_pages": 50, "pages": [{}] * 15}) == 15  # chose 50, made 15: billed as 24
     assert billed_page_count({"target_pages": 24, "pages": [{}] * 60}) == 60
-    assert billed_page_count({"pages": [{}] * 10}) == 10
+    assert billed_page_count({"target_pages": 50, "pages": []}) == 50
 
 
 # ---------- 4. Customer text is escaped in HTML emails ----------

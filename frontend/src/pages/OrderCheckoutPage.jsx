@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, computeUnitPrice } from "@/lib/pricing";
+import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeUnitPrice } from "@/lib/pricing";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 export default function OrderCheckoutPage() {
@@ -72,7 +72,9 @@ export default function OrderCheckoutPage() {
 
   const lowResCount = album ? lowResolutionItems(album).length : 0;
   const darkCount = album ? darkPhotoItems(album).length : 0;
-  const unitPrice = album ? computeUnitPrice(album.size || "A4", billedPageCount(album) || 50) : 0;
+  const pageCount = album ? billedPageCount(album) : 0;
+  const tier = billedTier(pageCount);
+  const unitPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
   const total = unitPrice * quantity + SHIPPING_PRICE;
 
   const placeOrder = async (e) => {
@@ -207,11 +209,12 @@ export default function OrderCheckoutPage() {
               </div>
               <div className="flex justify-between mb-1">
                 <span className="text-[color:var(--muted)]">{t("checkout.pages")}</span>
-                <span>{album.pages?.length || album.target_pages} / {album.target_pages}</span>
+                <span>{pageCount}</span>
               </div>
-              {(album.pages?.length || 0) < album.target_pages && (
-                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3 mt-1">
-                  {t("checkout.shortAlbum", { count: album.pages?.length || 0, target: album.target_pages })}
+              {/* Billed as the smallest tier that holds the album (see billedTier). */}
+              {tier !== pageCount && (
+                <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1" data-testid="checkout-billed-tier">
+                  {t(tier === 24 ? "checkout.billedMinimum" : "checkout.billedTier", { count: pageCount, tier })}
                 </div>
               )}
               <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
