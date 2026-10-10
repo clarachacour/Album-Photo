@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from app.config import APP_NAME, UPLOAD_CONCURRENCY
 from app.core.executors import photo_processing_executor
 from app.db import db
-from app.services.curation import ahash_to_str, compute_ahash, extract_exif_info
+from app.services.curation import ahash_to_str, compute_ahash, compute_brightness, extract_exif_info
 from app.services.storage import get_object, put_object
 
 logger = logging.getLogger(__name__)
@@ -257,7 +257,37 @@ def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: 
         "gps_lat": exif_info["gps_lat"],
         "gps_lng": exif_info["gps_lng"],
         "phash": ahash_to_str(compute_ahash(data)),
+        **(compute_brightness(data) or {}),
     }
+
+def _brightness_of_stored(photo: dict) -> dict:
+    data, _ = get_object(photo.get("thumbnail_path") or photo["storage_path"])
+    # None for a photo that can't be read, so it isn't tried again.
+    return compute_brightness(data) or {"brightness": None, "highlights": None}
+
+
+async def backfill_brightness(limit: int = 5000) -> int:
+    """Measures the photos uploaded before brightness was (their small copy
+    is enough). Run in the background at startup; does nothing once every
+    photo has it. Returns how many were measured."""
+    loop = asyncio.get_event_loop()
+    done = 0
+    cursor = db.photos.find(
+        {"is_deleted": False, "brightness": {"$exists": False}},
+        {"_id": 0, "id": 1, "thumbnail_path": 1, "storage_path": 1},
+    ).limit(limit)
+    async for photo in cursor:
+        try:
+            values = await loop.run_in_executor(photo_processing_executor, _brightness_of_stored, photo)
+        except Exception as e:
+            logger.debug(f"Luminosité de la photo {photo.get('id')} non mesurée : {e}")
+            continue
+        await db.photos.update_one({"id": photo["id"]}, {"$set": values})
+        done += 1
+    if done:
+        logger.info(f"Luminosité mesurée pour {done} photo(s) déjà envoyée(s)")
+    return done
+
 
 _TYPES_BY_EXTENSION = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp",
@@ -350,6 +380,10 @@ async def store_new_photo(album_id: str, user_id: str, filename: str, content_ty
         "gps_lat": processed["gps_lat"],
         "gps_lng": processed["gps_lng"],
         "phash": processed["phash"],
+        # Mean lightness and that of the brightest tenth (0-1), for the
+        # "may print dark" warning; missing when the photo couldn't be read.
+        "brightness": processed.get("brightness"),
+        "highlights": processed.get("highlights"),
         "content_hash": content_hash,
         "is_selected": True,
         "is_duplicate": False,

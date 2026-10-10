@@ -42,3 +42,24 @@ export function lowResolutionItems(album) {
   });
   return found;
 }
+
+// Photos that risk printing dark: paper shows less light than a screen, so
+// an underexposed photo comes out darker still. Measured at upload
+// (brightness: mean lightness, highlights: that of the brightest tenth, 0-1).
+// A sunset or a night shot with lights keeps bright highlights: not flagged.
+export function isTooDark(photo) {
+  if (photo?.brightness == null) return false;
+  return photo.brightness < 0.12 || (photo.brightness < 0.22 && (photo.highlights ?? 1) < 0.45);
+}
+
+/** Photo frames of the album whose photo risks printing dark. */
+export function darkPhotoItems(album) {
+  const photos = new Map((album?.photos || []).map((p) => [p.id, p]));
+  const found = [];
+  (album?.pages || []).forEach((page, pageIndex) => {
+    for (const item of page.items || []) {
+      if (item.type === "photo" && item.photo_id && isTooDark(photos.get(item.photo_id))) found.push({ pageIndex, item });
+    }
+  });
+  return found;
+}

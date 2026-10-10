@@ -86,6 +86,24 @@ def extract_exif_info(data: bytes) -> dict:
     return info
 
 
+def compute_brightness(data: bytes) -> Optional[dict]:
+    """How light a photo is, to warn that it may print dark: its mean
+    lightness and the lightness its brightest tenth reaches (both 0-1). A
+    sunset (dark overall, bright sky) keeps a high "highlights"; an
+    underexposed photo has both low."""
+    try:
+        img = Image.open(BytesIO(data))
+        img.draft("L", (64, 64))
+        levels = sorted(img.convert("L").resize((64, 64)).tobytes())
+        return {
+            "brightness": round(sum(levels) / len(levels) / 255, 3),
+            "highlights": round(levels[int(len(levels) * 0.9)] / 255, 3),
+        }
+    except Exception as e:
+        logger.debug(f"Brightness computation failed: {e}")
+        return None
+
+
 def compute_ahash(data: bytes) -> Optional[int]:
     """64-bit average hash (aHash) for near-duplicate detection. Two photos
     with a small Hamming distance between hashes are visually near-identical

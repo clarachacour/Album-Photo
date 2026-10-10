@@ -4,7 +4,7 @@ import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 import LayoutPicker from "@/components/LayoutPicker";
 import { ImagePlus, LayoutGrid, Type, Trash2, TriangleAlert } from "lucide-react";
-import { isLowResolution } from "@/lib/printQuality";
+import { isLowResolution, isTooDark } from "@/lib/printQuality";
 import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -185,6 +185,8 @@ export function AlbumPage({
           const isSwapSource = swapSourceItemId === item.id;
           const isEmpty = !item.photo_id;
           const lowRes = editable && !isEmpty && isLowResolution(item, photoSizes?.get(item.photo_id), pageSize, orientation);
+          const dark = editable && !isEmpty && isTooDark(photoSizes?.get(item.photo_id));
+          const warnings = [lowRes && "lowResolution", dark && "tooDark"].filter(Boolean);
           return (
             <React.Fragment key={item.id}>
               <DraggableItem
@@ -216,15 +218,15 @@ export function AlbumPage({
                     onAspect={(a) => setLoadedAspects((prev) => (prev[item.id] === a ? prev : { ...prev, [item.id]: a }))}
                   />
                 )}
-                {lowRes && !inCrop && (
+                {warnings.length > 0 && !inCrop && (
                   <span
                     className="absolute left-1 bottom-1 z-10 inline-flex items-center gap-1 bg-amber-100/95 text-amber-900 border border-amber-300 px-1.5 py-0.5 text-[10px] leading-none rounded-sm"
-                    title={t("albumEditor.lowResolution")}
-                    aria-label={t("albumEditor.lowResolution")}
-                    data-testid={`low-res-${item.id}`}
+                    title={warnings.map((w) => t(`albumEditor.${w}`)).join("\n")}
+                    aria-label={warnings.map((w) => t(`albumEditor.${w}`)).join(" ")}
+                    data-testid={`print-warning-${item.id}`}
                   >
                     <TriangleAlert size={11} aria-hidden="true" />
-                    {isSel && <span>{t("albumEditor.lowResolutionShort")}</span>}
+                    {isSel && <span>{warnings.map((w) => t(`albumEditor.${w}Short`)).join(" · ")}</span>}
                   </span>
                 )}
                 {sizeMarks.has(item.id) && (

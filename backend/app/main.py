@@ -35,6 +35,7 @@ from app.routers import (
 )
 from app.db_indexes import ensure_indexes
 from app.monitoring import init_monitoring
+from app.services.photos import backfill_brightness
 from app.services.storage import init_storage
 
 logger = logging.getLogger(__name__)
@@ -46,9 +47,13 @@ async def lifespan(app: FastAPI):
     init_storage()
     await ensure_indexes(db)
     await rate_limiter.ensure_indexes()
+    # Photos uploaded before their brightness was measured (see
+    # backfill_brightness): in the background, startup doesn't wait.
+    backfill = asyncio.create_task(backfill_brightness())
     logger.info("Startup complete")
     yield
     # Shutdown
+    backfill.cancel()
     client.close()
 
 

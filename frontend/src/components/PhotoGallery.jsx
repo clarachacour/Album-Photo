@@ -1,7 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { photoImageUrl } from "@/lib/api";
-import { Check } from "lucide-react";
+import { Check, TriangleAlert } from "lucide-react";
+import { isTooDark } from "@/lib/printQuality";
 import { usePhotoHoverPreview } from "@/components/PhotoHoverPreview";
 
 /**
@@ -29,6 +30,7 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
         {visible.map((p) => {
           const placed = placedPhotoIds.has(p.id);
           const isSelected = selectedPhotoId === p.id;
+          const dark = isTooDark(p);
           return (
             <div
               key={p.id}
@@ -41,7 +43,7 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
               }}
               onClick={() => onSelectPhoto && onSelectPhoto(isSelected ? null : p.id)}
               data-testid={`gallery-photo-${p.id}`}
-              title={isSelected ? t("photoGallery.clickToCancel") : t("photoGallery.dragOrClick")}
+              title={[isSelected ? t("photoGallery.clickToCancel") : t("photoGallery.dragOrClick"), dark && t("albumEditor.tooDark")].filter(Boolean).join("\n")}
               className={`relative w-16 h-16 md:w-20 md:h-20 bg-white border overflow-hidden shrink-0 cursor-pointer active:cursor-grabbing transition-shadow ${
                 isSelected ? "outline outline-2 outline-[color:var(--coral)] outline-offset-2" : "border-[color:var(--border-soft)]"
               }`}
@@ -53,6 +55,11 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
                 className={`w-full h-full object-cover pointer-events-none select-none ${placed ? "opacity-50" : ""}`}
                 draggable={false}
               />
+              {dark && (
+                <div className="absolute left-1 bottom-1 bg-amber-100/95 text-amber-900 border border-amber-300 rounded-sm p-0.5" aria-label={t("albumEditor.tooDark")} data-testid={`gallery-dark-${p.id}`}>
+                  <TriangleAlert size={10} aria-hidden="true" />
+                </div>
+              )}
               {placed && (
                 <div className="absolute top-1 right-1 bg-[color:var(--ink)] text-[color:var(--paper)] rounded-full p-0.5">
                   <Check size={10} />

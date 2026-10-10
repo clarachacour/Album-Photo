@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLowResolution, lowResolutionItems, photoPrintDpi } from "@/lib/printQuality";
+import { darkPhotoItems, isLowResolution, isTooDark, lowResolutionItems, photoPrintDpi } from "@/lib/printQuality";
 
 // A full A4 portrait page: 210 × 297 mm, 8.27 in wide.
 const fullPage = { x: 0, y: 0, w: 1, h: 1, scale: 1 };
@@ -43,5 +43,26 @@ describe("lowResolutionItems", () => {
       ],
     };
     expect(lowResolutionItems(album).map((f) => [f.pageIndex, f.item.photo_id])).toEqual([[1, "small"]]);
+  });
+});
+
+describe("isTooDark", () => {
+  it("flags an underexposed photo", () => {
+    expect(isTooDark({ brightness: 0.16, highlights: 0.3 })).toBe(true);
+    expect(isTooDark({ brightness: 0.08, highlights: 0.9 })).toBe(true);
+  });
+
+  it("leaves a sunset, a normal photo or an unmeasured one alone", () => {
+    expect(isTooDark({ brightness: 0.2, highlights: 0.7 })).toBe(false);
+    expect(isTooDark({ brightness: 0.45, highlights: 0.8 })).toBe(false);
+    expect(isTooDark({ width: 4000, height: 3000 })).toBe(false);
+  });
+
+  it("lists the album's frames holding a dark photo", () => {
+    const album = {
+      photos: [{ id: "dark", brightness: 0.1, highlights: 0.2 }, { id: "fine", brightness: 0.5, highlights: 0.8 }],
+      pages: [{ items: [{ type: "photo", photo_id: "fine" }] }, { items: [{ type: "photo", photo_id: "dark" }, { type: "text" }] }],
+    };
+    expect(darkPhotoItems(album).map((f) => f.pageIndex)).toEqual([1]);
   });
 });

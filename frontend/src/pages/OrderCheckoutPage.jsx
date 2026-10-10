@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, computeUnitPrice } from "@/lib/pricing";
-import { lowResolutionItems } from "@/lib/printQuality";
+import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 export default function OrderCheckoutPage() {
   const { albumId } = useParams();
@@ -71,6 +71,7 @@ export default function OrderCheckoutPage() {
   }, [albumId]);
 
   const lowResCount = album ? lowResolutionItems(album).length : 0;
+  const darkCount = album ? darkPhotoItems(album).length : 0;
   const unitPrice = album ? computeUnitPrice(album.size || "A4", billedPageCount(album) || 50) : 0;
   const total = unitPrice * quantity + SHIPPING_PRICE;
 
@@ -219,6 +220,12 @@ export default function OrderCheckoutPage() {
               {lowResCount > 0 && (
                 <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-low-res">
                   {t("checkout.lowResolution", { count: lowResCount })}{" "}
+                  <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
+                </div>
+              )}
+              {darkCount > 0 && (
+                <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-dark">
+                  {t("checkout.tooDark", { count: darkCount })}{" "}
                   <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
                 </div>
               )}

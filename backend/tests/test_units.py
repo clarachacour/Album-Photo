@@ -85,3 +85,25 @@ def test_google_keys_are_downloaded_once_and_again_after_a_key_change(monkeypatc
     assert len(downloads) == 1  # kept between sign-ins
     assert auth.verify_google_token("signed-with-new-key", "client") == {"email": "a@b.c"}
     assert len(downloads) == 2  # fetched again once, not on every attempt
+
+
+# ---------- Photo brightness ----------
+def _jpeg(color):
+    from io import BytesIO
+
+    from PIL import Image
+
+    buf = BytesIO()
+    img = Image.new("RGB", (400, 300), color)
+    img.paste((255, 240, 200), (0, 0, 400, 20))  # a thin strip of bright sky
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def test_brightness_tells_a_dark_photo_from_a_light_one():
+    from app.services.curation import compute_brightness
+
+    dark, light = compute_brightness(_jpeg((25, 22, 20))), compute_brightness(_jpeg((150, 140, 130)))
+    assert dark["brightness"] < 0.2 < light["brightness"]
+    assert dark["highlights"] < light["highlights"]
+    assert compute_brightness(b"not an image") is None

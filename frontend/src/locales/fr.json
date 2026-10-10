@@ -538,7 +538,9 @@
       "body": "Cet album a été modifié ailleurs entre-temps (un autre onglet, un autre appareil ou des photos ajoutées). Vos dernières modifications ici ne sont pas encore enregistrées.",
       "loadLatest": "Charger la dernière version",
       "keepMine": "Garder mes modifications"
-    }
+    },
+    "tooDark": "Photo sombre : elle risque de sortir encore plus sombre à l'impression (le papier rend moins de lumière qu'un écran). Éclaircissez-la sur votre téléphone puis ajoutez-la à nouveau, ou choisissez une autre photo.",
+    "tooDarkShort": "Photo sombre"
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",
@@ -948,7 +950,9 @@
     "acceptTerms": "J'ai lu et j'accepte les <terms>Conditions générales de vente</terms>.",
     "mustAcceptTerms": "Veuillez accepter les conditions générales de vente pour commander.",
     "lowResolution_one": "{{count}} photo de votre album risque d'être floue à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
-    "lowResolution_other": "{{count}} photos de votre album risquent d'être floues à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque."
+    "lowResolution_other": "{{count}} photos de votre album risquent d'être floues à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
+    "tooDark_one": "{{count}} photo de votre album risque de sortir sombre à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
+    "tooDark_other": "{{count}} photos de votre album risquent de sortir sombres à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",
