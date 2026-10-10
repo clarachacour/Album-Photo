@@ -918,27 +918,27 @@ export default function AlbumEditor() {
               bursts are removed don't fill them (each page holds at least
               one). Up top, where it's seen right after the layout. */}
           {!album.was_ordered && album.target_pages && (album.pages || []).length < album.target_pages && (
-            <div className="w-full max-w-2xl mb-4 text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded px-4 py-3" data-testid="editor-pages-short">
+            <div className="w-full max-w-2xl mb-4 text-xs leading-relaxed text-amber-900 bg-amber-50 border border-amber-300 rounded px-3 py-2.5" data-testid="editor-pages-short">
               <p className="font-semibold">
                 {t("albumEditor.pagesShortTitle", { count: (album.pages || []).length, target: album.target_pages })}
               </p>
-              <p className="mt-1">
+              <p className="mt-0.5">
                 {t("albumEditor.pagesShortBody", { count: album.target_pages - (album.pages || []).length })}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => document.querySelector('[data-tour="add-photos"]')?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  className="inline-flex items-center gap-1.5 bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all"
+                  className="inline-flex items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-2.5 py-1 hover:brightness-110 transition-all"
                   data-testid="editor-pages-short-add-photos"
                 >
-                  <Plus size={13} /> {t("albumEditor.addPhotosButton")}
+                  <Plus size={12} /> {t("albumEditor.addPhotosButton")}
                 </button>
                 <button
                   type="button"
                   onClick={addBlankPage}
                   data-testid={TID.editorAddPage}
-                  className="inline-flex items-center gap-1.5 border border-amber-400 px-3 py-1.5 hover:bg-amber-100 transition-colors"
+                  className="inline-flex items-center gap-1 border border-amber-400 px-2.5 py-1 hover:bg-amber-100 transition-colors"
                 >
                   {t("albumEditor.addBlankPage")}
                 </button>
