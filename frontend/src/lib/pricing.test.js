@@ -11,7 +11,7 @@ describe("pricing", () => {
   });
 
   it("adds each page past the largest tier", () => {
-    expect(computeUnitPrice("A4", 260)).toBeCloseTo(PRICE_TABLE.A4[250] + 10 * 0.45);
+    expect(computeUnitPrice("A4", 210)).toBeCloseTo(PRICE_TABLE.A4[200] + 10 * 0.45);
   });
 
   it("counts the album's real pages, not the ones chosen", () => {

@@ -23,8 +23,8 @@ def test_a_page_count_between_tiers_is_billed_as_the_next_tier():
 
 
 def test_past_the_largest_tier_each_page_is_added():
-    expected = ORDER_PRICE_CENTS["A4"][250] + 10 * OVERAGE_PER_PAGE_CENTS["A4"]
-    assert compute_order_price_cents("A4", 260) == expected
+    expected = ORDER_PRICE_CENTS["A4"][200] + 10 * OVERAGE_PER_PAGE_CENTS["A4"]
+    assert compute_order_price_cents("A4", 210) == expected
 
 
 def test_unknown_size_is_priced_as_a4():

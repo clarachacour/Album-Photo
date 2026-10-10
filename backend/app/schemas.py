@@ -27,7 +27,7 @@ OptLine = Annotated[Optional[str], Field(default=None, max_length=200)]
 OptNote = Annotated[Optional[str], Field(default=None, max_length=500)]
 Token = Annotated[str, Field(max_length=4096)]
 Id = Annotated[str, Field(max_length=100)]
-# Pages an album can have (tiers go up to 250; custom counts above that).
+# Pages an album can have (tiers go up to 200; custom counts above that).
 MAX_ALBUM_PAGES = 500
 
 

@@ -9,11 +9,11 @@
 // table, which is exactly the kind of duplication that quietly drifts out
 // of sync.
 
-export const PAGE_TIERS = [24, 50, 100, 150, 250];
+export const PAGE_TIERS = [24, 50, 100, 150, 200];
 
 export const PRICE_TABLE = {
-  A5: { 24: 25, 50: 35, 100: 55, 150: 75, 250: 110 },
-  A4: { 24: 35, 50: 49, 100: 79, 150: 109, 250: 159 },
+  A5: { 24: 25, 50: 35, 100: 55, 150: 75, 200: 92 },
+  A4: { 24: 35, 50: 49, 100: 79, 150: 109, 200: 134 },
 };
 
 export const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45 };

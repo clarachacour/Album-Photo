@@ -6,7 +6,7 @@
 # billed at the smallest tier that holds its real page count (15 pages → 24,
 # 35 → 50); beyond the largest tier, a per-page surcharge is added — see
 # compute_order_price_cents.
-PAGE_TIERS = [24, 50, 100, 150, 250]
+PAGE_TIERS = [24, 50, 100, 150, 200]
 
 # Price by format AND page tier, in cents — server-side only, the client
 # never gets to set its own price. These are PLACEHOLDER values (Clara
@@ -15,8 +15,8 @@ PAGE_TIERS = [24, 50, 100, 150, 250]
 # A3 removed — exceeds the printing office's max open (flat) hardcover size
 # (70×33cm) in both orientations, so it was never actually printable.
 ORDER_PRICE_CENTS = {
-    "A5": {24: 2500, 50: 3500, 100: 5500, 150: 7500, 250: 11000},
-    "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 250: 15900},
+    "A5": {24: 2500, 50: 3500, 100: 5500, 150: 7500, 200: 9200},
+    "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 200: 13400},
 }
 
 # Delivery (Lebanon only), per order, in cents. Shown at checkout — keep in
