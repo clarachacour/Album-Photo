@@ -1,6 +1,6 @@
 """Pydantic models: the shape of request bodies and responses."""
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Literal, Optional
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
@@ -99,8 +99,11 @@ class ShippingAddress(BaseModel):
 
 class OrderCreate(BaseModel):
     album_id: Id
+    # "print": the printed book, delivered. "digital": the album as a PDF
+    # to download, no address needed.
+    kind: Literal["print", "digital"] = "print"
     quantity: int = Field(default=1, ge=1, le=20)
-    shipping_address: ShippingAddress
+    shipping_address: Optional[ShippingAddress] = None
     # The version of the terms of sale the customer ticked "I accept" for.
     accepted_terms_version: str = Field(default="", max_length=20)
 

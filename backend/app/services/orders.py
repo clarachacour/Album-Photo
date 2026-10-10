@@ -15,6 +15,7 @@ from app.core.executors import (
 )
 from app.db import db
 from app.services.email import (
+    send_digital_album_ready_email,
     send_pdf_generation_failed_email,
     send_printer_order_email,
 )
@@ -26,7 +27,7 @@ from app.services.tasks import enqueue_order_pdf, pdf_tasks_enabled
 logger = logging.getLogger(__name__)
 
 
-ORDER_STATUSES = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered", "cancelled"]
+ORDER_STATUSES = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered", "available", "cancelled"]
 
 # ---------- Orders ----------
 ORDER_STATUS_LABELS = {
@@ -37,11 +38,48 @@ ORDER_STATUS_LABELS = {
     "ready_for_delivery": "Ready for delivery",
     "shipped": "Shipped",
     "delivered": "Delivered",
+    "available": "Ready to download",
     "cancelled": "Cancelled",
 }
 # The order in which a normal (non-cancelled) order is expected to progress —
 # drives the tracking timeline on the frontend.
 ORDER_STATUS_SEQUENCE = ["pending_payment", "paid", "processing", "printing", "ready_for_delivery", "shipped", "delivered"]
+# A digital album (the PDF to download): made at once, but only handed over
+# once the payment is confirmed ("paid", set by hand in the admin).
+DIGITAL_STATUS_SEQUENCE = ["pending_payment", "paid", "available"]
+
+
+def order_kind(order: dict) -> str:
+    """"print" or "digital". Orders from before digital albums have no kind."""
+    return order.get("kind") or "print"
+
+
+def status_sequence(order: dict) -> list:
+    return DIGITAL_STATUS_SEQUENCE if order_kind(order) == "digital" else ORDER_STATUS_SEQUENCE
+
+
+async def deliver_digital_if_ready(order_id: str) -> bool:
+    """Hands a digital album over — status "available" and the "ready to
+    download" email — once it's both paid and made, whichever comes last.
+    The email goes once. Returns True when handed over now."""
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order or order_kind(order) != "digital" or order.get("ready_email_sent_at"):
+        return False
+    if order["status"] not in ("paid", "available") or not order.get("pdf_ready"):
+        return False
+    now = datetime.now(timezone.utc).isoformat()
+    claimed = await db.orders.update_one(
+        {"id": order_id, "ready_email_sent_at": None},
+        {"$set": {"ready_email_sent_at": now, "status": "available", "updated_at": now}},
+    )
+    if not claimed.modified_count:
+        return False  # handed over meanwhile by another request
+    if order["status"] != "available":
+        await db.orders.update_one({"id": order_id}, {"$push": {"status_history": {"status": "available", "at": now}}})
+    customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
+    if customer:
+        await run_email(send_digital_album_ready_email, customer.get("email"), customer.get("name"), {**order, "status": "available"})
+    return True
 
 # (MAX_CONCURRENT_PDF_GENERATIONS is defined earlier, alongside the other
 # concurrency constants, so pdf_render_executor's own worker count can be
@@ -122,6 +160,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
     t_start = _time.monotonic()
     await _acquire_pdf_generation_slot(order_id)
     try:
+        digital = order_kind(await db.orders.find_one({"id": order_id}, {"kind": 1}) or {}) == "digital"
         album_doc = await db.albums.find_one({"id": album_id}, {"pages": 1})
         interior_pages = (album_doc or {}).get("pages", [])
         photo_ids = {
@@ -150,7 +189,9 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
             await asyncio.gather(*(convert(ph) for ph in to_convert))
 
         token = create_print_token(user_id, album_id)
-        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}"
+        # A digital album: the pages as a reader sees them, photos in
+        # screen quality (see PrintAlbum's digital mode).
+        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}{'&digital=1' if digital else ''}"
         loop = asyncio.get_event_loop()
         pdf_bytes = await loop.run_in_executor(
             pdf_render_executor, render_album_pdf_sync, print_url, len(interior_pages), f"Commande {order_id} :"
@@ -166,6 +207,13 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
         # this — it has to happen here, right after the PDF is confirmed
         # ready, or it would never happen at all.
         order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+        if digital:
+            # No printer: handed to the customer once paid (see
+            # deliver_digital_if_ready); the album's unused photos can go.
+            if order and not order.get("ready_email_sent_at"):
+                await _delete_unselected_photos(album_id)
+            await deliver_digital_if_ready(order_id)
+            return True
         if order and order["status"] not in ("printing", "ready_for_delivery", "shipped", "delivered"):
             now2 = datetime.now(timezone.utc).isoformat()
             await db.orders.update_one(

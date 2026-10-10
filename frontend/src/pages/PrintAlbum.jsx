@@ -134,7 +134,12 @@ export default function PrintAlbum() {
   const allPages = album.pages || [];
   // The printer's imposed cover template, when there is one for this format
   // and page count: back cover, spine and front cover on one sheet.
-  const printerCover = printerCoverTemplate(album.size, album.orientation, allPages.length);
+  // ?digital=1: the album as a reader sees it, for a PDF to download (a
+  // "digital album" order) — front cover alone, the pages, back cover
+  // alone, photos in screen quality — rather than the printer's sheets.
+  const digital = searchParams.get("digital") === "1";
+  const variant = digital ? "medium" : "original";
+  const printerCover = !digital && printerCoverTemplate(album.size, album.orientation, allPages.length);
   const spread = printerCover && coverSpreadLayout(printerCover);
 
   // A very large album (many hundreds of print-quality photo pages) can
@@ -197,7 +202,22 @@ export default function PrintAlbum() {
         />
       )}
 
-      {includeCover && !spread && (
+      {includeCover && digital && (
+        <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+          <CoverFrontPage
+            imageVariant={variant}
+            template={template}
+            title={album.title}
+            orientation={album.orientation}
+            coverImageUrl={album.cover_image_path ? coverImageUrl(album.id, 0, variant) : undefined}
+            cover={cover}
+            templateId={album.cover_template_id}
+            editable={false}
+          />
+        </div>
+      )}
+
+      {includeCover && !spread && !digital && (
         <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex" }}>
           <div style={{ width: `${spineMm}mm`, height: `${ph}mm`, flexShrink: 0 }}>
             <CoverSpine title={album.title} templateId={album.cover_template_id} template={template} cover={cover} editable={false} />
@@ -224,7 +244,7 @@ export default function PrintAlbum() {
           just this chunk's slice when chunked, every page otherwise. */}
       {chunkPages.map(({ page, i }) => (
         <div key={page.id || i} className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
-          <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes />
+          <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes={!digital} />
         </div>
       ))}
 
@@ -233,7 +253,7 @@ export default function PrintAlbum() {
       {includeBackCover && !spread && (
         <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <CoverBackPage
-            imageVariant="original"
+            imageVariant={variant}
             template={template}
             country={album.country}
             orientation={album.orientation}

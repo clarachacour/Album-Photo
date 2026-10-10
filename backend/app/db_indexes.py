@@ -21,14 +21,23 @@ INDEXES = [
     ("photos", "album_id", {}),
     ("photos", [("album_id", ASCENDING), ("content_hash", ASCENDING)], {}),  # skip a photo sent twice
     ("orders", "id", {"unique": True}),
-    # One order per album, enforced by the database too: two checkout
-    # requests arriving together can't both create one.
-    ("orders", "album_id", {"unique": True}),
+    # One order of each kind (printed book, digital album) per album,
+    # enforced by the database too: two checkout requests arriving together
+    # can't both create one. Orders from before digital albums have no
+    # kind: they're printed ones.
+    ("orders", [("album_id", ASCENDING), ("kind", ASCENDING)], {"unique": True}),
+    ("orders", "album_id", {}),
     ("orders", "user_id", {}),
     ("orders", "created_at", {}),  # admin order list
     ("pdf_generation_slots", "order_id", {"unique": True}),
     ("mobile_sessions", "token", {"unique": True}),
     ("mobile_sessions", "expires", {"expireAfterSeconds": 0}),
+]
+
+
+# Replaced indexes, removed at startup: (collection, index name).
+OBSOLETE_INDEXES = [
+    ("orders", "album_id_1"),  # was unique: one order per album, before digital albums
 ]
 
 
@@ -38,6 +47,13 @@ async def ensure_indexes(db) -> list:
     doesn't stop the app from starting: the site keeps working, only
     without that index, until the data is fixed."""
     failed = []
+    for collection, name in OBSOLETE_INDEXES:
+        try:
+            info = await db[collection].index_information()
+            if info.get(name, {}).get("unique"):
+                await db[collection].drop_index(name)
+        except Exception as e:
+            logger.error(f"Ancien index {collection}.{name} non supprimé : {e}")
     for collection, keys, options in INDEXES:
         try:
             await db[collection].create_index(keys, **options)

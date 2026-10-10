@@ -19,18 +19,31 @@ def test_every_index_exists_after_startup(client, db):
         assert wanted in _index_keys(db, collection), f"{collection}.{keys}"
 
 
-def test_one_order_per_album_is_enforced_by_the_database(client, db):
-    asyncio.run(db.orders.insert_one({"id": "o-1", "album_id": "album-dup"}))
+def test_one_order_of_each_kind_per_album_is_enforced_by_the_database(client, db):
+    asyncio.run(db.orders.insert_one({"id": "o-1", "album_id": "album-dup", "kind": "print"}))
+    asyncio.run(db.orders.insert_one({"id": "o-2", "album_id": "album-dup", "kind": "digital"}))  # the digital album too
     with pytest.raises(DuplicateKeyError):
-        asyncio.run(db.orders.insert_one({"id": "o-2", "album_id": "album-dup"}))
+        asyncio.run(db.orders.insert_one({"id": "o-3", "album_id": "album-dup", "kind": "print"}))
+
+
+def test_the_former_one_order_per_album_index_is_replaced():
+    db = AsyncMongoMockClient()["indexes_test_old"]
+
+    async def run():
+        await db.orders.create_index("album_id", unique=True)
+        await ensure_indexes(db)
+        await db.orders.insert_one({"id": "a", "album_id": "same", "kind": "print"})
+        await db.orders.insert_one({"id": "b", "album_id": "same", "kind": "digital"})
+
+    asyncio.run(run())
 
 
 def test_existing_duplicates_dont_stop_startup():
     db = AsyncMongoMockClient()["indexes_test"]
 
     async def run():
-        await db.orders.insert_many([{"id": "a", "album_id": "same"}, {"id": "b", "album_id": "same"}])
+        await db.orders.insert_many([{"id": "a", "album_id": "same", "kind": "print"}, {"id": "b", "album_id": "same", "kind": "print"}])
         return await ensure_indexes(db)
 
     failed = asyncio.run(run())
-    assert failed == [("orders", "album_id")]  # logged; every other index is created
+    assert failed == [("orders", [("album_id", 1), ("kind", 1)])]  # logged; every other index is created

@@ -1,6 +1,8 @@
 """Customer order routes and the signed printer links."""
+import unicodedata
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -14,10 +16,17 @@ from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.email import send_delivery_pickup_email, send_order_confirmation_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
-    ORDER_STATUS_SEQUENCE,
+    order_kind,
     start_order_pdf_generation,
+    status_sequence,
 )
-from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count, compute_order_price_cents
+from app.services.pricing import (
+    SHIPPING_PRICE_CENTS,
+    TERMS_VERSION,
+    billed_page_count,
+    compute_digital_price_cents,
+    compute_order_price_cents,
+)
 from app.services.storage import get_r2_client
 from app.core.executors import run_email
 
@@ -41,14 +50,31 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # reject_if_ordered already stops them from editing the album at that
     # point; this stops the same root cause from also producing two paid
     # orders for one book.
-    existing_order = await db.orders.find_one({"album_id": data.album_id})
+    # One order of each kind per album: the printed book can still be
+    # ordered after the digital album (orders from before digital albums
+    # have no kind, and are printed ones).
+    same_kind = {"$in": ["print", None]} if data.kind == "print" else "digital"
+    existing_order = await db.orders.find_one({"album_id": data.album_id, "kind": same_kind})
     if existing_order:
         raise HTTPException(status_code=409, detail="An order already exists for this album")
+    if data.kind == "print" and not data.shipping_address:
+        raise HTTPException(status_code=400, detail="A delivery address is needed for a printed album")
     # The terms must have been accepted, in the version the site shows now
     # (a page opened before they changed has to be reloaded).
     if data.accepted_terms_version != TERMS_VERSION:
         raise HTTPException(status_code=400, detail="Please accept the current terms of sale to place your order")
-    unit_price = compute_order_price_cents(album.get("size", "A4"), billed_page_count(album))
+    digital = data.kind == "digital"
+    pages = billed_page_count(album)
+    unit_price = (compute_digital_price_cents if digital else compute_order_price_cents)(album.get("size", "A4"), pages)
+    quantity = 1 if digital else data.quantity
+    shipping = 0 if digital else SHIPPING_PRICE_CENTS
+    # The printed book after the digital album: what was paid for the
+    # digital one is taken off.
+    credit = 0
+    if not digital:
+        digital_order = await db.orders.find_one({"album_id": album["id"], "kind": "digital", "status": {"$ne": "cancelled"}})
+        if digital_order:
+            credit = min(digital_order.get("total_price_cents", 0), unit_price * quantity)
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     order_doc = {
@@ -58,14 +84,16 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "album_title": album.get("title", "Album"),
         "size": album.get("size", "A4"),
         "orientation": album.get("orientation", "portrait"),
-        "quantity": data.quantity,
+        "kind": data.kind,
+        "quantity": quantity,
         "unit_price_cents": unit_price,
-        "shipping_price_cents": SHIPPING_PRICE_CENTS,
-        "total_price_cents": unit_price * data.quantity + SHIPPING_PRICE_CENTS,
+        "shipping_price_cents": shipping,
+        "credit_cents": credit,
+        "total_price_cents": unit_price * quantity + shipping - credit,
         "terms_version": TERMS_VERSION,
         "terms_accepted_at": now,
         "currency": "usd",
-        "shipping_address": data.shipping_address.dict(),
+        "shipping_address": data.shipping_address.dict() if data.shipping_address and not digital else None,
         "status": "pending_payment",
         "status_history": [{"status": "pending_payment", "at": now}],
         "pdf_ready": False,
@@ -156,17 +184,45 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    sequence = status_sequence(order)
     if order["status"] == "cancelled":
         timeline = [{"status": "cancelled", "label": ORDER_STATUS_LABELS["cancelled"], "done": True}]
     else:
-        current_idx = ORDER_STATUS_SEQUENCE.index(order["status"]) if order["status"] in ORDER_STATUS_SEQUENCE else 0
+        current_idx = sequence.index(order["status"]) if order["status"] in sequence else 0
         timeline = [
             {"status": s, "label": ORDER_STATUS_LABELS[s], "done": i <= current_idx}
-            for i, s in enumerate(ORDER_STATUS_SEQUENCE)
+            for i, s in enumerate(sequence)
         ]
     order["timeline"] = timeline
     order["status_label"] = ORDER_STATUS_LABELS.get(order["status"], order["status"])
     return order
+
+@router.get("/orders/{order_id}/download")
+async def download_digital_album(order_id: str, user: dict = Depends(get_current_user)):
+    """A digital album's PDF, for its owner, once paid and made (status
+    "available"): a short-lived link to the file, made again at each
+    download — the album stays downloadable for as long as the account
+    exists."""
+    order = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
+    if not order or order_kind(order) != "digital":
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order["status"] != "available" or not order.get("pdf_path"):
+        raise HTTPException(status_code=403, detail="Your album will be downloadable once your payment is confirmed")
+    # Named after the album; plain letters for browsers that only read the
+    # first name, the real title (accents…) for the others.
+    title = " ".join((order.get("album_title") or "").split()) or "Everbook album"
+    plain = "".join(c for c in unicodedata.normalize("NFKD", title) if c.isascii() and (c.isalnum() or c in " -_")).strip() or "Everbook album"
+    url = get_r2_client().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": R2_BUCKET_NAME,
+            "Key": order["pdf_path"],
+            "ResponseContentDisposition": f"attachment; filename=\"{plain}.pdf\"; filename*=UTF-8''{quote(title + '.pdf')}",
+            "ResponseContentType": "application/pdf",
+        },
+        ExpiresIn=600,
+    )
+    return {"url": url}
 
 @router.post("/orders/{order_id}/feedback")
 async def submit_order_feedback(order_id: str, data: OrderFeedbackInput, user: dict = Depends(get_current_user)):

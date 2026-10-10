@@ -311,6 +311,8 @@ def send_password_changed_email(to_email: str, name: str):
 def send_order_confirmation_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
     total = order.get("total_price_cents", 0) / 100
+    if order.get("kind") == "digital":
+        return _send_digital_order_confirmation_email(to_email, name, order, order_url, total)
     subject = "Your Everbook order is confirmed"
     body = (
         f"Hi {name or ''},\n\n"
@@ -331,6 +333,57 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
             f"<p>We'll email you again once it ships.</p>"
         ),
         cta_label="Track your order",
+        cta_url=order_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
+
+def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float):
+    currency = order.get("currency", "usd").upper()
+    subject = "Your Everbook digital album is ordered"
+    intro = "Thanks for your order! Your album will be ready to download as a PDF as soon as we've received your payment — we'll contact you to arrange it."
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"{intro}\n\n"
+        f"Order total: {total:.2f} {currency}\n\n"
+        f"You can follow your order here:\n{order_url}\n\n"
+        f"We'll email you again the moment your PDF is ready."
+    )
+    html_body = _email_wrapper(
+        preheader=intro,
+        title="Your digital album is ordered.",
+        body_html=(
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>{intro}</p>"
+            f"<p><strong>Order total:</strong> {total:.2f} {currency}</p>"
+            f"<p>We'll email you again the moment your PDF is ready.</p>"
+        ),
+        cta_label="View your order",
+        cta_url=order_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
+
+def send_digital_album_ready_email(to_email: str, name: str, order: dict):
+    """Sent once a digital album is paid and its PDF made (see
+    deliver_digital_if_ready): the download is on the order's page."""
+    order_url = f"{FRONTEND_URL}/orders/{order['id']}"
+    title = order.get("album_title", "Your album")
+    subject = f"Your Everbook album is ready to download — {title}"
+    intro = f"Your album \"{title}\" is ready! You can download it as a PDF from your order, as many times as you like."
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"{intro}\n\n"
+        f"Download it here:\n{order_url}\n\n"
+        f"Thanks for choosing Everbook."
+    )
+    html_body = _email_wrapper(
+        preheader=intro,
+        title="Your album is ready to download.",
+        body_html=(
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>Your album <strong>\u201c{_h(title)}\u201d</strong> is ready! You can download it as a PDF from your order, as many times as you like.</p>"
+            f"<p>Thanks for choosing Everbook.</p>"
+        ),
+        cta_label="Download my album",
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)

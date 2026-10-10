@@ -16,8 +16,11 @@ from app.services.email import (
 )
 from app.services.orders import (
     ORDER_STATUSES,
+    deliver_digital_if_ready,
+    order_kind,
     purge_stale_pdf_generation_slots,
     start_order_pdf_generation,
+    status_sequence,
 )
 from app.services.storage import get_r2_client
 from app.core.executors import run_email
@@ -160,6 +163,8 @@ async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_cur
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order_kind(order) == "digital":
+        raise HTTPException(status_code=400, detail="A digital album isn't printed: there's no printer email")
     if not order.get("pdf_ready") or not order.get("pdf_path"):
         raise HTTPException(status_code=400, detail="This order's PDF is not ready yet — regenerate it first")
     await run_email(send_printer_order_email, order)
@@ -189,6 +194,8 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
     order = await db.orders.find_one({"id": order_id})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if data.status != "cancelled" and data.status not in status_sequence(order):
+        raise HTTPException(status_code=400, detail=f"Statut « {data.status} » impossible pour ce type de commande")
     now = datetime.now(timezone.utc).isoformat()
     update = {"status": data.status, "updated_at": now}
     if data.tracking_number is not None:
@@ -197,6 +204,10 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
         {"id": order_id},
         {"$set": update, "$push": {"status_history": {"status": data.status, "at": now}}},
     )
+    if order_kind(order) == "digital" and data.status in ("paid", "available"):
+        # Paid: the customer gets their PDF now (or the moment it's made).
+        await deliver_digital_if_ready(order_id)
+        return await db.orders.find_one({"id": order_id}, {"_id": 0})
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
     email_fn = STATUS_CUSTOMER_EMAIL.get(data.status)
     if email_fn:

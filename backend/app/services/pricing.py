@@ -19,6 +19,11 @@ ORDER_PRICE_CENTS = {
     "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 200: 13400},
 }
 
+# A digital album (the PDF to download, no printing or delivery) costs the
+# printed album's price minus this, in cents. Keep in sync with
+# DIGITAL_DISCOUNT in frontend/src/lib/pricing.js.
+DIGITAL_DISCOUNT_CENTS = 1500
+
 # Delivery (Lebanon only), per order, in cents. Shown at checkout — keep in
 # sync with SHIPPING_PRICE in frontend/src/lib/pricing.js.
 SHIPPING_PRICE_CENTS = 500
@@ -56,3 +61,8 @@ def compute_order_price_cents(size: str, page_count: int) -> int:
         return tier_prices[tier]
     largest = PAGE_TIERS[-1]
     return tier_prices[largest] + (tier - largest) * OVERAGE_PER_PAGE_CENTS[size]
+
+
+def compute_digital_price_cents(size: str, page_count: int) -> int:
+    """A digital album's price: the printed one's minus DIGITAL_DISCOUNT_CENTS."""
+    return max(0, compute_order_price_cents(size, page_count) - DIGITAL_DISCOUNT_CENTS)
