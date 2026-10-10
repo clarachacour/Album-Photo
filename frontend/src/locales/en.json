@@ -442,8 +442,6 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "doublePage": "Double-page {{count}}",
-    "pagesShort": "{{current}} of {{target}} pages — you're {{remaining}} short of what you chose.",
-    "addPage": "Add a page",
     "changePageCountLink": "Change total page count…",
     "rearrangePhotos": "Rearrange the photos · drag and drop",
     "allYourPhotos": "All your photos · click or drag onto a page",
@@ -541,7 +539,13 @@
     },
     "tooDark": "Dark photo: it may print even darker (paper gives back less light than a screen). Select it and tap ☀ to brighten it, or choose another photo.",
     "tooDarkShort": "Dark photo",
-    "brightenFailed": "Couldn't brighten this photo, try again."
+    "brightenFailed": "Couldn't brighten this photo, try again.",
+    "pagesShortBody_one": "We removed duplicate photos and bursts, and each page holds at least one photo: about {{count}} photo is missing. Add some and they'll go into the missing page, or add a blank page to fill yourself.",
+    "pagesShortBody_other": "We removed duplicate photos and bursts, and each page holds at least one photo: about {{count}} photos are missing. Add some and they'll go into the missing pages, or add blank pages to fill yourself.",
+    "addPhotosButton": "Add photos",
+    "addBlankPage": "Add a blank page",
+    "pagesShortTitle_one": "Your album has {{count}} page instead of the {{target}} you chose.",
+    "pagesShortTitle_other": "Your album has {{count}} pages instead of the {{target}} you chose."
   },
   "toolbars": {
     "editPhoto": "Edit photo",

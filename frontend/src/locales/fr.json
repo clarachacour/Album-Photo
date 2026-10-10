@@ -442,8 +442,6 @@
     "previousPage": "Page précédente",
     "nextPage": "Page suivante",
     "doublePage": "Double page {{count}}",
-    "pagesShort": "{{current}} sur {{target}} pages — il en manque {{remaining}} par rapport à ce que vous avez choisi.",
-    "addPage": "Ajouter une page",
     "changePageCountLink": "Modifier le nombre total de pages…",
     "rearrangePhotos": "Réorganiser les photos · glisser-déposer",
     "allYourPhotos": "Toutes vos photos · cliquez ou glissez sur une page",
@@ -541,7 +539,13 @@
     },
     "tooDark": "Photo sombre : elle risque de sortir encore plus sombre à l'impression (le papier rend moins de lumière qu'un écran). Sélectionnez-la puis touchez ☀ pour l'éclaircir, ou choisissez une autre photo.",
     "tooDarkShort": "Photo sombre",
-    "brightenFailed": "Impossible d'éclaircir cette photo, réessayez."
+    "brightenFailed": "Impossible d'éclaircir cette photo, réessayez.",
+    "pagesShortBody_one": "Nous avons retiré les photos en double et les rafales, et chaque page contient au moins une photo : il manque environ {{count}} photo. Ajoutez-en et elles seront placées dans la page manquante, ou ajoutez une page vide à remplir vous-même.",
+    "pagesShortBody_other": "Nous avons retiré les photos en double et les rafales, et chaque page contient au moins une photo : il manque environ {{count}} photos. Ajoutez-en et elles seront placées dans les pages manquantes, ou ajoutez des pages vides à remplir vous-même.",
+    "addPhotosButton": "Ajouter des photos",
+    "addBlankPage": "Ajouter une page vide",
+    "pagesShortTitle_one": "Votre album fait {{count}} page au lieu des {{target}} choisies.",
+    "pagesShortTitle_other": "Votre album fait {{count}} pages au lieu des {{target}} choisies."
   },
   "toolbars": {
     "editPhoto": "Modifier la photo",

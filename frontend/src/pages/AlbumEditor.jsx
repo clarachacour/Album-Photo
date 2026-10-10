@@ -914,6 +914,37 @@ export default function AlbumEditor() {
               </span>
             </div>
           )}
+          {/* Fewer pages than chosen: the photos left once duplicates and
+              bursts are removed don't fill them (each page holds at least
+              one). Up top, where it's seen right after the layout. */}
+          {!album.was_ordered && album.target_pages && (album.pages || []).length < album.target_pages && (
+            <div className="w-full max-w-2xl mb-4 text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded px-4 py-3" data-testid="editor-pages-short">
+              <p className="font-semibold">
+                {t("albumEditor.pagesShortTitle", { count: (album.pages || []).length, target: album.target_pages })}
+              </p>
+              <p className="mt-1">
+                {t("albumEditor.pagesShortBody", { count: album.target_pages - (album.pages || []).length })}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => document.querySelector('[data-tour="add-photos"]')?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="inline-flex items-center gap-1.5 bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all"
+                  data-testid="editor-pages-short-add-photos"
+                >
+                  <Plus size={13} /> {t("albumEditor.addPhotosButton")}
+                </button>
+                <button
+                  type="button"
+                  onClick={addBlankPage}
+                  data-testid={TID.editorAddPage}
+                  className="inline-flex items-center gap-1.5 border border-amber-400 px-3 py-1.5 hover:bg-amber-100 transition-colors"
+                >
+                  {t("albumEditor.addBlankPage")}
+                </button>
+              </div>
+            </div>
+          )}
           <div className="w-full max-w-2xl mb-4 text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2">
             {t("albumEditor.previewQualityNote")}
           </div>
@@ -992,21 +1023,6 @@ export default function AlbumEditor() {
               <ChevronRight size={16} />
             </button>
           </div>
-
-          {album.target_pages && (album.pages || []).length < album.target_pages && (
-            <div className="mt-6 flex items-center gap-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-4 py-2.5">
-              <span>
-                {t("albumEditor.pagesShort", { current: (album.pages || []).length, target: album.target_pages, remaining: album.target_pages - (album.pages || []).length })}
-              </span>
-              <button
-                onClick={addBlankPage}
-                data-testid={TID.editorAddPage}
-                className="inline-flex items-center gap-1.5 whitespace-nowrap bg-[color:var(--coral)] text-[color:var(--paper)] px-3 py-1.5 hover:brightness-110 transition-all"
-              >
-                <Plus size={13} /> {t("albumEditor.addPage")}
-              </button>
-            </div>
-          )}
 
           <div className="mt-4">
             {showRepackForm ? (
