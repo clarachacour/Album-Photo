@@ -111,6 +111,21 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 PRINTER_EMAIL = os.environ.get("PRINTER_EMAIL")
 DELIVERY_EMAIL = os.environ.get("DELIVERY_EMAIL")
 
+# ---------- Wakilni (the courier) ----------
+# With a key and secret, a printed book marked ready by the printer becomes
+# a Wakilni delivery and its status is followed from there (see
+# services/wakilni.py); without them, the courier gets an email instead.
+# https://api-dev.wakilni.com for testing, https://api.wakilni.com live.
+WAKILNI_URL = (os.environ.get("WAKILNI_URL") or "https://api-dev.wakilni.com").rstrip("/")
+WAKILNI_KEY = os.environ.get("WAKILNI_KEY")
+WAKILNI_SECRET = os.environ.get("WAKILNI_SECRET")
+# Where the courier picks the books up: the print shop.
+WAKILNI_PICKUP_AREA = os.environ.get("WAKILNI_PICKUP_AREA", "Furn El Chebbak")
+WAKILNI_PICKUP_DIRECTIONS = os.environ.get("WAKILNI_PICKUP_DIRECTIONS", "Bookstop, Gharios Center, next to SGBL")
+WAKILNI_PICKUP_FLOOR = int(os.environ.get("WAKILNI_PICKUP_FLOOR") or 0)
+WAKILNI_PICKUP_LATITUDE = float(os.environ.get("WAKILNI_PICKUP_LATITUDE") or 0) or None
+WAKILNI_PICKUP_LONGITUDE = float(os.environ.get("WAKILNI_PICKUP_LONGITUDE") or 0) or None
+
 # ---------- OAuth (Google / Apple) ----------
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID")  # Apple "Services ID"

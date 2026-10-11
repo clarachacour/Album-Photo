@@ -391,11 +391,14 @@ def send_digital_album_ready_email(to_email: str, name: str, order: dict):
 def send_order_shipped_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
     tracking = order.get("tracking_number")
+    # The courier's own tracking page, when the delivery is a Wakilni one.
+    tracking_url = (order.get("delivery") or {}).get("tracking_url")
     subject = "Your Everbook order is on its way"
     body = (
         f"Hi {name or ''},\n\n"
         f"Good news — your book has shipped!\n\n"
         + (f"Tracking number: {tracking}\n\n" if tracking else "")
+        + (f"Follow the courier here:\n{tracking_url}\n\n" if tracking_url else "")
         + f"You can follow its status here:\n{order_url}"
     )
     html_body = _email_wrapper(
@@ -405,6 +408,7 @@ def send_order_shipped_email(to_email: str, name: str, order: dict):
             f"<p>Hi {_h(name or '')},</p>"
             f"<p>Good news — your book has shipped!</p>"
             + (f"<p><strong>Tracking number:</strong> {_h(tracking)}</p>" if tracking else "")
+            + (f'<p><a href="{_h(tracking_url)}">Follow the courier</a></p>' if tracking_url else "")
         ),
         cta_label="Track your order",
         cta_url=order_url,
@@ -572,3 +576,31 @@ def send_delivery_pickup_email(order: dict):
         ),
     )
     send_email(DELIVERY_EMAIL, subject, body, html_body=html_body)
+
+
+def send_delivery_problem_email(order: dict, problem: str):
+    """To the admin: a Wakilni delivery couldn't be created, or the courier
+    reports a problem (failed, declined, postponed, rejected…)."""
+    if not ADMIN_EMAIL:
+        logger.warning(f"ADMIN_EMAIL non configuré — alerte de livraison non envoyée pour la commande {order['id']} : {problem}")
+        return
+    addr = order.get("shipping_address") or {}
+    delivery = order.get("delivery") or {}
+    subject = f"Delivery problem — order #{order['id'][:8]} ({order.get('album_title', 'Album')})"
+    lines = [
+        f"Order #{order['id'][:8]} — {order.get('album_title', 'Album')}",
+        f"Problem: {problem}",
+        f"Customer: {addr.get('full_name', '')}, {addr.get('phone', '')}",
+        f"Address: {addr.get('street', '')}, {addr.get('area') or addr.get('city', '')}",
+    ]
+    if delivery.get("tracking_id"):
+        lines.append(f"Wakilni tracking: {delivery.get('tracking_id')} {delivery.get('tracking_url') or ''}")
+    body = "\n".join(lines) + f"\n\nAdmin: {FRONTEND_URL}/admin/orders"
+    html_body = _email_wrapper(
+        preheader=f"Delivery problem — {_h(problem)}",
+        title="Delivery problem.",
+        body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
+        cta_label="Open the orders",
+        cta_url=f"{FRONTEND_URL}/admin/orders",
+    )
+    send_email(ADMIN_EMAIL, subject, body, html_body=html_body)

@@ -22,6 +22,8 @@ from app.services.orders import (
     start_order_pdf_generation,
     status_sequence,
 )
+from app.services import delivery as deliveries
+from app.services import wakilni
 from app.services.storage import get_r2_client
 from app.core.executors import run_email
 
@@ -223,3 +225,49 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
         if customer:
             await run_email(email_fn, customer.get("email"), customer.get("name"), fresh)
     return fresh
+
+
+# ---------- Wakilni delivery, by hand ----------
+async def _printed_order(order_id: str) -> dict:
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order_kind(order) != "print":
+        raise HTTPException(status_code=400, detail="A digital album isn't delivered")
+    if not wakilni.configured():
+        raise HTTPException(status_code=400, detail="Wakilni isn't configured on this server (WAKILNI_KEY / WAKILNI_SECRET)")
+    return order
+
+
+@router.post("/admin/orders/{order_id}/delivery")
+async def admin_create_delivery(order_id: str, user: dict = Depends(get_current_user)):
+    """Creates the Wakilni delivery now (when the automatic one failed, or
+    before the printer's click)."""
+    require_admin(user)
+    await _printed_order(order_id)
+    order = await deliveries.dispatch_delivery(order_id)
+    error = (order.get("delivery") or {}).get("error")
+    if error and not (order.get("delivery") or {}).get("delivery_id"):
+        raise HTTPException(status_code=502, detail=f"Wakilni: {error}")
+    return order
+
+
+@router.post("/admin/orders/{order_id}/delivery/refresh")
+async def admin_refresh_delivery(order_id: str, user: dict = Depends(get_current_user)):
+    require_admin(user)
+    await _printed_order(order_id)
+    try:
+        return await deliveries.sync_delivery(order_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Wakilni: {e}")
+
+
+@router.post("/admin/orders/{order_id}/delivery/cancel")
+async def admin_cancel_delivery(order_id: str, user: dict = Depends(get_current_user)):
+    """Cancels the Wakilni delivery (possible only while still pending there)."""
+    require_admin(user)
+    await _printed_order(order_id)
+    try:
+        return await deliveries.cancel_delivery(order_id, "Cancelled by Everbook")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Wakilni: {e}")

@@ -95,6 +95,8 @@ class ShippingAddress(BaseModel):
     street: Line
     building: OptLine
     city: Name
+    # The courier's (Wakilni's) area name, e.g. "Hamra".
+    area: OptLine = None
     additional_info: OptNote
 
 class OrderCreate(BaseModel):

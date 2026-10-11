@@ -1,4 +1,5 @@
 """Customer order routes and the signed printer links."""
+import logging
 import unicodedata
 import uuid
 from datetime import datetime, timezone
@@ -13,7 +14,8 @@ from app.core.auth import get_current_user
 from app.core.signed_links import verify_order_action
 from app.db import db
 from app.schemas import OrderCreate, OrderFeedbackInput
-from app.services.email import send_delivery_pickup_email, send_order_confirmation_email
+from app.services.delivery import dispatch_delivery
+from app.services.email import send_order_confirmation_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
     order_kind,
@@ -27,10 +29,12 @@ from app.services.pricing import (
     compute_digital_price_cents,
     compute_order_price_cents,
 )
+from app.services import wakilni
 from app.services.storage import get_r2_client
-from app.core.executors import run_email
+from app.core.executors import run_blocking, run_email
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/orders")
@@ -170,9 +174,22 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
             {"$set": {"status": "ready_for_delivery", "updated_at": now}, "$push": {"status_history": {"status": "ready_for_delivery", "at": now}}},
         )
         order["status"] = "ready_for_delivery"
-        await run_email(send_delivery_pickup_email, order)
+        # A Wakilni delivery (or, without Wakilni, an email to the courier).
+        await dispatch_delivery(order_id)
     return HTMLResponse("<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
                          "<h2>Thanks — the delivery company has been notified.</h2></body></html>")
+
+@router.get("/delivery/areas")
+async def delivery_areas(user: dict = Depends(get_current_user)):
+    """Wakilni's area names, for the delivery address (empty without Wakilni,
+    or if it can't be reached: the field is then free text)."""
+    if not wakilni.configured():
+        return {"areas": []}
+    try:
+        return {"areas": await run_blocking(wakilni.area_names)}
+    except Exception as e:
+        logger.warning(f"Liste des zones Wakilni indisponible : {e}")
+        return {"areas": []}
 
 @router.get("/orders")
 async def list_orders(user: dict = Depends(get_current_user)):
