@@ -340,24 +340,33 @@ def _brightness_of_stored(photo: dict) -> dict:
     return compute_brightness(data) or {"brightness": None, "highlights": None}
 
 
-async def backfill_brightness(limit: int = 5000) -> int:
+async def backfill_brightness(limit: int = 5000, batch: int = 50) -> int:
     """Measures the photos uploaded before brightness was (their small copy
     is enough). Run in the background at startup; does nothing once every
-    photo has it. Returns how many were measured."""
+    photo has it. Returns how many were measured.
+
+    Read a small batch at a time rather than through one open cursor:
+    measuring each photo takes a while (an R2 download, slower still with
+    Cloud Run's CPU throttled outside requests), and MongoDB closes a
+    cursor left waiting about 10 minutes (CursorNotFound)."""
     loop = asyncio.get_event_loop()
     done = 0
-    cursor = db.photos.find(
-        {"is_deleted": False, "brightness": {"$exists": False}},
-        {"_id": 0, "id": 1, "thumbnail_path": 1, "storage_path": 1},
-    ).limit(limit)
-    async for photo in cursor:
-        try:
-            values = await loop.run_in_executor(photo_processing_executor, _brightness_of_stored, photo)
-        except Exception as e:
-            logger.debug(f"Luminosité de la photo {photo.get('id')} non mesurée : {e}")
-            continue
-        await db.photos.update_one({"id": photo["id"]}, {"$set": values})
-        done += 1
+    while done < limit:
+        photos = await db.photos.find(
+            {"is_deleted": False, "brightness": {"$exists": False}},
+            {"_id": 0, "id": 1, "thumbnail_path": 1, "storage_path": 1},
+        ).limit(min(batch, limit - done)).to_list(batch)
+        if not photos:
+            break
+        for photo in photos:
+            try:
+                values = await loop.run_in_executor(photo_processing_executor, _brightness_of_stored, photo)
+            except Exception as e:
+                # Not readable (a file missing from R2…): not tried again.
+                logger.debug(f"Luminosité de la photo {photo.get('id')} non mesurée : {e}")
+                values = {"brightness": None, "highlights": None}
+            await db.photos.update_one({"id": photo["id"]}, {"$set": values})
+            done += 1
     if done:
         logger.info(f"Luminosité mesurée pour {done} photo(s) déjà envoyée(s)")
     return done

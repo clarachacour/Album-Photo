@@ -113,3 +113,24 @@ def test_brightness_tells_a_dark_photo_from_a_light_one():
     assert dark["brightness"] < 0.2 < light["brightness"]
     assert dark["highlights"] < light["highlights"]
     assert compute_brightness(b"not an image") is None
+
+
+def test_brightness_backfill_works_in_batches_and_skips_unreadable_photos(app, db, monkeypatch):
+    import asyncio
+
+    from app.services import photos
+
+    asyncio.run(db.photos.insert_many([
+        {"id": f"b{i}", "is_deleted": False, "storage_path": f"b{i}.jpg"} for i in range(7)
+    ] + [{"id": "broken", "is_deleted": False, "storage_path": "missing.jpg"}]))
+
+    def measure(photo):
+        if photo["id"] == "broken":
+            raise FileNotFoundError("not in R2")
+        return {"brightness": 0.5, "highlights": 0.8}
+
+    monkeypatch.setattr(photos, "_brightness_of_stored", measure)
+    assert asyncio.run(photos.backfill_brightness(batch=3)) == 8
+    assert asyncio.run(db.photos.count_documents({"brightness": {"$exists": False}})) == 0
+    assert asyncio.run(db.photos.find_one({"id": "broken"}))["brightness"] is None
+    assert asyncio.run(photos.backfill_brightness(batch=3)) == 0  # nothing left, nothing retried
