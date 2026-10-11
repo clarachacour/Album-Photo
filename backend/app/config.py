@@ -120,6 +120,9 @@ WAKILNI_URL = (os.environ.get("WAKILNI_URL") or "https://api-dev.wakilni.com").r
 WAKILNI_KEY = os.environ.get("WAKILNI_KEY")
 WAKILNI_SECRET = os.environ.get("WAKILNI_SECRET")
 # Where the courier picks the books up: the print shop.
+# Its location id in Wakilni's portal (Locations), so Wakilni knows its
+# full address; its GPS position as well (start bulk only takes these).
+WAKILNI_PICKUP_LOCATION_ID = int(os.environ.get("WAKILNI_PICKUP_LOCATION_ID") or 1)
 WAKILNI_PICKUP_AREA = os.environ.get("WAKILNI_PICKUP_AREA", "Furn El Chebbak")
 WAKILNI_PICKUP_DIRECTIONS = os.environ.get("WAKILNI_PICKUP_DIRECTIONS", "Bookstop, Gharios Center, next to SGBL")
 WAKILNI_PICKUP_FLOOR = int(os.environ.get("WAKILNI_PICKUP_FLOOR") or 0)

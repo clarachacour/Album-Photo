@@ -15,6 +15,7 @@ from app.config import (
     WAKILNI_PICKUP_DIRECTIONS,
     WAKILNI_PICKUP_FLOOR,
     WAKILNI_PICKUP_LATITUDE,
+    WAKILNI_PICKUP_LOCATION_ID,
     WAKILNI_PICKUP_LONGITUDE,
     WAKILNI_SECRET,
     WAKILNI_URL,
@@ -158,7 +159,7 @@ def delivery_payload(order: dict, customer: dict) -> dict:
 def create_delivery(order: dict, customer: dict) -> dict:
     """Start bulk (pickup at the print shop), add the delivery, end bulk.
     Returns what to keep on the order."""
-    pickup = {"location_id": 1, "floor": WAKILNI_PICKUP_FLOOR, "area": WAKILNI_PICKUP_AREA}
+    pickup = {"location_id": WAKILNI_PICKUP_LOCATION_ID, "floor": WAKILNI_PICKUP_FLOOR, "area": WAKILNI_PICKUP_AREA}
     if WAKILNI_PICKUP_LATITUDE and WAKILNI_PICKUP_LONGITUDE:
         pickup.update(latitude=WAKILNI_PICKUP_LATITUDE, longitude=WAKILNI_PICKUP_LONGITUDE)
     started = _call("POST", "/api/v2/clients/start_bulk", json=pickup)
