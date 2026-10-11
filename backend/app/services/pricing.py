@@ -31,7 +31,7 @@ SHIPPING_PRICE_CENTS = 500
 # The version of the terms of sale the site shows (the "last updated" date
 # of legal.terms in the locale files). An order records the one the
 # customer accepted; change both together when the terms change.
-TERMS_VERSION = "2026-09-30"
+TERMS_VERSION = "2026-10-11"
 
 # Per extra page beyond the largest tier, in cents — also a placeholder
 # until real per-page economics are confirmed.

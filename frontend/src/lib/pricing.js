@@ -56,4 +56,4 @@ export const SHIPPING_PRICE = 5;
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
 // TERMS_VERSION in backend/app/services/pricing.py.
-export const TERMS_VERSION = "2026-09-30";
+export const TERMS_VERSION = "2026-10-11";

@@ -147,7 +147,7 @@
       },
       {
         "q": "What formats are available?",
-        "a": "A5, A4 and A3, in either portrait or landscape orientation. You choose the format when you create your album, and can see it reflected live in the editor."
+        "a": "A5 and A4, in either portrait or landscape orientation. You choose the format when you create your album, and can see it reflected live in the editor."
       },
       {
         "q": "Can I edit my album after placing an order?",
@@ -160,6 +160,10 @@
       {
         "q": "Can I order more than one copy?",
         "a": "Yes — you can choose a quantity when placing your order, for example to give copies as gifts."
+      },
+      {
+        "q": "Can I get my album as a PDF?",
+        "a": "Yes: choose \"Digital album (PDF)\" when you order. It costs $15 less than the printed album, with no delivery. You download it from \"My orders\" as soon as your payment is confirmed, and you can order the printed book later with what you've already paid taken off."
       },
       {
         "q": "What if something arrives damaged or wrong?",
@@ -622,14 +626,14 @@
     "madeIn": "Made in Lebanon"
   },
   "legal": {
-    "lastUpdated": "Last updated: September 30, 2026",
+    "lastUpdated": "Last updated: October 11, 2026",
     "terms": {
       "eyebrow": "Legal",
       "title": "Terms of sale",
       "sections": [
         {
           "heading": "1. Purpose",
-          "body": "Through the Site, the Company offers a service allowing users to select and upload their photographs, customise the layout of a photo album, where applicable with the help of artificial intelligence tools, order its printing and receive the printed album at the delivery address given when ordering.\n\nAlbums are made to order according to the choices the customer makes when customising their album, as finally approved by them.\n\nPrinting and, where applicable, all or part of the manufacturing or delivery may be carried out by partner providers selected by the Company, in particular a partner printing house located in Lebanon."
+          "body": "Through the Site, the Company offers a service allowing users to select and upload their photographs, customise the layout of a photo album, where applicable with the help of artificial intelligence tools, order its printing and receive the printed album at the delivery address given when ordering, or order its digital version (PDF).\n\nAlbums are made to order according to the choices the customer makes when customising their album, as finally approved by them.\n\nPrinting and, where applicable, all or part of the manufacturing or delivery may be carried out by partner providers selected by the Company, in particular a partner printing house located in Lebanon."
         },
         {
           "heading": "2. Scope",
@@ -665,7 +669,7 @@
         },
         {
           "heading": "10. Prices",
-          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
+          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe price of the digital album is that of the corresponding printed album, less USD 15, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
         },
         {
           "heading": "11. Payment",
@@ -680,12 +684,16 @@
           "body": "Delivery is currently available in Lebanon only.\n\nProducts are delivered to the address given by the customer when ordering.\n\nThe customer is responsible for the accuracy and completeness of the delivery information they provide.\n\nThe available delivery areas and the corresponding costs are shown on the Site before the order is confirmed.\n\nThe estimated manufacturing and delivery time is shown to the customer before or when ordering. As a guide, manufacturing takes about 5 days and delivery 2 to 3 days.\n\nThe announced times may be affected by circumstances beyond the Company's control. In the event of a significant delay, the customer's rights are those provided by the applicable mandatory provisions of Lebanese law."
         },
         {
+          "heading": "13 bis. Digital album (PDF)",
+          "body": "The customer may order their album in digital form: a PDF file containing the album's cover, pages and back cover, in screen quality. This file is neither printed nor delivered.\n\nThe file is made available in the customer area (\"My orders\") once payment has been confirmed; the customer is informed by email. It remains downloadable, as many times as wished, for as long as the customer's account exists. It is the customer's responsibility to keep a copy of it.\n\nThe customer may later order the printed version of the same album; the amount paid for the digital album is then deducted from the price of the printed album."
+        },
+        {
           "heading": "14. Receipt – Damaged or non-conforming product",
           "body": "The customer is invited to check the condition of their parcel and album on receipt.\n\nIf the album is damaged, has a printing defect or does not match the approved order, the customer is invited to contact the Company within 14 days of receipt at orders@everbook-album.com, giving their order number and, where possible, photographs showing the problem.\n\nWhere a defect or non-conformity is attributable to the Company or one of its providers, the Company will offer, depending on the circumstances and in accordance with the applicable law, a reprint, replacement, repair or refund of the product concerned.\n\nThis provision does not limit any mandatory right the consumer has under Lebanese law."
         },
         {
           "heading": "15. Cancellation and right of withdrawal",
-          "body": "The albums offered on the Site are made to order from the customer's photographs, format, layout and other individual choices, including when these choices result in whole or in part from an artificial intelligence suggestion accepted by the customer.\n\nLaw no. 659/2005 on consumer protection grants consumers, for distance purchases, a right to cancel within ten (10) days, excluding in particular personalised or made-to-order goods (article 55 of Law no. 659/2005). The album ordered on the Site, made from the customer's own photographs and choices, falls under this exclusion.\n\nConsequently, the right of cancellation that applies by law to distance sales cannot be exercised by the customer for the personalised album once the order has been confirmed under the conditions of article 8.\n\nThe customer may nevertheless ask to cancel their order before manufacturing starts by contacting the Company at orders@everbook-album.com.\n\nThe Company will make its best efforts to stop the order. Cancellation cannot, however, be guaranteed once manufacturing has started.\n\nThis article does not deprive the customer of their rights when a product is defective, damaged or does not match the order."
+          "body": "The albums offered on the Site are made to order from the customer's photographs, format, layout and other individual choices, including when these choices result in whole or in part from an artificial intelligence suggestion accepted by the customer.\n\nLaw no. 659/2005 on consumer protection grants consumers, for distance purchases, a right to cancel within ten (10) days, excluding in particular personalised or made-to-order goods (article 55 of Law no. 659/2005). The album ordered on the Site, made from the customer's own photographs and choices, falls under this exclusion.\n\nConsequently, the right of cancellation that applies by law to distance sales cannot be exercised by the customer for the personalised album once the order has been confirmed under the conditions of article 8.\n\nThe customer may nevertheless ask to cancel their order before manufacturing starts by contacting the Company at orders@everbook-album.com.\n\nThe Company will make its best efforts to stop the order. Cancellation cannot, however, be guaranteed once manufacturing has started.\n\nThis article does not deprive the customer of their rights when a product is defective, damaged or does not match the order.\n\nFor the digital album, a personalised content supplied in digital form, the order can no longer be cancelled once the file has been made available to the customer."
         },
         {
           "heading": "16. Personal data and photographs",
@@ -693,7 +701,7 @@
         },
         {
           "heading": "17. Retention and deletion of photographs",
-          "body": "Uploaded photographs are kept according to the following rules:\n• album not ordered: it is automatically deleted, with its photographs, 30 days after it was created;\n• unused photographs: photographs uploaded but not included in the final layout of an ordered album are deleted once the order's print file has been generated;\n• ordered album: the album, its photographs and the order history are kept for as long as the customer's account exists, to allow a reprint, to let the customer find their album again, or to handle any complaint.\n\nThe customer can delete their account at any time from their account page (\"Delete my account\"): their account, albums and photographs are then permanently deleted. Information about past orders (amount, delivery address) is kept for accounting purposes, without any photograph. Deletion is not possible while an order is being manufactured or delivered.\n\nThe customer may also ask for their photographs to be deleted earlier once keeping them is no longer necessary to fulfil the order or to handle an ongoing complaint, as described in the Privacy Policy."
+          "body": "Uploaded photographs are kept according to the following rules:\n• album not ordered: it is automatically deleted, with its photographs, 30 days after it was created;\n• unused photographs: photographs uploaded but not included in the final layout of an ordered album are deleted once the order's print file has been generated;\n• ordered album: the album, its photographs and the order history are kept for as long as the customer's account exists, to allow a reprint, to let the customer find their album again, or to handle any complaint.\n\nThe PDF file of a digital album is kept for as long as the customer's account exists.\n\nThe customer can delete their account at any time from their account page (\"Delete my account\"): their account, albums and photographs are then permanently deleted. Information about past orders (amount, delivery address) is kept for accounting purposes, without any photograph. Deletion is not possible while an order is being manufactured or delivered.\n\nThe customer may also ask for their photographs to be deleted earlier once keeping them is no longer necessary to fulfil the order or to handle an ongoing complaint, as described in the Privacy Policy."
         },
         {
           "heading": "18. Intellectual property of the Site",
