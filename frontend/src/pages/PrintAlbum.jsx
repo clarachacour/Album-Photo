@@ -183,6 +183,10 @@ export default function PrintAlbum() {
           page-break-after: auto;
           break-after: auto;
         }
+        /* A page draws itself at the A4 proportion (1:1.414); A5 is a
+           little taller (148 × 210 mm), which left a thin white strip at
+           the bottom of each A5 sheet. It fills its sheet instead. */
+        .print-fill > * { height: 100% !important; }
         .cover-spread { page: cover-spread; }
         .cover-sheet { page: cover-sheet; }
         .content-sheet { page: content-sheet; }
@@ -203,7 +207,7 @@ export default function PrintAlbum() {
       )}
 
       {includeCover && digital && (
-        <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+        <div className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <CoverFrontPage
             imageVariant={variant}
             template={template}
@@ -223,7 +227,7 @@ export default function PrintAlbum() {
             <CoverSpine title={album.title} templateId={album.cover_template_id} template={template} cover={cover} editable={false} />
           </div>
           <div style={{ width: `${seamMm}mm`, height: `${ph}mm`, flexShrink: 0, background: "rgba(26,26,23,0.7)" }} />
-          <div style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+          <div className="print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
             <CoverFrontPage
               imageVariant="original"
               template={template}
@@ -243,7 +247,7 @@ export default function PrintAlbum() {
           printer asked for the album's own pages only. Interior pages:
           just this chunk's slice when chunked, every page otherwise. */}
       {chunkPages.map(({ page, i }) => (
-        <div key={page.id || i} className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+        <div key={page.id || i} className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes={!digital} />
         </div>
       ))}
@@ -251,7 +255,7 @@ export default function PrintAlbum() {
       {/* Back cover — only the chunk that reaches the real end of the album,
           and only when it isn't already on the printer's cover sheet. */}
       {includeBackCover && !spread && (
-        <div className="print-page content-sheet" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+        <div className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
           <CoverBackPage
             imageVariant={variant}
             template={template}
