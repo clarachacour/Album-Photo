@@ -340,35 +340,47 @@ def _brightness_of_stored(photo: dict) -> dict:
     return compute_brightness(data) or {"brightness": None, "highlights": None}
 
 
-async def backfill_brightness(limit: int = 5000, batch: int = 50) -> int:
-    """Measures the photos uploaded before brightness was (their small copy
-    is enough). Run in the background at startup; does nothing once every
-    photo has it. Returns how many were measured.
+# Albums whose old photos are being measured right now (see below), and
+# the tasks doing it (kept, or Python may drop them before they finish).
+_measuring_albums: set = set()
+_measuring_tasks: set = set()
 
-    Read a small batch at a time rather than through one open cursor:
-    measuring each photo takes a while (an R2 download, slower still with
-    Cloud Run's CPU throttled outside requests), and MongoDB closes a
-    cursor left waiting about 10 minutes (CursorNotFound)."""
+
+def measure_missing_brightness_later(album_id: str, photo_ids: List[str]):
+    """measure_missing_brightness in the background: the page doesn't wait."""
+    task = asyncio.create_task(measure_missing_brightness(album_id, photo_ids))
+    _measuring_tasks.add(task)
+    task.add_done_callback(_measuring_tasks.discard)
+
+
+async def measure_missing_brightness(album_id: str, photo_ids: List[str]) -> int:
+    """Measures an album's photos uploaded before brightness was (their small
+    copy is enough), for the "may print dark" warning. Started when the
+    album is opened in the editor and still editable: albums already
+    ordered or left unused are never measured. Once per album at a time;
+    returns how many were measured."""
+    if album_id in _measuring_albums:
+        return 0
+    _measuring_albums.add(album_id)
     loop = asyncio.get_event_loop()
     done = 0
-    while done < limit:
-        photos = await db.photos.find(
-            {"is_deleted": False, "brightness": {"$exists": False}},
-            {"_id": 0, "id": 1, "thumbnail_path": 1, "storage_path": 1},
-        ).limit(min(batch, limit - done)).to_list(batch)
-        if not photos:
-            break
-        for photo in photos:
+    try:
+        for photo_id in photo_ids:
+            photo = await db.photos.find_one({"id": photo_id, "brightness": {"$exists": False}}, {"_id": 0, "id": 1, "thumbnail_path": 1, "storage_path": 1})
+            if not photo:
+                continue
             try:
                 values = await loop.run_in_executor(photo_processing_executor, _brightness_of_stored, photo)
             except Exception as e:
                 # Not readable (a file missing from R2…): not tried again.
-                logger.debug(f"Luminosité de la photo {photo.get('id')} non mesurée : {e}")
+                logger.debug(f"Luminosité de la photo {photo_id} non mesurée : {e}")
                 values = {"brightness": None, "highlights": None}
-            await db.photos.update_one({"id": photo["id"]}, {"$set": values})
+            await db.photos.update_one({"id": photo_id}, {"$set": values})
             done += 1
+    finally:
+        _measuring_albums.discard(album_id)
     if done:
-        logger.info(f"Luminosité mesurée pour {done} photo(s) déjà envoyée(s)")
+        logger.info(f"Album {album_id} : luminosité mesurée pour {done} photo(s) envoyée(s) avant la mesure")
     return done
 
 

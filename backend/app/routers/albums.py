@@ -42,7 +42,7 @@ from app.services.pdf import render_album_pdf_sync
 from app.services.pdf_legacy import export_pdf_reportlab_legacy
 from app.services.cover_art import slim_cover
 from app.services import signed_urls
-from app.services.photos import store_many_photos
+from app.services.photos import measure_missing_brightness_later, store_many_photos
 from app.services.processing import (
     add_photos_to_layout,
     version_query,
@@ -169,6 +169,13 @@ async def get_album(album_id: str, user: dict = Depends(get_current_user_for_alb
     # told to allow edits on it — the two would disagree.
     has_order = await db.orders.find_one({"album_id": album_id}) is not None
     album["was_ordered"] = has_order and not album.get("admin_unlocked") and not is_admin(user)
+    # Photos uploaded before their brightness was measured: measured now, in
+    # the background, for the "may print dark" warning — only for an album
+    # still being made (an ordered one can't change any more). Shown the
+    # next time the album loads.
+    unmeasured = [p["id"] for p in photos if "brightness" not in p]
+    if unmeasured and not has_order:
+        measure_missing_brightness_later(album_id, unmeasured)
     # The admin working on a customer's album: the editor says so.
     album["admin_editing"] = is_admin(user) and album.get("user_id") != user["id"]
     return album

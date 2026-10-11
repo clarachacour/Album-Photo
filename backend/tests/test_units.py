@@ -67,7 +67,7 @@ def test_half_written_font_file_is_repaired(tmp_path):
 
 
 # ---------- Google sign-in ----------
-def test_google_keys_are_downloaded_once_and_again_after_a_key_change(monkeypatch):
+def test_google_keys_are_downloaded_once_and_again_after_a_key_change(app, monkeypatch):
     from app.core import auth
 
     downloads = []
@@ -106,7 +106,7 @@ def _jpeg(color):
     return buf.getvalue()
 
 
-def test_brightness_tells_a_dark_photo_from_a_light_one():
+def test_brightness_tells_a_dark_photo_from_a_light_one(app):
     from app.services.curation import compute_brightness
 
     dark, light = compute_brightness(_jpeg((25, 22, 20))), compute_brightness(_jpeg((150, 140, 130)))
@@ -115,22 +115,35 @@ def test_brightness_tells_a_dark_photo_from_a_light_one():
     assert compute_brightness(b"not an image") is None
 
 
-def test_brightness_backfill_works_in_batches_and_skips_unreadable_photos(app, db, monkeypatch):
+def test_an_album_opened_in_the_editor_gets_its_old_photos_measured(client, db, monkeypatch):
+    """Photos uploaded before brightness was measured are measured when
+    their album is opened and still editable — never an ordered album's."""
     import asyncio
 
     from app.services import photos
-
-    asyncio.run(db.photos.insert_many([
-        {"id": f"b{i}", "is_deleted": False, "storage_path": f"b{i}.jpg"} for i in range(7)
-    ] + [{"id": "broken", "is_deleted": False, "storage_path": "missing.jpg"}]))
+    from tests.test_api import _signup
 
     def measure(photo):
-        if photo["id"] == "broken":
+        if photo["id"].endswith("broken"):
             raise FileNotFoundError("not in R2")
         return {"brightness": 0.5, "highlights": 0.8}
 
     monkeypatch.setattr(photos, "_brightness_of_stored", measure)
-    assert asyncio.run(photos.backfill_brightness(batch=3)) == 8
-    assert asyncio.run(db.photos.count_documents({"brightness": {"$exists": False}})) == 0
-    assert asyncio.run(db.photos.find_one({"id": "broken"}))["brightness"] is None
-    assert asyncio.run(photos.backfill_brightness(batch=3)) == 0  # nothing left, nothing retried
+    _, headers = _signup(client, db=db)
+    editing = client.post("/api/albums", json={"title": "Draft"}, headers=headers).json()["id"]
+    ordered = client.post("/api/albums", json={"title": "Done"}, headers=headers).json()["id"]
+    asyncio.run(db.orders.insert_one({"id": "o-measure", "album_id": ordered, "kind": "print"}))
+    for album_id in (editing, ordered):
+        asyncio.run(db.photos.insert_many([
+            {"id": f"{album_id}-ok", "album_id": album_id, "is_deleted": False, "storage_path": "a.jpg"},
+            {"id": f"{album_id}-broken", "album_id": album_id, "is_deleted": False, "storage_path": "b.jpg"},
+        ]))
+
+    for album_id in (editing, ordered):
+        client.get(f"/api/albums/{album_id}", headers=headers)
+    assert asyncio.run(photos.measure_missing_brightness(editing, [f"{editing}-ok"])) == 0  # already done
+    found = {p["id"]: p for p in client.get(f"/api/albums/{editing}", headers=headers).json()["photos"]}
+    assert found[f"{editing}-ok"]["brightness"] == 0.5
+    assert found[f"{editing}-broken"]["brightness"] is None  # unreadable: not tried again
+    untouched = client.get(f"/api/albums/{ordered}", headers=headers).json()["photos"]
+    assert all("brightness" not in p for p in untouched)
