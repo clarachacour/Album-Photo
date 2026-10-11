@@ -122,6 +122,17 @@ export default function OrderDetailPage() {
               {t("orderDetail.trackingNumber")} <span className="font-medium">{order.tracking_number}</span>
             </div>
           )}
+          {order.delivery?.tracking_url && !["delivered", "cancelled"].includes(order.status) && (
+            <a
+              href={order.delivery.tracking_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-sm mt-2 underline underline-offset-2 hover:text-[color:var(--coral)]"
+              data-testid="order-tracking-link"
+            >
+              {t("orderDetail.followCourier")}
+            </a>
+          )}
         </div>
 
         <div className="grid md:grid-cols-2 gap-12 border-t border-[color:var(--border-soft)] pt-10">
@@ -144,7 +155,7 @@ export default function OrderDetailPage() {
             <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
               <div>{addr.full_name}</div>
               <div>{addr.street}{addr.building && `, ${addr.building}`}</div>
-              <div>{addr.city}</div>
+              <div>{addr.city}{addr.area && ` · ${addr.area}`}</div>
               {addr.additional_info && <div>{addr.additional_info}</div>}
               {addr.phone && <div className="pt-1">{addr.phone}</div>}
             </div>

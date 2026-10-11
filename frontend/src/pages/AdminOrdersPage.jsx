@@ -107,6 +107,23 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // The Wakilni delivery of a printed book: create (or retry), refresh, cancel.
+  const [deliveryBusy, setDeliveryBusy] = useState(null);
+  const deliveryAction = async (orderId, action) => {
+    if (action === "cancel" && !window.confirm("Cancel this Wakilni delivery?")) return;
+    setDeliveryBusy(orderId);
+    try {
+      const path = action === "create" ? "" : `/${action}`;
+      const { data } = await api.post(`/admin/orders/${orderId}/delivery${path}`);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
+      toast.success(action === "create" ? "Wakilni delivery created" : action === "cancel" ? "Wakilni delivery cancelled" : "Wakilni status refreshed");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Wakilni didn't answer");
+    } finally {
+      setDeliveryBusy(null);
+    }
+  };
+
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
     try {
@@ -186,7 +203,7 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="p-3 text-[color:var(--ink)]/70">
                         {addr.street}{addr.building ? `, ${addr.building}` : ""}<br />
-                        {addr.city}
+                        {addr.city}{addr.area ? ` · ${addr.area}` : ""}
                         {addr.additional_info && <div className="text-xs italic mt-0.5">{addr.additional_info}</div>}
                       </td>
                       <td className="p-3">
@@ -219,6 +236,44 @@ export default function AdminOrdersPage() {
                             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                           ))}
                         </select>
+                        {o.kind !== "digital" && (
+                          <div className="mt-2 text-xs space-y-1" data-testid={`admin-delivery-${o.id}`}>
+                            {o.delivery?.delivery_id ? (
+                              <>
+                                <div>
+                                  Wakilni:{" "}
+                                  {o.delivery.tracking_url ? (
+                                    <a href={o.delivery.tracking_url} target="_blank" rel="noopener noreferrer" className="underline">
+                                      {o.delivery.tracking_id || o.delivery.delivery_id}
+                                    </a>
+                                  ) : (
+                                    o.delivery.delivery_id
+                                  )}
+                                </div>
+                                <div className="text-[color:var(--muted)]">{o.delivery.status_label || "Pending"}</div>
+                              </>
+                            ) : o.delivery?.error ? (
+                              <div className="text-red-500" title={o.delivery.error}>Wakilni failed: {o.delivery.error.slice(0, 60)}</div>
+                            ) : null}
+                            <div className="flex gap-2">
+                              {!o.delivery?.delivery_id && ["printing", "ready_for_delivery"].includes(o.status) && (
+                                <button type="button" disabled={deliveryBusy === o.id} onClick={() => deliveryAction(o.id, "create")} className="underline disabled:opacity-50">
+                                  {o.delivery?.error ? "Retry Wakilni" : "Send to Wakilni"}
+                                </button>
+                              )}
+                              {o.delivery?.delivery_id && !["delivered", "cancelled"].includes(o.status) && (
+                                <button type="button" disabled={deliveryBusy === o.id} onClick={() => deliveryAction(o.id, "refresh")} className="underline disabled:opacity-50">
+                                  Refresh
+                                </button>
+                              )}
+                              {o.delivery?.delivery_id && o.delivery.status_code === 1 && (
+                                <button type="button" disabled={deliveryBusy === o.id} onClick={() => deliveryAction(o.id, "cancel")} className="underline text-red-500 disabled:opacity-50">
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-1.5">

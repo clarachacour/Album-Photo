@@ -28,8 +28,15 @@ export default function OrderCheckoutPage() {
     street: user?.street || "",
     building: user?.building || "",
     city: user?.city || "",
+    area: "",
     additional_info: user?.additional_info || "",
   });
+  // The courier's (Wakilni's) area names, suggested for the "Area" field;
+  // when there's a list, the area must be one of them.
+  const [areas, setAreas] = useState([]);
+  useEffect(() => {
+    api.get("/delivery/areas").then(({ data }) => setAreas(data?.areas || [])).catch(() => {});
+  }, []);
   // Shown the instant the person clicks "Place order". The POST itself
   // can take anywhere from a few minutes to a couple of hours — PDF
   // generation is awaited synchronously on the server (see backend
@@ -95,12 +102,16 @@ export default function OrderCheckoutPage() {
 
   const placeOrder = async (e) => {
     e.preventDefault();
-    const required = digital ? [] : ["full_name", "phone", "street", "city"];
+    const required = digital ? [] : ["full_name", "phone", "street", "city", ...(areas.length ? ["area"] : [])];
     for (const field of required) {
       if (!address[field]?.trim()) {
         toast.error(t("checkout.requiredFields"));
         return;
       }
+    }
+    if (!digital && areas.length && !areas.some((a) => a.toLowerCase() === address.area.trim().toLowerCase())) {
+      toast.error(t("checkout.areaFromList"));
+      return;
     }
     if (!acceptedTerms) {
       setTermsError(true);
@@ -247,9 +258,23 @@ export default function OrderCheckoutPage() {
                 <label className="eyebrow block mb-2">{t("checkout.building")}</label>
                 <input className={inputClass} value={address.building} onChange={(e) => setAddress({ ...address, building: e.target.value })} />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <label className="eyebrow block mb-2">{t("checkout.city")}</label>
                 <input className={inputClass} value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} required />
+              </div>
+              <div>
+                <label className="eyebrow block mb-2">{t(areas.length ? "checkout.areaRequired" : "checkout.area")}</label>
+                <input
+                  className={inputClass}
+                  list="delivery-areas"
+                  value={address.area}
+                  onChange={(e) => setAddress({ ...address, area: e.target.value })}
+                  placeholder={t("checkout.areaPlaceholder")}
+                  data-testid="checkout-area"
+                />
+                <datalist id="delivery-areas">
+                  {areas.map((a) => <option key={a} value={a} />)}
+                </datalist>
               </div>
               <div className="md:col-span-2">
                 <label className="eyebrow block mb-2">{t("checkout.additionalInfo")}</label>

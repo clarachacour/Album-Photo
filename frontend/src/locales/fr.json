@@ -263,7 +263,8 @@
     "paymentNoticeDigital": "Votre album numérique est prêt de notre côté. Nous vous recontactons pour le paiement : dès sa confirmation, vous recevrez un email et pourrez le télécharger ici.",
     "digitalReady": "Votre album est prêt. Téléchargez-le autant de fois que vous voulez.",
     "downloadPdf": "Télécharger le PDF",
-    "downloadError": "Impossible de télécharger l'album, réessayez."
+    "downloadError": "Impossible de télécharger l'album, réessayez.",
+    "followCourier": "Suivre le livreur →"
   },
   "account": {
     "eyebrow": "Compte",
@@ -990,7 +991,11 @@
     "digitalCredit": "Album numérique déjà payé",
     "noPaymentDigital": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous vous recontacterons pour le paiement. Votre PDF sera téléchargeable dès sa confirmation.",
     "placedBodyDigital": "Merci — nous préparons le PDF de <b>{{title}}</b>. Il sera téléchargeable dès la confirmation de votre paiement.",
-    "termsChanged": "Nos conditions générales de vente viennent d'être mises à jour. Rechargez la page, cochez à nouveau la case et validez votre commande."
+    "termsChanged": "Nos conditions générales de vente viennent d'être mises à jour. Rechargez la page, cochez à nouveau la case et validez votre commande.",
+    "area": "Zone",
+    "areaRequired": "Zone *",
+    "areaPlaceholder": "Ex. Hamra, Achrafieh, Jounieh…",
+    "areaFromList": "Choisissez votre zone dans la liste proposée, pour que le livreur trouve votre adresse."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",
