@@ -32,6 +32,8 @@ class FakeWakilni:
                 return _Res(422, {"message": "The receiver area is invalid"})
             if "waybill" not in (json or {}):
                 return _Res(422, {"message": "Could not add delivery order.", "errors": {"waybill": ["The waybill field is required."]}})
+            if not isinstance(json["waybill"], str):
+                return _Res(422, {"message": "Could not add delivery order.", "errors": {"waybill": ["The waybill must be a string."]}})
             return _Res(200, {"message": "Delivery order added", "delivery_id": 9001, "tracking_id": "WK123",
                               "tracking_url": "https://track.wakilni.com/WK123", "packages": []})
         if "/end_bulk/" in path:
@@ -104,7 +106,7 @@ def test_the_printers_click_creates_the_wakilni_delivery(client, db, courier):
     sent = courier["fake"].calls[2][2]
     assert (sent["receiver_first_name"], sent["receiver_last_name"]) == ("Rita", "Khoury Haddad")
     assert sent["receiver_area"] == "Hamra" and sent["is_express"] is False
-    assert sent["waybill"] == int(order_id.replace("-", "")[:8], 16)  # required by Wakilni
+    assert sent["waybill"] == f"EB-{order_id[:8].upper()}"  # required by Wakilni, as text
     # Not paid yet: the courier collects the total in cash.
     assert sent["cash_collection_type_id"] == 52 and sent["collection_amount"] == courier["order"]["total_price_cents"] / 100
     assert sent["packages"][0]["type_id"] == 59  # A5: small box

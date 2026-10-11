@@ -109,11 +109,12 @@ def split_name(full_name: str) -> tuple:
     return parts[0], " ".join(parts[1:]) or "-"
 
 
-def waybill(order: dict) -> int:
-    """Our reference for the order at Wakilni (required by them; a number):
-    the first 8 characters of the order number, read as a number. Shown in
-    the admin next to the delivery, to find it in Wakilni's portal."""
-    return int(order["id"].replace("-", "")[:8], 16)
+def waybill(order: dict) -> str:
+    """Our reference for the order at Wakilni (required by them, as text):
+    "EB-" and the order number's first 8 characters, as shown to the
+    customer (#5f4c0509 → EB-5F4C0509). Shown in the admin too, to find the
+    delivery in Wakilni's portal."""
+    return f"EB-{order['id'][:8].upper()}"
 
 
 def delivery_payload(order: dict, customer: dict) -> dict:
