@@ -989,7 +989,8 @@
     "digitalNote": "You'll get your album as a PDF: the cover, all your pages and the back cover, in screen quality, to view on your phone, tablet or computer and to share. It can be downloaded as soon as your payment is confirmed, with no time limit, from \"My orders\".",
     "digitalCredit": "Digital album already paid",
     "noPaymentDigital": "Online payment isn't available yet — your order is saved and we'll contact you for payment. Your PDF can be downloaded as soon as it's confirmed.",
-    "placedBodyDigital": "Thanks — we're preparing the PDF of <b>{{title}}</b>. It can be downloaded as soon as your payment is confirmed."
+    "placedBodyDigital": "Thanks — we're preparing the PDF of <b>{{title}}</b>. It can be downloaded as soon as your payment is confirmed.",
+    "termsChanged": "Our terms of sale have just been updated. Please reload the page, tick the box again and place your order."
   },
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",

@@ -989,7 +989,8 @@
     "digitalNote": "Vous recevrez votre album en PDF : la couverture, toutes vos pages et la 4e de couverture, en qualité écran, à regarder sur votre téléphone, votre tablette ou votre ordinateur et à partager. Il sera téléchargeable dès la confirmation de votre paiement, sans limite de temps, depuis « Mes commandes ».",
     "digitalCredit": "Album numérique déjà payé",
     "noPaymentDigital": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous vous recontacterons pour le paiement. Votre PDF sera téléchargeable dès sa confirmation.",
-    "placedBodyDigital": "Merci — nous préparons le PDF de <b>{{title}}</b>. Il sera téléchargeable dès la confirmation de votre paiement."
+    "placedBodyDigital": "Merci — nous préparons le PDF de <b>{{title}}</b>. Il sera téléchargeable dès la confirmation de votre paiement.",
+    "termsChanged": "Nos conditions générales de vente viennent d'être mises à jour. Rechargez la page, cochez à nouveau la case et validez votre commande."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",

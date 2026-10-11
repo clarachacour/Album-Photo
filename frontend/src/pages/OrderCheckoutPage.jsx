@@ -139,6 +139,13 @@ export default function OrderCheckoutPage() {
         nav("/orders", { replace: true });
         return;
       }
+      // The terms of sale changed since this page was loaded (or the site
+      // and the server are on different versions for a moment, right
+      // after an update): reloading shows and sends the current ones.
+      if (status === 400 && /terms of sale/i.test(err?.response?.data?.detail || "")) {
+        toast.error(t("checkout.termsChanged"), { duration: 10000 });
+        return;
+      }
       if (status === 404 || status === 400) {
         toast.error(err?.response?.data?.detail || t("checkout.checkAlbum"));
         return;
