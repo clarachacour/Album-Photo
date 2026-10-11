@@ -250,7 +250,10 @@ export default function AdminOrdersPage() {
                                     o.delivery.delivery_id
                                   )}
                                 </div>
-                                <div className="text-[color:var(--muted)]">{o.delivery.status_label || "Pending"}</div>
+                                <div className="text-[color:var(--muted)]">
+                                  {o.delivery.status_label || "Pending"}
+                                  {o.delivery.waybill ? ` · waybill ${o.delivery.waybill}` : ""}
+                                </div>
                               </>
                             ) : o.delivery?.error ? (
                               <div className="text-red-500" title={o.delivery.error}>Wakilni failed: {o.delivery.error.slice(0, 60)}</div>

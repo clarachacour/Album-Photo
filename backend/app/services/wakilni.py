@@ -109,6 +109,13 @@ def split_name(full_name: str) -> tuple:
     return parts[0], " ".join(parts[1:]) or "-"
 
 
+def waybill(order: dict) -> int:
+    """Our reference for the order at Wakilni (required by them; a number):
+    the first 8 characters of the order number, read as a number. Shown in
+    the admin next to the delivery, to find it in Wakilni's portal."""
+    return int(order["id"].replace("-", "")[:8], 16)
+
+
 def delivery_payload(order: dict, customer: dict) -> dict:
     """The "add delivery" body for one of our printed orders."""
     address = order.get("shipping_address") or {}
@@ -118,6 +125,7 @@ def delivery_payload(order: dict, customer: dict) -> dict:
     return {
         "get_order_details": False,
         "get_barcode": False,
+        "waybill": waybill(order),
         "receiver_id": _number(order.get("user_id") or order["id"]),
         "receiver_first_name": first,
         "receiver_last_name": last,
@@ -156,7 +164,15 @@ def create_delivery(order: dict, customer: dict) -> dict:
     bulk_id = _field(started, "bulk_id")
     if not bulk_id:
         raise WakilniError(f"start_bulk gave no bulk_id: {_short(started)}")
-    added = _call("POST", f"/api/v2/clients/add_delivery/{bulk_id}", json=delivery_payload(order, customer))
+    try:
+        added = _call("POST", f"/api/v2/clients/add_delivery/{bulk_id}", json=delivery_payload(order, customer))
+    except WakilniError:
+        # Don't leave an empty pickup open at Wakilni.
+        try:
+            _call("POST", f"/api/v2/clients/end_bulk/{bulk_id}")
+        except WakilniError:
+            pass
+        raise
     delivery_id = _field(added, "delivery_id")
     if not delivery_id:
         raise WakilniError(f"add_delivery gave no delivery_id: {_short(added)}")
@@ -165,6 +181,7 @@ def create_delivery(order: dict, customer: dict) -> dict:
         "provider": "wakilni",
         "bulk_id": bulk_id,
         "delivery_id": delivery_id,
+        "waybill": waybill(order),
         "tracking_id": _field(added, "tracking_id"),
         "tracking_url": _field(added, "tracking_url"),
         "pickup_note": WAKILNI_PICKUP_DIRECTIONS,
