@@ -102,7 +102,7 @@ def test_the_printers_click_creates_the_wakilni_delivery(client, db, courier):
     paths = [p for _, p, _ in courier["fake"].calls]
     assert paths == ["/api/v2/third_party/auth_token", "/api/v2/clients/start_bulk", "/api/v2/clients/add_delivery/77", "/api/v2/clients/end_bulk/77"]
     pickup = courier["fake"].calls[1][2]
-    assert pickup["area"] == "Furn El Chebbak"
+    assert pickup["area"] == "Furn el-Chebbak"
     sent = courier["fake"].calls[2][2]
     assert (sent["receiver_first_name"], sent["receiver_last_name"]) == ("Rita", "Khoury Haddad")
     assert sent["receiver_area"] == "Hamra" and sent["is_express"] is False
