@@ -604,7 +604,9 @@ function StepEdit({
           {t("createAlbum.edit.subtitle")}
         </p>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10 items-start">
+      {/* Panel beside the cover from tablet/small-laptop width up (narrower
+          there), under it only on phones. */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] lg:grid-cols-[1fr_320px] gap-6 lg:gap-10 items-start">
         <div
           data-tour="cover-spread"
           className="grid w-full gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70"
@@ -653,7 +655,7 @@ function StepEdit({
             selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
           />
         </div>
-        <div data-tour="cover-panel">
+        <div data-tour="cover-panel" className="md:sticky md:top-20">
           {coverSel ? (
             <CoverEditorPanel
               album={album}
