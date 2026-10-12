@@ -173,3 +173,8 @@ body {
 .flipbook-wrapper {
     filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.25));
 }
+/* While an item is dragged onto another page (see DraggableItem's
+   dragGhost), its toolbar is hidden. */
+body.dragging-across [data-item-toolbar] {
+    visibility: hidden;
+}

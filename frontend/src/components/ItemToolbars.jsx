@@ -51,6 +51,7 @@ function ToolbarShell({ x, y, w, children, wide }) {
   return (
     <div
       ref={ref}
+      data-item-toolbar
       className={`absolute z-40 flex items-center gap-1 bg-[color:var(--ink)] text-[color:var(--paper)] px-1.5 py-1 shadow-lg rounded-sm ${wide ? "flex-wrap max-w-[300px]" : ""}`}
       style={{
         left: `${(x + w / 2) * 100}%`,

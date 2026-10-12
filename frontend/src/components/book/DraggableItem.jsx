@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from "react";
+import React, { useRef, useCallback, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCw } from "lucide-react";
 
@@ -22,8 +22,9 @@ import { RotateCw } from "lucide-react";
  *                  it then also shows while the frame is locked (photo
  *                  being edited: the handle turns the photo in its frame)
  *   onDropOutside - (clientX, clientY) => void: a move released outside the
- *                  page (onto another page): the frame looks faded while
- *                  the pointer is outside, as a hint it will move there
+ *                  page (onto another page). Past the page's edge, a copy
+ *                  of the item follows the pointer over the other page
+ *                  (see dragGhost) while the item itself is hidden
  *   rotateHandleBelow - the handle goes on the side facing down (photo
  *                  frames: their toolbar is above them)
  */
@@ -78,8 +79,56 @@ export function handleSide(rotation, down = false) {
   return best;
 }
 
+// A copy of a dragged item that follows the pointer outside its page: a
+// page-sized, see-through layer (so the copy keeps its size and its text
+// sizes, which are relative to the page's width) moved along with the
+// pointer, above everything. Returns { move(dxPx, dyPx), remove() }.
+function dragGhost(itemEl, pageEl, startItemX, startItemY) {
+  const page = pageEl.getBoundingClientRect();
+  const layer = document.createElement("div");
+  Object.assign(layer.style, {
+    position: "fixed",
+    left: `${page.left}px`,
+    top: `${page.top}px`,
+    width: `${page.width}px`,
+    height: `${page.height}px`,
+    containerType: "inline-size",
+    pointerEvents: "none",
+    zIndex: "9999",
+  });
+  const copy = itemEl.cloneNode(true);
+  copy.removeAttribute("data-testid");
+  copy.querySelectorAll("[data-testid]").forEach((el) => el.removeAttribute("data-testid"));
+  copy.style.left = `${startItemX * 100}%`;
+  copy.style.top = `${startItemY * 100}%`;
+  copy.style.opacity = "1";
+  copy.style.outline = "none";
+  // Just the item: no resize/rotate handles on the copy.
+  copy.querySelectorAll("[data-handle]").forEach((el) => el.remove());
+  layer.appendChild(copy);
+  document.body.appendChild(layer);
+  // Its toolbar stays hidden meanwhile (index.css: .dragging-across).
+  document.body.classList.add("dragging-across");
+  return {
+    move: (dx, dy) => {
+      layer.style.transform = `translate(${dx}px, ${dy}px)`;
+    },
+    remove: () => {
+      layer.remove();
+      document.body.classList.remove("dragging-across");
+    },
+  };
+}
+
 export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false, onDropOutside }) {
   const [outside, setOutside] = useState(false);
+  const itemRef = useRef(null);
+  const ghostRef = useRef(null);
+  const dropGhost = () => {
+    ghostRef.current?.remove();
+    ghostRef.current = null;
+  };
+  useEffect(() => dropGhost, []);
   const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
@@ -164,12 +213,21 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     const dy = (e.clientY - ds.startY) / ds.rectH;
     if (ds.mode === "move") {
       if (onDropOutside) {
-        const r = containerRef?.current?.getBoundingClientRect();
-        const out = !!r && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+        // As soon as the item would leave its page (where it stays
+        // pinned), its copy takes over and keeps following the pointer.
+        const ux = ds.startItemX + dx;
+        const uy = ds.startItemY + dy;
+        const out = ux < -0.005 || uy < -0.005 || ux + item.w > 1.005 || uy + item.h > 1.005;
         if (out !== ds.outside) {
           ds.outside = out;
           setOutside(out);
+          if (out && !ghostRef.current && itemRef.current && containerRef?.current) {
+            ghostRef.current = dragGhost(itemRef.current, containerRef.current, ds.startItemX, ds.startItemY);
+          } else if (!out) {
+            dropGhost();
+          }
         }
+        ghostRef.current?.move(e.clientX - ds.startX, e.clientY - ds.startY);
       }
       const nx = Math.max(0, Math.min(1 - item.w, ds.startItemX + dx));
       const ny = Math.max(0, Math.min(1 - item.h, ds.startItemY + dy));
@@ -188,6 +246,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       const { mode, outside: wasOutside } = dragState.current;
       dragState.current = null;
       setOutside(false);
+      dropGhost();
       if (mode === "move" && wasOutside && onDropOutside) onDropOutside(e.clientX, e.clientY);
       onDragStateChange && onDragStateChange(false, mode);
       try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
@@ -207,11 +266,13 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     // leave the page scrollable: tap to select, then drag.
     ...(editable && selected ? { touchAction: "none" } : {}),
     ...extraStyle,
-    ...(outside ? { opacity: 0.45, cursor: "copy" } : {}),
+    // Past the page's edge, its copy (dragGhost) is what shows.
+    ...(outside ? { opacity: 0 } : {}),
   };
   const ring = editable && selected ? "outline outline-2 outline-[color:var(--coral)]" : "";
   return (
     <div
+      ref={itemRef}
       className={`absolute ${ring} ${editable ? "cursor-move" : ""}`}
       style={style}
       onPointerDown={onPointerDown}
@@ -231,6 +292,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           data-testid={`${tid}-resize`}
+          data-handle
           title={t("albumPage.resize")}
         />
       )}
@@ -245,6 +307,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           data-testid={`${tid}-rotate`}
+          data-handle
           title={t("albumPage.rotate")}
         >
           <RotateCw size={13} />
