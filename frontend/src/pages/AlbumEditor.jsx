@@ -605,6 +605,20 @@ export default function AlbumEditor() {
     });
   };
 
+  // The "+" next to a page: a new, completely blank page right after it.
+  // The other pages (and their layouts) stay exactly as they are; photos
+  // or a layout can then be put on it like on any page.
+  const insertBlankPageAfter = (pageIdx) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPage = { id: cryptoRandom(), layout: "blank", items: [] };
+      const at = Math.min(prev.pages.length, pageIdx + 1);
+      return { ...prev, pages: [...prev.pages.slice(0, at), newPage, ...prev.pages.slice(at)] };
+    });
+    setSelected(null);
+    toast.success(t("albumEditor.pageAdded"));
+  };
+
   // Changes the album's total page count after the fact (e.g. 150 → 100)
   // without re-running curation — the backend re-flows every photo already
   // on the pages being touched into a denser or sparser layout, keeping
@@ -1043,6 +1057,7 @@ export default function AlbumEditor() {
             brighteningItemId={brighteningItemId}
             onApplyLayout={applyLayoutToPage}
             onDeletePage={deletePage}
+            onInsertPageAfter={insertBlankPageAfter}
             placingPhotoId={placingPhotoId}
             onPhotoPlaced={() => setPlacingPhotoId(null)}
             selectedId={selected?.item?.id}

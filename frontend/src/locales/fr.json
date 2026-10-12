@@ -448,6 +448,7 @@
     "lastPage": "Aller à la fin (dos)",
     "swapBanner": "Cliquez sur une autre photo pour l'échanger, ou sur un endroit vide d'une page (n'importe laquelle) pour y déplacer la photo.",
     "itemMoved": "Déplacé sur l'autre page",
+    "pageAdded": "Page blanche ajoutée",
     "photoMoved": "Photo déplacée",
     "picturesSwapped": "Photos échangées",
     "resizedToast": "Album redimensionné à {{count}} pages.",
@@ -605,6 +606,7 @@
     "resize": "Redimensionner",
     "changeLayout": "Changer la mise en page de cette page — combien de photos elle contient et comment elles sont disposées",
     "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
+    "insertPageAfter": "Ajouter une page blanche juste après celle-ci",
     "deletePage": "Supprimer toute cette page",
     "addTextBox": "Ajouter une zone de texte à cette page — cliquez où vous voulez la placer"
   },

@@ -27,6 +27,7 @@ export function BookRenderer({
   brighteningItemId,
   onApplyLayout,
   onDeletePage,
+  onInsertPageAfter,
   placingPhotoId,
   onPhotoPlaced,
   selectedId,
@@ -136,6 +137,7 @@ export function BookRenderer({
         onPhotoPlaced={onPhotoPlaced}
         onApplyLayout={(patternName) => onApplyLayout(i, patternName)}
         onDeletePage={() => onDeletePage(i)}
+        onInsertPageAfter={onInsertPageAfter && (() => onInsertPageAfter(i))}
         cropMode={cropMode}
         onEnterCrop={onEnterCrop}
         onExitCrop={onExitCrop}

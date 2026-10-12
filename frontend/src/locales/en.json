@@ -448,6 +448,7 @@
     "lastPage": "Go to the end (back cover)",
     "swapBanner": "Click another photo to swap them, or an empty spot on any page to move the photo there.",
     "itemMoved": "Moved to the other page",
+    "pageAdded": "Blank page added",
     "photoMoved": "Photo moved",
     "picturesSwapped": "Pictures swapped",
     "resizedToast": "Album resized to {{count}} pages.",
@@ -605,6 +606,7 @@
     "resize": "Resize",
     "changeLayout": "Change this page's layout — how many photos it holds and how they're arranged",
     "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",
+    "insertPageAfter": "Add a blank page right after this one",
     "deletePage": "Delete this whole page",
     "addTextBox": "Add a text box to this page — click where you want it to go"
   },

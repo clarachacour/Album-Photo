@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { photoImageUrl } from "@/lib/api";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay, TextItemToolbar } from "@/components/ItemToolbars";
 import LayoutPicker from "@/components/LayoutPicker";
-import { ImagePlus, LayoutGrid, Type, Trash2, TriangleAlert } from "lucide-react";
+import { ImagePlus, LayoutGrid, Type, Trash2, TriangleAlert, FilePlus } from "lucide-react";
 import { isLowResolution, isTooDark } from "@/lib/printQuality";
 import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
@@ -37,6 +37,7 @@ export function AlbumPage({
   brighteningItemId,
   onApplyLayout,
   onDeletePage,
+  onInsertPageAfter, // adds a blank page right after this one
   placingPhotoId,
   onPhotoPlaced,
   selectedItemId,
@@ -448,7 +449,7 @@ export function AlbumPage({
           </div>
         )
       )}
-      {editable && (onApplyLayout || onStartAddText || onDeletePage) && (
+      {editable && (onApplyLayout || onStartAddText || onDeletePage || onInsertPageAfter) && (
         <div data-tour="page-tools" className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "right-1 md:-right-9" : "left-1 md:-left-9"} z-30 flex flex-col gap-2`}>
           {onApplyLayout && (
             <button
@@ -474,6 +475,20 @@ export function AlbumPage({
               title={t("albumPage.addTextBox")}
             >
               <Type size={13} />
+            </button>
+          )}
+          {onInsertPageAfter && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onInsertPageAfter();
+              }}
+              data-testid={`page-insert-btn-${pageIndex}`}
+              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
+              title={t("albumPage.insertPageAfter")}
+              aria-label={t("albumPage.insertPageAfter")}
+            >
+              <FilePlus size={13} />
             </button>
           )}
           {onDeletePage && (
