@@ -721,17 +721,34 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
         {t("createAlbum.photos.subtitle")}
       </p>
 
-      <div
-        className={`text-sm border rounded px-4 py-3 mb-6 ${
-          belowMinimum
-            ? "text-red-700 bg-red-50 border-red-200"
-            : "text-emerald-700 bg-emerald-50 border-emerald-200"
-        }`}
-      >
-        {belowMinimum
-          ? t("createAlbum.photos.belowMinimum", { uploaded, minimum, targetPages, remaining: minimum - uploaded })
-          : t("createAlbum.photos.aboveMinimum", { uploaded, minimum })}
-      </div>
+      {/* Before the first photo: just how many are needed. Then a count
+          with a progress bar, until the minimum is reached. */}
+      {uploaded === 0 ? (
+        <div className="text-sm border rounded px-4 py-3 mb-6 text-[color:var(--ink)]/80 bg-[color:var(--editor-canvas)] border-[color:var(--border-soft)]" data-testid="photos-minimum">
+          {t("createAlbum.photos.howMany", { minimum, targetPages })}
+        </div>
+      ) : (
+        <div
+          data-testid="photos-minimum"
+          className={`text-sm border rounded px-4 py-3 mb-6 ${
+            belowMinimum
+              ? "text-[color:var(--ink)]/80 bg-[color:var(--editor-canvas)] border-[color:var(--border-soft)]"
+              : "text-emerald-700 bg-emerald-50 border-emerald-200"
+          }`}
+        >
+          {belowMinimum
+            ? t("createAlbum.photos.belowMinimum", { count: uploaded, minimum, remaining: minimum - uploaded })
+            : t("createAlbum.photos.aboveMinimum", { count: uploaded })}
+          {belowMinimum && (
+            <div className="mt-2 h-1.5 bg-[color:var(--ink)]/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[color:var(--coral)] transition-all"
+                style={{ width: `${Math.min(100, (uploaded / Math.max(1, minimum)) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <PhotoUploadMethods
         albumId={albumId}

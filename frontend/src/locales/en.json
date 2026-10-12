@@ -384,8 +384,11 @@
     "photos": {
       "title": "Drop your photos.",
       "subtitle": "All your photos, in any order. The AI will handle the rest: sorting, duplicates, layout.",
-      "belowMinimum": "{{uploaded}} of at least {{minimum}} photos required for a {{targetPages}}-page album — upload {{remaining}} more to continue.",
-      "aboveMinimum": "{{uploaded}} photos uploaded (minimum {{minimum}} reached). You can now create your album!",
+      "howMany": "For a {{targetPages}}-page album, add at least {{minimum}} photos. The more you add, the more the AI has to choose from to build a beautiful album.",
+      "belowMinimum_one": "{{count}} photo added — {{remaining}} more to reach the minimum of {{minimum}} and create your album.",
+      "belowMinimum_other": "{{count}} photos added — {{remaining}} more to reach the minimum of {{minimum}} and create your album.",
+      "aboveMinimum_one": "{{count}} photo added — that's enough! You can create your album, or add more.",
+      "aboveMinimum_other": "{{count}} photos added — that's enough! You can create your album, or add more.",
       "waitForImport": "Wait for your photos to finish importing",
       "importing": "Importing…",
       "createAlbum": "Create Album"

@@ -384,8 +384,11 @@
     "photos": {
       "title": "Déposez vos photos.",
       "subtitle": "Toutes vos photos, dans n'importe quel ordre. L'IA se charge du reste : tri, doublons, mise en page.",
-      "belowMinimum": "{{uploaded}} sur au moins {{minimum}} photos nécessaires pour un album de {{targetPages}} pages — envoyez {{remaining}} de plus pour continuer.",
-      "aboveMinimum": "{{uploaded}} photos envoyées (minimum {{minimum}} atteint). Vous pouvez maintenant créer votre album !",
+      "howMany": "Pour un album de {{targetPages}} pages, ajoutez au moins {{minimum}} photos. Plus vous en mettez, plus l'IA a de choix pour composer un bel album.",
+      "belowMinimum_one": "{{count}} photo ajoutée — encore {{remaining}} pour atteindre le minimum de {{minimum}} et créer votre album.",
+      "belowMinimum_other": "{{count}} photos ajoutées — encore {{remaining}} pour atteindre le minimum de {{minimum}} et créer votre album.",
+      "aboveMinimum_one": "{{count}} photo ajoutée — c'est suffisant ! Vous pouvez créer votre album, ou en ajouter d'autres.",
+      "aboveMinimum_other": "{{count}} photos ajoutées — c'est suffisant ! Vous pouvez créer votre album, ou en ajouter d'autres.",
       "waitForImport": "Attendez la fin de l'import de vos photos",
       "importing": "Import en cours…",
       "createAlbum": "Créer l'album"
