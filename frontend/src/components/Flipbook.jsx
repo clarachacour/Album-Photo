@@ -87,13 +87,14 @@ const CustomFlipbook = React.forwardRef(function CustomFlipbook({ pages, orienta
   const soloMode = current.type === "solo";
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="relative" style={{ perspective: "2200px", transformStyle: "preserve-3d" }}>
+    <div className="w-full flex justify-center md:[--book-side:7.5rem]">
+      {/* Full width, so the book's own width (a share of it) can be worked out. */}
+      <div className="relative w-full flex justify-center" style={{ perspective: "2200px", transformStyle: "preserve-3d" }}>
         {/* Frame is ALWAYS the same size as a full spread — a solo cover is
             centered inside it at its own natural (half-width) proportions,
             so there's never a resize between views (which was causing the
             page-flip animation to visibly stretch/distort mid-turn). */}
-        <div className="relative" style={sizeStyle(orientation)} data-book-sheet>
+        <div className="relative shrink-0" style={sizeStyle(orientation)} data-book-sheet>
           {soloMode ? (
             <div className="absolute inset-0 flex justify-center">
               <div className="relative h-full book-shadow bg-[color:var(--paper)] overflow-visible" style={{ width: "50%" }}>
@@ -215,9 +216,13 @@ function buildViews(pages) {
 
 function sizeStyle(orientation) {
   if (orientation === "landscape") {
-    return { width: "min(1180px, 92vw, 195vh)", aspectRatio: "2.828 / 1" };
+    return { width: "min(1180px, calc(100% - var(--book-side, 0px)), 195vh)", aspectRatio: "2.828 / 1" };
   }
-  return { width: "min(860px, 88vw, 98vh)", aspectRatio: "2 / 1.414" };
+  // Sized to the space it's given (not the whole window: next to the
+  // editor's side column, on an iPad or a small laptop, a window-based width
+  // pushed that column off the screen), minus room for the page tools that
+  // sit beside the pages from tablet width up (--book-side).
+  return { width: "min(860px, calc(100% - var(--book-side, 0px)), 98vh)", aspectRatio: "2 / 1.414" };
 }
 
 function blankPage(orientation) {

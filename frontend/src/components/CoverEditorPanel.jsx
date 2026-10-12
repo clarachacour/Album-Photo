@@ -633,7 +633,7 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
           aria-label={t("coverPanel.default")}
           className="text-[color:var(--muted)] hover:text-[color:var(--ink)]"
         >
-          <RotateCcw size={11} />
+          <RotateCcw size={10} className="inline -mt-px" /> <span className="text-[10px]">{t("coverPanel.default")}</span>
         </button>
       </div>
       <div className="flex items-center gap-1.5">

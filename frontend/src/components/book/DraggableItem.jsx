@@ -21,6 +21,7 @@ import { RotateCw } from "lucide-react";
  *   rotateHandleInside - the handle sits inside the frame, at its bottom;
  *                  it then also shows while the frame is locked (photo
  *                  being edited: the handle turns the photo in its frame)
+ *   doubleClickMouseOnly - onDoubleClick only with a mouse (not a double tap)
  *   onDropOutside - (clientX, clientY) => void: a move released outside the
  *                  page (onto another page). Past the page's edge, a copy
  *                  of the item follows the pointer over the other page
@@ -120,7 +121,7 @@ function dragGhost(itemEl, pageEl, startItemX, startItemY) {
   };
 }
 
-export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false, onDropOutside }) {
+export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false, onDropOutside, doubleClickMouseOnly = false }) {
   const [outside, setOutside] = useState(false);
   const itemRef = useRef(null);
   const ghostRef = useRef(null);
@@ -132,6 +133,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
   const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
+  const lastPointerTypeRef = useRef("mouse");
 
   const onPointerDown = useCallback((e) => {
     if (!editable) return;
@@ -141,7 +143,11 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     // browser's native dblclick can miss this because the toolbar appears
     // right after the first click and may intercept the second one.
     const now = Date.now();
-    if (onDoubleClick && now - lastClickAtRef.current < 400) {
+    lastPointerTypeRef.current = e.pointerType;
+    // doubleClickMouseOnly: left to the browser's own dblclick (below),
+    // which follows the clicks — a swap started here would be cancelled at
+    // once by the click that ends this press.
+    if (onDoubleClick && !doubleClickMouseOnly && now - lastClickAtRef.current < 400) {
       lastClickAtRef.current = 0;
       onDoubleClick();
       return;
@@ -160,7 +166,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     };
     onDragStateChange && onDragStateChange(true);
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [editable, item.x, item.y, onSelect, containerRef, onDragStateChange, onDoubleClick]);
+  }, [editable, item.x, item.y, onSelect, containerRef, onDragStateChange, onDoubleClick, doubleClickMouseOnly]);
 
   const onResizePointerDown = useCallback((e) => {
     if (!editable) return;
@@ -279,7 +285,11 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onDoubleClick={onDoubleClick}
+      onDoubleClick={
+        // With doubleClickMouseOnly, a double tap on a touch screen (select,
+        // then start dragging) does nothing: only a mouse double-click.
+        doubleClickMouseOnly ? () => editable && lastPointerTypeRef.current === "mouse" && onDoubleClick && onDoubleClick() : onDoubleClick
+      }
       data-testid={tid}
     >
       {children}

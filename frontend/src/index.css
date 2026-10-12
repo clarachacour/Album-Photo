@@ -178,3 +178,22 @@ body {
 body.dragging-across [data-item-toolbar] {
     visibility: hidden;
 }
+
+/* Bigger buttons for a finger (iPad, phones): about 40px. */
+@media (pointer: coarse) {
+    .tap-target {
+        min-width: 40px;
+        min-height: 40px;
+        justify-content: center;
+    }
+}
+
+/* Shown only on touch screens (no hover there). */
+.touch-only {
+    display: none;
+}
+@media (hover: none) {
+    .touch-only {
+        display: block;
+    }
+}

@@ -7,6 +7,7 @@ const DELAY_MS = 180; // skip photos the mouse only crosses on its way
 // Moving straight from one thumbnail to the next swaps the preview at once,
 // so two photos that look alike can be compared back and forth.
 const SWITCH_GRACE_MS = 400;
+const LONG_PRESS_MS = 450; // touch screens: press and hold to preview
 
 // As large as possible without covering most of the screen.
 const previewSize = () => Math.round(Math.max(200, Math.min(MAX_SIZE, window.innerHeight * 0.45, window.innerWidth - 32)));
@@ -44,6 +45,32 @@ export function usePhotoHoverPreview() {
     };
   }, [hide]);
 
+  // Touch screens: a long press shows the preview while the finger stays
+  // down (bindLongPress, for thumbnails that aren't sortable). The tap that
+  // ends it is then ignored (wasLongPress).
+  const longPressed = useRef(false);
+  const bindLongPress = (photoId) => ({
+    onPointerDown: (e) => {
+      if (e.pointerType === "mouse") return;
+      longPressed.current = false;
+      const rect = e.currentTarget.getBoundingClientRect();
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        longPressed.current = true;
+        setPreview({ photoId, rect });
+      }, LONG_PRESS_MS);
+    },
+    onPointerUp: hide,
+    onPointerCancel: hide,
+    onContextMenu: (e) => e.pointerType !== "mouse" && e.preventDefault(),
+    style: { WebkitTouchCallout: "none" },
+  });
+  const wasLongPress = () => {
+    const was = longPressed.current;
+    longPressed.current = false;
+    return was;
+  };
+
   const bind = (photoId) => ({
     onPointerEnter: (e) => {
       if (e.pointerType !== "mouse" || e.buttons) return;
@@ -59,7 +86,7 @@ export function usePhotoHoverPreview() {
   });
 
   const element = preview ? createPortal(<PreviewBox {...preview} />, document.body) : null;
-  return { bind, hide, element };
+  return { bind, bindLongPress, wasLongPress, hide, element };
 }
 
 function PreviewBox({ photoId, rect }) {

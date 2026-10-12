@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
+import i18n from "@/lib/i18n";
+import { isTouchScreen } from "@/lib/device";
 
 // Remembers, per browser, which guides the person has finished or skipped.
 const seenKey = (id) => `everbook_tour_${id}_seen`;
@@ -192,7 +194,7 @@ function TourStep({ step, contextRef, prefix, index, count, onPrev, onNext, onCl
             <X size={16} />
           </button>
         </div>
-        <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed mb-5">{t(`${key}.body`)}</p>
+        <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed mb-5">{t(isTouchScreen() && i18n.exists(`${key}.bodyTouch`) ? `${key}.bodyTouch` : `${key}.body`)}</p>
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-[color:var(--muted)]" data-testid="tour-progress">
             {index + 1} / {count}

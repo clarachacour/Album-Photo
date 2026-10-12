@@ -129,6 +129,10 @@ export default function Dashboard() {
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/30 flex items-center justify-center transition-opacity">
                       <ArrowUpRight className="text-white" size={32} />
                     </div>
+                    {/* Touch screens (no hover): a small "open" badge instead. */}
+                    <div className="touch-only absolute right-2 bottom-2 bg-[color:var(--ink)]/80 text-white rounded-full p-1.5">
+                      <ArrowUpRight size={16} />
+                    </div>
                   </Link>
                   <div className="mt-4 flex items-start justify-between gap-3">
                     <div>

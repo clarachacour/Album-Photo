@@ -13,6 +13,7 @@ import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { useDeselectOutside } from "@/lib/useDeselectOutside";
+import { isTouchScreen } from "@/lib/device";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus } from "lucide-react";
 import { BookRenderer } from "@/components/editor/BookRenderer";
 import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
@@ -506,6 +507,28 @@ export default function AlbumEditor() {
     toast.success(t(tgtPageIdx === srcPageIdx ? "albumEditor.photoMoved" : "albumEditor.itemMoved"));
   };
 
+  // "Duplicate" (photo or text): a copy just below-right of the original,
+  // kept on the page, and selected.
+  const duplicateItem = (pageIdx, itemId) => {
+    const item = album?.pages?.[pageIdx]?.items.find((it) => it.id === itemId);
+    if (!item) return;
+    const copy = {
+      ...JSON.parse(JSON.stringify(item)),
+      id: cryptoRandom(),
+      x: Math.min((item.x || 0) + 0.03, Math.max(0, 1 - item.w)),
+      y: Math.min((item.y || 0) + 0.03, Math.max(0, 1 - item.h)),
+      slot: undefined,
+    };
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const newPages = [...prev.pages];
+      newPages[pageIdx] = { ...newPages[pageIdx], items: [...newPages[pageIdx].items, copy] };
+      return { ...prev, pages: newPages };
+    });
+    setCropMode(false);
+    setSelected({ pageIdx, item: copy });
+  };
+
   // An item (photo or text) dragged and released over another page: it
   // moves there, centered where it was dropped.
   const moveItemAcross = (srcPageIdx, itemId, clientX, clientY) => {
@@ -889,7 +912,7 @@ export default function AlbumEditor() {
     <main className="min-h-screen bg-[color:var(--editor-canvas)] pt-16 pb-16 relative">
       <div className="absolute inset-0 grain pointer-events-none" />
 
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
         {/* Zone du Livre */}
         <div className="flex flex-col items-center pt-2">
           <div className="w-full max-w-2xl mb-4 flex items-center justify-between">
@@ -1063,6 +1086,7 @@ export default function AlbumEditor() {
             onReplacePhoto={replacePhotoInItem}
             onReorderLayer={reorderItemLayer}
             onMoveItemAcross={moveItemAcross}
+            onDuplicateItem={duplicateItem}
             onBrighten={brightenPhoto}
             brighteningItemId={brighteningItemId}
             onApplyLayout={applyLayoutToPage}
@@ -1099,11 +1123,12 @@ export default function AlbumEditor() {
             <button
               data-testid="editor-first"
               onClick={() => bookRef.current?.goTo(0)}
-              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              className="flex flex-col items-center gap-1 px-3 py-2 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
               aria-label={t("albumEditor.firstPage")}
               title={t("albumEditor.firstPage")}
             >
               <ChevronsLeft size={16} />
+              <span className="text-[9px] leading-none uppercase tracking-wider">{t("toolbars.short.start")}</span>
             </button>
             <button
               data-testid={TID.editorPrev}
@@ -1125,11 +1150,12 @@ export default function AlbumEditor() {
             <button
               data-testid="editor-last"
               onClick={() => bookRef.current?.goTo(Number.MAX_SAFE_INTEGER)}
-              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              className="flex flex-col items-center gap-1 px-3 py-2 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
               aria-label={t("albumEditor.lastPage")}
               title={t("albumEditor.lastPage")}
             >
               <ChevronsRight size={16} />
+              <span className="text-[9px] leading-none uppercase tracking-wider">{t("toolbars.short.end")}</span>
             </button>
           </div>
 
@@ -1165,7 +1191,7 @@ export default function AlbumEditor() {
 
           {album.photos && album.photos.length > 0 && (
             <div className="w-full mt-8 max-w-4xl">
-              <div className="eyebrow mb-3 text-center">{t("albumEditor.allYourPhotos")}</div>
+              <div className="eyebrow mb-3 text-center">{t(isTouchScreen() ? "albumEditor.allYourPhotosTouch" : "albumEditor.allYourPhotos")}</div>
               <PhotoGallery
                 photos={sortedAlbumPhotos}
                 placedPhotoIds={new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo").map((it) => it.photo_id)))}
@@ -1215,6 +1241,7 @@ export default function AlbumEditor() {
                 title={t("albumEditor.undoTitle")}
               >
                 <Undo2 size={14} />
+                <span className="text-xs font-semibold tracking-wider uppercase">{t("toolbars.short.undo")}</span>
               </button>
               <button
                 onClick={() => albumHistory.redo()}
@@ -1224,6 +1251,7 @@ export default function AlbumEditor() {
                 title={t("albumEditor.redoTitle")}
               >
                 <Redo2 size={14} />
+                <span className="text-xs font-semibold tracking-wider uppercase">{t("toolbars.short.redo")}</span>
               </button>
             </div>
             <button

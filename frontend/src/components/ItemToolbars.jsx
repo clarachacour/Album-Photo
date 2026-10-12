@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Check, Bold, Palette, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2, Copy } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
 import { DegreesInput } from "@/components/DegreesInput";
 
@@ -66,35 +66,39 @@ function ToolbarShell({ x, y, w, children, wide }) {
   );
 }
 
-function ToolbarButton({ onClick, title, tid, danger, children }) {
+// `label`: the button's short name, always shown under its icon (the same
+// on a computer, an iPad or a phone — touch screens have no tooltips).
+function ToolbarButton({ onClick, title, tid, danger, label, children }) {
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       data-testid={tid}
-      className={`p-1.5 rounded-sm hover:bg-white/20 transition-colors ${danger ? "text-red-300 hover:text-red-200" : ""}`}
+      className={`tap-target p-1.5 rounded-sm hover:bg-white/20 transition-colors inline-flex flex-col items-center ${danger ? "text-red-300 hover:text-red-200" : ""}`}
     >
       {children}
+      {label && <span className="mt-1 text-[9px] leading-none whitespace-nowrap opacity-90">{label}</span>}
     </button>
   );
 }
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten }) {
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten, onDuplicate }) {
   const { t } = useTranslation();
   const [brightenOpen, setBrightenOpen] = useState(false);
   return (
     <ToolbarShell x={x} y={y} w={w}>
       {!emptyFrame && (
         <>
-          <ToolbarButton onClick={onEdit} title={t("toolbars.editPhoto")} tid="frame-edit-btn">
+          <ToolbarButton onClick={onEdit} title={t("toolbars.editPhoto")} tid="frame-edit-btn" label={t("toolbars.short.edit")}>
             <Pencil size={14} />
           </ToolbarButton>
           {/* A dark photo (or a brightened copy): lighter copies to choose
               from, or back to the original. */}
           {brighten && (
             <div className="relative">
-              <ToolbarButton onClick={() => setBrightenOpen((v) => !v)} title={t("toolbars.brighten")} tid="frame-brighten-btn">
+              <ToolbarButton onClick={() => setBrightenOpen((v) => !v)} title={t("toolbars.brighten")} tid="frame-brighten-btn" label={t("toolbars.short.brighten")}>
                 {brighten.busy ? <Loader2 size={14} className="animate-spin" /> : <Sun size={14} className={brighten.level ? "text-amber-300" : ""} />}
               </ToolbarButton>
               {brightenOpen && !brighten.busy && (
@@ -119,7 +123,7 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
           )}
           {/* Only when the frame hides part of the photo (see isCropped). */}
           {onShowWhole && (
-            <ToolbarButton onClick={onShowWhole} title={t("toolbars.showWholePhoto")} tid="frame-show-whole-btn">
+            <ToolbarButton onClick={onShowWhole} title={t("toolbars.showWholePhoto")} tid="frame-show-whole-btn" label={t("toolbars.short.whole")}>
               <Expand size={14} />
             </ToolbarButton>
           )}
@@ -127,24 +131,29 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
             <ToolbarButton
               onClick={onSwap}
               title={isSwapping ? t("toolbars.clickToSwap") : t("toolbars.swapWithAnother")}
-              tid="frame-swap-btn"
+              tid="frame-swap-btn" label={t("toolbars.short.swap")}
             >
               <ArrowLeftRight size={14} className={isSwapping ? "text-[color:var(--coral)]" : ""} />
             </ToolbarButton>
           )}
         </>
       )}
+      {onDuplicate && !emptyFrame && (
+        <ToolbarButton onClick={onDuplicate} title={t("toolbars.duplicate")} tid="frame-duplicate-btn" label={t("toolbars.short.duplicate")}>
+          <Copy size={14} />
+        </ToolbarButton>
+      )}
       {!hideReorder && (
         <>
-          <ToolbarButton onClick={onSendBackward} title={t("toolbars.sendBackward")} tid="frame-layer-back-btn">
+          <ToolbarButton onClick={onSendBackward} title={t("toolbars.sendBackward")} tid="frame-layer-back-btn" label={t("toolbars.short.back")}>
             <ChevronDown size={14} />
           </ToolbarButton>
-          <ToolbarButton onClick={onBringForward} title={t("toolbars.bringForward")} tid="frame-layer-front-btn">
+          <ToolbarButton onClick={onBringForward} title={t("toolbars.bringForward")} tid="frame-layer-front-btn" label={t("toolbars.short.front")}>
             <ChevronUp size={14} />
           </ToolbarButton>
         </>
       )}
-      <ToolbarButton onClick={onDelete} title={t("toolbars.deleteFrame")} tid="frame-delete-btn" danger>
+      <ToolbarButton onClick={onDelete} title={t("toolbars.deleteFrame")} tid="frame-delete-btn" label={t("toolbars.short.delete")} danger>
         <Trash2 size={14} />
       </ToolbarButton>
     </ToolbarShell>
@@ -162,7 +171,7 @@ export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, 
     <ToolbarShell x={x} y={y} w={w} wide>
       <div className="flex items-start gap-2">
         <div className="grid items-center gap-x-2 gap-y-1.5" style={{ gridTemplateColumns: "auto 84px auto" }}>
-          <span className={label}><ZoomIn size={13} className="inline -mt-0.5" /></span>
+          <span className={label}>{t("toolbars.short.zoom")}</span>
           <input
             type="range"
             min={minScale}
@@ -205,7 +214,7 @@ export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, 
             </>
           )}
         </div>
-        <ToolbarButton onClick={onDone} title={t("toolbars.done")} tid="frame-edit-done">
+        <ToolbarButton onClick={onDone} title={t("toolbars.done")} tid="frame-edit-done" label={t("toolbars.short.done")}>
           <Check size={14} />
         </ToolbarButton>
       </div>
@@ -249,7 +258,7 @@ export function PhotoPanOverlay({ focalX, focalY, onPan }) {
 }
 
 /** Text item selected: compact inline controls, no side panel. */
-export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
+export function TextItemToolbar({ x, y, w, item, onChange, onDelete, onDuplicate }) {
   const { t } = useTranslation();
   const [pickerOpen, setPickerOpen] = React.useState(false);
   return (
@@ -286,12 +295,12 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
       <ToolbarButton
         onClick={() => onChange({ font_weight: (item.font_weight === "bold" || item.font_weight === "700") ? "normal" : "bold" })}
         title={t("toolbars.bold")}
-        tid="text-toolbar-bold"
+        tid="text-toolbar-bold" label={t("toolbars.short.bold")}
       >
         <Bold size={13} />
       </ToolbarButton>
       <div className="relative">
-        <ToolbarButton onClick={() => setPickerOpen((v) => !v)} title={t("toolbars.textColor")} tid="text-toolbar-color-toggle">
+        <ToolbarButton onClick={() => setPickerOpen((v) => !v)} title={t("toolbars.textColor")} tid="text-toolbar-color-toggle" label={t("toolbars.short.color")}>
           <Palette size={13} />
         </ToolbarButton>
         {pickerOpen && (
@@ -327,7 +336,12 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete }) {
           </div>
         )}
       </div>
-      <ToolbarButton onClick={onDelete} title={t("toolbars.deleteText")} tid="text-toolbar-delete" danger>
+      {onDuplicate && (
+        <ToolbarButton onClick={onDuplicate} title={t("toolbars.duplicate")} tid="text-toolbar-duplicate" label={t("toolbars.short.duplicate")}>
+          <Copy size={13} />
+        </ToolbarButton>
+      )}
+      <ToolbarButton onClick={onDelete} title={t("toolbars.deleteText")} tid="text-toolbar-delete" label={t("toolbars.short.delete")} danger>
         <Trash2 size={14} />
       </ToolbarButton>
     </ToolbarShell>

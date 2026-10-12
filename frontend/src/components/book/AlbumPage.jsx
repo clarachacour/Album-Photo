@@ -33,6 +33,7 @@ export function AlbumPage({
   onReplacePhoto,
   onReorderLayer,
   onMoveAcross, // (itemId, clientX, clientY): an item dragged onto another page
+  onDuplicateItem, // (itemId): a copy of the item, slightly offset
   onBrighten,
   brighteningItemId,
   onApplyLayout,
@@ -209,6 +210,7 @@ export function AlbumPage({
                 onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
                 onSelect={() => onSelectItem && onSelectItem(item)}
                 onDoubleClick={() => editable && !isEmpty && onSwapAction && onSwapAction(pageIndex, item.id)}
+                doubleClickMouseOnly
                 selected={isSel}
                 containerRef={containerRef}
                 editable={editable && !inCrop}
@@ -284,6 +286,7 @@ export function AlbumPage({
                   x={item.x}
                   y={item.y}
                   w={item.w}
+                  onDuplicate={onDuplicateItem ? () => onDuplicateItem(item.id) : undefined}
                   onEdit={() => onEnterCrop && onEnterCrop(item.id)}
                   onSwap={() => onSwapAction && onSwapAction(pageIndex, isSwapSource ? null : item.id)}
                   isSwapping={isSwapSource}
@@ -408,6 +411,7 @@ export function AlbumPage({
                   x={item.x}
                   y={item.y}
                   w={item.w}
+                  onDuplicate={onDuplicateItem ? () => onDuplicateItem(item.id) : undefined}
                   item={item}
                   onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
@@ -450,7 +454,7 @@ export function AlbumPage({
         )
       )}
       {editable && (onApplyLayout || onStartAddText || onDeletePage || onInsertPageAfter) && (
-        <div data-tour="page-tools" className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "right-1 md:-right-9" : "left-1 md:-left-9"} z-30 flex flex-col gap-2`}>
+        <div data-tour="page-tools" className={`absolute top-1/2 -translate-y-1/2 ${pageIndex % 2 === 0 ? "right-1 md:-right-14" : "left-1 md:-left-14"} z-30 flex flex-col gap-2`}>
           {onApplyLayout && (
             <button
               onClick={(e) => {
@@ -458,10 +462,11 @@ export function AlbumPage({
                 setShowLayoutPicker(true);
               }}
               data-testid={`page-layout-btn-${pageIndex}`}
-              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
+              className="relative flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 md:px-1 md:py-1.5 md:w-12 hover:brightness-110 transition-all shadow-md after:content-[''] after:absolute after:-inset-1"
               title={t("albumPage.changeLayout")}
             >
               <LayoutGrid size={13} />
+              <span className="hidden md:block text-[9px] leading-tight text-center max-w-[48px]">{t("toolbars.short.layout")}</span>
             </button>
           )}
           {onStartAddText && (
@@ -471,10 +476,11 @@ export function AlbumPage({
                 onStartAddText();
               }}
               data-testid={`page-add-text-btn-${pageIndex}`}
-              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
+              className="relative flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 md:px-1 md:py-1.5 md:w-12 hover:brightness-110 transition-all shadow-md after:content-[''] after:absolute after:-inset-1"
               title={t("albumPage.addTextBox")}
             >
               <Type size={13} />
+              <span className="hidden md:block text-[9px] leading-tight text-center max-w-[48px]">{t("toolbars.short.text")}</span>
             </button>
           )}
           {onInsertPageAfter && (
@@ -484,11 +490,12 @@ export function AlbumPage({
                 onInsertPageAfter();
               }}
               data-testid={`page-insert-btn-${pageIndex}`}
-              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
+              className="relative flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 md:px-1 md:py-1.5 md:w-12 hover:brightness-110 transition-all shadow-md after:content-[''] after:absolute after:-inset-1"
               title={t("albumPage.insertPageAfter")}
               aria-label={t("albumPage.insertPageAfter")}
             >
               <FilePlus size={13} />
+              <span className="hidden md:block text-[9px] leading-tight text-center max-w-[48px]">{t("toolbars.short.addPage")}</span>
             </button>
           )}
           {onDeletePage && (
@@ -500,10 +507,11 @@ export function AlbumPage({
                 }
               }}
               data-testid={`page-delete-btn-${pageIndex}`}
-              className="flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 hover:brightness-110 transition-all shadow-md"
+              className="relative flex flex-col items-center gap-1 bg-[color:var(--coral)] text-[color:var(--paper)] px-1.5 py-2 md:px-1 md:py-1.5 md:w-12 hover:brightness-110 transition-all shadow-md after:content-[''] after:absolute after:-inset-1"
               title={t("albumPage.deletePage")}
             >
               <Trash2 size={13} />
+              <span className="hidden md:block text-[9px] leading-tight text-center max-w-[48px]">{t("toolbars.short.deletePage")}</span>
             </button>
           )}
         </div>

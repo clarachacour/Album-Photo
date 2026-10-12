@@ -467,6 +467,7 @@
     "doublePage": "Double page {{count}}",
     "changePageCountLink": "Modifier le nombre total de pages…",
     "rearrangePhotos": "Réorganiser les photos · glisser-déposer",
+    "allYourPhotosTouch": "Toutes vos photos · touchez une photo, puis l'endroit de la page",
     "allYourPhotos": "Toutes vos photos · cliquez ou glissez sur une page",
     "addMorePhotos": "Ajouter d'autres photos",
     "addMorePhotosNote": "L'IA choisira les meilleures de vos nouvelles photos et les placera dans de nouvelles pages à la fin de votre album, dans la limite du nombre de pages choisi.",
@@ -577,6 +578,29 @@
     "frame": "Cadre",
     "turnPhoto": "Tourner la photo dans son cadre (ou faites glisser la poignée ronde)",
     "turnFrame": "Tourner le cadre entier",
+    "duplicate": "Dupliquer (une copie juste à côté)",
+    "short": {
+      "duplicate": "Dupliquer",
+      "zoom": "Zoom",
+      "undo": "Annuler",
+      "redo": "Rétablir",
+      "start": "Début",
+      "end": "Fin",
+      "edit": "Modifier",
+      "brighten": "Éclaircir",
+      "whole": "Entière",
+      "swap": "Échanger",
+      "back": "Arrière",
+      "front": "Avant",
+      "delete": "Suppr.",
+      "done": "OK",
+      "bold": "Gras",
+      "color": "Couleur",
+      "layout": "Mise en page",
+      "text": "Texte",
+      "addPage": "+ Page",
+      "deletePage": "Suppr. page"
+    },
     "clickToSwap": "Cliquez sur une autre photo pour l'échanger, ou sur un endroit vide d'une page pour l'y déplacer (Échap pour annuler)",
     "swapWithAnother": "Échanger ou déplacer la photo",
     "sendBackward": "Envoyer vers l'arrière",
@@ -1059,11 +1083,13 @@
       },
       "firstPage": {
         "title": "Votre première page",
-        "body": "Juste après la couverture, elle accueille le titre de votre album et un petit texte d'introduction. Double-cliquez sur un texte pour le réécrire, faites-le glisser pour le déplacer, ou supprimez-le. Vous pouvez aussi y ajouter des photos : glissez-les depuis la galerie plus bas."
+        "body": "Juste après la couverture, elle accueille le titre de votre album et un petit texte d'introduction. Double-cliquez sur un texte pour le réécrire, faites-le glisser pour le déplacer, ou supprimez-le. Vous pouvez aussi y ajouter des photos : glissez-les depuis la galerie plus bas.",
+        "bodyTouch": "Juste après la couverture, elle accueille le titre de votre album et un petit texte d'introduction. Touchez deux fois un texte pour le réécrire, faites-le glisser du doigt pour le déplacer, ou supprimez-le. Pour y ajouter une photo : touchez-la dans la galerie plus bas, puis touchez la page."
       },
       "photo": {
         "title": "Modifier une photo",
-        "body": "Cliquez sur une photo pour la sélectionner, comme celle-ci. Faites-la glisser pour la déplacer et tirez sur ses coins pour la redimensionner. La barre qui apparaît au-dessus permet de zoomer et recadrer, de l'échanger avec une autre photo, de la passer devant ou derrière, ou de la supprimer. Double-cliquez sur une photo pour l'échanger directement."
+        "body": "Cliquez sur une photo pour la sélectionner, comme celle-ci. Faites-la glisser pour la déplacer et tirez sur ses coins pour la redimensionner. La barre qui apparaît au-dessus permet de zoomer et recadrer, de l'échanger avec une autre photo, de la passer devant ou derrière, ou de la supprimer. Double-cliquez sur une photo pour l'échanger directement.",
+        "bodyTouch": "Touchez une photo pour la sélectionner, comme celle-ci. Faites-la glisser du doigt pour la déplacer et tirez sur son coin pour la redimensionner. La barre qui apparaît au-dessus permet de la modifier (recadrer, zoomer, tourner), de l'échanger avec une autre photo, de la dupliquer, de la passer devant ou derrière, ou de la supprimer."
       },
       "pageTools": {
         "title": "Les outils de la page",
@@ -1079,11 +1105,13 @@
       },
       "rearrange": {
         "title": "Réorganiser les photos",
-        "body": "Glissez-déposez ces miniatures pour changer l'ordre des photos dans tout l'album. Survolez une miniature pour la voir en grand."
+        "body": "Glissez-déposez ces miniatures pour changer l'ordre des photos dans tout l'album. Survolez une miniature pour la voir en grand.",
+        "bodyTouch": "Faites glisser ces miniatures du doigt pour changer l'ordre des photos dans tout l'album."
       },
       "gallery": {
         "title": "Toutes vos photos",
-        "body": "Toutes les photos envoyées, y compris celles que l'IA n'a pas utilisées (sans coche). Cliquez sur une photo puis sur un cadre de la page pour la placer, ou faites-la glisser directement sur la page."
+        "body": "Toutes les photos envoyées, y compris celles que l'IA n'a pas utilisées (sans coche). Cliquez sur une photo puis sur un cadre de la page pour la placer, ou faites-la glisser directement sur la page.",
+        "bodyTouch": "Toutes les photos envoyées, y compris celles que l'IA n'a pas utilisées (sans coche). Touchez une photo, puis touchez un cadre ou un endroit de la page pour la placer. Appuyez longuement sur une photo pour la voir en grand."
       },
       "addPhotos": {
         "title": "Ajouter d'autres photos",
@@ -1091,7 +1119,8 @@
       },
       "tools": {
         "title": "Vos outils",
-        "body": "Annuler et rétablir (Ctrl+Z / Ctrl+Y), enregistrer (l'album s'enregistre aussi automatiquement) et ajouter du texte n'importe où dans le livre."
+        "body": "Annuler et rétablir (Ctrl+Z / Ctrl+Y), enregistrer (l'album s'enregistre aussi automatiquement) et ajouter du texte n'importe où dans le livre.",
+        "bodyTouch": "Annuler et rétablir, enregistrer (l'album s'enregistre aussi automatiquement) et ajouter du texte n'importe où dans le livre."
       },
       "order": {
         "title": "Commander",
@@ -1113,7 +1142,8 @@
       },
       "front": {
         "title": "La couverture avant",
-        "body": "Cliquez sur le titre pour changer sa police, sa taille ou son texte (double-cliquez pour l'écrire directement). Faites glisser chaque élément pour le déplacer et tirez sur ses coins pour le redimensionner."
+        "body": "Cliquez sur le titre pour changer sa police, sa taille ou son texte (double-cliquez pour l'écrire directement). Faites glisser chaque élément pour le déplacer et tirez sur ses coins pour le redimensionner.",
+        "bodyTouch": "Touchez le titre pour changer sa police, sa taille ou son texte (touchez-le deux fois pour l'écrire directement). Faites glisser chaque élément du doigt pour le déplacer et tirez sur son coin pour le redimensionner."
       },
       "spine": {
         "title": "La reliure",

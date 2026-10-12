@@ -36,12 +36,13 @@ export default function PhotoGallery({ photos, placedPhotoIds, selectedPhotoId, 
               key={p.id}
               draggable
               {...preview.bind(p.id)}
+              {...preview.bindLongPress(p.id)}
               onDragStart={(e) => {
                 preview.hide();
                 e.dataTransfer.setData("text/photo-id", p.id);
                 e.dataTransfer.effectAllowed = "copy";
               }}
-              onClick={() => onSelectPhoto && onSelectPhoto(isSelected ? null : p.id)}
+              onClick={() => !preview.wasLongPress() && onSelectPhoto && onSelectPhoto(isSelected ? null : p.id)}
               data-testid={`gallery-photo-${p.id}`}
               title={[isSelected ? t("photoGallery.clickToCancel") : t("photoGallery.dragOrClick"), dark && t("albumEditor.tooDark")].filter(Boolean).join("\n")}
               className={`relative w-16 h-16 md:w-20 md:h-20 bg-white border overflow-hidden shrink-0 cursor-pointer active:cursor-grabbing transition-shadow ${

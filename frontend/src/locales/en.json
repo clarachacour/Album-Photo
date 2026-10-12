@@ -467,6 +467,7 @@
     "doublePage": "Double-page {{count}}",
     "changePageCountLink": "Change total page count…",
     "rearrangePhotos": "Rearrange the photos · drag and drop",
+    "allYourPhotosTouch": "All your photos · tap a photo, then the spot on the page",
     "allYourPhotos": "All your photos · click or drag onto a page",
     "addMorePhotos": "Add more photos",
     "addMorePhotosNote": "The AI will pick the best of your new photos and place them on new pages at the end of your album, up to the page count you chose.",
@@ -577,6 +578,29 @@
     "frame": "Frame",
     "turnPhoto": "Turn the photo in its frame (or drag the round handle)",
     "turnFrame": "Turn the whole frame",
+    "duplicate": "Duplicate (a copy right next to it)",
+    "short": {
+      "duplicate": "Duplicate",
+      "zoom": "Zoom",
+      "undo": "Undo",
+      "redo": "Redo",
+      "start": "Start",
+      "end": "End",
+      "edit": "Edit",
+      "brighten": "Brighten",
+      "whole": "Whole",
+      "swap": "Swap",
+      "back": "Back",
+      "front": "Front",
+      "delete": "Delete",
+      "done": "Done",
+      "bold": "Bold",
+      "color": "Color",
+      "layout": "Layout",
+      "text": "Text",
+      "addPage": "+ Page",
+      "deletePage": "Delete page"
+    },
     "clickToSwap": "Click another photo to swap, or an empty spot on any page to move it there (Esc to cancel)",
     "swapWithAnother": "Swap or move this photo",
     "sendBackward": "Send backward",
@@ -1059,11 +1083,13 @@
       },
       "firstPage": {
         "title": "Your first page",
-        "body": "Right after the cover, it holds your album's title and a short introduction. Double-click a text to rewrite it, drag it to move it, or delete it. You can also add photos to it: drag them from the gallery below."
+        "body": "Right after the cover, it holds your album's title and a short introduction. Double-click a text to rewrite it, drag it to move it, or delete it. You can also add photos to it: drag them from the gallery below.",
+        "bodyTouch": "Right after the cover, it holds your album's title and a short introduction. Tap a text twice to rewrite it, drag it with your finger to move it, or delete it. To add a photo: tap it in the gallery below, then tap the page."
       },
       "photo": {
         "title": "Edit a photo",
-        "body": "Click a photo to select it, like this one. Drag it to move it and pull its corners to resize it. The bar that appears above it lets you zoom and crop, swap it with another photo, bring it forward or backward, or delete it. Double-click a photo to swap it straight away."
+        "body": "Click a photo to select it, like this one. Drag it to move it and pull its corners to resize it. The bar that appears above it lets you zoom and crop, swap it with another photo, bring it forward or backward, or delete it. Double-click a photo to swap it straight away.",
+        "bodyTouch": "Tap a photo to select it, like this one. Drag it with your finger to move it and pull its corner to resize it. The bar that appears above it lets you edit it (crop, zoom, turn), swap it with another photo, duplicate it, bring it forward or backward, or delete it."
       },
       "pageTools": {
         "title": "Page tools",
@@ -1079,11 +1105,13 @@
       },
       "rearrange": {
         "title": "Rearrange your photos",
-        "body": "Drag and drop these thumbnails to change the order of the photos across the whole album. Hover a thumbnail to see it larger."
+        "body": "Drag and drop these thumbnails to change the order of the photos across the whole album. Hover a thumbnail to see it larger.",
+        "bodyTouch": "Drag these thumbnails with your finger to change the order of the photos across the whole album."
       },
       "gallery": {
         "title": "All your photos",
-        "body": "Every photo you uploaded, including the ones the AI didn't use (no check mark). Click a photo then a frame on the page to place it, or drag it straight onto the page."
+        "body": "Every photo you uploaded, including the ones the AI didn't use (no check mark). Click a photo then a frame on the page to place it, or drag it straight onto the page.",
+        "bodyTouch": "Every photo you uploaded, including the ones the AI didn't use (no check mark). Tap a photo, then tap a frame or a spot on the page to place it. Press and hold a photo to see it larger."
       },
       "addPhotos": {
         "title": "Add more photos",
@@ -1091,7 +1119,8 @@
       },
       "tools": {
         "title": "Your tools",
-        "body": "Undo and redo (Ctrl+Z / Ctrl+Y), save (the album also saves automatically) and add text anywhere in the book."
+        "body": "Undo and redo (Ctrl+Z / Ctrl+Y), save (the album also saves automatically) and add text anywhere in the book.",
+        "bodyTouch": "Undo and redo, save (the album also saves automatically) and add text anywhere in the book."
       },
       "order": {
         "title": "Order",
@@ -1113,7 +1142,8 @@
       },
       "front": {
         "title": "The front cover",
-        "body": "Click the title to change its font, size or text (double-click to type it directly). Drag any element to move it and pull its corners to resize it."
+        "body": "Click the title to change its font, size or text (double-click to type it directly). Drag any element to move it and pull its corners to resize it.",
+        "bodyTouch": "Tap the title to change its font, size or text (tap it twice to type it directly). Drag any element with your finger to move it and pull its corner to resize it."
       },
       "spine": {
         "title": "The spine",

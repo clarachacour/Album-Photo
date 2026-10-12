@@ -16,3 +16,11 @@ export function isMobileDevice() {
     // relying on the user agent string alone.
     (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
 }
+
+// A touch screen (iPad, phone): no mouse, so no hover, no tooltips and no
+// double-click. Unlike isMobileDevice this is about how the page is used
+// (a finger), not about the device, and covers iPads too.
+export function isTouchScreen() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(hover: none)").matches;
+}
