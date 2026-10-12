@@ -1101,7 +1101,7 @@
       },
       "panel": {
         "title": "Settings",
-        "body": "When an element is selected, its settings appear here: background and text colors, font, size, adding text or an image, and \"Reset position\" to put it back where it was."
+        "body": "When you click an element, its settings appear here. Here's the title, selected for you: background and text colors, the title's text, font, size, and \"Reset position\" to put it back. Further down, add a text or an image. Every change shows on the cover right away."
       },
       "next": {
         "title": "Next step",

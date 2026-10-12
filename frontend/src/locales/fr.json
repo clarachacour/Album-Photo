@@ -1101,7 +1101,7 @@
       },
       "panel": {
         "title": "Les réglages",
-        "body": "Quand un élément est sélectionné, ses réglages apparaissent ici : couleurs du fond et du texte, police, taille, ajout de texte ou d'image, et « Replacer » pour revenir à la position d'origine."
+        "body": "Quand vous cliquez sur un élément, ses réglages apparaissent ici. Exemple avec le titre, sélectionné pour vous : couleurs du fond et du texte, texte du titre, police, taille, et « Replacer » pour le remettre à sa place. En bas, ajoutez un texte ou une image. Tout changement apparaît aussitôt sur la couverture."
       },
       "next": {
         "title": "Étape suivante",

@@ -27,7 +27,8 @@ export const COVER_TOUR = [
   { key: "front", target: '[data-testid="cover-front"]' },
   { key: "spine", target: '[data-tour="cover-spine"]' },
   { key: "back", target: '[data-testid="cover-back"]' },
-  { key: "panel", target: '[data-tour="cover-panel"]' },
+  // The title gets selected, so its settings show in the panel.
+  { key: "panel", target: '[data-tour="cover-panel"]', prepare: (ctx) => ctx.selectTitle() },
   { key: "next", target: '[data-tour="wizard-continue"]' },
   { key: "help", target: '[data-tour="tour-help"]' },
 ];

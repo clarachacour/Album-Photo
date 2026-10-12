@@ -569,7 +569,13 @@ function StepEdit({
   const { t } = useTranslation();
   const cover = album.cover || {};
   // Step-by-step guide to the cover, opened by itself the first time.
-  const tour = useGuidedTour({ id: "cover", prefix: "tour.cover", steps: COVER_TOUR, autoStart: true });
+  const tour = useGuidedTour({
+    id: "cover",
+    prefix: "tour.cover",
+    steps: COVER_TOUR,
+    autoStart: true,
+    context: { selectTitle: () => setCoverSel({ mode: "title", side: "front" }) },
+  });
   // No photos uploaded yet at this step (cover editing comes before the
   // "Pictures" step), so the *final* page count (after AI curation) isn't
   // known yet — but the person's chosen target_pages already is (set back
