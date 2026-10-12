@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import { coverItemImageSrc } from "@/lib/api";
+import { DEFAULT_COVER } from "@/lib/coverTemplates";
 import {
   Bold,
   Type,
@@ -74,10 +75,13 @@ export function CoverEditorPanel({
   // affected one specific kind of selection despite looking identical.
   // With nothing text-like selected, it falls back to the cover-wide
   // default color.
+  // Each field shows the color actually on the cover (the template's own
+  // when nothing was picked), not an empty "default".
+  const baseText = cover.text_color || DEFAULT_COVER.text_color;
   const textColorTarget = (() => {
     if (coverSel.mode === "title") {
       return {
-        value: cover.title_color || "",
+        value: cover.title_color || baseText,
         onChange: (v) => updateCover({ title_color: v || null }),
         onReset: () => updateCover({ title_color: null }),
       };
@@ -85,20 +89,20 @@ export function CoverEditorPanel({
     if (spineZone) {
       const key = `${spineZone.prefix}_color`;
       return {
-        value: cover[key] || "",
+        value: cover[key] || baseText,
         onChange: (v) => updateCover({ [key]: v || null }),
         onReset: () => updateCover({ [key]: null }),
       };
     }
     if (coverSel.mode === "item" && selectedItem?.type === "text") {
       return {
-        value: selectedItem.color || "",
+        value: selectedItem.color || baseText,
         onChange: (v) => updateCoverItem(selectedItem.id, { color: v || null }, side),
         onReset: () => updateCoverItem(selectedItem.id, { color: null }, side),
       };
     }
     return {
-      value: cover.text_color || "",
+      value: baseText,
       onChange: (v) => updateCover({ text_color: v || null }),
       onReset: () => updateCover({ text_color: null }),
     };
@@ -125,7 +129,7 @@ export function CoverEditorPanel({
       <div className="space-y-3">
         <ColorField
           label={t("coverPanel.bgColor")}
-          value={cover.bg_color || ""}
+          value={cover.bg_color || DEFAULT_COVER.bg_color}
           onChange={(v) => updateCover({ bg_color: v || null })}
           tid="cover-bg-color"
           onReset={() => updateCover({ bg_color: null })}
@@ -192,6 +196,35 @@ export function CoverEditorPanel({
                 data-testid="cover-title-size"
               />
             )}
+          </div>
+
+          <div>
+            <label className="eyebrow flex items-center justify-between mb-2">
+              <span>{t("coverPanel.rotation")}</span>
+              <span className="font-mono normal-case tracking-normal">{Math.round(cover.title_rotation || 0)}°</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                step={1}
+                value={cover.title_rotation || 0}
+                onChange={(e) => updateCover({ title_rotation: Number(e.target.value) })}
+                className="flex-1"
+                data-testid="cover-title-rotation"
+              />
+              <button
+                type="button"
+                onClick={() => updateCover({ title_rotation: 0 })}
+                disabled={!cover.title_rotation}
+                className="px-2 py-1 border border-[color:var(--ink)]/30 text-xs font-mono hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
+                title={t("coverPanel.straighten")}
+                data-testid="cover-title-rotation-reset"
+              >
+                0°
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

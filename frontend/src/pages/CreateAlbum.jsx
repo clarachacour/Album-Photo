@@ -15,7 +15,7 @@ import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { useHistoryState } from "@/lib/useHistoryState";
-import { ArrowRight, ArrowLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowLeft, Loader2, Sparkles, Undo2, Redo2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
 import { COVER_TOUR } from "@/components/tour/tours";
@@ -368,6 +368,7 @@ export default function CreateAlbum() {
             addCoverShape={addCoverShape}
             addCoverImage={addCoverImage}
             removeCoverItem={removeCoverItem}
+            history={albumHistory}
           />
         )}
 
@@ -565,6 +566,7 @@ function StepEdit({
   addCoverShape,
   addCoverImage,
   removeCoverItem,
+  history,
 }) {
   const { t } = useTranslation();
   const cover = album.cover || {};
@@ -592,7 +594,11 @@ function StepEdit({
         <div className="mb-8 max-w-2xl">
           <div className="flex items-start justify-between gap-4">
             <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.edit.title")}</h2>
-            <TourHelpButton onClick={tour.start} className="shrink-0 mt-2" />
+            <div className="shrink-0 mt-2 flex items-center gap-2">
+              <HistoryButton icon={<Undo2 size={14} />} label={t("createAlbum.edit.undo")} title={t("albumEditor.undoTitle")} onClick={history.undo} disabled={!history.canUndo()} tid="cover-undo" />
+              <HistoryButton icon={<Redo2 size={14} />} label={t("createAlbum.edit.redo")} title={t("albumEditor.redoTitle")} onClick={history.redo} disabled={!history.canRedo()} tid="cover-redo" />
+              <TourHelpButton onClick={tour.start} />
+            </div>
           </div>
           <p className="text-[color:var(--ink)]/70">
             {t("createAlbum.edit.subtitle")}
@@ -670,6 +676,24 @@ function StepEdit({
       </div>
       {tour.element}
     </section>
+  );
+}
+
+// Undo / redo on the cover step (same history as Ctrl+Z / Ctrl+Y).
+function HistoryButton({ icon, label, title, onClick, disabled, tid }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={label}
+      data-testid={tid}
+      className="inline-flex items-center gap-1.5 border border-[color:var(--ink)]/20 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase text-[color:var(--ink)]/70 hover:border-[color:var(--ink)] hover:text-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
   );
 }
 

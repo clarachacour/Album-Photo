@@ -58,6 +58,10 @@ export function CoverFrontPage({
   const titleFontSize = cover.title_font_size || null;
   const titleRotation = cover.title_rotation || 0;
   const titleWritingMode = cover.title_writing_mode || null; // "vertical-rl" keeps the box's own footprint, unlike rotate() which pivots around the box's center
+  // Vertical titles read bottom-to-top (turned 180°); the person's own
+  // rotation (title_rotation, from the panel) adds to that.
+  const titleTurn = (titleWritingMode === "vertical-rl" ? 180 : 0) + titleRotation;
+  const titleTransform = titleTurn ? `rotate(${titleTurn}deg)` : undefined;
   const titleUppercase = cover.title_uppercase !== false;
   const titleFontStyle = cover.title_font_style || "normal";
   const titleSingleLine = !!cover.title_single_line;
@@ -223,7 +227,7 @@ export function CoverFrontPage({
                 fontStyle: titleFontStyle,
                 textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
-                transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
+                transform: titleTransform,
                 writingMode: titleWritingMode || undefined,
                 wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
               }}
@@ -239,7 +243,7 @@ export function CoverFrontPage({
                 fontStyle: titleFontStyle,
                 textAlign: titleTextAlign,
                 fontSize: titleFontSizeStyle,
-                transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
+                transform: titleTransform,
                 writingMode: titleWritingMode || undefined,
                 wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
                 whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,
@@ -268,7 +272,7 @@ export function CoverFrontPage({
             fontStyle: titleFontStyle,
             textAlign: titleTextAlign,
             fontSize: titleFontSizeStyle,
-            transform: titleWritingMode === "vertical-rl" ? "rotate(180deg)" : (!titleWritingMode && titleRotation ? `rotate(${titleRotation}deg)` : undefined),
+            transform: titleTransform,
             writingMode: titleWritingMode || undefined,
             wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
             whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,

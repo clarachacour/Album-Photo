@@ -377,6 +377,8 @@
     "edit": {
       "title": "Faites-le vôtre.",
       "subtitle": "Cliquez sur le titre, le logo, ou les textes de la reliure et du dos pour les modifier directement. Glissez pour déplacer ou redimensionner. Ajoutez votre propre image ou texte n'importe où sur la couverture.",
+      "undo": "Annuler",
+      "redo": "Rétablir",
       "hint": "Cliquez sur n'importe quel élément de la couverture — le titre, le logo, les textes de la reliure et du dos — pour le modifier, le déplacer ou le supprimer."
     },
     "photos": {
@@ -924,6 +926,8 @@
     "textOnSpine": "Texte sur la reliure",
     "spineFull": "La reliure a déjà deux textes en plus du titre",
     "bold": "Gras",
+    "rotation": "Rotation",
+    "straighten": "Remettre droit",
     "resetPosition": "Replacer",
     "default": "par défaut",
     "fonts": {

@@ -377,6 +377,8 @@
     "edit": {
       "title": "Make it yours.",
       "subtitle": "Click the title, the logo, or the text on the back to edit them directly. Drag to move or resize. Add your own image or text anywhere on the cover.",
+      "undo": "Undo",
+      "redo": "Redo",
       "hint": "Click any element on the cover — the title, the logo, the text on the back — to edit, move, or remove it."
     },
     "photos": {
@@ -924,6 +926,8 @@
     "textOnSpine": "Text on the spine",
     "spineFull": "The spine already has two texts besides the title",
     "bold": "Bold",
+    "rotation": "Rotation",
+    "straighten": "Straighten",
     "resetPosition": "Reset position",
     "default": "default",
     "fonts": {
