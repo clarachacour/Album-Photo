@@ -58,10 +58,11 @@ export function CoverFrontPage({
   const titleFontSize = cover.title_font_size || null;
   const titleRotation = cover.title_rotation || 0;
   const titleWritingMode = cover.title_writing_mode || null; // "vertical-rl" keeps the box's own footprint, unlike rotate() which pivots around the box's center
-  // Vertical titles read bottom-to-top (turned 180°); the person's own
-  // rotation (title_rotation, from the panel) adds to that.
-  const titleTurn = (titleWritingMode === "vertical-rl" ? 180 : 0) + titleRotation;
-  const titleTransform = titleTurn ? `rotate(${titleTurn}deg)` : undefined;
+  // Vertical titles read bottom-to-top (the text turned 180° in its box).
+  // The person's own rotation (title_rotation) turns the whole box, frame
+  // included, around its center.
+  const titleTransform = titleWritingMode === "vertical-rl" ? "rotate(180deg)" : undefined;
+  const titleBoxTransform = titleRotation ? `rotate(${titleRotation}deg)` : undefined;
   const titleUppercase = cover.title_uppercase !== false;
   const titleFontStyle = cover.title_font_style || "normal";
   const titleSingleLine = !!cover.title_single_line;
@@ -200,6 +201,7 @@ export function CoverFrontPage({
           item={{ id: "cover-title", x: titleX, y: titleY, w: titleW, h: visualTitleH }}
           onChange={(patch) => onUpdateTitle && onUpdateTitle(patch)}
           rotation={titleRotation}
+          extraStyle={titleBoxTransform ? { transform: titleBoxTransform } : undefined}
           onRotate={onUpdateTitle ? (r) => onUpdateTitle({ rotation: r }) : undefined}
           onSelect={() => onSelectTitle && onSelectTitle()}
           onDoubleClick={() => onTitleTextChange && setTitleEditing(true)}
@@ -274,7 +276,10 @@ export function CoverFrontPage({
             fontStyle: titleFontStyle,
             textAlign: titleTextAlign,
             fontSize: titleFontSizeStyle,
-            transform: titleTransform,
+            // Same turn as the editor's box: around the center of the
+            // title's box (visualTitleH tall), in container-width units.
+            transform: [titleBoxTransform, titleTransform].filter(Boolean).join(" ") || undefined,
+            transformOrigin: titleBoxTransform ? `50% ${visualTitleH * pageAspect * 50}cqw` : undefined,
             writingMode: titleWritingMode || undefined,
             wordSpacing: titleWritingMode === "vertical-rl" ? "0.05em" : undefined,
             whiteSpace: titleWritingMode || titleSingleLine ? "nowrap" : undefined,

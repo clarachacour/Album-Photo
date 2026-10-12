@@ -27,6 +27,47 @@ export function rotationFromDrag(startRotation, startAngle, angle) {
   return Math.round(r);
 }
 
+// Resizing a turned frame: the corner handle's movement is read along the
+// frame's own (turned) sides, and the opposite corner stays where it is.
+export function rotatedResize(ds, dxPx, dyPx, minW, minH) {
+  const a = (ds.rotation * Math.PI) / 180;
+  const cos = Math.cos(a), sin = Math.sin(a);
+  const along = dxPx * cos + dyPx * sin; // along the frame's width
+  const across = -dxPx * sin + dyPx * cos; // along its height
+  const w = Math.max(minW, Math.min(1, ds.startItemW + along / ds.rectW));
+  const h = Math.max(minH, Math.min(1, ds.startItemH + across / ds.rectH));
+  const dw = ((w - ds.startItemW) * ds.rectW) / 2;
+  const dh = ((h - ds.startItemH) * ds.rectH) / 2;
+  // The center moves by half the growth, turned like the frame.
+  const cx = (ds.startItemX + ds.startItemW / 2) * ds.rectW + dw * cos - dh * sin;
+  const cy = (ds.startItemY + ds.startItemH / 2) * ds.rectH + dw * sin + dh * cos;
+  return { x: cx / ds.rectW - w / 2, y: cy / ds.rectH - h / 2, w, h };
+}
+
+const HANDLE_SIDE_CLASS = {
+  top: "-top-9 left-1/2 -translate-x-1/2",
+  bottom: "-bottom-9 left-1/2 -translate-x-1/2",
+  left: "-left-9 top-1/2 -translate-y-1/2",
+  right: "-right-9 top-1/2 -translate-y-1/2",
+};
+
+// Which side of a frame turned by `rotation` degrees points up on screen
+// (or down, when `down`).
+export function handleSide(rotation, down = false) {
+  const a = ((rotation || 0) * Math.PI) / 180;
+  const sides = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
+  let best = "top";
+  let bestY = Infinity;
+  for (const [side, [dx, dy]] of Object.entries(sides)) {
+    const screenY = (dx * Math.sin(a) + dy * Math.cos(a)) * (down ? -1 : 1);
+    if (screenY < bestY - 1e-9) {
+      best = side;
+      bestY = screenY;
+    }
+  }
+  return best;
+}
+
 export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate }) {
   const { t } = useTranslation();
   const dragState = useRef(null);
@@ -71,14 +112,17 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       mode: "resize",
       startX: e.clientX,
       startY: e.clientY,
+      startItemX: item.x,
+      startItemY: item.y,
       startItemW: item.w,
       startItemH: item.h,
+      rotation: rotation || 0,
       rectW: rect.width,
       rectH: rect.height,
     };
     onDragStateChange && onDragStateChange(true);
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [editable, item.w, item.h, onSelect, containerRef, onDragStateChange]);
+  }, [editable, item.x, item.y, item.w, item.h, rotation, onSelect, containerRef, onDragStateChange]);
 
   const onRotatePointerDown = useCallback((e) => {
     if (!editable) return;
@@ -111,6 +155,8 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       const nx = Math.max(0, Math.min(1 - item.w, ds.startItemX + dx));
       const ny = Math.max(0, Math.min(1 - item.h, ds.startItemY + dy));
       onChange({ x: nx, y: ny });
+    } else if (ds.mode === "resize" && ds.rotation) {
+      onChange(rotatedResize(ds, e.clientX - ds.startX, e.clientY - ds.startY, minW, minH));
     } else if (ds.mode === "resize") {
       const nw = Math.max(minW, Math.min(1 - item.x, ds.startItemW + dx));
       const nh = Math.max(minH, Math.min(1 - item.y, ds.startItemH + dy));
@@ -164,10 +210,11 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
         />
       )}
       {editable && selected && onRotate && (
-        // Round handle centered above the frame (below it when the frame
-        // touches the top of the page, where it would be cut off).
+        // Round handle on the side of the frame that faces up on screen,
+        // whatever its turn (down when the frame touches the top of the
+        // page, where it would be cut off).
         <div
-          className={`absolute left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${item.y < 0.08 ? "-bottom-9" : "-top-9"}`}
+          className={`absolute z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${HANDLE_SIDE_CLASS[handleSide(rotation, item.y < 0.08)]}`}
           onPointerDown={onRotatePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

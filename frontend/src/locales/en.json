@@ -929,6 +929,11 @@
     "restoreTitle": "Put the title back",
     "restoreLogo": "Put the logo back",
     "restoreDivider": "Put the divider back",
+    "bgColorShort": "Background",
+    "textColorShort": "Text",
+    "add": "Add",
+    "textOnSpineShort": "Spine",
+    "restoreSpineTitle": "Put the spine title back",
     "resetPosition": "Reset position",
     "default": "default",
     "fonts": {

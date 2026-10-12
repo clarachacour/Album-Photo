@@ -105,12 +105,19 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       const h = patch.h ?? cover.title_h ?? 0.28;
       const siblings = cover.extra_items || [];
       const mapped = {};
-      if (patch.x !== undefined) {
+      if (patch.w !== undefined && patch.x !== undefined) {
+        // Resizing a turned title also moves it (see rotatedResize): no
+        // snapping then, it would make the frame jump.
+        mapped.title_x = patch.x;
+        mapped.title_y = patch.y;
+        mapped.align_guide_x = null;
+        mapped.align_guide_y = null;
+      } else if (patch.x !== undefined) {
         const s = computeAlignSnap(patch.x, w, siblings, "x");
         mapped.title_x = s.value;
         mapped.align_guide_x = s.guide;
       }
-      if (patch.y !== undefined) {
+      if (patch.y !== undefined && patch.w === undefined) {
         const s = computeAlignSnap(patch.y, h, siblings, "y");
         mapped.title_y = s.value;
         mapped.align_guide_y = s.guide;

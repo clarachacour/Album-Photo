@@ -929,6 +929,11 @@
     "restoreTitle": "Remettre le titre",
     "restoreLogo": "Remettre le logo",
     "restoreDivider": "Remettre le séparateur",
+    "bgColorShort": "Fond",
+    "textColorShort": "Texte",
+    "add": "Ajouter",
+    "textOnSpineShort": "Reliure",
+    "restoreSpineTitle": "Remettre le titre de la reliure",
     "resetPosition": "Replacer",
     "default": "par défaut",
     "fonts": {

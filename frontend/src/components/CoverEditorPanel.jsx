@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import { coverItemImageSrc } from "@/lib/api";
@@ -117,8 +117,11 @@ export function CoverEditorPanel({
     };
   })();
 
+  const field = "w-full border border-[color:var(--ink)]/20 px-2 py-1.5 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
+  const section = "border-t border-[color:var(--border-soft)] pt-2.5 space-y-2";
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5" data-testid="cover-editor-panel">
       {/* Entête du panneau */}
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
@@ -134,17 +137,17 @@ export function CoverEditorPanel({
         </button>
       </div>
 
-      {/* 1. COULEURS DE LA COUVERTURE */}
-      <div className="space-y-3">
+      {/* 1. COULEURS (fond + texte, côte à côte) */}
+      <div className="grid grid-cols-2 gap-2">
         <ColorField
-          label={t("coverPanel.bgColor")}
+          label={t("coverPanel.bgColorShort")}
           value={cover.bg_color || DEFAULT_COVER.bg_color}
           onChange={(v) => updateCover({ bg_color: v || null })}
           tid="cover-bg-color"
           onReset={() => updateCover({ bg_color: null })}
         />
         <ColorField
-          label={t("coverPanel.textColor")}
+          label={t("coverPanel.textColorShort")}
           value={textColorTarget.value}
           onChange={textColorTarget.onChange}
           tid="cover-text-color"
@@ -152,33 +155,35 @@ export function CoverEditorPanel({
         />
       </div>
 
-      {/* 2. ÉDITION DU TITRE PRINCIPAL */}
+      {/* 2. TITRE PRINCIPAL */}
       {coverSel.mode === "title" && (
-        <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">{t("coverPanel.mainTitle")}</div>
-          <textarea
+        <div className={section}>
+          <SmallLabel>{t("coverPanel.mainTitle")}</SmallLabel>
+          <input
+            type="text"
             data-testid="cover-title-content"
             value={album.title || ""}
             onChange={(e) => updateAlbumTitle && updateAlbumTitle(e.target.value)}
-            rows={2}
-            className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
+            className={field}
             placeholder={t("coverPanel.titlePlaceholder")}
           />
-
-          <div>
-            <label className="eyebrow block mb-2">{t("coverPanel.font")}</label>
+          <div className="flex items-center gap-2">
             <select
               data-testid="cover-title-font"
+              aria-label={t("coverPanel.font")}
               value={cover.title_font || "'Baloo 2', sans-serif"}
               onChange={(e) => updateCover({ title_font: e.target.value })}
-              className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
+              className={`${field} flex-1 min-w-0`}
             >
               <FontOptions />
             </select>
+            <BoldToggle
+              tid="cover-title-bold"
+              weight={cover.title_font_weight}
+              onToggle={(next) => updateCover({ title_font_weight: next })}
+            />
           </div>
-
-          <div>
-            <label className="eyebrow block mb-2">{t("coverPanel.titleSize")}</label>
+          <SliderRow label={t("coverPanel.size")}>
             {cover.title_writing_mode ? (
               <input
                 type="range"
@@ -186,7 +191,7 @@ export function CoverEditorPanel({
                 max={120}
                 value={cover.title_font_size || 48}
                 onChange={(e) => updateCover({ title_font_size: Number(e.target.value) })}
-                className="w-full"
+                className="flex-1 min-w-0"
                 data-testid="cover-title-size"
               />
             ) : (
@@ -201,138 +206,120 @@ export function CoverEditorPanel({
                 step={0.02}
                 value={cover.title_scale ?? 1}
                 onChange={(e) => updateCover({ title_scale: Number(e.target.value) })}
-                className="w-full"
+                className="flex-1 min-w-0"
                 data-testid="cover-title-size"
               />
             )}
-          </div>
-
-          <div>
-            <label className="eyebrow flex items-center justify-between mb-2">
-              <span>{t("coverPanel.rotation")}</span>
-              <span className="font-mono normal-case tracking-normal">{Math.round(cover.title_rotation || 0)}°</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={-180}
-                max={180}
-                step={1}
-                value={cover.title_rotation || 0}
-                onChange={(e) => updateCover({ title_rotation: Number(e.target.value) })}
-                className="flex-1"
-                data-testid="cover-title-rotation"
-              />
-              <button
-                type="button"
-                onClick={() => updateCover({ title_rotation: 0 })}
-                disabled={!cover.title_rotation}
-                className="px-2 py-1 border border-[color:var(--ink)]/30 text-xs font-mono hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
-                title={t("coverPanel.straighten")}
-                data-testid="cover-title-rotation-reset"
-              >
-                0°
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <BoldToggle
-              tid="cover-title-bold"
-              weight={cover.title_font_weight}
-              onToggle={(next) => updateCover({ title_font_weight: next })}
+          </SliderRow>
+          <SliderRow label={t("coverPanel.rotation")}>
+            <input
+              type="range"
+              min={-180}
+              max={180}
+              step={1}
+              value={cover.title_rotation || 0}
+              onChange={(e) => updateCover({ title_rotation: Number(e.target.value) })}
+              className="flex-1 min-w-0"
+              data-testid="cover-title-rotation"
             />
+            <DegreesInput
+              value={cover.title_rotation || 0}
+              onChange={(deg) => updateCover({ title_rotation: deg })}
+            />
+          </SliderRow>
+          <div className="grid grid-cols-2 gap-2">
             <ResetPositionButton
               onClick={() =>
-                updateCover((({ x, y, w, h }) => ({ title_x: x, title_y: y, title_w: w, title_h: h }))(defaultTitleBox(album)))
+                updateCover({
+                  ...(({ x, y, w, h }) => ({ title_x: x, title_y: y, title_w: w, title_h: h }))(defaultTitleBox(album)),
+                  title_rotation: 0,
+                })
               }
             />
+            <DeleteButton onClick={deleteSelected} tid="cover-delete-selected" />
           </div>
         </div>
       )}
 
-      {/* 3. ÉDITION DE LA TRANCHE (SPINE TITLE / SUBTITLE / CAPTION) */}
+      {/* 3. TRANCHE (SPINE TITLE / SUBTITLE / CAPTION) */}
       {spineZone && (() => {
         const { prefix, labelKey, testid: testidPrefix } = spineZone;
         const zone = coverSel.mode;
         return (
-        <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">{t(`coverPanel.${labelKey}`)}</div>
+        <div className={section}>
+          <SmallLabel>{t(`coverPanel.${labelKey}`)}</SmallLabel>
 
           {zone === "spine-caption" && (
-            <div>
-              <label className="eyebrow block mb-2">{t("coverPanel.captionLabel")}</label>
-              <textarea
-                data-testid="spine-caption-content"
-                value={cover.spine_caption || ""}
-                onChange={(e) => updateCover({ spine_caption: e.target.value })}
-                rows={2}
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
-                placeholder={"CAMILLE & THOMAS\n15 MAY 2025"}
-              />
-            </div>
+            <textarea
+              data-testid="spine-caption-content"
+              aria-label={t("coverPanel.captionLabel")}
+              value={cover.spine_caption || ""}
+              onChange={(e) => updateCover({ spine_caption: e.target.value })}
+              rows={2}
+              className={field}
+              placeholder={"CAMILLE & THOMAS\n15 MAY 2025"}
+            />
           )}
 
           {zone === "spine-title" && (
             <div>
-              <label className="eyebrow flex items-center justify-between mb-2">
-                <span>{t("coverPanel.spineTitle")}</span>
-                {cover.spine_title_text != null && (
+              {cover.spine_title_text != null && (
+                <div className="flex justify-end mb-1">
                   <button
                     type="button"
                     onClick={() => updateCover({ spine_title_text: null })}
-                    className="underline text-[10px] normal-case tracking-normal font-normal"
+                    className="underline text-[10px] text-[color:var(--muted)] hover:text-[color:var(--ink)]"
                     data-testid="spine-title-text-reset"
                   >
                     {t("coverPanel.matchCoverTitle")}
                   </button>
-                )}
-              </label>
+                </div>
+              )}
               <input
                 type="text"
                 data-testid="spine-title-text-content"
                 value={cover.spine_title_text ?? album?.title ?? ""}
                 onChange={(e) => updateCover({ spine_title_text: e.target.value })}
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
+                className={field}
                 placeholder={t("coverPanel.sameAsCoverTitle")}
               />
             </div>
           )}
 
           {(zone === "spine-title" || zone === "spine-subtitle") && (
-            <div>
-              <label className="eyebrow block mb-2">{t("coverPanel.subtitle")}</label>
-              <input
-                type="text"
-                data-testid="spine-subtitle-content"
-                value={cover.spine_subtitle || ""}
-                onChange={(e) => updateCover({ spine_subtitle: e.target.value })}
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
-                placeholder={t("coverPanel.subtitlePlaceholder")}
-              />
-            </div>
+            <input
+              type="text"
+              data-testid="spine-subtitle-content"
+              aria-label={t("coverPanel.subtitle")}
+              value={cover.spine_subtitle || ""}
+              onChange={(e) => updateCover({ spine_subtitle: e.target.value })}
+              className={field}
+              placeholder={t("coverPanel.subtitlePlaceholder")}
+            />
           )}
 
-          <div>
-            <label className="eyebrow block mb-2">{t("coverPanel.font")}</label>
+          <div className="flex items-center gap-2">
             <select
               data-testid={`${testidPrefix}-font`}
+              aria-label={t("coverPanel.font")}
               value={cover[`${prefix}_font`] || "'Manrope', sans-serif"}
               onChange={(e) => updateCover({ [`${prefix}_font`]: e.target.value })}
-              className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
+              className={`${field} flex-1 min-w-0`}
             >
               <FontOptions />
             </select>
+            <BoldToggle
+              tid={`${testidPrefix}-bold`}
+              weight={cover[`${prefix}_weight`]}
+              onToggle={(next) => updateCover({ [`${prefix}_weight`]: next })}
+            />
           </div>
 
-          <div>
-            <label className="eyebrow block mb-2">{t("coverPanel.size")}</label>
-            {/* This scales the auto-fit result down (never up) rather
-                than setting a raw point size. Spine text always auto-fits
-                to the spine's real width/word length now, so a raw size
-                no longer has any lasting effect once the page has
-                rendered once — this is what actually still does
-                something. */}
+          {/* This scales the auto-fit result down (never up) rather than
+              setting a raw point size: spine text always auto-fits to the
+              spine's real width/word length, so a raw size has no lasting
+              effect — this is what actually still does something. */}
+          <SliderRow label={t("coverPanel.size")}>
             <input
               type="range"
               min={0.4}
@@ -340,37 +327,30 @@ export function CoverEditorPanel({
               step={0.02}
               value={cover[`${prefix}_scale`] ?? 1}
               onChange={(e) => updateCover({ [`${prefix}_scale`]: Number(e.target.value) })}
-              className="w-full"
+              className="flex-1 min-w-0"
               data-testid={`${testidPrefix}-size`}
             />
-          </div>
+          </SliderRow>
 
-          <div className="flex items-center gap-2">
-            <BoldToggle
-              tid={`${testidPrefix}-bold`}
-              weight={cover[`${prefix}_weight`]}
-              onToggle={(next) => updateCover({ [`${prefix}_weight`]: next })}
-            />
-            <ResetPositionButton
-              onClick={() =>
-                updateCover(defaultSpineBox(album, prefix))
-              }
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <ResetPositionButton onClick={() => updateCover(defaultSpineBox(album, prefix))} />
+            <DeleteButton onClick={deleteSelected} tid="cover-delete-selected" />
           </div>
-
         </div>
         );
       })()}
 
-      {/* Supprimer le titre / un élément de la reliure */}
-      {deletePatch(coverSel.mode) && (
-        <DeleteButton onClick={deleteSelected} tid="cover-delete-selected" />
+      {/* Logo / séparateur de la reliure : seulement « Supprimer » */}
+      {(coverSel.mode === "spine-logo" || coverSel.mode === "spine-divider") && (
+        <div className={section}>
+          <DeleteButton onClick={deleteSelected} tid="cover-delete-selected" />
+        </div>
       )}
 
-      {/* 4. ÉDITION D'UN ÉLÉMENT SÉLECTIONNÉ (EXTRA ITEM) */}
+      {/* 4. ÉLÉMENT AJOUTÉ (texte / forme / image) */}
       {selectedItem && (
-        <div className="border-t border-[color:var(--border-soft)] pt-3 space-y-2">
-          <div className="eyebrow">{t("coverPanel.selectedItem")}</div>
+        <div className={section}>
+          <SmallLabel>{t("coverPanel.selectedItem")}</SmallLabel>
 
           {selectedItem.type === "text" && (
             <>
@@ -378,31 +358,28 @@ export function CoverEditorPanel({
                 data-testid="cover-item-content"
                 value={selectedItem.content || selectedItem.text || ""}
                 onChange={(e) =>
-                  updateCoverItem(
-                    selectedItem.id,
-                    { content: e.target.value, text: e.target.value },
-                    side
-                  )
+                  updateCoverItem(selectedItem.id, { content: e.target.value, text: e.target.value }, side)
                 }
                 rows={2}
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm focus:border-[color:var(--ink)] focus:outline-none"
+                className={field}
               />
-              <select
-                data-testid="cover-item-font"
-                value={selectedItem.font || "'Manrope', sans-serif"}
-                onChange={(e) =>
-                  updateCoverItem(selectedItem.id, { font: e.target.value }, side)
-                }
-                className="w-full border border-[color:var(--ink)]/20 p-2 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
-              >
-                <FontOptions />
-              </select>
               <div className="flex items-center gap-2">
+                <select
+                  data-testid="cover-item-font"
+                  aria-label={t("coverPanel.font")}
+                  value={selectedItem.font || "'Manrope', sans-serif"}
+                  onChange={(e) => updateCoverItem(selectedItem.id, { font: e.target.value }, side)}
+                  className={`${field} flex-1 min-w-0`}
+                >
+                  <FontOptions />
+                </select>
                 <BoldToggle
                   tid="cover-item-bold"
                   weight={selectedItem.font_weight}
                   onToggle={(next) => updateCoverItem(selectedItem.id, { font_weight: next }, side)}
                 />
+              </div>
+              <SliderRow label={t("coverPanel.size")}>
                 {selectedItem.role === "subtitle" ? (
                   // Subtitle-role items auto-fit to the title's own size
                   // (see AlbumPage.jsx) — font_size is ignored by that
@@ -414,38 +391,33 @@ export function CoverEditorPanel({
                     max={1}
                     step={0.02}
                     value={selectedItem.font_scale ?? 1}
-                    onChange={(e) =>
-                      updateCoverItem(selectedItem.id, { font_scale: Number(e.target.value) }, side)
-                    }
-                    className="flex-1"
+                    onChange={(e) => updateCoverItem(selectedItem.id, { font_scale: Number(e.target.value) }, side)}
+                    className="flex-1 min-w-0"
                     data-testid="cover-item-size"
                   />
                 ) : (
-                  <input
-                    type="range"
-                    min={10}
-                    max={72}
-                    value={selectedItem.font_size || selectedItem.fontSize || 22}
-                    onChange={(e) =>
-                      updateCoverItem(
-                        selectedItem.id,
-                        {
-                          font_size: Number(e.target.value),
-                          fontSize: Number(e.target.value),
-                        },
-                        side
-                      )
-                    }
-                    className="flex-1"
-                    data-testid="cover-item-size"
-                  />
+                  <>
+                    <input
+                      type="range"
+                      min={10}
+                      max={72}
+                      value={selectedItem.font_size || selectedItem.fontSize || 22}
+                      onChange={(e) =>
+                        updateCoverItem(
+                          selectedItem.id,
+                          { font_size: Number(e.target.value), fontSize: Number(e.target.value) },
+                          side
+                        )
+                      }
+                      className="flex-1 min-w-0"
+                      data-testid="cover-item-size"
+                    />
+                    <span className="text-xs w-9 text-right font-mono">
+                      {selectedItem.font_size || selectedItem.fontSize || 22}px
+                    </span>
+                  </>
                 )}
-                {selectedItem.role !== "subtitle" && (
-                  <span className="text-xs w-8 text-right font-mono">
-                    {selectedItem.font_size || selectedItem.fontSize || 22}px
-                  </span>
-                )}
-              </div>
+              </SliderRow>
             </>
           )}
 
@@ -454,29 +426,25 @@ export function CoverEditorPanel({
               type="color"
               data-testid="cover-item-fill"
               value={selectedItem.fill_color || "#E56B55"}
-              onChange={(e) =>
-                updateCoverItem(selectedItem.id, { fill_color: e.target.value }, side)
-              }
-              className="w-full h-9 border border-[color:var(--ink)]/20 cursor-pointer p-0"
+              onChange={(e) => updateCoverItem(selectedItem.id, { fill_color: e.target.value }, side)}
+              className="w-full h-8 border border-[color:var(--ink)]/20 cursor-pointer p-0"
             />
           )}
 
           {selectedItem.type === "image" && (
-            <>
+            <div className="flex items-center gap-2">
               <img
                 src={coverItemImageSrc(selectedItem, "medium")}
                 alt=""
-                className="w-full max-h-32 object-contain border border-[color:var(--border-soft)] bg-[color:var(--paper)]"
+                className="w-14 h-14 object-contain border border-[color:var(--border-soft)] bg-[color:var(--paper)]"
               />
               <button
                 data-testid="cover-item-replace-image"
                 onClick={() => replaceImageInput.current?.click()}
-                className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
               >
                 <ImageIcon size={14} />
-                <span className="text-xs font-semibold tracking-widest uppercase">
-                  {t("coverPanel.replaceImage")}
-                </span>
+                <span className="text-xs font-semibold tracking-wider uppercase">{t("coverPanel.replaceImage")}</span>
               </button>
               <input
                 ref={replaceImageInput}
@@ -489,82 +457,131 @@ export function CoverEditorPanel({
                   e.target.value = "";
                 }}
               />
-            </>
+            </div>
           )}
 
-          <ResetPositionButton
-            onClick={() =>
-              updateCoverItem(selectedItem.id, defaultItemBox(album, selectedItem, side), side)
-            }
-          />
-
-          <DeleteButton onClick={() => removeCoverItem(selectedItem.id, side)} tid="cover-item-remove" />
+          <div className="grid grid-cols-2 gap-2">
+            <ResetPositionButton
+              onClick={() => updateCoverItem(selectedItem.id, defaultItemBox(album, selectedItem, side), side)}
+            />
+            <DeleteButton onClick={() => removeCoverItem(selectedItem.id, side)} tid="cover-item-remove" />
+          </div>
         </div>
       )}
 
-      {/* 5. AJOUT D'ÉLÉMENTS SUR LA COUVERTURE */}
-      <div className="border-t border-[color:var(--border-soft)] pt-4 space-y-2">
-        {!spineZone && (
-          <>
-            <div className="eyebrow">{t("coverPanel.addTo", { zone: zoneLabel })}</div>
-            {side === "front" && cover.title_hidden && (
-              <RestoreButton label={t("coverPanel.restoreTitle")} onClick={() => updateCover({ title_hidden: false })} tid="cover-restore-title" />
-            )}
-            <button
-              data-testid="cover-add-text"
-              onClick={() => addCoverText(undefined, side)}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-            >
-              <Type size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.text")}</span>
-            </button>
-            <button
-              data-testid="cover-add-image"
-              onClick={() => addImageInput.current?.click()}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-            >
-              <ImageIcon size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.image")}</span>
-            </button>
-            <input
-              ref={addImageInput}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) addCoverImage(f, null, side);
-                e.target.value = "";
-              }}
-            />
-          </>
-        )}
-        {addSpineText && (
-          <>
-            <div className="eyebrow">{t("coverPanel.addTo", { zone: t("coverPanel.spine") })}</div>
-            {cover.spine_title_hidden && (
-              <RestoreButton label={t("coverPanel.restoreTitle")} onClick={() => updateCover({ spine_title_hidden: false })} tid="spine-restore-title" />
-            )}
-            {cover.spine_logo_image && cover.spine_logo_hidden && (
-              <RestoreButton label={t("coverPanel.restoreLogo")} onClick={() => updateCover({ spine_logo_hidden: false })} tid="spine-restore-logo" />
-            )}
-            {cover.spine_title_caption_divider && cover.spine_divider_hidden && (
-              <RestoreButton label={t("coverPanel.restoreDivider")} onClick={() => updateCover({ spine_divider_hidden: false })} tid="spine-restore-divider" />
-            )}
-            <button
-              data-testid="spine-add-text"
+      {/* 5. AJOUTER (et remettre ce qui a été supprimé) */}
+      <div className={section}>
+        <SmallLabel>{t("coverPanel.add")}</SmallLabel>
+        <div className="grid grid-cols-3 gap-1.5">
+          {!onSpine && (
+            <>
+              <AddButton icon={<Type size={14} />} label={t("coverPanel.text")} onClick={() => addCoverText(undefined, side)} tid="cover-add-text" />
+              <AddButton icon={<ImageIcon size={14} />} label={t("coverPanel.image")} onClick={() => addImageInput.current?.click()} tid="cover-add-image" />
+            </>
+          )}
+          {addSpineText && (
+            <AddButton
+              icon={<Type size={14} />}
+              label={t("coverPanel.textOnSpineShort")}
+              title={cover.spine_caption && cover.spine_subtitle ? t("coverPanel.spineFull") : t("coverPanel.textOnSpine")}
               onClick={() => addSpineText(cover)}
               disabled={!!cover.spine_caption && !!cover.spine_subtitle}
-              title={cover.spine_caption && cover.spine_subtitle ? t("coverPanel.spineFull") : undefined}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:hover:border-[color:var(--ink)]/30"
-            >
-              <Type size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.textOnSpine")}</span>
-            </button>
-          </>
+              tid="spine-add-text"
+            />
+          )}
+        </div>
+        {!onSpine && (
+          <input
+            ref={addImageInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) addCoverImage(f, null, side);
+              e.target.value = "";
+            }}
+          />
+        )}
+        {!onSpine && side === "front" && cover.title_hidden && (
+          <RestoreButton label={t("coverPanel.restoreTitle")} onClick={() => updateCover({ title_hidden: false })} tid="cover-restore-title" />
+        )}
+        {addSpineText && cover.spine_title_hidden && (
+          <RestoreButton label={t("coverPanel.restoreSpineTitle")} onClick={() => updateCover({ spine_title_hidden: false })} tid="spine-restore-title" />
+        )}
+        {addSpineText && cover.spine_logo_image && cover.spine_logo_hidden && (
+          <RestoreButton label={t("coverPanel.restoreLogo")} onClick={() => updateCover({ spine_logo_hidden: false })} tid="spine-restore-logo" />
+        )}
+        {addSpineText && cover.spine_title_caption_divider && cover.spine_divider_hidden && (
+          <RestoreButton label={t("coverPanel.restoreDivider")} onClick={() => updateCover({ spine_divider_hidden: false })} tid="spine-restore-divider" />
         )}
       </div>
     </div>
+  );
+}
+
+function SmallLabel({ children }) {
+  return <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">{children}</div>;
+}
+
+// A slider with its label on the left, on one line.
+function SliderRow({ label, children }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+// The exact angle, typed in (-180 to 180); applied as you type.
+export function clampDegrees(text) {
+  const n = Math.round(Number(String(text).replace(",", ".")));
+  if (!Number.isFinite(n)) return null;
+  return Math.max(-180, Math.min(180, n));
+}
+
+function DegreesInput({ value, onChange }) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(null); // what's being typed ("-", "" …)
+  return (
+    <label className="flex items-center border border-[color:var(--ink)]/20 bg-white focus-within:border-[color:var(--ink)]">
+      <input
+        type="text"
+        inputMode="numeric"
+        data-testid="cover-title-rotation-input"
+        aria-label={t("coverPanel.rotation")}
+        value={draft ?? String(Math.round(value))}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const deg = clampDegrees(e.target.value);
+          if (deg !== null && e.target.value.trim() !== "" && e.target.value.trim() !== "-") onChange(deg);
+        }}
+        onBlur={() => setDraft(null)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          e.stopPropagation();
+        }}
+        className="w-10 py-1 pl-1.5 text-xs font-mono text-right bg-transparent focus:outline-none"
+      />
+      <span className="pr-1.5 text-xs font-mono text-[color:var(--muted)]">°</span>
+    </label>
+  );
+}
+
+function AddButton({ icon, label, onClick, disabled, title, tid }) {
+  return (
+    <button
+      type="button"
+      data-testid={tid}
+      onClick={onClick}
+      disabled={disabled}
+      title={title || label}
+      className="inline-flex flex-col items-center justify-center gap-1 border border-[color:var(--ink)]/30 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:hover:border-[color:var(--ink)]/30"
+    >
+      {icon}
+      <span className="text-[10px] font-semibold tracking-wider uppercase">{label}</span>
+    </button>
   );
 }
 
@@ -579,7 +596,7 @@ function BoldToggle({ tid, weight, onToggle }) {
     <button
       data-testid={tid}
       onClick={() => onToggle(bold ? "400" : "700")}
-      className={`inline-flex items-center justify-center w-9 h-9 border transition-colors ${
+      className={`shrink-0 inline-flex items-center justify-center w-8 h-8 border transition-colors ${
         bold
           ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
           : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
@@ -597,11 +614,11 @@ function DeleteButton({ onClick, tid }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
+      className="w-full inline-flex items-center justify-center gap-1.5 border border-red-300 text-red-600 py-1.5 hover:bg-red-50 transition-colors"
       data-testid={tid}
     >
-      <Trash2 size={14} />
-      <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.delete")}</span>
+      <Trash2 size={13} />
+      <span className="text-[11px] font-semibold tracking-wider uppercase">{t("coverPanel.delete")}</span>
     </button>
   );
 }
@@ -613,10 +630,10 @@ function RestoreButton({ label, onClick, tid }) {
       type="button"
       onClick={onClick}
       data-testid={tid}
-      className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+      className="w-full inline-flex items-center justify-center gap-1.5 border border-[color:var(--ink)]/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
     >
-      <Undo2 size={14} />
-      <span className="text-xs font-semibold tracking-widest uppercase">{label}</span>
+      <Undo2 size={13} />
+      <span className="text-[11px] font-semibold tracking-wider uppercase">{label}</span>
     </button>
   );
 }
@@ -627,7 +644,7 @@ function ResetPositionButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 py-2 border border-[color:var(--ink)]/30 text-xs font-semibold uppercase hover:border-[color:var(--ink)] transition-colors"
+      className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 border border-[color:var(--ink)]/30 text-[11px] font-semibold tracking-wider uppercase hover:border-[color:var(--ink)] transition-colors"
       title={t("coverPanel.resetPosition")}
     >
       <RotateCcw size={12} />
@@ -639,30 +656,33 @@ function ResetPositionButton({ onClick }) {
 export function ColorField({ label, value, onChange, tid, onReset }) {
   const { t } = useTranslation();
   return (
-    <div>
+    <div className="min-w-0">
       <div className="flex items-center justify-between mb-1">
-        <label className="eyebrow">{label}</label>
+        <SmallLabel>{label}</SmallLabel>
         <button
+          type="button"
           onClick={onReset}
-          className="text-[10px] text-[color:var(--muted)] hover:text-[color:var(--ink)] underline"
+          title={t("coverPanel.default")}
+          aria-label={t("coverPanel.default")}
+          className="text-[color:var(--muted)] hover:text-[color:var(--ink)]"
         >
-          {t("coverPanel.default")}
+          <RotateCcw size={11} />
         </button>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <input
           data-testid={tid}
           type="color"
           value={value || "#FFFFFF"}
           onChange={(e) => onChange(e.target.value)}
-          className="w-9 h-9 border border-[color:var(--ink)]/20 cursor-pointer p-0"
+          className="w-8 h-8 shrink-0 border border-[color:var(--ink)]/20 cursor-pointer p-0"
         />
         <input
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={t("coverPanel.default")}
-          className="flex-1 border border-[color:var(--ink)]/20 px-2 py-1 text-xs font-mono focus:border-[color:var(--ink)] focus:outline-none"
+          className="w-full min-w-0 border border-[color:var(--ink)]/20 px-1.5 py-1.5 text-xs font-mono focus:border-[color:var(--ink)] focus:outline-none"
         />
       </div>
     </div>
