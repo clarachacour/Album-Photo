@@ -589,24 +589,25 @@ function StepEdit({
   const spineFr = spineRatio(size, orientation, targetPages || DEFAULT_PAGE_COUNT_ESTIMATE);
 
   return (
-    <section className="animate-fade-up grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
-      <div>
-        <div className="mb-8 max-w-2xl">
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.edit.title")}</h2>
-            <div className="shrink-0 mt-2 flex items-center gap-2">
-              <HistoryButton icon={<Undo2 size={14} />} label={t("createAlbum.edit.undo")} title={t("albumEditor.undoTitle")} onClick={history.undo} disabled={!history.canUndo()} tid="cover-undo" />
-              <HistoryButton icon={<Redo2 size={14} />} label={t("createAlbum.edit.redo")} title={t("albumEditor.redoTitle")} onClick={history.redo} disabled={!history.canRedo()} tid="cover-redo" />
-              <TourHelpButton onClick={tour.start} />
-            </div>
+    <section className="animate-fade-up">
+      {/* Title above both columns, so the panel starts level with the cover. */}
+      <div className="mb-8 max-w-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.edit.title")}</h2>
+          <div className="shrink-0 mt-2 flex items-center gap-2">
+            <HistoryButton icon={<Undo2 size={14} />} label={t("createAlbum.edit.undo")} title={t("albumEditor.undoTitle")} onClick={history.undo} disabled={!history.canUndo()} tid="cover-undo" />
+            <HistoryButton icon={<Redo2 size={14} />} label={t("createAlbum.edit.redo")} title={t("albumEditor.redoTitle")} onClick={history.redo} disabled={!history.canRedo()} tid="cover-redo" />
+            <TourHelpButton onClick={tour.start} />
           </div>
-          <p className="text-[color:var(--ink)]/70">
-            {t("createAlbum.edit.subtitle")}
-          </p>
         </div>
+        <p className="text-[color:var(--ink)]/70">
+          {t("createAlbum.edit.subtitle")}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10 items-start">
         <div
           data-tour="cover-spread"
-          className="grid gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70"
+          className="grid w-full gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70"
           style={{ gridTemplateColumns: `1fr ${spineFr}fr 1fr` }}
         >
           <CoverBackPage
@@ -652,27 +653,27 @@ function StepEdit({
             selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
           />
         </div>
-      </div>
-      <div data-tour="cover-panel">
-        {coverSel ? (
-          <CoverEditorPanel
-            album={album}
-            coverSel={coverSel}
-            updateCover={updateCover}
-            updateCoverItem={updateCoverItem}
-            addCoverText={addCoverText}
-            addCoverShape={addCoverShape}
-            addCoverImage={addCoverImage}
-            removeCoverItem={removeCoverItem}
-            updateAlbumTitle={updateAlbumTitle}
-            addSpineText={addSpineText}
-            onDismiss={() => setCoverSel(null)}
-          />
-        ) : (
-          <div className="text-sm text-[color:var(--muted)] border border-dashed border-[color:var(--border-soft)] p-6">
-            {t("createAlbum.edit.hint")}
-          </div>
-        )}
+        <div data-tour="cover-panel">
+          {coverSel ? (
+            <CoverEditorPanel
+              album={album}
+              coverSel={coverSel}
+              updateCover={updateCover}
+              updateCoverItem={updateCoverItem}
+              addCoverText={addCoverText}
+              addCoverShape={addCoverShape}
+              addCoverImage={addCoverImage}
+              removeCoverItem={removeCoverItem}
+              updateAlbumTitle={updateAlbumTitle}
+              addSpineText={addSpineText}
+              onDismiss={() => setCoverSel(null)}
+            />
+          ) : (
+            <div className="text-sm text-[color:var(--muted)] border border-dashed border-[color:var(--border-soft)] p-6">
+              {t("createAlbum.edit.hint")}
+            </div>
+          )}
+        </div>
       </div>
       {tour.element}
     </section>
