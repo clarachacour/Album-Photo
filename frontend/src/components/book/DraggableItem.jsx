@@ -1,5 +1,6 @@
 import React, { useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { RotateCw } from "lucide-react";
 
 /**
  * Common draggable + resizable wrapper for items placed with normalized
@@ -13,8 +14,20 @@ import { useTranslation } from "react-i18next";
  *   selected     - bool
  *   containerRef - React ref for the page container
  *   editable     - bool
+ *   onRotate     - (degrees) => void: shows a round handle that turns the
+ *                  content (rotation = its current angle)
  */
-export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick }) {
+export function rotationFromDrag(startRotation, startAngle, angle) {
+  let r = startRotation + angle - startAngle;
+  r = ((((r + 180) % 360) + 360) % 360) - 180; // back into -180..180
+  // Lands exactly on straight / quarter turns when close to one.
+  for (const snap of [-180, -90, 0, 90, 180]) {
+    if (Math.abs(r - snap) < 4) return snap === -180 ? 180 : snap;
+  }
+  return Math.round(r);
+}
+
+export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate }) {
   const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
@@ -67,9 +80,31 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     e.currentTarget.setPointerCapture(e.pointerId);
   }, [editable, item.w, item.h, onSelect, containerRef, onDragStateChange]);
 
+  const onRotatePointerDown = useCallback((e) => {
+    if (!editable) return;
+    e.stopPropagation();
+    const box = e.currentTarget.parentElement.getBoundingClientRect();
+    const cx = box.left + box.width / 2;
+    const cy = box.top + box.height / 2;
+    dragState.current = {
+      mode: "rotate",
+      cx,
+      cy,
+      startAngle: (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI,
+      startRotation: rotation || 0,
+    };
+    onDragStateChange && onDragStateChange(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [editable, rotation, onDragStateChange]);
+
   const onPointerMove = useCallback((e) => {
     if (!dragState.current) return;
     const ds = dragState.current;
+    if (ds.mode === "rotate") {
+      const angle = (Math.atan2(e.clientY - ds.cy, e.clientX - ds.cx) * 180) / Math.PI;
+      onRotate && onRotate(rotationFromDrag(ds.startRotation, ds.startAngle, angle));
+      return;
+    }
     const dx = (e.clientX - ds.startX) / ds.rectW;
     const dy = (e.clientY - ds.startY) / ds.rectH;
     if (ds.mode === "move") {
@@ -81,7 +116,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       const nh = Math.max(minH, Math.min(1 - item.y, ds.startItemH + dy));
       onChange({ w: nw, h: nh });
     }
-  }, [item.w, item.h, item.x, item.y, onChange, minW, minH]);
+  }, [item.w, item.h, item.x, item.y, onChange, minW, minH, onRotate]);
 
   const onPointerUp = useCallback((e) => {
     if (dragState.current) {
@@ -127,6 +162,21 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
           data-testid={`${tid}-resize`}
           title={t("albumPage.resize")}
         />
+      )}
+      {editable && selected && onRotate && (
+        // Round handle centered above the frame (below it when the frame
+        // touches the top of the page, where it would be cut off).
+        <div
+          className={`absolute left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${item.y < 0.08 ? "-bottom-9" : "-top-9"}`}
+          onPointerDown={onRotatePointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          data-testid={`${tid}-rotate`}
+          title={t("albumPage.rotate")}
+        >
+          <RotateCw size={13} />
+        </div>
       )}
     </div>
   );

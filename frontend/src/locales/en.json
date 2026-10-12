@@ -589,6 +589,7 @@
       "w": "Same width",
       "h": "Same height"
     },
+    "rotate": "Rotate (drag)",
     "resize": "Resize",
     "changeLayout": "Change this page's layout — how many photos it holds and how they're arranged",
     "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",
@@ -914,9 +915,6 @@
     "sameAsCoverTitle": "Same as the cover title",
     "subtitle": "Subtitle",
     "subtitlePlaceholder": "Optional — shown right after the title",
-    "show": "Show",
-    "hide": "Hide",
-    "clear": "Clear",
     "selectedItem": "Selected item",
     "replaceImage": "Replace image",
     "delete": "Delete",
@@ -928,6 +926,9 @@
     "bold": "Bold",
     "rotation": "Rotation",
     "straighten": "Straighten",
+    "restoreTitle": "Put the title back",
+    "restoreLogo": "Put the logo back",
+    "restoreDivider": "Put the divider back",
     "resetPosition": "Reset position",
     "default": "default",
     "fonts": {

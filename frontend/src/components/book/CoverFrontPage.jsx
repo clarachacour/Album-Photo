@@ -194,11 +194,13 @@ export function CoverFrontPage({
         />
       )}
 
-      {/* Title (draggable if editable) */}
-      {editable ? (
+      {/* Title (draggable if editable; gone once deleted in the panel) */}
+      {cover.title_hidden ? null : editable ? (
         <DraggableItem
           item={{ id: "cover-title", x: titleX, y: titleY, w: titleW, h: visualTitleH }}
           onChange={(patch) => onUpdateTitle && onUpdateTitle(patch)}
+          rotation={titleRotation}
+          onRotate={onUpdateTitle ? (r) => onUpdateTitle({ rotation: r }) : undefined}
           onSelect={() => onSelectTitle && onSelectTitle()}
           onDoubleClick={() => onTitleTextChange && setTitleEditing(true)}
           selected={titleSelected}

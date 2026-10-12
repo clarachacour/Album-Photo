@@ -243,7 +243,7 @@ export default function AlbumEditor() {
         } else if (coverSel?.mode === "item") {
           e.preventDefault();
           removeCoverItem(coverSel.itemId, coverSel.side);
-        } else if (coverSel?.mode?.startsWith("spine-")) {
+        } else if (coverSel?.mode === "title" || coverSel?.mode?.startsWith("spine-")) {
           e.preventDefault();
           clearSpineZone(coverSel.mode);
         }

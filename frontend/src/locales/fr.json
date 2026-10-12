@@ -589,6 +589,7 @@
       "w": "Même largeur",
       "h": "Même hauteur"
     },
+    "rotate": "Tourner (faire glisser)",
     "resize": "Redimensionner",
     "changeLayout": "Changer la mise en page de cette page — combien de photos elle contient et comment elles sont disposées",
     "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
@@ -914,9 +915,6 @@
     "sameAsCoverTitle": "Identique au titre de la couverture",
     "subtitle": "Sous-titre",
     "subtitlePlaceholder": "Facultatif — affiché juste après le titre",
-    "show": "Afficher",
-    "hide": "Masquer",
-    "clear": "Effacer",
     "selectedItem": "Élément sélectionné",
     "replaceImage": "Remplacer l'image",
     "delete": "Supprimer",
@@ -928,6 +926,9 @@
     "bold": "Gras",
     "rotation": "Rotation",
     "straighten": "Remettre droit",
+    "restoreTitle": "Remettre le titre",
+    "restoreLogo": "Remettre le logo",
+    "restoreDivider": "Remettre le séparateur",
     "resetPosition": "Replacer",
     "default": "par défaut",
     "fonts": {

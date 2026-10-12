@@ -73,6 +73,22 @@ export function computeResizeAlignSnap(pos, size, siblings, axis) {
   return findResizeSnap(pos, size, siblings || [], axis);
 }
 
+// What "Delete" changes on the cover for a selected built-in piece (extra
+// items are removed from their list instead): texts of their own are
+// emptied, the title / spine title / logo / divider are hidden — they can
+// be put back from the panel's "Add" section (see RESTORABLE), or undone.
+export function deletePatch(mode) {
+  switch (mode) {
+    case "title": return { title_hidden: true };
+    case "spine-title": return { spine_title_hidden: true };
+    case "spine-subtitle": return { spine_subtitle: "" };
+    case "spine-caption": return { spine_caption: "" };
+    case "spine-logo": return { spine_logo_hidden: true };
+    case "spine-divider": return { spine_divider_hidden: true };
+    default: return null;
+  }
+}
+
 export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverSel }) {
   const updateCover = (patch) => {
     setAlbum((prev) => ({ ...prev, cover: { ...(prev.cover || {}), ...patch } }));
@@ -101,6 +117,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       }
       if (patch.w !== undefined) mapped.title_w = patch.w;
       if (patch.h !== undefined) mapped.title_h = patch.h;
+      if (patch.rotation !== undefined) mapped.title_rotation = patch.rotation;
       return { ...prev, cover: { ...cover, ...mapped } };
     });
   };
@@ -255,32 +272,13 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel(null);
   };
 
-  // Mirrors exactly what the "Clear" / "Hide" buttons in CoverEditorPanel's
-  // spine section already do — used so the Delete/Backspace keyboard
-  // shortcut works for the spine too, not just extra items and pages.
-  // Subtitle/caption have actual free-text content, so "delete" empties
-  // it (matching the panel's "Clear" button); title/year/logo/divider are
-  // structural pieces of the spine that can't become truly blank, so
-  // "delete" hides them instead (matching the panel's "Hide" button).
+  // Deletes the selected cover piece (panel's "Delete" button and the
+  // Delete/Backspace key), see deletePatch.
   const clearSpineZone = (mode) => {
-    if (mode === "spine-subtitle") {
-      updateCover({ spine_subtitle: "" });
-      return;
-    }
-    if (mode === "spine-caption") {
-      updateCover({ spine_caption: "" });
-      return;
-    }
-    const hiddenField = {
-      "spine-title": "spine_title_hidden",
-      "spine-logo": "spine_logo_hidden",
-      "spine-divider": "spine_divider_hidden",
-    }[mode];
-    if (!hiddenField) return;
-    setAlbum((prev) => {
-      const cover = prev.cover || {};
-      return { ...prev, cover: { ...cover, [hiddenField]: !cover[hiddenField] } };
-    });
+    const patch = deletePatch(mode);
+    if (!patch) return;
+    updateCover(patch);
+    setCoverSel(null);
   };
 
   return { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };

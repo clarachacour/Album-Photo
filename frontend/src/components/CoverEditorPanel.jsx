@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import { coverItemImageSrc } from "@/lib/api";
 import { DEFAULT_COVER } from "@/lib/coverTemplates";
+import { deletePatch } from "@/lib/coverEditing";
 import {
   Bold,
   Type,
   Image as ImageIcon,
   Trash2,
   X as XIcon,
-  EyeOff,
-  Eye,
   RotateCcw,
+  Undo2,
 } from "lucide-react";
 
 // Shared everywhere a Bold toggle appears (title, spine, extra items) —
@@ -62,6 +62,15 @@ export function CoverEditorPanel({
   const selectedItem =
     coverSel.mode === "item" ? extras.find((it) => it.id === coverSel.itemId) : null;
   const spineZone = spineZoneInfo(coverSel.mode);
+  const onSpine = coverSel.mode?.startsWith("spine-");
+  // The selected built-in piece (title, spine texts, logo, divider) is
+  // deleted the same way as by the Delete key.
+  const deleteSelected = () => {
+    const patch = deletePatch(coverSel.mode);
+    if (!patch) return;
+    updateCover(patch);
+    onDismiss();
+  };
 
   const addImageInput = useRef(null);
   const replaceImageInput = useRef(null);
@@ -113,7 +122,7 @@ export function CoverEditorPanel({
       {/* Entête du panneau */}
       <div className="flex items-center justify-between">
         <div className="eyebrow text-[color:var(--coral)]">
-          {t("coverPanel.header", { zone: spineZone ? t("coverPanel.spine") : zoneLabel })}
+          {t("coverPanel.header", { zone: onSpine ? t("coverPanel.spine") : zoneLabel })}
         </div>
         <button
           onClick={onDismiss}
@@ -349,31 +358,14 @@ export function CoverEditorPanel({
             />
           </div>
 
-          {zone !== "spine-caption" && zone !== "spine-subtitle" && (
-            <button
-              onClick={() => updateCover({ [`${prefix}_hidden`]: !cover[`${prefix}_hidden`] })}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-              data-testid={`${testidPrefix}-toggle`}
-            >
-              {cover[`${prefix}_hidden`] ? <Eye size={14} /> : <EyeOff size={14} />}
-              <span className="text-xs font-semibold tracking-widest uppercase">
-                {cover[`${prefix}_hidden`] ? t("coverPanel.show") : t("coverPanel.hide")}
-              </span>
-            </button>
-          )}
-          {(zone === "spine-caption" || zone === "spine-subtitle") && (cover.spine_caption || cover.spine_subtitle) && (
-            <button
-              onClick={() => updateCover(zone === "spine-caption" ? { spine_caption: "" } : { spine_subtitle: "" })}
-              className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
-              data-testid={zone === "spine-caption" ? "spine-caption-clear" : "spine-subtitle-clear"}
-            >
-              <EyeOff size={14} />
-              <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.clear")}</span>
-            </button>
-          )}
         </div>
         );
       })()}
+
+      {/* Supprimer le titre / un élément de la reliure */}
+      {deletePatch(coverSel.mode) && (
+        <DeleteButton onClick={deleteSelected} tid="cover-delete-selected" />
+      )}
 
       {/* 4. ÉDITION D'UN ÉLÉMENT SÉLECTIONNÉ (EXTRA ITEM) */}
       {selectedItem && (
@@ -506,16 +498,7 @@ export function CoverEditorPanel({
             }
           />
 
-          <button
-            onClick={() => removeCoverItem(selectedItem.id, side)}
-            className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
-            data-testid="cover-item-remove"
-          >
-            <Trash2 size={14} />
-            <span className="text-xs font-semibold tracking-widest uppercase">
-              {t("coverPanel.delete")}
-            </span>
-          </button>
+          <DeleteButton onClick={() => removeCoverItem(selectedItem.id, side)} tid="cover-item-remove" />
         </div>
       )}
 
@@ -524,6 +507,9 @@ export function CoverEditorPanel({
         {!spineZone && (
           <>
             <div className="eyebrow">{t("coverPanel.addTo", { zone: zoneLabel })}</div>
+            {side === "front" && cover.title_hidden && (
+              <RestoreButton label={t("coverPanel.restoreTitle")} onClick={() => updateCover({ title_hidden: false })} tid="cover-restore-title" />
+            )}
             <button
               data-testid="cover-add-text"
               onClick={() => addCoverText(undefined, side)}
@@ -556,6 +542,15 @@ export function CoverEditorPanel({
         {addSpineText && (
           <>
             <div className="eyebrow">{t("coverPanel.addTo", { zone: t("coverPanel.spine") })}</div>
+            {cover.spine_title_hidden && (
+              <RestoreButton label={t("coverPanel.restoreTitle")} onClick={() => updateCover({ spine_title_hidden: false })} tid="spine-restore-title" />
+            )}
+            {cover.spine_logo_image && cover.spine_logo_hidden && (
+              <RestoreButton label={t("coverPanel.restoreLogo")} onClick={() => updateCover({ spine_logo_hidden: false })} tid="spine-restore-logo" />
+            )}
+            {cover.spine_title_caption_divider && cover.spine_divider_hidden && (
+              <RestoreButton label={t("coverPanel.restoreDivider")} onClick={() => updateCover({ spine_divider_hidden: false })} tid="spine-restore-divider" />
+            )}
             <button
               data-testid="spine-add-text"
               onClick={() => addSpineText(cover)}
@@ -592,6 +587,36 @@ function BoldToggle({ tid, weight, onToggle }) {
       title={t("coverPanel.bold")}
     >
       <Bold size={14} />
+    </button>
+  );
+}
+
+function DeleteButton({ onClick, tid }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 py-2 hover:bg-red-50 transition-colors"
+      data-testid={tid}
+    >
+      <Trash2 size={14} />
+      <span className="text-xs font-semibold tracking-widest uppercase">{t("coverPanel.delete")}</span>
+    </button>
+  );
+}
+
+// Puts back a piece deleted earlier (title, spine title, logo, divider).
+function RestoreButton({ label, onClick, tid }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={tid}
+      className="w-full inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors"
+    >
+      <Undo2 size={14} />
+      <span className="text-xs font-semibold tracking-widest uppercase">{label}</span>
     </button>
   );
 }
