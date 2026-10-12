@@ -79,7 +79,7 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
 }
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten }) {
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten, frameRotation, onFrameRotationChange }) {
   const { t } = useTranslation();
   const [brightenOpen, setBrightenOpen] = useState(false);
   return (
@@ -142,6 +142,13 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
             <ChevronUp size={14} />
           </ToolbarButton>
         </>
+      )}
+      {/* The frame's own turn (same as dragging the round handle under it). */}
+      {onFrameRotationChange && (
+        <span className="inline-flex items-center gap-1 px-1" title={t("toolbars.turnFrame")}>
+          <RotateCw size={13} className="shrink-0 opacity-80" />
+          <DegreesInput value={frameRotation || 0} onChange={onFrameRotationChange} tid="frame-turn-input" dark />
+        </span>
       )}
       <ToolbarButton onClick={onDelete} title={t("toolbars.deleteFrame")} tid="frame-delete-btn" danger>
         <Trash2 size={14} />

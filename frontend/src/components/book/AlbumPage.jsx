@@ -10,7 +10,7 @@ import { DraggableItem } from "@/components/book/DraggableItem";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 import { FramedPhoto } from "@/components/book/FramedPhoto";
-import { isCropped, minZoom, pageAspect, wholePhotoFields } from "@/lib/photoFit";
+import { isCropped, minZoom, pageAspect, wholePhotoFields, zoomToFillTurned } from "@/lib/photoFit";
 
 /**
  * AlbumPage renders one printable page with draggable + resizable items.
@@ -190,7 +190,11 @@ export function AlbumPage({
           const focalX = item.focal_x ?? 0.5;
           const focalY = item.focal_y ?? 0.5;
           const rotation = item.rotation || 0;
+          const frameRotation = item.frame_rotation || 0;
           const inCrop = isSel && cropMode;
+          // Turning the photo in its frame zooms in as needed to keep the
+          // frame filled (never zooms out: the person may have zoomed in).
+          const turnPhotoPatch = (r) => ({ rotation: r, scale: Math.max(scale, zoomToFillTurned(frameAspect, r)) });
           const isSwapSource = swapSourceItemId === item.id;
           const isEmpty = !item.photo_id;
           const lowRes = editable && !isEmpty && isLowResolution(item, photoSizes?.get(item.photo_id), pageSize, orientation);
@@ -208,12 +212,29 @@ export function AlbumPage({
                 editable={editable && !inCrop}
                 tid={`page-photo-${item.id}`}
                 onDragStateChange={(d, mode) => handlePhotoDragStateChange(item, d, mode)}
-                // Round handle inside the frame: turns the photo itself.
-                rotation={rotation}
-                onRotate={editable && !isEmpty && onUpdateItem ? (r) => onUpdateItem(item.id, { rotation: r }) : undefined}
-                rotateHandleInside
-                extraStyle={{ overflow: "hidden", outline: isSwapSource ? "2px dashed var(--coral)" : undefined, outlineOffset: isSwapSource ? "-2px" : undefined }}
+                // Two turns, one handle at a time: while editing the photo
+                // ("Modifier"), a handle inside the frame turns the photo in
+                // it (zooming in just enough to keep the frame filled);
+                // otherwise a handle under the frame turns the whole frame.
+                rotation={inCrop ? rotation : frameRotation}
+                onRotate={
+                  !editable || !onUpdateItem
+                    ? undefined
+                    : inCrop
+                      ? (isEmpty ? undefined : (r) => onUpdateItem(item.id, turnPhotoPatch(r)))
+                      : (r) => onUpdateItem(item.id, { frame_rotation: r })
+                }
+                rotateHandleInside={inCrop}
+                rotateHandleBelow
+                turnedFrame={!!frameRotation}
+                extraStyle={{
+                  transform: frameRotation ? `rotate(${frameRotation}deg)` : undefined,
+                  outline: isSwapSource ? "2px dashed var(--coral)" : undefined,
+                  outlineOffset: isSwapSource ? "-2px" : undefined,
+                }}
               >
+                {/* The photo is clipped to its frame; the handles aren't. */}
+                <div className="absolute inset-0 overflow-hidden">
                 {isEmpty ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[color:var(--editor-canvas)] border-2 border-dashed border-[color:var(--ink)]/20 pointer-events-none">
                     <ImagePlus size={22} className="text-[color:var(--muted)]" />
@@ -260,6 +281,7 @@ export function AlbumPage({
                     onPan={(fx, fy) => onUpdateItem && onUpdateItem(item.id, { focal_x: fx, focal_y: fy })}
                   />
                 )}
+                </div>
               </DraggableItem>
               {isSel && editable && !inCrop && !isEmpty && (
                 <PhotoFrameToolbar
@@ -272,6 +294,8 @@ export function AlbumPage({
                   onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
                   onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
+                  frameRotation={frameRotation}
+                  onFrameRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { frame_rotation: r })}
                   brighten={
                     onBrighten && (dark || photoSizes?.get(item.photo_id)?.derived_from)
                       ? {
@@ -299,6 +323,8 @@ export function AlbumPage({
                   onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
                   onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
+                  frameRotation={frameRotation}
+                  onFrameRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { frame_rotation: r })}
                   emptyFrame
                 />
               )}
@@ -311,7 +337,7 @@ export function AlbumPage({
                   minScale={minZoom(frameAspect, photoAspect)}
                   onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
                   rotation={rotation}
-                  onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { rotation: r })}
+                  onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, turnPhotoPatch(r))}
                   onDone={() => onExitCrop && onExitCrop()}
                 />
               )}

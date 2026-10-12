@@ -569,8 +569,9 @@
     "pagesShortTitle_other": "Your album has {{count}} pages instead of the {{target}} you chose."
   },
   "toolbars": {
-    "editPhoto": "Edit photo",
+    "editPhoto": "Edit the photo: crop, zoom, turn",
     "showWholePhoto": "Show the whole photo",
+    "turnFrame": "Turn the frame (or drag the round handle under the photo)",
     "clickToSwap": "Click another photo to swap, or an empty spot on any page to move it there (Esc to cancel)",
     "swapWithAnother": "Swap or move this photo",
     "sendBackward": "Send backward",

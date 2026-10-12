@@ -127,3 +127,16 @@ export function isCropped(item, photo, orientation) {
   if (!aspect || !item.w || !item.h) return false;
   return cutFraction((item.w / item.h) * pageAspect(orientation), aspect) > 0.005;
 }
+
+/**
+ * The zoom a photo turned by `degrees` inside its frame needs so the frame
+ * stays filled (no empty corners): the frame's box must fit inside the
+ * turned photo, which at zoom 1 just covers the frame.
+ */
+export function zoomToFillTurned(frameAspect, degrees) {
+  const a = (Math.abs(degrees || 0) % 180) * (Math.PI / 180);
+  const cos = Math.abs(Math.cos(a));
+  const sin = Math.abs(Math.sin(a));
+  const fa = frameAspect || 1;
+  return cos + Math.max(fa, 1 / fa) * sin;
+}

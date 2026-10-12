@@ -18,8 +18,11 @@ import { RotateCw } from "lucide-react";
  *                  content (rotation = its current angle)
  *   turnedFrame  - the frame itself is turned by `rotation` (cover title):
  *                  resizing then follows its turned sides
- *   rotateHandleInside - the handle sits inside the frame, at its bottom
- *                  (photo frames clip what's outside them)
+ *   rotateHandleInside - the handle sits inside the frame, at its bottom;
+ *                  it then also shows while the frame is locked (photo
+ *                  being edited: the handle turns the photo in its frame)
+ *   rotateHandleBelow - the handle goes on the side facing down (photo
+ *                  frames: their toolbar is above them)
  */
 export function rotationFromDrag(startRotation, startAngle, angle) {
   let r = startRotation + angle - startAngle;
@@ -72,7 +75,7 @@ export function handleSide(rotation, down = false) {
   return best;
 }
 
-export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false }) {
+export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false }) {
   const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
@@ -129,7 +132,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
   }, [editable, item.x, item.y, item.w, item.h, rotation, turnedFrame, onSelect, containerRef, onDragStateChange]);
 
   const onRotatePointerDown = useCallback((e) => {
-    if (!editable) return;
+    if (!onRotate) return;
     e.stopPropagation();
     const box = e.currentTarget.parentElement.getBoundingClientRect();
     const cx = box.left + box.width / 2;
@@ -143,7 +146,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     };
     onDragStateChange && onDragStateChange(true);
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [editable, rotation, onDragStateChange]);
+  }, [onRotate, rotation, onDragStateChange]);
 
   const onPointerMove = useCallback((e) => {
     if (!dragState.current) return;
@@ -177,6 +180,9 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     }
   }, [onDragStateChange]);
 
+  // Inside the frame when asked, or when a "below" handle would fall off
+  // the bottom of the page (the frame's toolbar takes the space above).
+  const handleInside = rotateHandleInside || (rotateHandleBelow && item.y + item.h > 0.92);
   const style = {
     left: `${item.x * 100}%`,
     top: `${item.y * 100}%`,
@@ -213,12 +219,12 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
           title={t("albumPage.resize")}
         />
       )}
-      {editable && selected && onRotate && (
+      {selected && onRotate && (editable || rotateHandleInside) && (
         // Round handle on the side of the frame that faces up on screen,
         // whatever its turn (down when the frame touches the top of the
         // page, where it would be cut off).
         <div
-          className={`absolute z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${rotateHandleInside ? "bottom-2 left-1/2 -translate-x-1/2" : HANDLE_SIDE_CLASS[handleSide(rotation, item.y < 0.08)]}`}
+          className={`absolute z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${handleInside ? "bottom-2 left-1/2 -translate-x-1/2" : HANDLE_SIDE_CLASS[handleSide(rotation, rotateHandleBelow || item.y < 0.08)]}`}
           onPointerDown={onRotatePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
