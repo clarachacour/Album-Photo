@@ -1079,8 +1079,12 @@
       }
     },
     "cover": {
+      "intro": {
+        "title": "Bienvenue ! Voici un petit guide",
+        "body": "En moins d'une minute, ce guide vous montre comment personnaliser la couverture de votre album : le titre, les images, la reliure et le dos. Avancez avec « Suivant », ou passez-le si vous préférez. Vous pourrez le relancer à tout moment avec le bouton « Guide »."
+      },
       "welcome": {
-        "title": "Personnalisez votre couverture",
+        "title": "Votre couverture, à plat",
         "body": "Voici votre couverture à plat, comme elle sera imprimée : le dos à gauche, la reliure au centre et la couverture avant à droite."
       },
       "front": {

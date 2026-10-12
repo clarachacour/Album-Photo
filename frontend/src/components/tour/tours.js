@@ -22,6 +22,7 @@ export const EDITOR_TOUR = [
 ];
 
 export const COVER_TOUR = [
+  { key: "intro" }, // centered: says it's a guide, before showing anything
   { key: "welcome", target: '[data-tour="cover-spread"]' },
   { key: "front", target: '[data-testid="cover-front"]' },
   { key: "spine", target: '[data-tour="cover-spine"]' },

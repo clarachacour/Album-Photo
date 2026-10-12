@@ -1079,8 +1079,12 @@
       }
     },
     "cover": {
+      "intro": {
+        "title": "Welcome! Here's a short guide",
+        "body": "In under a minute, this guide shows you how to make your album's cover yours: the title, the images, the spine and the back. Move on with \"Next\", or skip it if you prefer. You can replay it at any time with the \"Guide\" button."
+      },
       "welcome": {
-        "title": "Make your cover",
+        "title": "Your cover, laid flat",
         "body": "Here is your cover laid flat, as it will be printed: the back cover on the left, the spine in the middle and the front cover on the right."
       },
       "front": {
