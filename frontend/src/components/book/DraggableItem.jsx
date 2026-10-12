@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCw } from "lucide-react";
 
@@ -21,6 +21,9 @@ import { RotateCw } from "lucide-react";
  *   rotateHandleInside - the handle sits inside the frame, at its bottom;
  *                  it then also shows while the frame is locked (photo
  *                  being edited: the handle turns the photo in its frame)
+ *   onDropOutside - (clientX, clientY) => void: a move released outside the
+ *                  page (onto another page): the frame looks faded while
+ *                  the pointer is outside, as a hint it will move there
  *   rotateHandleBelow - the handle goes on the side facing down (photo
  *                  frames: their toolbar is above them)
  */
@@ -75,7 +78,8 @@ export function handleSide(rotation, down = false) {
   return best;
 }
 
-export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false }) {
+export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false, onDropOutside }) {
+  const [outside, setOutside] = useState(false);
   const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
@@ -159,6 +163,14 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     const dx = (e.clientX - ds.startX) / ds.rectW;
     const dy = (e.clientY - ds.startY) / ds.rectH;
     if (ds.mode === "move") {
+      if (onDropOutside) {
+        const r = containerRef?.current?.getBoundingClientRect();
+        const out = !!r && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+        if (out !== ds.outside) {
+          ds.outside = out;
+          setOutside(out);
+        }
+      }
       const nx = Math.max(0, Math.min(1 - item.w, ds.startItemX + dx));
       const ny = Math.max(0, Math.min(1 - item.h, ds.startItemY + dy));
       onChange({ x: nx, y: ny });
@@ -169,16 +181,18 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       const nh = Math.max(minH, Math.min(1 - item.y, ds.startItemH + dy));
       onChange({ w: nw, h: nh });
     }
-  }, [item.w, item.h, item.x, item.y, onChange, minW, minH, onRotate]);
+  }, [item.w, item.h, item.x, item.y, onChange, minW, minH, onRotate, onDropOutside, containerRef]);
 
   const onPointerUp = useCallback((e) => {
     if (dragState.current) {
-      const mode = dragState.current.mode;
+      const { mode, outside: wasOutside } = dragState.current;
       dragState.current = null;
+      setOutside(false);
+      if (mode === "move" && wasOutside && onDropOutside) onDropOutside(e.clientX, e.clientY);
       onDragStateChange && onDragStateChange(false, mode);
       try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
     }
-  }, [onDragStateChange]);
+  }, [onDragStateChange, onDropOutside]);
 
   // Inside the frame when asked, or when a "below" handle would fall off
   // the bottom of the page (the frame's toolbar takes the space above).
@@ -193,6 +207,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     // leave the page scrollable: tap to select, then drag.
     ...(editable && selected ? { touchAction: "none" } : {}),
     ...extraStyle,
+    ...(outside ? { opacity: 0.45, cursor: "copy" } : {}),
   };
   const ring = editable && selected ? "outline outline-2 outline-[color:var(--coral)]" : "";
   return (

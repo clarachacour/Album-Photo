@@ -22,6 +22,7 @@ export function BookRenderer({
   onAddPhotoAt,
   onReplacePhoto,
   onReorderLayer,
+  onMoveItemAcross,
   onBrighten,
   brighteningItemId,
   onApplyLayout,
@@ -128,6 +129,7 @@ export function BookRenderer({
         onAddPhotoAt={(photoId, box) => onAddPhotoAt(i, photoId, box)}
         onReplacePhoto={(itemId, photoId) => onReplacePhoto(i, itemId, photoId)}
         onReorderLayer={(itemId, direction) => onReorderLayer(i, itemId, direction)}
+        onMoveAcross={onMoveItemAcross && ((itemId, cx, cy) => onMoveItemAcross(i, itemId, cx, cy))}
         onBrighten={onBrighten && ((itemId, level) => onBrighten(i, itemId, level))}
         brighteningItemId={brighteningItemId}
         placingPhotoId={placingPhotoId}

@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2 } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
 import { DegreesInput } from "@/components/DegreesInput";
 
@@ -51,7 +51,7 @@ function ToolbarShell({ x, y, w, children, wide }) {
   return (
     <div
       ref={ref}
-      className={`absolute z-40 flex items-center gap-1 bg-[color:var(--ink)] text-[color:var(--paper)] px-1.5 py-1 shadow-lg rounded-sm ${wide ? "flex-wrap max-w-[260px]" : ""}`}
+      className={`absolute z-40 flex items-center gap-1 bg-[color:var(--ink)] text-[color:var(--paper)] px-1.5 py-1 shadow-lg rounded-sm ${wide ? "flex-wrap max-w-[300px]" : ""}`}
       style={{
         left: `${(x + w / 2) * 100}%`,
         top: `${y * 100}%`,
@@ -79,7 +79,7 @@ function ToolbarButton({ onClick, title, tid, danger, children }) {
 }
 
 /** Frame selected (not yet editing): move/resize via the frame itself, plus edit + swap + layer + delete actions. */
-export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten, frameRotation, onFrameRotationChange }) {
+export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBringForward, onSendBackward, onDelete, onShowWhole, emptyFrame, hideSwap, hideReorder, brighten }) {
   const { t } = useTranslation();
   const [brightenOpen, setBrightenOpen] = useState(false);
   return (
@@ -143,13 +143,6 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
           </ToolbarButton>
         </>
       )}
-      {/* The frame's own turn (same as dragging the round handle under it). */}
-      {onFrameRotationChange && (
-        <span className="inline-flex items-center gap-1 px-1" title={t("toolbars.turnFrame")}>
-          <RotateCw size={13} className="shrink-0 opacity-80" />
-          <DegreesInput value={frameRotation || 0} onChange={onFrameRotationChange} tid="frame-turn-input" dark />
-        </span>
-      )}
       <ToolbarButton onClick={onDelete} title={t("toolbars.deleteFrame")} tid="frame-delete-btn" danger>
         <Trash2 size={14} />
       </ToolbarButton>
@@ -157,17 +150,18 @@ export function PhotoFrameToolbar({ x, y, w, onEdit, onSwap, isSwapping, onBring
   );
 }
 
-/** Editing the photo itself: drag inside the frame to pan, sliders for zoom
- * and free rotation (any angle — no 90° steps), check to confirm. The exact
- * rotation value sits directly under the rotation slider, not centered
- * under the whole row. */
-export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, rotation, onRotationChange, onDone }) {
+/** Editing the photo ("Modifier"): drag inside the frame to pan; zoom;
+ * turn the photo in its frame (slider, exact degrees, or the round handle
+ * on the photo); turn the whole frame (slider or exact degrees); check to
+ * confirm. Every rotation lives here, nowhere else. */
+export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, rotation, onRotationChange, frameRotation, onFrameRotationChange, onDone }) {
   const { t } = useTranslation();
+  const label = "text-[10px] uppercase tracking-wider text-white/70 whitespace-nowrap";
   return (
     <ToolbarShell x={x} y={y} w={w} wide>
       <div className="flex items-start gap-2">
-        <div className="grid items-center gap-x-2 gap-y-1.5" style={{ gridTemplateColumns: "14px 80px 14px 80px" }}>
-          <ZoomIn size={14} className="shrink-0" />
+        <div className="grid items-center gap-x-2 gap-y-1.5" style={{ gridTemplateColumns: "auto 84px auto" }}>
+          <span className={label}><ZoomIn size={13} className="inline -mt-0.5" /></span>
           <input
             type="range"
             min={minScale}
@@ -175,10 +169,11 @@ export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, 
             step="0.01"
             value={Math.min(MAX_ZOOM, Math.max(minScale, scale))}
             onChange={(e) => onScaleChange(parseFloat(e.target.value))}
-            className="w-20 accent-[color:var(--coral)]"
+            className="w-[84px] accent-[color:var(--coral)]"
             data-testid="frame-zoom-slider"
           />
-          <RotateCw size={14} className="shrink-0" />
+          <span />
+          <span className={label} title={t("toolbars.turnPhoto")}>{t("toolbars.photo")}</span>
           <input
             type="range"
             min="-180"
@@ -186,15 +181,28 @@ export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, 
             step="1"
             value={rotation}
             onChange={(e) => onRotationChange(parseFloat(e.target.value))}
-            className="w-20 accent-[color:var(--coral)]"
+            className="w-[84px] accent-[color:var(--coral)]"
             data-testid="frame-rotation-slider"
+            title={t("toolbars.turnPhoto")}
           />
-          <div />
-          <div />
-          <div />
-          <div className="justify-self-center">
-            <DegreesInput value={rotation} onChange={onRotationChange} tid="frame-rotation-input" dark />
-          </div>
+          <DegreesInput value={rotation} onChange={onRotationChange} tid="frame-rotation-input" dark />
+          {onFrameRotationChange && (
+            <>
+              <span className={label} title={t("toolbars.turnFrame")}>{t("toolbars.frame")}</span>
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                step="1"
+                value={frameRotation || 0}
+                onChange={(e) => onFrameRotationChange(parseFloat(e.target.value))}
+                className="w-[84px] accent-[color:var(--coral)]"
+                data-testid="frame-turn-slider"
+                title={t("toolbars.turnFrame")}
+              />
+              <DegreesInput value={frameRotation || 0} onChange={onFrameRotationChange} tid="frame-turn-input" dark />
+            </>
+          )}
         </div>
         <ToolbarButton onClick={onDone} title={t("toolbars.done")} tid="frame-edit-done">
           <Check size={14} />

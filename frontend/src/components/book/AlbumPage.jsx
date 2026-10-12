@@ -32,6 +32,7 @@ export function AlbumPage({
   onAddPhotoAt,
   onReplacePhoto,
   onReorderLayer,
+  onMoveAcross, // (itemId, clientX, clientY): an item dragged onto another page
   onBrighten,
   brighteningItemId,
   onApplyLayout,
@@ -211,11 +212,12 @@ export function AlbumPage({
                 containerRef={containerRef}
                 editable={editable && !inCrop}
                 tid={`page-photo-${item.id}`}
+                onDropOutside={onMoveAcross ? (cx, cy) => onMoveAcross(item.id, cx, cy) : undefined}
                 onDragStateChange={(d, mode) => handlePhotoDragStateChange(item, d, mode)}
                 // The round handle only shows while editing the photo
                 // ("Modifier"): it turns the photo in its frame (zooming in
                 // just enough to keep the frame filled). The whole frame is
-                // turned from the degree field of its toolbar.
+                // turned from the same "Modifier" toolbar.
                 rotation={inCrop ? rotation : frameRotation}
                 onRotate={editable && onUpdateItem && inCrop && !isEmpty ? (r) => onUpdateItem(item.id, turnPhotoPatch(r)) : undefined}
                 rotateHandleInside
@@ -287,8 +289,6 @@ export function AlbumPage({
                   onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
                   onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
-                  frameRotation={frameRotation}
-                  onFrameRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { frame_rotation: r })}
                   brighten={
                     onBrighten && (dark || photoSizes?.get(item.photo_id)?.derived_from)
                       ? {
@@ -316,8 +316,6 @@ export function AlbumPage({
                   onBringForward={() => onReorderLayer && onReorderLayer(item.id, "forward")}
                   onSendBackward={() => onReorderLayer && onReorderLayer(item.id, "backward")}
                   onDelete={() => onDeleteItem && onDeleteItem(item.id)}
-                  frameRotation={frameRotation}
-                  onFrameRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { frame_rotation: r })}
                   emptyFrame
                 />
               )}
@@ -331,6 +329,8 @@ export function AlbumPage({
                   onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
                   rotation={rotation}
                   onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, turnPhotoPatch(r))}
+                  frameRotation={frameRotation}
+                  onFrameRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { frame_rotation: r })}
                   onDone={() => onExitCrop && onExitCrop()}
                 />
               )}
@@ -350,6 +350,7 @@ export function AlbumPage({
                 containerRef={containerRef}
                 editable={editable && !inTextEdit}
                 tid={`page-text-${item.id}`}
+                onDropOutside={onMoveAcross ? (cx, cy) => onMoveAcross(item.id, cx, cy) : undefined}
                 onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
                 extraStyle={{
                   color: item.color || "#1A1A17",

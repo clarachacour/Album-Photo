@@ -493,7 +493,20 @@ export default function AlbumEditor() {
       return { ...prev, pages: newPages };
     });
     setSelected(null);
-    toast.success(t("albumEditor.photoMoved"));
+    toast.success(t(tgtPageIdx === srcPageIdx ? "albumEditor.photoMoved" : "albumEditor.itemMoved"));
+  };
+
+  // An item (photo or text) dragged and released over another page: it
+  // moves there, centered where it was dropped.
+  const moveItemAcross = (srcPageIdx, itemId, clientX, clientY) => {
+    const pageEl = document
+      .elementsFromPoint(clientX, clientY)
+      .find((el) => el.hasAttribute("data-tour-page"));
+    if (!pageEl) return;
+    const tgtPageIdx = Number(pageEl.getAttribute("data-tour-page"));
+    if (!Number.isInteger(tgtPageIdx) || tgtPageIdx === srcPageIdx) return;
+    const r = pageEl.getBoundingClientRect();
+    moveItemToPage(srcPageIdx, itemId, tgtPageIdx, { x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height });
   };
 
   // (pageIdx, itemId): a photo or an empty frame clicked; (pageIdx, null,
@@ -1025,6 +1038,7 @@ export default function AlbumEditor() {
             onAddPhotoAt={addPhotoAt}
             onReplacePhoto={replacePhotoInItem}
             onReorderLayer={reorderItemLayer}
+            onMoveItemAcross={moveItemAcross}
             onBrighten={brightenPhoto}
             brighteningItemId={brighteningItemId}
             onApplyLayout={applyLayoutToPage}
