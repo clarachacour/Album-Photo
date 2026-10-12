@@ -89,6 +89,10 @@ export default function CreateAlbum() {
   const resumeAlbumId = params.get("albumId");
   const chosenTemplate = findTemplate(params.get("template"));
   const [step, setStep] = useState(0);
+  // Each step (cover, format, photos) starts at the top, like a new page.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
   const startFormat = templateFormat(params.get("template"));
   const [size, setSize] = useState(startFormat?.size || "A4");
   const [orientation, setOrientation] = useState(startFormat?.orientation || "portrait");

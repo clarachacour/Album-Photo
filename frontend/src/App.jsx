@@ -48,6 +48,12 @@ function AppChrome({ children }) {
     showPendingFlash();
   }, []);
   const isPrintRoute = location.pathname.startsWith("/print/");
+  // A new page opens at its top (the browser keeps the previous page's
+  // scroll otherwise, landing halfway down); a link to a section (#…) is
+  // left to scroll to it.
+  useEffect(() => {
+    if (!location.hash) window.scrollTo(0, 0);
+  }, [location.pathname, location.hash]);
   useEffect(() => {
     if (!isPrintRoute) leaveAppBrowser();
   }, [isPrintRoute]);
