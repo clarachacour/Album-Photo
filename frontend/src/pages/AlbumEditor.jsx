@@ -898,7 +898,7 @@ export default function AlbumEditor() {
           )}
           {album.unplaced_added > 0 && unplacedDismissedAt !== album.unplaced_added_at && !album.was_ordered && (
             <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" data-testid="editor-unplaced">
-              <span>{t("albumEditor.unplacedPhotos", { count: album.unplaced_added, pages: album.target_pages })}</span>
+              <span>{t("albumEditor.unplacedPhotos", { count: album.unplaced_added, pages: (album.pages || []).length })}</span>
               <span className="flex gap-4">
                 <button
                   type="button"
@@ -1171,7 +1171,7 @@ export default function AlbumEditor() {
             <div className="eyebrow mb-3 text-center">{t("albumEditor.addMorePhotos")}</div>
             {album.target_pages && (album.pages || []).length >= album.target_pages && (
               <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4 text-center" data-testid="editor-album-full">
-                {t("albumEditor.albumFull", { pages: album.target_pages })}
+                {t("albumEditor.albumFull", { pages: (album.pages || []).length })}
               </p>
             )}
             <PhotoUploadMethods
