@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { inAppBrowser } from "@/lib/inAppBrowser";
 import { InAppSignInNotice } from "@/components/OpenInBrowser";
+import { takeAfterLogin } from "@/lib/afterLogin";
 import { Loader2 } from "lucide-react";
 
 const GOOGLE_CLIENT_ID = import.meta.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -59,7 +60,7 @@ export default function SocialAuthButtons() {
             try {
               await loginWithGoogle(response.credential);
               toast.success(t("auth.welcomeToast"));
-              nav("/");
+              nav(takeAfterLogin("/"));
             } catch (err) {
               toast.error(err?.response?.data?.detail || t("auth.social.googleFailed"));
             } finally {
@@ -105,7 +106,7 @@ export default function SocialAuthButtons() {
       if (!idToken) throw new Error("No id_token returned");
       await loginWithApple(idToken, fullName);
       toast.success(t("auth.welcomeToast"));
-      nav("/");
+      nav(takeAfterLogin("/"));
     } catch (err) {
       if (err?.error === "popup_closed_by_user") return;
       toast.error(err?.response?.data?.detail || t("auth.social.appleFailed"));

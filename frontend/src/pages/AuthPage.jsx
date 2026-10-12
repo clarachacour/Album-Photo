@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { apiErrorMessage } from "@/lib/apiError";
 import { reportError } from "@/lib/monitoring";
+import { takeAfterLogin } from "@/lib/afterLogin";
 
 export default function AuthPage() {
   usePageMeta("auth");
@@ -53,7 +54,7 @@ export default function AuthPage() {
       }
       // Home page once signed in — except an email address still to be
       // confirmed, which goes to the "check your inbox" screen (via /dashboard).
-      nav(signedIn?.email_verified === false ? "/dashboard" : "/");
+      nav(signedIn?.email_verified === false ? "/dashboard" : takeAfterLogin("/"));
     } catch (err) {
       toast.error(apiErrorMessage(err, t));
       // Server answers are in its own logs; anything else only shows up here.

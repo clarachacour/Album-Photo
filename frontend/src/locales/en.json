@@ -40,7 +40,7 @@
         },
         {
           "title": "We print and deliver",
-          "body": "Made in ~5 days, delivered in 2 to 3 days to your door in Lebanon."
+          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon."
         }
       ]
     },
@@ -78,7 +78,9 @@
         "couple": "Couple",
         "family": "Family",
         "celebrations": "Celebrations"
-      }
+      },
+      "useThis": "Use this template",
+      "useTemplate": "Create an album with the {{name}} template"
     },
     "footer": {
       "title_line1": "Your best memories",
@@ -682,7 +684,7 @@
         },
         {
           "heading": "13. Delivery",
-          "body": "Delivery is currently available in Lebanon only.\n\nProducts are delivered to the address given by the customer when ordering.\n\nThe customer is responsible for the accuracy and completeness of the delivery information they provide.\n\nThe available delivery areas and the corresponding costs are shown on the Site before the order is confirmed.\n\nThe estimated manufacturing and delivery time is shown to the customer before or when ordering. As a guide, manufacturing takes about 5 days and delivery 2 to 3 days.\n\nThe announced times may be affected by circumstances beyond the Company's control. In the event of a significant delay, the customer's rights are those provided by the applicable mandatory provisions of Lebanese law."
+          "body": "Delivery is currently available in Lebanon only.\n\nProducts are delivered to the address given by the customer when ordering.\n\nThe customer is responsible for the accuracy and completeness of the delivery information they provide.\n\nThe available delivery areas and the corresponding costs are shown on the Site before the order is confirmed.\n\nThe estimated manufacturing and delivery time is shown to the customer before or when ordering. As a guide, manufacturing takes about 3 days and delivery 2 to 3 days.\n\nThe announced times may be affected by circumstances beyond the Company's control. In the event of a significant delay, the customer's rights are those provided by the applicable mandatory provisions of Lebanese law."
         },
         {
           "heading": "13 bis. Digital album (PDF)",
@@ -813,7 +815,7 @@
         },
         {
           "heading": "2. Production and delivery time",
-          "body": "Producing your album takes about 5 days once your order is placed, followed by 2 to 3 days for delivery. You can follow your order's status from your Orders page."
+          "body": "Producing your album takes about 3 days once your order is placed, followed by 2 to 3 days for delivery. You can follow your order's status from your Orders page."
         },
         {
           "heading": "3. Delivery cost",
@@ -970,7 +972,7 @@
     "placeOrder": "Place order",
     "noPayment": "Online payment isn't set up yet — placing an order saves it and starts preparing your album. We'll follow up to complete payment.",
     "shipping": "Delivery (Lebanon)",
-    "deliveryTime": "Production: 5 days · Delivery: 2–3 days",
+    "deliveryTime": "Production: 3 days · Delivery: 2–3 days",
     "acceptTerms": "I have read and accept the <terms>Terms of sale</terms>.",
     "mustAcceptTerms": "Please accept the terms of sale to place your order.",
     "lowResolution_one": "{{count}} photo in your album may print blurry (marked ⚠ in the editor). If you keep it, you accept that risk.",

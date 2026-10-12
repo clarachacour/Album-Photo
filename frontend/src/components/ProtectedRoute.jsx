@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
+import { rememberAfterLogin } from "@/lib/afterLogin";
 
 export default function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -14,7 +15,11 @@ export default function ProtectedRoute({ children }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    // Back here once signed in (e.g. a template chosen on the home page).
+    rememberAfterLogin(location.pathname + location.search);
+    return <Navigate to="/auth" replace />;
+  }
   // A classic (email/password) signup that hasn't clicked its
   // verification link yet — email_verified is explicitly false only for
   // that case (see AuthProvider/backend/app/routers/auth.py's signup); every Google/Apple

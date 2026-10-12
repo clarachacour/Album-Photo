@@ -40,7 +40,7 @@
         },
         {
           "title": "On imprime et on livre",
-          "body": "Fabrication en ~5 jours, livraison en 2 à 3 jours chez vous au Liban."
+          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban."
         }
       ]
     },
@@ -78,7 +78,9 @@
         "couple": "Couple",
         "family": "Famille",
         "celebrations": "Célébrations"
-      }
+      },
+      "useThis": "Utiliser ce modèle",
+      "useTemplate": "Créer un album avec le modèle {{name}}"
     },
     "footer": {
       "title_line1": "Vos plus beaux souvenirs",
@@ -682,7 +684,7 @@
         },
         {
           "heading": "13. Livraison",
-          "body": "La livraison est actuellement assurée uniquement au Liban.\n\nLes produits sont livrés à l'adresse indiquée par le client lors de sa commande.\n\nLe client est responsable de l'exactitude et de l'exhaustivité des informations de livraison qu'il fournit.\n\nLes zones de livraison disponibles et les frais correspondants sont indiqués sur le Site avant la validation de la commande.\n\nLe délai estimatif de fabrication et de livraison est indiqué au client avant ou au moment de la commande. À titre indicatif, la fabrication prend environ 5 jours et la livraison 2 à 3 jours.\n\nLes délais annoncés peuvent être affectés par des circonstances indépendantes de la volonté de la Société. En cas de retard significatif, les droits du client sont ceux prévus par les dispositions impératives du droit libanais applicable."
+          "body": "La livraison est actuellement assurée uniquement au Liban.\n\nLes produits sont livrés à l'adresse indiquée par le client lors de sa commande.\n\nLe client est responsable de l'exactitude et de l'exhaustivité des informations de livraison qu'il fournit.\n\nLes zones de livraison disponibles et les frais correspondants sont indiqués sur le Site avant la validation de la commande.\n\nLe délai estimatif de fabrication et de livraison est indiqué au client avant ou au moment de la commande. À titre indicatif, la fabrication prend environ 3 jours et la livraison 2 à 3 jours.\n\nLes délais annoncés peuvent être affectés par des circonstances indépendantes de la volonté de la Société. En cas de retard significatif, les droits du client sont ceux prévus par les dispositions impératives du droit libanais applicable."
         },
         {
           "heading": "13 bis. Album numérique (PDF)",
@@ -813,7 +815,7 @@
         },
         {
           "heading": "2. Délai de production et de livraison",
-          "body": "La fabrication de votre album prend environ 5 jours une fois la commande passée, puis la livraison 2 à 3 jours. Vous pouvez suivre le statut de votre commande depuis votre page Commandes."
+          "body": "La fabrication de votre album prend environ 3 jours une fois la commande passée, puis la livraison 2 à 3 jours. Vous pouvez suivre le statut de votre commande depuis votre page Commandes."
         },
         {
           "heading": "3. Frais de livraison",
@@ -970,7 +972,7 @@
     "placeOrder": "Commander",
     "noPayment": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous commençons à préparer votre album. Nous vous recontacterons pour le paiement.",
     "shipping": "Livraison (Liban)",
-    "deliveryTime": "Fabrication : 5 jours · Livraison : 2 à 3 jours",
+    "deliveryTime": "Fabrication : 3 jours · Livraison : 2 à 3 jours",
     "acceptTerms": "J'ai lu et j'accepte les <terms>Conditions générales de vente</terms>.",
     "mustAcceptTerms": "Veuillez accepter les conditions générales de vente pour commander.",
     "lowResolution_one": "{{count}} photo de votre album risque d'être floue à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
