@@ -1,9 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import { coverItemImageSrc } from "@/lib/api";
 import { DEFAULT_COVER } from "@/lib/coverTemplates";
 import { deletePatch } from "@/lib/coverEditing";
+import { DegreesInput } from "@/components/DegreesInput";
 import {
   Bold,
   Type,
@@ -225,6 +226,7 @@ export function CoverEditorPanel({
             <DegreesInput
               value={cover.title_rotation || 0}
               onChange={(deg) => updateCover({ title_rotation: deg })}
+              tid="cover-title-rotation-input"
             />
           </SliderRow>
           <div className="grid grid-cols-2 gap-2">
@@ -531,41 +533,6 @@ function SliderRow({ label, children }) {
       <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">{label}</span>
       {children}
     </div>
-  );
-}
-
-// The exact angle, typed in (-180 to 180); applied as you type.
-export function clampDegrees(text) {
-  const n = Math.round(Number(String(text).replace(",", ".")));
-  if (!Number.isFinite(n)) return null;
-  return Math.max(-180, Math.min(180, n));
-}
-
-function DegreesInput({ value, onChange }) {
-  const { t } = useTranslation();
-  const [draft, setDraft] = useState(null); // what's being typed ("-", "" …)
-  return (
-    <label className="flex items-center border border-[color:var(--ink)]/20 bg-white focus-within:border-[color:var(--ink)]">
-      <input
-        type="text"
-        inputMode="numeric"
-        data-testid="cover-title-rotation-input"
-        aria-label={t("coverPanel.rotation")}
-        value={draft ?? String(Math.round(value))}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          const deg = clampDegrees(e.target.value);
-          if (deg !== null && e.target.value.trim() !== "" && e.target.value.trim() !== "-") onChange(deg);
-        }}
-        onBlur={() => setDraft(null)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          e.stopPropagation();
-        }}
-        className="w-10 py-1 pl-1.5 text-xs font-mono text-right bg-transparent focus:outline-none"
-      />
-      <span className="pr-1.5 text-xs font-mono text-[color:var(--muted)]">°</span>
-    </label>
   );
 }
 

@@ -12,7 +12,7 @@ import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
-import { ChevronLeft, ChevronRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus } from "lucide-react";
 import { BookRenderer } from "@/components/editor/BookRenderer";
 import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
 import { RepackPagesForm } from "@/components/editor/RepackPagesForm";
@@ -450,7 +450,8 @@ export default function AlbumEditor() {
       }
       return { ...prev, pages: newPages };
     });
-    toast.success(t("albumEditor.picturesSwapped"));
+    const target = album?.pages?.[tgtPageIdx]?.items.find((it) => it.id === tgtItemId);
+    toast.success(t(target?.photo_id ? "albumEditor.picturesSwapped" : "albumEditor.photoMoved"));
   };
 
   // Global so a swap can be started on one page and completed on another —
@@ -463,8 +464,43 @@ export default function AlbumEditor() {
   const [spacingMarks, setSpacingMarks] = useState(null); // { pageIdx, marks: [{ axis, from, to, at }] } | null
   const [placingPhotoId, setPlacingPhotoId] = useState(null); // gallery photo armed for click-to-place
 
-  const handleSwapAction = (pageIdx, itemId) => {
+  // Escape cancels a swap/move in progress.
+  useEffect(() => {
+    if (!swapSource) return;
+    const onKey = (e) => e.key === "Escape" && setSwapSource(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [swapSource]);
+
+  // The photo marked for a swap goes, frame and all, to a free spot of a
+  // page (centered on `point`, kept inside the page): moving a photo to
+  // another page, or elsewhere on its own.
+  const moveItemToPage = (srcPageIdx, itemId, tgtPageIdx, point) => {
+    setAlbum((prev) => {
+      if (!prev) return prev;
+      const item = prev.pages[srcPageIdx]?.items.find((it) => it.id === itemId);
+      if (!item || !prev.pages[tgtPageIdx]) return prev;
+      const clamp = (v, max) => Math.min(Math.max(v, 0), Math.max(0, max));
+      const moved = {
+        ...item,
+        x: clamp(point.x - item.w / 2, 1 - item.w),
+        y: clamp(point.y - item.h / 2, 1 - item.h),
+        slot: undefined,
+      };
+      const newPages = [...prev.pages];
+      newPages[srcPageIdx] = { ...newPages[srcPageIdx], items: newPages[srcPageIdx].items.filter((it) => it.id !== itemId) };
+      newPages[tgtPageIdx] = { ...newPages[tgtPageIdx], items: [...newPages[tgtPageIdx].items, moved] };
+      return { ...prev, pages: newPages };
+    });
+    setSelected(null);
+    toast.success(t("albumEditor.photoMoved"));
+  };
+
+  // (pageIdx, itemId): a photo or an empty frame clicked; (pageIdx, null,
+  // point): an empty spot of a page clicked; (…, null) alone: cancel.
+  const handleSwapAction = (pageIdx, itemId, point) => {
     if (itemId === null) {
+      if (swapSource && point) moveItemToPage(swapSource.pageIdx, swapSource.itemId, pageIdx, point);
       setSwapSource(null);
       return;
     }
@@ -864,6 +900,19 @@ export default function AlbumEditor() {
               </span>
             </div>
           )}
+          {swapSource && (
+            <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[color:var(--ink)] bg-[color:var(--coral)]/10 border border-[color:var(--coral)]/40 rounded px-3 py-2" role="status" data-testid="editor-swap-banner">
+              <span>{t("albumEditor.swapBanner")}</span>
+              <button
+                type="button"
+                onClick={() => setSwapSource(null)}
+                className="text-xs font-semibold tracking-widest uppercase underline underline-offset-4"
+                data-testid="editor-swap-cancel"
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          )}
           {!saver.online && (
             <div className="w-full max-w-2xl mb-4 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2" role="status" data-testid="editor-offline">
               {t("albumEditor.offlineBanner")}
@@ -1007,7 +1056,16 @@ export default function AlbumEditor() {
           />
           </div>
 
-          <div className="flex items-center gap-4 mt-4" data-tour="page-nav">
+          <div className="flex items-center gap-2 sm:gap-4 mt-4" data-tour="page-nav">
+            <button
+              data-testid="editor-first"
+              onClick={() => bookRef.current?.goTo(0)}
+              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              aria-label={t("albumEditor.firstPage")}
+              title={t("albumEditor.firstPage")}
+            >
+              <ChevronsLeft size={16} />
+            </button>
             <button
               data-testid={TID.editorPrev}
               onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
@@ -1024,6 +1082,15 @@ export default function AlbumEditor() {
               aria-label={t("albumEditor.nextPage")}
             >
               <ChevronRight size={16} />
+            </button>
+            <button
+              data-testid="editor-last"
+              onClick={() => bookRef.current?.goTo(Number.MAX_SAFE_INTEGER)}
+              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              aria-label={t("albumEditor.lastPage")}
+              title={t("albumEditor.lastPage")}
+            >
+              <ChevronsRight size={16} />
             </button>
           </div>
 

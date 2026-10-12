@@ -126,7 +126,14 @@ export function AlbumPage({
       const target = itemsRef.current.find(
         (it) => it.type === "photo" && it.id !== swapSourceItemId && nx >= it.x && nx <= it.x + it.w && ny >= it.y && ny <= it.y + it.h
       );
-      onSwapAction && onSwapAction(pageIndex, target ? target.id : null);
+      // A photo or an empty frame: swap with it (the photo just moves into
+      // an empty frame). Anywhere else on the page: the photo moves there.
+      // Clicking the marked photo itself cancels.
+      const inside = (it) => nx >= it.x && nx <= it.x + it.w && ny >= it.y && ny <= it.y + it.h;
+      const source = itemsRef.current.find((it) => it.id === swapSourceItemId);
+      if (target) onSwapAction && onSwapAction(pageIndex, target.id);
+      else if (source && inside(source)) onSwapAction && onSwapAction(pageIndex, null);
+      else onSwapAction && onSwapAction(pageIndex, null, { x: nx, y: ny });
       return;
     }
     if (placingPhotoId) {
@@ -201,6 +208,10 @@ export function AlbumPage({
                 editable={editable && !inCrop}
                 tid={`page-photo-${item.id}`}
                 onDragStateChange={(d, mode) => handlePhotoDragStateChange(item, d, mode)}
+                // Round handle inside the frame: turns the photo itself.
+                rotation={rotation}
+                onRotate={editable && !isEmpty && onUpdateItem ? (r) => onUpdateItem(item.id, { rotation: r }) : undefined}
+                rotateHandleInside
                 extraStyle={{ overflow: "hidden", outline: isSwapSource ? "2px dashed var(--coral)" : undefined, outlineOffset: isSwapSource ? "-2px" : undefined }}
               >
                 {isEmpty ? (

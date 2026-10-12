@@ -16,6 +16,10 @@ import { RotateCw } from "lucide-react";
  *   editable     - bool
  *   onRotate     - (degrees) => void: shows a round handle that turns the
  *                  content (rotation = its current angle)
+ *   turnedFrame  - the frame itself is turned by `rotation` (cover title):
+ *                  resizing then follows its turned sides
+ *   rotateHandleInside - the handle sits inside the frame, at its bottom
+ *                  (photo frames clip what's outside them)
  */
 export function rotationFromDrag(startRotation, startAngle, angle) {
   let r = startRotation + angle - startAngle;
@@ -68,7 +72,7 @@ export function handleSide(rotation, down = false) {
   return best;
 }
 
-export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate }) {
+export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false }) {
   const { t } = useTranslation();
   const dragState = useRef(null);
   const lastClickAtRef = useRef(0);
@@ -116,13 +120,13 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       startItemY: item.y,
       startItemW: item.w,
       startItemH: item.h,
-      rotation: rotation || 0,
+      rotation: turnedFrame ? rotation || 0 : 0,
       rectW: rect.width,
       rectH: rect.height,
     };
     onDragStateChange && onDragStateChange(true);
     e.currentTarget.setPointerCapture(e.pointerId);
-  }, [editable, item.x, item.y, item.w, item.h, rotation, onSelect, containerRef, onDragStateChange]);
+  }, [editable, item.x, item.y, item.w, item.h, rotation, turnedFrame, onSelect, containerRef, onDragStateChange]);
 
   const onRotatePointerDown = useCallback((e) => {
     if (!editable) return;
@@ -214,7 +218,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
         // whatever its turn (down when the frame touches the top of the
         // page, where it would be cut off).
         <div
-          className={`absolute z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${HANDLE_SIDE_CLASS[handleSide(rotation, item.y < 0.08)]}`}
+          className={`absolute z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${rotateHandleInside ? "bottom-2 left-1/2 -translate-x-1/2" : HANDLE_SIDE_CLASS[handleSide(rotation, item.y < 0.08)]}`}
           onPointerDown={onRotatePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

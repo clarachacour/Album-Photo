@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Pencil, Trash2, Check, ZoomIn, Bold, Palette, RotateCw, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2 } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
+import { DegreesInput } from "@/components/DegreesInput";
 
 const TOOLBAR_FONTS = [
   { label: "Manrope", value: "'Manrope', sans-serif" },
@@ -184,19 +185,9 @@ export function PhotoEditToolbar({ x, y, w, scale, minScale = 1, onScaleChange, 
           <div />
           <div />
           <div />
-          <input
-            type="number"
-            min="-180"
-            max="180"
-            step="1"
-            value={Math.round(rotation)}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              if (!Number.isNaN(v)) onRotationChange(Math.max(-180, Math.min(180, v)));
-            }}
-            className="w-14 justify-self-center text-center text-[10px] bg-white/10 border border-white/20 rounded-sm tabular-nums"
-            data-testid="frame-rotation-input"
-          />
+          <div className="justify-self-center">
+            <DegreesInput value={rotation} onChange={onRotationChange} tid="frame-rotation-input" dark />
+          </div>
         </div>
         <ToolbarButton onClick={onDone} title={t("toolbars.done")} tid="frame-edit-done">
           <Check size={14} />

@@ -201,6 +201,7 @@ export function CoverFrontPage({
           item={{ id: "cover-title", x: titleX, y: titleY, w: titleW, h: visualTitleH }}
           onChange={(patch) => onUpdateTitle && onUpdateTitle(patch)}
           rotation={titleRotation}
+          turnedFrame
           extraStyle={titleBoxTransform ? { transform: titleBoxTransform } : undefined}
           onRotate={onUpdateTitle ? (r) => onUpdateTitle({ rotation: r }) : undefined}
           onSelect={() => onSelectTitle && onSelectTitle()}
