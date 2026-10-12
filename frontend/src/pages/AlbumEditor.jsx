@@ -12,6 +12,7 @@ import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
+import { useDeselectOutside } from "@/lib/useDeselectOutside";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus } from "lucide-react";
 import { BookRenderer } from "@/components/editor/BookRenderer";
 import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
@@ -463,6 +464,15 @@ export default function AlbumEditor() {
   // While an item is moved: the equal spaces to mark (see spacingGuides).
   const [spacingMarks, setSpacingMarks] = useState(null); // { pageIdx, marks: [{ axis, from, to, at }] } | null
   const [placingPhotoId, setPlacingPhotoId] = useState(null); // gallery photo armed for click-to-place
+
+  // A click anywhere outside the book and its tools (or Escape) clears
+  // the selection — page item or cover piece.
+  const clearSelection = useCallback(() => {
+    setSelected(null);
+    setCropMode(false);
+    setCoverSel(null);
+  }, []);
+  useDeselectOutside(!!(selected || coverSel), clearSelection);
 
   // Escape cancels a swap/move in progress.
   useEffect(() => {

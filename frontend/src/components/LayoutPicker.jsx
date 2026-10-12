@@ -38,7 +38,7 @@ export default function LayoutPicker({ onChoose, onClose, orientation = "portrai
   // Rendered on <body>: inside the book, the page-turn 3D transform made
   // "fixed" relative to the book, and the menu was cut off under the header.
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={onClose} data-keep-selection>
       <div
         className="bg-[color:var(--paper)] max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

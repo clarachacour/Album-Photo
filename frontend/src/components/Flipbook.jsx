@@ -93,7 +93,7 @@ const CustomFlipbook = React.forwardRef(function CustomFlipbook({ pages, orienta
             centered inside it at its own natural (half-width) proportions,
             so there's never a resize between views (which was causing the
             page-flip animation to visibly stretch/distort mid-turn). */}
-        <div className="relative" style={sizeStyle(orientation)}>
+        <div className="relative" style={sizeStyle(orientation)} data-book-sheet>
           {soloMode ? (
             <div className="absolute inset-0 flex justify-center">
               <div className="relative h-full book-shadow bg-[color:var(--paper)] overflow-visible" style={{ width: "50%" }}>

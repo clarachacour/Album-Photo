@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -19,6 +19,7 @@ import { ArrowRight, ArrowLeft, Loader2, Sparkles, Undo2, Redo2 } from "lucide-r
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
 import { COVER_TOUR } from "@/components/tour/tours";
+import { useDeselectOutside } from "@/lib/useDeselectOutside";
 
 function defaultCoverPayload(chosenTemplate) {
   const tplCover = chosenTemplate?.cover || {};
@@ -125,6 +126,11 @@ export default function CreateAlbum() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeAlbumId]);
+
+  // A click anywhere outside the cover and its panel (or Escape) clears
+  // the selection.
+  const clearCoverSel = useCallback(() => setCoverSel(null), []);
+  useDeselectOutside(step === 1 && !!coverSel, clearCoverSel);
 
   const template = getTemplate();
   const { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
