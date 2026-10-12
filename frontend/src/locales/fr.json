@@ -571,7 +571,7 @@
   "toolbars": {
     "editPhoto": "Modifier la photo : recadrer, zoomer, tourner",
     "showWholePhoto": "Afficher la photo entière",
-    "turnFrame": "Tourner le cadre (ou faites glisser la poignée ronde sous la photo)",
+    "turnFrame": "Tourner le cadre (angle en degrés)",
     "clickToSwap": "Cliquez sur une autre photo pour l'échanger, ou sur un endroit vide d'une page pour l'y déplacer (Échap pour annuler)",
     "swapWithAnother": "Échanger ou déplacer la photo",
     "sendBackward": "Envoyer vers l'arrière",

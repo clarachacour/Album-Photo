@@ -212,20 +212,13 @@ export function AlbumPage({
                 editable={editable && !inCrop}
                 tid={`page-photo-${item.id}`}
                 onDragStateChange={(d, mode) => handlePhotoDragStateChange(item, d, mode)}
-                // Two turns, one handle at a time: while editing the photo
-                // ("Modifier"), a handle inside the frame turns the photo in
-                // it (zooming in just enough to keep the frame filled);
-                // otherwise a handle under the frame turns the whole frame.
+                // The round handle only shows while editing the photo
+                // ("Modifier"): it turns the photo in its frame (zooming in
+                // just enough to keep the frame filled). The whole frame is
+                // turned from the degree field of its toolbar.
                 rotation={inCrop ? rotation : frameRotation}
-                onRotate={
-                  !editable || !onUpdateItem
-                    ? undefined
-                    : inCrop
-                      ? (isEmpty ? undefined : (r) => onUpdateItem(item.id, turnPhotoPatch(r)))
-                      : (r) => onUpdateItem(item.id, { frame_rotation: r })
-                }
-                rotateHandleInside={inCrop}
-                rotateHandleBelow
+                onRotate={editable && onUpdateItem && inCrop && !isEmpty ? (r) => onUpdateItem(item.id, turnPhotoPatch(r)) : undefined}
+                rotateHandleInside
                 turnedFrame={!!frameRotation}
                 extraStyle={{
                   transform: frameRotation ? `rotate(${frameRotation}deg)` : undefined,
