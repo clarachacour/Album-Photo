@@ -17,7 +17,7 @@ from typing import List
 
 from app.core.executors import run_blocking
 from app.db import db
-from app.services.curation import curate_photos
+from app.services.curation import PHOTOS_PER_PAGE, curate_photos, spread_to_capacity
 from app.services.layout import LAYOUT_PATTERN, deterministic_layout, make_title_page
 from app.services.tasks import enqueue_album_layout, pdf_tasks_enabled
 
@@ -139,6 +139,18 @@ async def run_ai_processing(album_id: str, user_id: str) -> bool:
     return True
 
 
+async def _spread(selected: List[dict], capacity: int, curation_stats: dict) -> List[dict]:
+    """More photos than room: the most repetitive ones are left out (see
+    spread_to_capacity) instead of the last ones. They stay in the album's
+    photos, unchecked, to be placed by hand."""
+    kept, dropped = spread_to_capacity(selected, capacity)
+    if dropped:
+        await db.photos.update_many({"id": {"$in": [p["id"] for p in dropped]}}, {"$set": {"is_selected": False}})
+        curation_stats["thinned_for_space"] = len(dropped)
+        curation_stats["selected"] = len(kept)
+    return kept
+
+
 async def _full_layout(album_id: str):
     album = await db.albums.find_one({"id": album_id}, {"_id": 0})
     existing_pages = (album.get("pages") or []) if album else []
@@ -153,6 +165,7 @@ async def _full_layout(album_id: str):
     selected, curation_stats = await curate_photos(photos)
     orientation = album.get("orientation", "portrait") if album else "portrait"
     target_pages = album.get("target_pages", 50) if album else 50
+    selected = await _spread(selected, max(0, target_pages - 1) * PHOTOS_PER_PAGE, curation_stats)
     pages = [title_page] + deterministic_layout(selected, orientation, content_pages_budget=max(0, target_pages - 1))
     pages, fell_short = await trim_pages_to_target(pages, target_pages)
 
@@ -323,6 +336,8 @@ async def _append_pages(album_id: str, new_photo_ids: List[str]):
         to_place = [p for p in newly_selected if p["id"] not in already_placed]
         orientation = album.get("orientation", "portrait")
         target_pages = album.get("target_pages", 50)
+        free_pages = max(0, target_pages - 1 - max(0, len(existing_pages) - 1))
+        to_place = await _spread(to_place, free_pages * PHOTOS_PER_PAGE, curation_stats)
         start_idx = len(existing_pages) % len(LAYOUT_PATTERN)
         new_pages = deterministic_layout(to_place, orientation, pattern_start_idx=start_idx, content_pages_budget=max(0, target_pages - 1 - max(0, len(existing_pages) - 1)))
         combined_pages, fell_short = await trim_pages_to_target(existing_pages + new_pages, target_pages)

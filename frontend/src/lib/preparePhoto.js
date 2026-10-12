@@ -13,7 +13,11 @@
  *   On a phone's slow upload, this halves the time it takes.
  * - The EXIF data (date taken, GPS position — used to put the album in
  *   chronological order) is copied over from the original. The rotation is
- *   applied to the pixels, so the EXIF orientation is reset to "normal".
+ *   applied to the pixels, so the EXIF orientation is reset to "normal" —
+ *   but only when it's certain the browser did turn the pixels: some (older
+ *   Safari on iPhone/iPad) decode without the rotation, which saved those
+ *   photos sideways or upside down. A photo whose rotation can't be checked
+ *   (a half turn, a mirror) is sent as is: the server turns it.
  * - The lighter version is used only if it's at least 10 % smaller; if
  *   anything goes wrong (a browser that can't decode it, not enough
  *   memory), the original is sent.
@@ -74,6 +78,55 @@ export function insertExifSegment(jpeg, segment) {
   return out;
 }
 
+/** The orientation tag (1-8) of an EXIF segment (from findExifSegment); 1 when absent. */
+export function readOrientation(segment) {
+  try {
+    const tiff = 10;
+    const little = segment[tiff] === 0x49;
+    const view = new DataView(segment.buffer, segment.byteOffset, segment.byteLength);
+    const u16 = (at) => view.getUint16(at, little);
+    const ifd0 = tiff + view.getUint32(tiff + 4, little);
+    if (ifd0 + 2 > segment.length) return 1;
+    const entries = u16(ifd0);
+    for (let n = 0; n < entries; n++) {
+      const entry = ifd0 + 2 + n * 12;
+      if (entry + 12 > segment.length) break;
+      if (u16(entry) === 0x0112) return u16(entry + 8) || 1;
+    }
+  } catch {
+    /* unreadable: treated as normal */
+  }
+  return 1;
+}
+
+/** The stored (unrotated) pixel size of a JPEG, from its frame header; null if not found. */
+export function jpegSize(bytes) {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    const length = (bytes[i + 2] << 8) | bytes[i + 3];
+    // Start-of-frame markers (C0-CF) hold the size, except C4, C8 and CC.
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { height: (bytes[i + 5] << 8) | bytes[i + 6], width: (bytes[i + 7] << 8) | bytes[i + 8] };
+    }
+    if (marker === 0xda || marker === 0xd9) break;
+    i += 2 + length;
+  }
+  return null;
+}
+
+/**
+ * Whether a decoded photo (`decoded`: its width/height) shows the turn its
+ * EXIF orientation asks for. Only quarter turns (5-8) can be checked — the
+ * width and height swap — so anything else that isn't "normal" is unsure.
+ */
+export function rotationApplied(orientation, raw, decoded) {
+  if (orientation === 1) return true;
+  if (orientation < 5 || orientation > 8 || !raw || raw.width === raw.height) return false;
+  return decoded.width === raw.height && decoded.height === raw.width;
+}
+
 /** Width and height that fit within MAX_SIDE and MAX_PIXELS. */
 export function targetSize(width, height) {
   const scale = Math.min(1, MAX_SIDE / Math.max(width, height), Math.sqrt(MAX_PIXELS / (width * height)));
@@ -96,20 +149,26 @@ async function oneAtATime(task) {
 }
 
 async function lighten(file) {
+  // The EXIF segment and the frame size are at the start of the file: no need to read all of it.
+  const head = new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer());
+  const exif = findExifSegment(head);
+  const orientation = exif ? readOrientation(exif) : 1;
+  // A half turn or a mirror can't be checked after decoding: sent as is.
+  if (orientation !== 1 && (orientation < 5 || orientation > 8)) return file;
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   const { width, height } = targetSize(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   try {
+    // The browser didn't turn the pixels as the photo asks: sent as is.
+    if (!rotationApplied(orientation, jpegSize(head), bitmap)) return file;
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(bitmap, 0, 0, width, height);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", QUALITY));
     if (!blob) return file;
     let bytes = new Uint8Array(await blob.arrayBuffer());
-    // The EXIF segment is at the start of the file: no need to read all of it.
-    const exif = findExifSegment(new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer()));
     if (exif) bytes = insertExifSegment(bytes, resetOrientation(exif));
     if (bytes.length >= file.size * MIN_GAIN) return file;
     const name = file.name.replace(/\.[^.]*$/, "") + ".jpg";

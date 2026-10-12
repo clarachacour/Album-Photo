@@ -286,6 +286,62 @@ def cluster_by_location(photos: List[dict], threshold_km: float = 1.5) -> List[L
             clusters.append({"lat": p["gps_lat"], "lng": p["gps_lng"], "photos": [p]})
     return [c["photos"] for c in clusters]
 
+# When there are more good photos than the album's pages can hold, how many
+# to keep per page on average (templates hold 1 to 4).
+PHOTOS_PER_PAGE = 3
+
+
+def _taken_at(p: dict) -> Optional[datetime]:
+    ts = p.get("taken_at")
+    if not ts:
+        return None
+    try:
+        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _redundancy(a: dict, b: dict) -> float:
+    """How much two photos next to each other in the album repeat each
+    other — lower means more alike: looking alike (hash distance, 0-64)
+    plus being taken apart in time (a few points per minute, up to 30)."""
+    dist = hamming_distance(a.get("phash"), b.get("phash"))
+    if dist is None:
+        dist = 32
+    ta, tb = _taken_at(a), _taken_at(b)
+    if ta and tb:
+        minutes = abs((ta - tb).total_seconds()) / 60
+        apart = min(30.0, minutes / 2)
+    else:
+        apart = 15.0  # no dates: count only on how they look
+    return dist + apart
+
+
+def spread_to_capacity(photos: List[dict], capacity: int) -> tuple:
+    """More photos than the pages can hold: instead of the album simply
+    stopping where the pages run out (the end of a trip left out while
+    look-alike shots from its start fill pages), the most repetitive photos
+    go first. Among photos next to each other (in album order), the pair
+    that repeats itself most loses its less sharp photo, again and again,
+    until `capacity` remain — so the whole album stays covered and bursts
+    of near-identical shots are thinned. Returns (kept, dropped), order
+    kept."""
+    kept = list(photos)
+    if capacity <= 0 or len(kept) <= capacity:
+        return kept, []
+    dropped = []
+    while len(kept) > capacity:
+        best_i, best_cost = 0, None
+        for i in range(len(kept) - 1):
+            cost = _redundancy(kept[i], kept[i + 1])
+            if best_cost is None or cost < best_cost:
+                best_i, best_cost = i, cost
+        a, b = kept[best_i], kept[best_i + 1]
+        loser = best_i if (a.get("ai_score") or 0) < (b.get("ai_score") or 0) else best_i + 1
+        dropped.append(kept.pop(loser))
+    return kept, dropped
+
+
 AMBIGUOUS_CLUSTER_MIN_SIZE = 2  # even a 2-photo cluster is worth a check — low-detail scenes (water, sky, sunsets) can hash close enough to merge as "duplicates" while being genuinely different photos
 AMBIGUOUS_MAX_DISTANCE_FOR_CONFIDENT_MATCH = 2  # only near-pixel-identical skips the AI call now — 4 was letting genuinely-different low-detail scenes (water, sky) through as "obviously the same" unchecked
 

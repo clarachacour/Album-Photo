@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findExifSegment, insertExifSegment, preparePhoto, resetOrientation, targetSize } from "@/lib/preparePhoto";
+import { findExifSegment, insertExifSegment, jpegSize, preparePhoto, readOrientation, resetOrientation, rotationApplied, targetSize } from "@/lib/preparePhoto";
 
 // A minimal EXIF segment: one IFD0 entry, the orientation (tag 0x0112).
 function exifSegment({ little = true, orientation = 6 } = {}) {
@@ -40,6 +40,28 @@ describe("EXIF", () => {
     const out = insertExifSegment(jpeg(jfif, imageData), exif);
     expect([...out]).toEqual([...jpeg(jfif, exif, imageData)]);
     expect(findExifSegment(out)).toEqual(exif);
+  });
+});
+
+describe("orientation checks", () => {
+  it("reads the orientation tag, in both byte orders", () => {
+    expect(readOrientation(exifSegment({ little: true, orientation: 3 }))).toBe(3);
+    expect(readOrientation(exifSegment({ little: false, orientation: 6 }))).toBe(6);
+  });
+
+  it("reads the stored size from the frame header", () => {
+    const sof = [0xff, 0xc0, 0, 11, 8, 0x0b, 0xb8, 0x0f, 0xa0, 3, 0, 0, 0, 0, 0, 0, 0];
+    expect(jpegSize(jpeg(jfif, sof, imageData))).toEqual({ width: 4000, height: 3000 });
+    expect(jpegSize(jpeg(jfif, imageData))).toBeNull();
+  });
+
+  it("trusts a quarter turn only when width and height were swapped", () => {
+    const raw = { width: 4000, height: 3000 };
+    expect(rotationApplied(1, raw, raw)).toBe(true);
+    expect(rotationApplied(6, raw, { width: 3000, height: 4000 })).toBe(true);
+    expect(rotationApplied(6, raw, { width: 4000, height: 3000 })).toBe(false); // browser ignored it
+    expect(rotationApplied(3, raw, raw)).toBe(false); // half turn: can't tell
+    expect(rotationApplied(6, null, raw)).toBe(false);
   });
 });
 
