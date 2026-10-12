@@ -13,23 +13,40 @@ const TOOLBAR_FONTS = [
 
 const TOOLBAR_COLORS = ["#1A1A17", "#F9F8F6", "#E07A5F", "#3D405B", "#81B29A"];
 
+/**
+ * How far (CSS px) to slide a toolbar sideways so it stays on screen, from
+ * where it is now: its on-screen box, its CSS width and its current shift.
+ * On a scaled page (rect.width ≠ offsetWidth) a shift of n CSS px moves it
+ * by n × scale on screen — the reason it's worked out in one go here.
+ */
+export function toolbarShift(rect, offsetWidth, currentShift, windowWidth, margin = 4) {
+  const scale = rect.width / offsetWidth || 1;
+  const left = rect.left - currentShift * scale;
+  const right = rect.right - currentShift * scale;
+  let next = 0;
+  if (left < margin) next = margin - left;
+  else if (right > windowWidth - margin) next = windowWidth - margin - right;
+  return next / scale;
+}
+
 function ToolbarShell({ x, y, w, children, wide }) {
   // Centred above the item, but slid sideways when that would put part of
   // it off the screen (a photo against the edge of a page, on a phone).
   const ref = useRef(null);
   const [shift, setShift] = useState(0);
+  const shiftRef = useRef(0);
+  shiftRef.current = shift;
+  // Measured once per position, not again after its own shift: on a
+  // scaled-up page (pinch zoom, a cover drawn larger) a shift of n px moves
+  // the toolbar by more than n on screen, and measuring again after each
+  // shift never settled ("Maximum update depth exceeded").
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !el.offsetWidth) return;
     const rect = el.getBoundingClientRect();
-    const left = rect.left - shift;
-    const right = rect.right - shift;
-    const margin = 4;
-    let next = 0;
-    if (left < margin) next = margin - left;
-    else if (right > window.innerWidth - margin) next = window.innerWidth - margin - right;
-    if (Math.abs(next - shift) > 0.5) setShift(next);
-  }, [x, y, w, wide, shift]);
+    const next = toolbarShift(rect, el.offsetWidth, shiftRef.current, window.innerWidth);
+    if (Math.abs(next - shiftRef.current) > 0.5) setShift(next);
+  }, [x, y, w, wide]);
   return (
     <div
       ref={ref}
