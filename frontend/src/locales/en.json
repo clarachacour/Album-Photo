@@ -1017,6 +1017,8 @@
     "unitPrice": "Unit price",
     "total": "Total",
     "placeOrder": "Place order",
+    "freeTrialPrint": "Your album is free: only the delivery (${{price}}) is due, in cash, to the courier.",
+    "freeTrialDigital": "Your digital album is free: you can download your PDF as soon as it's ready, in a few minutes.",
     "noPayment": "Online payment isn't set up yet — placing an order saves it and starts preparing your album. We'll follow up to complete payment.",
     "shipping": "Delivery (Lebanon)",
     "deliveryTime": "Production: 3 days · Delivery: 2–3 days",
@@ -1033,6 +1035,9 @@
       "digital": "Digital album (PDF)"
     },
     "kindTitle": "Your album",
+    "free": "Free",
+    "freeTotal": "Total",
+    "cashToCourier": "To pay the courier (cash)",
     "kindPrintExtra": "Printed, bound and delivered to you in Lebanon (+${{price}} delivery).",
     "kindDigitalExtra": "Your album as a PDF to download and keep — no printing or delivery.",
     "kindAlreadyOrdered": "Already ordered.",

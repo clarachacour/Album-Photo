@@ -8,6 +8,11 @@
 # compute_order_price_cents.
 PAGE_TIERS = [24, 50, 100, 150, 200]
 
+# Test week: every album is free — only delivery is due, in cash to the
+# courier. Set back to False to charge albums again. Keep in sync with
+# FREE_TRIAL in frontend/src/lib/pricing.js (which hides the prices).
+FREE_TRIAL = True
+
 # Price by format AND page tier, in cents — server-side only, the client
 # never gets to set its own price. These are PLACEHOLDER values (Clara
 # hasn't finalized real pricing with the printer yet) — adjust freely, this
@@ -54,6 +59,8 @@ def billed_tier(page_count: int) -> int:
 
 
 def compute_order_price_cents(size: str, page_count: int) -> int:
+    if FREE_TRIAL:
+        return 0
     size = size if size in ORDER_PRICE_CENTS else "A4"
     tier_prices = ORDER_PRICE_CENTS[size]
     tier = billed_tier(page_count)

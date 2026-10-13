@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
+import { FREE_TRIAL, SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 export default function OrderCheckoutPage() {
@@ -227,7 +227,7 @@ export default function OrderCheckoutPage() {
                   >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-semibold">{t(`checkout.kind.${option.value}`)}</span>
-                      <span>${option.price.toFixed(2)}</span>
+                      {!FREE_TRIAL && <span>${option.price.toFixed(2)}</span>}
                     </div>
                     <p className="text-xs text-[color:var(--muted)] mt-1">{taken ? t("checkout.kindAlreadyOrdered") : option.extra}</p>
                   </button>
@@ -331,10 +331,12 @@ export default function OrderCheckoutPage() {
                   className="w-16 border border-[color:var(--ink)]/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
                 />
               </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-[color:var(--muted)]">{t("checkout.unitPrice")}</span>
-                <span>${unitPrice.toFixed(2)}</span>
-              </div>
+              {!FREE_TRIAL && (
+                <div className="flex justify-between mb-1">
+                  <span className="text-[color:var(--muted)]">{t("checkout.unitPrice")}</span>
+                  <span>${unitPrice.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-[color:var(--muted)]">{t("checkout.shipping")}</span>
                 <span>${SHIPPING_PRICE.toFixed(2)}</span>
@@ -348,7 +350,7 @@ export default function OrderCheckoutPage() {
               <p className="text-xs text-[color:var(--muted)] mt-2" data-testid="checkout-delivery-time">{t("checkout.deliveryTime")}</p>
               </>
               )}
-              {digital && (
+              {digital && !FREE_TRIAL && (
                 <div className="flex justify-between">
                   <span className="text-[color:var(--muted)]">{t("checkout.kind.digital")}</span>
                   <span>${digitalPrice.toFixed(2)}</span>
@@ -356,8 +358,10 @@ export default function OrderCheckoutPage() {
               )}
             </div>
             <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6">
-              <span>{t("checkout.total")}</span>
-              <span>${total.toFixed(2)}</span>
+              {/* Test week: the album is free — what's left is the delivery,
+                  paid in cash to the courier (nothing at all for a PDF). */}
+              <span>{FREE_TRIAL ? t(digital ? "checkout.freeTotal" : "checkout.cashToCourier") : t("checkout.total")}</span>
+              <span>{FREE_TRIAL && digital ? t("checkout.free") : `$${total.toFixed(2)}`}</span>
             </div>
             <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-[color:var(--ink)]/80"}`}>
               <input
@@ -387,7 +391,7 @@ export default function OrderCheckoutPage() {
               {t("checkout.placeOrder")}
             </button>
             <p className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed">
-              {t(digital ? "checkout.noPaymentDigital" : "checkout.noPayment")}
+              {t(FREE_TRIAL ? (digital ? "checkout.freeTrialDigital" : "checkout.freeTrialPrint") : digital ? "checkout.noPaymentDigital" : "checkout.noPayment", { price: SHIPPING_PRICE })}
             </p>
           </aside>
         </div>

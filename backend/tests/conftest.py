@@ -75,3 +75,17 @@ def slow_curation(monkeypatch):
         return await real_trim(pages, target_pages)
 
     monkeypatch.setattr(processing, "trim_pages_to_target", trim)
+
+
+@pytest.fixture(autouse=True)
+def paid_albums(request, monkeypatch):
+    """Tests check the real prices: the test week (FREE_TRIAL) is switched
+    off for them, unless a test is marked free_trial."""
+    if request.node.get_closest_marker("free_trial"):
+        yield
+        return
+    request.getfixturevalue("app")
+    from app.services import pricing
+
+    monkeypatch.setattr(pricing, "FREE_TRIAL", False)
+    yield

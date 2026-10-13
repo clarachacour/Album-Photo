@@ -1017,6 +1017,8 @@
     "unitPrice": "Prix unitaire",
     "total": "Total",
     "placeOrder": "Commander",
+    "freeTrialPrint": "Votre album est offert : seule la livraison ({{price}} $) est à payer, en espèces, au livreur.",
+    "freeTrialDigital": "Votre album numérique est offert : vous pourrez télécharger votre PDF dès qu'il est prêt, en quelques minutes.",
     "noPayment": "Le paiement en ligne n'est pas encore disponible — votre commande est enregistrée et nous commençons à préparer votre album. Nous vous recontacterons pour le paiement.",
     "shipping": "Livraison (Liban)",
     "deliveryTime": "Fabrication : 3 jours · Livraison : 2 à 3 jours",
@@ -1033,6 +1035,9 @@
       "digital": "Album numérique (PDF)"
     },
     "kindTitle": "Votre album",
+    "free": "Offert",
+    "freeTotal": "Total",
+    "cashToCourier": "À payer au livreur (espèces)",
     "kindPrintExtra": "Imprimé, relié et livré chez vous au Liban (+{{price}} $ de livraison).",
     "kindDigitalExtra": "Votre album en PDF, à télécharger et à garder — sans impression ni livraison.",
     "kindAlreadyOrdered": "Déjà commandé.",

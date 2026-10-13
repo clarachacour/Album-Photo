@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Tru
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { lazyPage } from "@/lib/lazyPage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { PRICE_TABLE } from "@/lib/pricing";
+import { FREE_TRIAL, PRICE_TABLE } from "@/lib/pricing";
 
 // Cheapest album, for the "From $…" on the home page: follows the price table.
 const FROM_PRICE = Math.min(...Object.values(PRICE_TABLE).flatMap((tiers) => Object.values(tiers)));
@@ -66,7 +66,10 @@ export default function Landing() {
               </button>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[color:var(--ink)]/70" data-testid="landing-perks">
-              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE }).map((perk) => (
+              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE })
+                // Test week: no price shown (the "from $…" line goes).
+                .filter((perk) => !FREE_TRIAL || !perk.includes("$"))
+                .map((perk) => (
                 <li key={perk} className="inline-flex items-center gap-1.5">
                   <Check size={14} className="text-[color:var(--coral)]" />
                   {perk}

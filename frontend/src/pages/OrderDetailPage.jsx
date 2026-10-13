@@ -69,7 +69,7 @@ export default function OrderDetailPage() {
           <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight">{order.album_title}</h1>
         </div>
 
-        {order.status === "pending_payment" && (
+        {order.status === "pending_payment" && order.unit_price_cents > 0 && (
           <div className="border border-[color:var(--coral)]/40 bg-[color:var(--coral)]/5 p-5 mb-10 text-sm">
             {t(digital ? "orderDetail.paymentNoticeDigital" : "orderDetail.paymentNotice")}
           </div>
@@ -143,10 +143,17 @@ export default function OrderDetailPage() {
               <div>{t(`checkout.kind.${digital ? "digital" : "print"}`)}</div>
               <div>{t("orderDetail.format")}: {order.size} · {order.orientation}</div>
               {!digital && <div>{t("orderDetail.quantity")}: {order.quantity}</div>}
-              <div>{t("orderDetail.unitPrice")}: {formatPrice(order.unit_price_cents, order.currency)}</div>
+              {order.unit_price_cents > 0 && <div>{t("orderDetail.unitPrice")}: {formatPrice(order.unit_price_cents, order.currency)}</div>}
               {!digital && order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
               {order.credit_cents > 0 && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
-              <div className="font-medium text-[color:var(--ink)] pt-1">{t("orderDetail.total")}: {formatPrice(order.total_price_cents, order.currency)}</div>
+              {/* A free album (test week): only the delivery, in cash to the courier. */}
+              <div className="font-medium text-[color:var(--ink)] pt-1">
+                {order.unit_price_cents > 0
+                  ? `${t("orderDetail.total")}: ${formatPrice(order.total_price_cents, order.currency)}`
+                  : order.total_price_cents > 0
+                    ? `${t("checkout.cashToCourier")}: ${formatPrice(order.total_price_cents, order.currency)}`
+                    : t("checkout.free")}
+              </div>
               <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: parseDate(order.created_at).toLocaleDateString(i18n.language) })}</div>
             </div>
           </div>

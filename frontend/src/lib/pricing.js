@@ -9,6 +9,12 @@
 // table, which is exactly the kind of duplication that quietly drifts out
 // of sync.
 
+// Test week: every album is free — only delivery is due, in cash to the
+// courier — and no album price is shown anywhere. Set back to false to show
+// and charge prices again. Keep in sync with FREE_TRIAL in
+// backend/app/services/pricing.py (which charges).
+export const FREE_TRIAL = true;
+
 export const PAGE_TIERS = [24, 50, 100, 150, 200];
 
 export const PRICE_TABLE = {
@@ -26,7 +32,8 @@ export function billedTier(pageCount) {
   return PAGE_TIERS.find((t) => t >= pages) ?? pages;
 }
 
-export function computeUnitPrice(size, pageCount) {
+export function computeUnitPrice(size, pageCount, freeTrial = FREE_TRIAL) {
+  if (freeTrial) return 0;
   const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
   const tier = billedTier(pageCount);
   if (tierPrices[tier] != null) return tierPrices[tier];
@@ -45,8 +52,8 @@ export function billedPageCount(album) {
 // backend/app/services/pricing.py, which charges it.
 export const DIGITAL_DISCOUNT = 15;
 
-export function computeDigitalPrice(size, pageCount) {
-  return Math.max(0, computeUnitPrice(size, pageCount) - DIGITAL_DISCOUNT);
+export function computeDigitalPrice(size, pageCount, freeTrial = FREE_TRIAL) {
+  return Math.max(0, computeUnitPrice(size, pageCount, freeTrial) - DIGITAL_DISCOUNT);
 }
 
 // Delivery (Lebanon only), per order — keep in sync with SHIPPING_PRICE_CENTS

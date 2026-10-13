@@ -99,8 +99,10 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "terms_accepted_at": now,
         "currency": "usd",
         "shipping_address": data.shipping_address.dict() if data.shipping_address and not digital else None,
-        "status": "pending_payment",
-        "status_history": [{"status": "pending_payment", "at": now}],
+        # Nothing to pay (a free digital album, test week): paid at once,
+        # so the PDF is handed over as soon as it's made.
+        "status": "paid" if digital and unit_price == 0 else "pending_payment",
+        "status_history": [{"status": "paid" if digital and unit_price == 0 else "pending_payment", "at": now}],
         "pdf_ready": False,
         "pdf_path": None,
         "tracking_number": None,
