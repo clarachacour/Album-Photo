@@ -57,7 +57,9 @@ def extract_exif_info(data: bytes) -> dict:
         tags = {ExifTags.TAGS.get(k, k): v for k, v in exif.items()}
         exif_ifd = exif.get_ifd(0x8769) if hasattr(exif, "get_ifd") else {}
         exif_ifd_tags = {ExifTags.TAGS.get(k, k): v for k, v in (exif_ifd or {}).items()}
-        raw_dt = tags.get("DateTime") or exif_ifd_tags.get("DateTimeOriginal") or exif_ifd_tags.get("DateTimeDigitized")
+        # When the photo was taken first; "DateTime" (IFD0) is when the file
+        # was last changed — an edit or a re-save on a computer moves it.
+        raw_dt = exif_ifd_tags.get("DateTimeOriginal") or exif_ifd_tags.get("DateTimeDigitized") or tags.get("DateTime")
         if raw_dt:
             try:
                 info["taken_at"] = datetime.strptime(raw_dt, "%Y:%m:%d %H:%M:%S").isoformat()
