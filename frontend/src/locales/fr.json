@@ -145,7 +145,7 @@
     "items": [
       {
         "q": "Combien de temps faut-il pour recevoir mon album ?",
-        "a": "Une fois votre commande passée, nous préparons et imprimons votre album, puis vous l'expédions. Vous pouvez suivre chaque étape depuis votre page Commandes."
+        "a": "Environ 5 à 6 jours en tout : la fabrication prend environ 3 jours, puis la livraison au Liban 2 à 3 jours. Vous pouvez suivre chaque étape depuis votre page Commandes."
       },
       {
         "q": "Quels formats sont disponibles ?",
@@ -165,7 +165,7 @@
       },
       {
         "q": "Puis-je recevoir mon album en PDF ?",
-        "a": "Oui : choisissez « Album numérique (PDF) » au moment de la commande. Il coûte 15 $ de moins que l'album imprimé, sans livraison. Vous le téléchargez depuis « Mes commandes » dès la confirmation de votre paiement, et vous pourrez commander le livre imprimé plus tard en déduisant ce que vous avez déjà payé."
+        "a": "Oui : choisissez « Album numérique (PDF) » au moment de la commande. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » dès la confirmation de votre paiement, et vous pourrez commander le livre imprimé plus tard en déduisant ce que vous avez déjà payé."
       },
       {
         "q": "Que faire si quelque chose arrive endommagé ou incorrect ?",
