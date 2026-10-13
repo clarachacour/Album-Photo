@@ -108,6 +108,9 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 # a single-operator business with one print partner and one courier; if
 # that ever changes, this would need to become per-order instead of a
 # flat constant.
+# The team's order inbox: told when the printer marks a book ready (test
+# phase only) and when an order is delivered.
+ORDERS_EMAIL = os.environ.get("ORDERS_EMAIL", "orders@everbook-album.com")
 PRINTER_EMAIL = os.environ.get("PRINTER_EMAIL")
 DELIVERY_EMAIL = os.environ.get("DELIVERY_EMAIL")
 

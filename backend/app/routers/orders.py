@@ -16,7 +16,8 @@ from app.db import db
 from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.delivery import dispatch_delivery
 from app.core.order_number import order_number
-from app.services.email import send_order_confirmation_email
+from app.services import pricing
+from app.services.email import send_order_confirmation_email, send_team_order_update_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
     order_kind,
@@ -178,7 +179,10 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
         )
         order["status"] = "ready_for_delivery"
         # A Wakilni delivery (or, without Wakilni, an email to the courier).
-        await dispatch_delivery(order_id)
+        dispatched = await dispatch_delivery(order_id)
+        # Test phase: the team hears about each book ready for pickup.
+        if pricing.FREE_TRIAL:
+            await run_email(send_team_order_update_email, dispatched or order, "ready")
     # The order number only — nothing about the price on the printer's side.
     return HTMLResponse("<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
                          f"<h2>Thanks — order {order_number(order)} is marked ready.</h2>"

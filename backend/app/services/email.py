@@ -11,6 +11,7 @@ from app.config import (
     DELIVERY_EMAIL,
     DRAFT_ALBUM_RETENTION_DAYS,
     FRONTEND_URL,
+    ORDERS_EMAIL,
     PRINTER_EMAIL,
     SMTP_FROM,
     SMTP_HOST,
@@ -653,3 +654,41 @@ def send_delivery_problem_email(order: dict, problem: str):
         cta_url=f"{FRONTEND_URL}/admin/orders",
     )
     send_email(ADMIN_EMAIL, subject, body, html_body=html_body)
+
+
+TEAM_EVENTS = {
+    "ready": ("Ready for pickup", "The printer has marked this book ready: the courier has been asked to collect it."),
+    "delivered": ("Delivered", "This order has been delivered to the customer."),
+}
+
+
+def send_team_order_update_email(order: dict, event: str):
+    """To the team's order inbox (ORDERS_EMAIL): a step of an order —
+    "ready" (the printer's click) or "delivered"."""
+    if not ORDERS_EMAIL or event not in TEAM_EVENTS:
+        return
+    label, sentence = TEAM_EVENTS[event]
+    number = order_number(order)
+    addr = order.get("shipping_address") or {}
+    delivery = order.get("delivery") or {}
+    lines = [
+        f"Order {number} — {order.get('album_title', 'Album')}",
+        sentence,
+        f"Customer: {addr.get('full_name', '')}, {addr.get('phone', '')}",
+        f"Address: {addr.get('street', '')}{', ' + addr['building'] if addr.get('building') else ''}, {addr.get('area') or addr.get('city', '')}",
+    ]
+    if delivery.get("delivery_id"):
+        lines.append(f"Wakilni: {delivery.get('status_label') or 'created'} — waybill {delivery.get('waybill') or number}"
+                     + (f" — {delivery['tracking_url']}" if delivery.get("tracking_url") else ""))
+    elif delivery.get("error"):
+        lines.append(f"Wakilni: NOT created — {delivery['error'][:200]}")
+    subject = f"[{label}] {number} — {order.get('album_title', 'Album')}"
+    body = "\n".join(lines) + f"\n\nAdmin: {FRONTEND_URL}/admin/orders"
+    html_body = _email_wrapper(
+        preheader=f"{label} — {number}",
+        title=f"{label}.",
+        body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
+        cta_label="Open the orders",
+        cta_url=f"{FRONTEND_URL}/admin/orders",
+    )
+    send_email(ORDERS_EMAIL, subject, body, html_body=html_body)

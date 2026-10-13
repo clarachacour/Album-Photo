@@ -13,6 +13,7 @@ from app.services.email import (
     send_delivery_problem_email,
     send_order_delivered_feedback_email,
     send_order_shipped_email,
+    send_team_order_update_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,7 @@ async def sync_delivery(order_id: str) -> dict:
         customer = await _customer(order)
         fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
         await run_email(send_order_delivered_feedback_email, customer.get("email"), customer.get("name"), fresh)
+        await run_email(send_team_order_update_email, fresh, "delivered")
     problem = "the customer refused the book" if code == wakilni.SUCCESS and status.get("rejected") else PROBLEM_STATUSES.get(code)
     alert_key = f"{code}:{label}"
     if problem and delivery.get("alerted") != alert_key:

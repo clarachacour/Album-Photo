@@ -14,6 +14,7 @@ from app.services.email import (
     send_order_shipped_email,
     send_order_in_production_email,
     send_printer_order_email,
+    send_team_order_update_email,
 )
 from app.services.orders import (
     ORDER_STATUSES,
@@ -221,6 +222,8 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
         await deliver_digital_if_ready(order_id)
         return await db.orders.find_one({"id": order_id}, {"_id": 0})
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if data.status == "delivered" and order.get("status") != "delivered":
+        await run_email(send_team_order_update_email, fresh, "delivered")
     email_fn = STATUS_CUSTOMER_EMAIL.get(data.status)
     if email_fn:
         customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
