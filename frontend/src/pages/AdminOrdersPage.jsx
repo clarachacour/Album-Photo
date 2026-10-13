@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { orderNumber } from "@/lib/orderNumber";
 import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
@@ -194,6 +195,7 @@ export default function AdminOrdersPage() {
                   return (
                     <tr key={o.id} className="border-b border-[color:var(--border-soft)] align-top">
                       <td className="p-3 whitespace-nowrap text-[color:var(--ink)]/70">
+                        <div className="font-mono text-xs font-semibold text-[color:var(--ink)]" data-testid={`admin-order-number-${o.id}`}>{orderNumber(o)}</div>
                         {o.created_at ? parseDate(o.created_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-3">
@@ -236,6 +238,21 @@ export default function AdminOrdersPage() {
                             <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                           ))}
                         </select>
+                        {/* Every step with its date and time: printer email, printer's
+                            "ready", courier pickup, delivery… */}
+                        {(o.status_history || []).length > 0 && (
+                          <details className="mt-2 text-xs" data-testid={`admin-history-${o.id}`}>
+                            <summary className="cursor-pointer text-[color:var(--muted)]">History ({o.status_history.length})</summary>
+                            <ol className="mt-1 space-y-0.5">
+                              {o.status_history.map((h, i) => (
+                                <li key={i} className="whitespace-nowrap">
+                                  <span className="text-[color:var(--muted)]">{parseDate(h.at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>{" "}
+                                  {STATUS_LABELS[h.status] || h.status}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                        )}
                         {o.kind !== "digital" && (
                           <div className="mt-2 text-xs space-y-1" data-testid={`admin-delivery-${o.id}`}>
                             {o.delivery?.delivery_id ? (

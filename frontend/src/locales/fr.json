@@ -248,7 +248,7 @@
     "loading": "Chargement…",
     "loadError": "Impossible de charger cette commande",
     "back": "Retour à vos commandes",
-    "orderNumber": "Commande n°{{id}}",
+    "orderNumber": "Commande {{id}}",
     "paymentNotice": "Le paiement n'est pas encore configuré de notre côté — nous avons enregistré votre commande et commencé à préparer votre album. Nous vous recontacterons directement pour finaliser le paiement.",
     "status": "Statut",
     "cancelled": "Cette commande a été annulée.",

@@ -18,6 +18,7 @@ from app.config import (
     SMTP_PORT,
     SMTP_USER,
 )
+from app.core.order_number import order_number
 from app.core.signed_links import sign_order_action
 
 logger = logging.getLogger(__name__)
@@ -218,7 +219,7 @@ def send_pdf_generation_failed_email(order: dict, error: str):
     if not ADMIN_EMAIL:
         return
     admin_url = f"{FRONTEND_URL}/admin/orders"
-    subject = f"PDF generation failed — order #{order['id'][:8]} ({order.get('album_title', 'Album')})"
+    subject = f"PDF generation failed — order {order_number(order)} ({order.get('album_title', 'Album')})"
     body = (
         f"PDF generation failed for an order and needs attention.\n\n"
         f"Album: {order.get('album_title', 'Album')}\n"
@@ -228,7 +229,7 @@ def send_pdf_generation_failed_email(order: dict, error: str):
         f"Regenerate or investigate here:\n{admin_url}"
     )
     html_body = _email_wrapper(
-        preheader=f"PDF generation failed for order #{order['id'][:8]}",
+        preheader=f"PDF generation failed for order {order_number(order)}",
         title="PDF generation failed.",
         body_html=(
             f"<p>An order's PDF generation attempt failed and needs attention.</p>"
@@ -392,6 +393,30 @@ def send_digital_album_ready_email(to_email: str, name: str, order: dict):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
+def send_order_in_production_email(to_email: str, name: str, order: dict):
+    """To the customer: their book has gone to the printer."""
+    order_url = f"{FRONTEND_URL}/orders/{order['id']}"
+    number = order_number(order)
+    subject = f"Your Everbook album is being printed ({number})"
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Your album \"{order.get('album_title', 'Album')}\" has gone to the printer (order {number}).\n"
+        f"Printing takes about 3 days, then it's handed to the courier — we'll email you when it's on its way.\n\n"
+        f"Follow your order here:\n{order_url}"
+    )
+    html_body = _email_wrapper(
+        preheader="Your album has gone to the printer.",
+        title="Your album is being printed.",
+        body_html=(
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>Your album <strong>{_h(order.get('album_title', 'Album'))}</strong> has gone to the printer (order {number}).</p>"
+            f"<p>Printing takes about 3 days, then it's handed to the courier — we'll email you when it's on its way.</p>"
+        ),
+        cta_label="Follow your order",
+        cta_url=order_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
+
 def send_order_shipped_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
     tracking = order.get("tracking_number")
@@ -507,9 +532,14 @@ def send_printer_order_email(order: dict):
     ready_token = sign_order_action(order["id"], "ready")
     download_url = f"{BACKEND_URL}/api/order-actions/{order['id']}/download?token={download_token}"
     ready_url = f"{BACKEND_URL}/api/order-actions/{order['id']}/ready?token={ready_token}"
-    subject = f"New book to print — {order.get('album_title', 'Album')} (#{order['id'][:8]})"
+    subject = f"New book to print — {order.get('album_title', 'Album')} ({order_number(order)})"
+    number = order_number(order)
+    # No price anywhere in what the printer receives — only what's needed
+    # to print, and the order number the courier will ask for.
     body = (
         f"New order to print.\n\n"
+        f"ORDER NUMBER: {number}\n"
+        f"Please write it on the package: the courier identifies the book with it.\n\n"
         f"Album: {order.get('album_title', 'Album')}\n"
         f"Format: {order.get('size')} · {order.get('orientation')}\n"
         f"Quantity: {order.get('quantity', 1)}\n\n"
@@ -537,6 +567,8 @@ def send_printer_order_email(order: dict):
         preheader=f"New book to print — {_h(order.get('album_title', 'Album'))}",
         title="New book to print.",
         body_html=(
+            f"<p style=\"font-size:22px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">Order number: {number}</p>"
+            f"<p style=\"color:{_EMAIL_MUTED}; margin:0 0 18px;\">Please write it on the package: the courier identifies the book with it.</p>"
             f"<p><strong>Album:</strong> {_h(order.get('album_title', 'Album'))}<br>"
             f"<strong>Format:</strong> {order.get('size')} · {order.get('orientation')}<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
@@ -553,9 +585,10 @@ def send_delivery_pickup_email(order: dict):
         logger.warning(f"DELIVERY_EMAIL non configuré — email de livraison non envoyé pour la commande {order['id']}")
         return
     addr = order.get("shipping_address") or {}
-    subject = f"Ready for pickup — {order.get('album_title', 'Album')} (#{order['id'][:8]})"
+    subject = f"Ready for pickup — {order.get('album_title', 'Album')} ({order_number(order)})"
     body = (
         f"A book is ready for pickup and delivery.\n\n"
+        f"Order number: {order_number(order)} (written on the package)\n\n"
         f"Deliver to:\n"
         f"{addr.get('full_name', '')}\n"
         f"{addr.get('street', '')}"
@@ -570,6 +603,7 @@ def send_delivery_pickup_email(order: dict):
         title="Ready for pickup.",
         body_html=(
             f"<p>A book is ready for pickup and delivery.</p>"
+            f"<p><strong>Order number:</strong> {order_number(order)} (written on the package)</p>"
             f"<p><strong>Deliver to:</strong><br>"
             f"{_h(addr.get('full_name', ''))}<br>"
             f"{_h(addr.get('street', ''))}" + (f", {_h(addr.get('building'))}" if addr.get("building") else "") + f"<br>"
@@ -590,9 +624,9 @@ def send_delivery_problem_email(order: dict, problem: str):
         return
     addr = order.get("shipping_address") or {}
     delivery = order.get("delivery") or {}
-    subject = f"Delivery problem — order #{order['id'][:8]} ({order.get('album_title', 'Album')})"
+    subject = f"Delivery problem — order {order_number(order)} ({order.get('album_title', 'Album')})"
     lines = [
-        f"Order #{order['id'][:8]} — {order.get('album_title', 'Album')}",
+        f"Order {order_number(order)} — {order.get('album_title', 'Album')}",
         f"Problem: {problem}",
         f"Customer: {addr.get('full_name', '')}, {addr.get('phone', '')}",
         f"Address: {addr.get('street', '')}, {addr.get('area') or addr.get('city', '')}",

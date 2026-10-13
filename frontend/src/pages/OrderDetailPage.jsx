@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { orderNumber } from "@/lib/orderNumber";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -64,7 +65,7 @@ export default function OrderDetailPage() {
         </Link>
 
         <div className="mb-12">
-          <div className="eyebrow mb-3">{t("orderDetail.orderNumber", { id: order.id.slice(0, 8) })}</div>
+          <div className="eyebrow mb-3">{t("orderDetail.orderNumber", { id: orderNumber(order) })}</div>
           <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight">{order.album_title}</h1>
         </div>
 

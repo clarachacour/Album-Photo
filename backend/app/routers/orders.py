@@ -15,6 +15,7 @@ from app.core.signed_links import verify_order_action
 from app.db import db
 from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.delivery import dispatch_delivery
+from app.core.order_number import order_number
 from app.services.email import send_order_confirmation_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
@@ -148,7 +149,7 @@ async def order_action_download_pdf(order_id: str, token: str = Query(None)):
         Params={
             "Bucket": R2_BUCKET_NAME,
             "Key": order["pdf_path"],
-            "ResponseContentDisposition": f'attachment; filename="{order_id}.pdf"',
+            "ResponseContentDisposition": f'attachment; filename="{order_number(order)}.pdf"',
             "ResponseContentType": "application/pdf",
         },
         ExpiresIn=3600,
@@ -176,8 +177,11 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
         order["status"] = "ready_for_delivery"
         # A Wakilni delivery (or, without Wakilni, an email to the courier).
         await dispatch_delivery(order_id)
+    # The order number only — nothing about the price on the printer's side.
     return HTMLResponse("<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
-                         "<h2>Thanks — the delivery company has been notified.</h2></body></html>")
+                         f"<h2>Thanks — order {order_number(order)} is marked ready.</h2>"
+                         "<p>The delivery company has been notified. Please make sure the order number is written on the package.</p>"
+                         "</body></html>")
 
 @router.get("/delivery/areas")
 async def delivery_areas(user: dict = Depends(get_current_user)):

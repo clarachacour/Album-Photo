@@ -12,6 +12,7 @@ from app.schemas import OrderStatusUpdate
 from app.services.email import (
     send_order_delivered_feedback_email,
     send_order_shipped_email,
+    send_order_in_production_email,
     send_printer_order_email,
 )
 from app.services.orders import (
@@ -185,6 +186,7 @@ async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_cur
 # what's going on" as one small table instead of scattered if/elif
 # branches that are easy to miss updating when a new status is added.
 STATUS_CUSTOMER_EMAIL = {
+    "printing": send_order_in_production_email,
     "shipped": send_order_shipped_email,
     "delivered": send_order_delivered_feedback_email,
 }

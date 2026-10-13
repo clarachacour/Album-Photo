@@ -9,6 +9,7 @@ from typing import Optional
 
 import requests
 
+from app.core.order_number import order_number
 from app.config import (
     WAKILNI_KEY,
     WAKILNI_PICKUP_AREA,
@@ -112,10 +113,8 @@ def split_name(full_name: str) -> tuple:
 
 def waybill(order: dict) -> str:
     """Our reference for the order at Wakilni (required by them, as text):
-    "EB-" and the order number's first 8 characters, as shown to the
-    customer (#5f4c0509 → EB-5F4C0509). Shown in the admin too, to find the
-    delivery in Wakilni's portal."""
-    return f"EB-{order['id'][:8].upper()}"
+    the order number, the same the printer and the customer see."""
+    return order_number(order)
 
 
 def delivery_payload(order: dict, customer: dict) -> dict:
@@ -142,7 +141,7 @@ def delivery_payload(order: dict, customer: dict) -> dict:
         # Otherwise the courier collects the order's total in cash.
         "cash_collection_type_id": COLLECTION_PAID if paid else COLLECTION_ON_DELIVERY,
         "collection_amount": 0 if paid else round(order.get("total_price_cents", 0) / 100, 2),
-        "note": f"Everbook order #{order['id'][:8]} — photo album, keep flat and dry.",
+        "note": f"Everbook order {order_number(order)} — photo album, keep flat and dry.",
         "car_needed": False,
         "is_express": False,
         "packages": [
@@ -150,7 +149,7 @@ def delivery_payload(order: dict, customer: dict) -> dict:
                 "quantity": int(order.get("quantity") or 1),
                 "type_id": PACKAGE_TYPE.get(order.get("size"), 58),
                 "name": f"Photo album — {order.get('album_title') or 'Everbook'}"[:255],
-                "sku": order["id"][:8],
+                "sku": order_number(order),
             }
         ],
     }

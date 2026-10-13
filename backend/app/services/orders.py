@@ -17,6 +17,7 @@ from app.db import db
 from app.services.email import (
     send_digital_album_ready_email,
     send_pdf_generation_failed_email,
+    send_order_in_production_email,
     send_printer_order_email,
 )
 from app.services.pdf import render_album_pdf_sync
@@ -222,6 +223,10 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
             )
             order["status"] = "printing"
             await run_email(send_printer_order_email, order)
+            # …and the customer hears their book is being printed.
+            customer = await db.users.find_one({"id": order.get("user_id")}, {"_id": 0, "email": 1, "name": 1})
+            if customer and customer.get("email"):
+                await run_email(send_order_in_production_email, customer["email"], customer.get("name"), order)
             # Only a genuinely successful, first-time order — a real PDF a
             # printer will actually receive — has "the book is done,
             # unused photos can go" become true. Excluded from the status

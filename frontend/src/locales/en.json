@@ -248,7 +248,7 @@
     "loading": "Loading…",
     "loadError": "Failed to load this order",
     "back": "Back to your orders",
-    "orderNumber": "Order #{{id}}",
+    "orderNumber": "Order {{id}}",
     "paymentNotice": "Payment isn't set up yet on our end — we've saved your order and started preparing your album. We'll follow up with you directly to complete payment.",
     "status": "Status",
     "cancelled": "This order was cancelled.",
