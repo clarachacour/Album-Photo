@@ -26,7 +26,7 @@ export default function ResetPassword() {
     try {
       await resetPassword(token, password);
       toast.success(t("auth.reset.successToast"));
-      nav("/auth");
+      nav("/auth?mode=login");
     } catch (err) {
       toast.error(err?.response?.data?.detail || t("auth.reset.error"));
     } finally {
@@ -37,7 +37,7 @@ export default function ResetPassword() {
   return (
     <main className="min-h-screen flex items-center justify-center p-8 bg-[color:var(--paper)]">
       <div className="w-full max-w-md">
-        <Link to="/auth" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
+        <Link to="/auth?mode=login" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
           ← {t("auth.backToSignIn")}
         </Link>
         <h1 className="font-serif-display text-5xl tracking-tight mb-3">{t("auth.reset.title")}</h1>

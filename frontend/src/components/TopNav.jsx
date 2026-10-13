@@ -116,7 +116,7 @@ export default function TopNav() {
         )}
         {!user && (
           <nav className="flex items-center gap-4">
-            <Link to="/auth" className="text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
+            <Link to="/auth?mode=login" className="text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
               {t("nav.signIn")}
             </Link>
             <LanguageSwitcher />

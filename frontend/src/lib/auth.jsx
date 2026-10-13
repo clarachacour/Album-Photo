@@ -2,6 +2,29 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "./api";
 
 const AuthContext = createContext(null);
+const SIGNED_IN_BEFORE = "everbook_signed_in_before";
+
+function saveSession(data) {
+  localStorage.setItem("album_token", data.token);
+  localStorage.setItem("album_user", JSON.stringify(data.user));
+  try {
+    localStorage.setItem(SIGNED_IN_BEFORE, "1");
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Someone who already has an account on this device: the sign-in page
+ * then opens on "Welcome back" rather than on creating an account. */
+export function hasSignedInBefore() {
+  try {
+    return Boolean(
+      localStorage.getItem(SIGNED_IN_BEFORE) || localStorage.getItem("album_user") || localStorage.getItem("saved_user_email")
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -35,16 +58,14 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
-    localStorage.setItem("album_token", data.token);
-    localStorage.setItem("album_user", JSON.stringify(data.user));
+    saveSession(data);
     setUser(data.user);
     return data.user;
   };
 
   const signup = async (name, email, password) => {
     const { data } = await api.post("/auth/signup", { name, email, password });
-    localStorage.setItem("album_token", data.token);
-    localStorage.setItem("album_user", JSON.stringify(data.user));
+    saveSession(data);
     setUser(data.user);
     return data.user;
   };
@@ -57,16 +78,14 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async (credential) => {
     const { data } = await api.post("/auth/google", { credential });
-    localStorage.setItem("album_token", data.token);
-    localStorage.setItem("album_user", JSON.stringify(data.user));
+    saveSession(data);
     setUser(data.user);
     return data.user;
   };
 
   const loginWithApple = async (idToken, name) => {
     const { data } = await api.post("/auth/apple", { id_token: idToken, name });
-    localStorage.setItem("album_token", data.token);
-    localStorage.setItem("album_user", JSON.stringify(data.user));
+    saveSession(data);
     setUser(data.user);
     return data.user;
   };

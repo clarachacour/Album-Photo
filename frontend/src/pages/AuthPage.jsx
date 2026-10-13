@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@/lib/auth";
+import { useAuth, hasSignedInBefore } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import PasswordInput from "@/components/PasswordInput";
@@ -14,7 +14,14 @@ import { takeAfterLogin } from "@/lib/afterLogin";
 
 export default function AuthPage() {
   usePageMeta("auth");
-  const [mode, setMode] = useState("login");
+  const [params] = useSearchParams();
+  // "Sign in" in the menu asks for the sign-in form; otherwise (Create my
+  // album…) a first visit opens on creating an account, not "Welcome back".
+  const [mode, setMode] = useState(() => {
+    const asked = params.get("mode");
+    if (asked === "login" || asked === "signup") return asked;
+    return hasSignedInBefore() ? "login" : "signup";
+  });
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

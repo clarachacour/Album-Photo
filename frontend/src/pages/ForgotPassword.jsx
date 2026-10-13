@@ -29,7 +29,7 @@ export default function ForgotPassword() {
   return (
     <main className="min-h-screen flex items-center justify-center p-8 bg-[color:var(--paper)]">
       <div className="w-full max-w-md">
-        <Link to="/auth" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
+        <Link to="/auth?mode=login" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
           ← {t("auth.backToSignIn")}
         </Link>
         <h1 className="font-serif-display text-5xl tracking-tight mb-3">{t("auth.forgot.title")}</h1>
