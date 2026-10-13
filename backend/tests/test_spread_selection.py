@@ -26,3 +26,25 @@ def test_keeps_the_sharper_of_two_look_alikes():
     a, b = photo("soft", 0, "0" * 16, score=5), photo("sharp", 1, "0" * 16, score=50)
     kept, _ = spread_to_capacity([a, b, photo("other", 50, "f" * 16)], 2)
     assert [p["id"] for p in kept] == ["sharp", "other"]
+
+
+def test_same_result_as_the_simple_version():
+    """The fast version (costs updated pair by pair) picks exactly what
+    recomputing every pair each time would."""
+    import random
+    from app.services.curation import _redundancy
+
+    def simple(photos, capacity):
+        kept = list(photos)
+        while len(kept) > capacity:
+            costs = [_redundancy(kept[i], kept[i + 1]) for i in range(len(kept) - 1)]
+            i = min(range(len(costs)), key=costs.__getitem__)
+            a, b = kept[i], kept[i + 1]
+            kept.pop(i if (a.get("ai_score") or 0) < (b.get("ai_score") or 0) else i + 1)
+        return kept
+
+    r = random.Random(7)
+    photos = [photo(str(i), r.randrange(60), "%016x" % r.getrandbits(64), r.random()) for i in range(120)]
+    photos.sort(key=lambda p: p["taken_at"])
+    for cap in (1, 10, 60, 119):
+        assert [p["id"] for p in spread_to_capacity(photos, cap)[0]] == [p["id"] for p in simple(photos, cap)]

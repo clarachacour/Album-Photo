@@ -329,16 +329,23 @@ def spread_to_capacity(photos: List[dict], capacity: int) -> tuple:
     kept = list(photos)
     if capacity <= 0 or len(kept) <= capacity:
         return kept, []
+    # Each neighbour pair's cost is worked out once; after a photo goes,
+    # only the pair it leaves behind is new (fast even for 2000 photos).
+    costs = [_redundancy(kept[i], kept[i + 1]) for i in range(len(kept) - 1)]
     dropped = []
     while len(kept) > capacity:
-        best_i, best_cost = 0, None
-        for i in range(len(kept) - 1):
-            cost = _redundancy(kept[i], kept[i + 1])
-            if best_cost is None or cost < best_cost:
-                best_i, best_cost = i, cost
+        best_i = min(range(len(costs)), key=costs.__getitem__)
         a, b = kept[best_i], kept[best_i + 1]
         loser = best_i if (a.get("ai_score") or 0) < (b.get("ai_score") or 0) else best_i + 1
         dropped.append(kept.pop(loser))
+        # The pairs on either side of the removed photo become one new pair
+        # (just one pair goes when it was first or last).
+        if loser == 0:
+            del costs[0]
+        elif loser == len(kept):  # it was the last photo
+            del costs[-1]
+        else:
+            costs[loser - 1:loser + 1] = [_redundancy(kept[loser - 1], kept[loser])]
     return kept, dropped
 
 
