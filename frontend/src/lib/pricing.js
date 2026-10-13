@@ -9,9 +9,9 @@
 // table, which is exactly the kind of duplication that quietly drifts out
 // of sync.
 
-// Test week: every album is free — only delivery is due, in cash to the
-// courier — and no album price is shown anywhere. Set back to false to show
-// and charge prices again. Keep in sync with FREE_TRIAL in
+// Test week: prices are shown as usual, but the album is offered when
+// ordering — only delivery is due, in cash to the courier. Set back to false
+// to charge albums again. Keep in sync with FREE_TRIAL in
 // backend/app/services/pricing.py (which charges).
 export const FREE_TRIAL = true;
 
@@ -32,7 +32,8 @@ export function billedTier(pageCount) {
   return PAGE_TIERS.find((t) => t >= pages) ?? pages;
 }
 
-export function computeUnitPrice(size, pageCount, freeTrial = FREE_TRIAL) {
+// The album's price (shown); freeTrial: what is due for it during the test week (0).
+export function computeUnitPrice(size, pageCount, freeTrial = false) {
   if (freeTrial) return 0;
   const tierPrices = PRICE_TABLE[size] || PRICE_TABLE.A4;
   const tier = billedTier(pageCount);
@@ -52,7 +53,7 @@ export function billedPageCount(album) {
 // backend/app/services/pricing.py, which charges it.
 export const DIGITAL_DISCOUNT = 15;
 
-export function computeDigitalPrice(size, pageCount, freeTrial = FREE_TRIAL) {
+export function computeDigitalPrice(size, pageCount, freeTrial = false) {
   return Math.max(0, computeUnitPrice(size, pageCount, freeTrial) - DIGITAL_DISCOUNT);
 }
 

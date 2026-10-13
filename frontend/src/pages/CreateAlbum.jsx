@@ -10,7 +10,7 @@ import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { spineRatio, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
-import { computeUnitPrice, FREE_TRIAL, PAGE_TIERS } from "@/lib/pricing";
+import { computeUnitPrice, PAGE_TIERS } from "@/lib/pricing";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
@@ -501,11 +501,9 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 } transition-colors`}
               >
                 <span className="font-semibold tracking-widest text-sm block">{tier}p</span>
-                {!FREE_TRIAL && (
-                  <span className={`text-xs block mt-0.5 ${targetPages === tier ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
-                    ${computeUnitPrice(size, tier)}
-                  </span>
-                )}
+                <span className={`text-xs block mt-0.5 ${targetPages === tier ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
+                  ${computeUnitPrice(size, tier)}
+                </span>
               </button>
             ))}
             <button
@@ -532,12 +530,10 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
               <span className="text-sm text-[color:var(--ink)]/60 ml-3">{t("createAlbum.format.customPagesNote")}</span>
             </div>
           )}
-          {!FREE_TRIAL && (
-            <p className="text-sm text-[color:var(--ink)]/70 mt-5">
-              {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
-              <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
-            </p>
-          )}
+          <p className="text-sm text-[color:var(--ink)]/70 mt-5">
+            {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
+            <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
+          </p>
         </div>
       </div>
       <div className="flex items-center justify-center">

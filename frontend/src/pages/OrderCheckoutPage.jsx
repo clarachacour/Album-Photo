@@ -96,9 +96,11 @@ export default function OrderCheckoutPage() {
   const printPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
   const digitalPrice = album ? computeDigitalPrice(album.size || "A4", pageCount) : 0;
   const unitPrice = digital ? digitalPrice : printPrice;
+  // Test week: the album's price is shown, but it's offered — only delivery is due.
+  const dueUnitPrice = FREE_TRIAL ? 0 : unitPrice;
   // The digital album already ordered is taken off the printed book.
-  const credit = !digital && orderedKinds.digital ? Math.min(orderedKinds.digital.total_price_cents / 100, unitPrice * quantity) : 0;
-  const total = digital ? digitalPrice : unitPrice * quantity + SHIPPING_PRICE - credit;
+  const credit = !digital && orderedKinds.digital ? Math.min(orderedKinds.digital.total_price_cents / 100, dueUnitPrice * quantity) : 0;
+  const total = digital ? dueUnitPrice : dueUnitPrice * quantity + SHIPPING_PRICE - credit;
 
   const placeOrder = async (e) => {
     e.preventDefault();
@@ -227,7 +229,7 @@ export default function OrderCheckoutPage() {
                   >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-semibold">{t(`checkout.kind.${option.value}`)}</span>
-                      {!FREE_TRIAL && <span>${option.price.toFixed(2)}</span>}
+                      <OfferedPrice price={option.price} />
                     </div>
                     <p className="text-xs text-[color:var(--muted)] mt-1">{taken ? t("checkout.kindAlreadyOrdered") : option.extra}</p>
                   </button>
@@ -331,12 +333,10 @@ export default function OrderCheckoutPage() {
                   className="w-16 border border-[color:var(--ink)]/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
                 />
               </div>
-              {!FREE_TRIAL && (
-                <div className="flex justify-between mb-1">
-                  <span className="text-[color:var(--muted)]">{t("checkout.unitPrice")}</span>
-                  <span>${unitPrice.toFixed(2)}</span>
-                </div>
-              )}
+              <div className="flex justify-between mb-1">
+                <span className="text-[color:var(--muted)]">{t("checkout.unitPrice")}</span>
+                <OfferedPrice price={unitPrice} />
+              </div>
               <div className="flex justify-between">
                 <span className="text-[color:var(--muted)]">{t("checkout.shipping")}</span>
                 <span>${SHIPPING_PRICE.toFixed(2)}</span>
@@ -350,10 +350,10 @@ export default function OrderCheckoutPage() {
               <p className="text-xs text-[color:var(--muted)] mt-2" data-testid="checkout-delivery-time">{t("checkout.deliveryTime")}</p>
               </>
               )}
-              {digital && !FREE_TRIAL && (
+              {digital && (
                 <div className="flex justify-between">
                   <span className="text-[color:var(--muted)]">{t("checkout.kind.digital")}</span>
-                  <span>${digitalPrice.toFixed(2)}</span>
+                  <OfferedPrice price={digitalPrice} />
                 </div>
               )}
             </div>
@@ -397,5 +397,17 @@ export default function OrderCheckoutPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+// An album's price; during the test week, struck through and "Free".
+function OfferedPrice({ price }) {
+  const { t } = useTranslation();
+  if (!FREE_TRIAL) return <span>${price.toFixed(2)}</span>;
+  return (
+    <span className="whitespace-nowrap" data-testid="offered-price">
+      <span className="line-through text-[color:var(--muted)] mr-1.5">${price.toFixed(2)}</span>
+      <span className="font-semibold text-[color:var(--coral)]">{t("checkout.free")}</span>
+    </span>
   );
 }
