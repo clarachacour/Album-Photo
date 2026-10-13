@@ -10,6 +10,7 @@ from typing import Optional
 import requests
 
 from app.core.order_number import order_number
+from app.services import pricing
 from app.config import (
     WAKILNI_KEY,
     WAKILNI_PICKUP_AREA,
@@ -117,6 +118,16 @@ def waybill(order: dict) -> str:
     return order_number(order)
 
 
+def cash_due(order: dict) -> int:
+    """What the courier collects, in cents: the order's total — but during
+    the test week (FREE_TRIAL) only the delivery, even for an order placed
+    before it with the album's price in its total."""
+    if pricing.FREE_TRIAL:
+        shipping = order.get("shipping_price_cents")
+        return pricing.SHIPPING_PRICE_CENTS if shipping is None else int(shipping)
+    return int(order.get("total_price_cents", 0))
+
+
 def delivery_payload(order: dict, customer: dict) -> dict:
     """The "add delivery" body for one of our printed orders."""
     address = order.get("shipping_address") or {}
@@ -138,9 +149,9 @@ def delivery_payload(order: dict, customer: dict) -> dict:
         "receiver_area": address.get("area") or address.get("city") or "",
         "currency": CURRENCY_USD,
         # Already paid (marked so in the admin): nothing to collect.
-        # Otherwise the courier collects the order's total in cash.
-        "cash_collection_type_id": COLLECTION_PAID if paid else COLLECTION_ON_DELIVERY,
-        "collection_amount": 0 if paid else round(order.get("total_price_cents", 0) / 100, 2),
+        # Otherwise the courier collects what's due in cash (see cash_due).
+        "cash_collection_type_id": COLLECTION_PAID if paid or not cash_due(order) else COLLECTION_ON_DELIVERY,
+        "collection_amount": 0 if paid else round(cash_due(order) / 100, 2),
         "note": f"Everbook order {order_number(order)} — photo album, keep flat and dry.",
         "car_needed": False,
         "is_express": False,

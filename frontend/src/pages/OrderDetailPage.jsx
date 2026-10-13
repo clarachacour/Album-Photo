@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { orderNumber } from "@/lib/orderNumber";
+import { FREE_TRIAL, amountDueCents } from "@/lib/pricing";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -143,16 +144,28 @@ export default function OrderDetailPage() {
               <div>{t(`checkout.kind.${digital ? "digital" : "print"}`)}</div>
               <div>{t("orderDetail.format")}: {order.size} · {order.orientation}</div>
               {!digital && <div>{t("orderDetail.quantity")}: {order.quantity}</div>}
-              {order.unit_price_cents > 0 && <div>{t("orderDetail.unitPrice")}: {formatPrice(order.unit_price_cents, order.currency)}</div>}
+              {order.unit_price_cents > 0 && (
+                <div>
+                  {t("orderDetail.unitPrice")}:{" "}
+                  {FREE_TRIAL ? (
+                    <>
+                      <span className="line-through">{formatPrice(order.unit_price_cents, order.currency)}</span>{" "}
+                      <span className="font-semibold text-[color:var(--coral)]">{t("checkout.free")}</span>
+                    </>
+                  ) : (
+                    formatPrice(order.unit_price_cents, order.currency)
+                  )}
+                </div>
+              )}
               {!digital && order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
-              {order.credit_cents > 0 && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
+              {order.credit_cents > 0 && !FREE_TRIAL && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
               {/* A free album (test week): only the delivery, in cash to the courier. */}
               <div className="font-medium text-[color:var(--ink)] pt-1">
-                {order.unit_price_cents > 0
-                  ? `${t("orderDetail.total")}: ${formatPrice(order.total_price_cents, order.currency)}`
-                  : order.total_price_cents > 0
-                    ? `${t("checkout.cashToCourier")}: ${formatPrice(order.total_price_cents, order.currency)}`
-                    : t("checkout.free")}
+                {amountDueCents(order) === 0
+                  ? t("checkout.free")
+                  : FREE_TRIAL || order.unit_price_cents === 0
+                    ? `${t("checkout.cashToCourier")}: ${formatPrice(amountDueCents(order), order.currency)}`
+                    : `${t("orderDetail.total")}: ${formatPrice(order.total_price_cents, order.currency)}`}
               </div>
               <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: parseDate(order.created_at).toLocaleDateString(i18n.language) })}</div>
             </div>

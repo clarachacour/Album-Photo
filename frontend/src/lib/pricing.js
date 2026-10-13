@@ -65,3 +65,12 @@ export const SHIPPING_PRICE = 5;
 // date). Sent with an order when the customer ticks "I accept"; must match
 // TERMS_VERSION in backend/app/services/pricing.py.
 export const TERMS_VERSION = "2026-10-11";
+
+// What the customer pays for an order, in cents: its total — but during the
+// test week only the delivery (nothing for a PDF), even for an order placed
+// before it (same as cash_due in backend/app/services/wakilni.py).
+export function amountDueCents(order) {
+  if (!FREE_TRIAL) return order?.total_price_cents || 0;
+  if (order?.kind === "digital") return 0;
+  return order?.shipping_price_cents ?? SHIPPING_PRICE * 100;
+}

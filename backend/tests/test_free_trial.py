@@ -26,3 +26,17 @@ def test_the_confirmation_email_says_only_delivery_is_paid_in_cash(app, monkeypa
     order = {"id": "abc12345-x", "kind": "print", "unit_price_cents": 0, "total_price_cents": 500, "currency": "usd", "quantity": 1}
     email_module.send_order_confirmation_email("rita@example.com", "Rita", order)
     assert "free" in sent[0] and "5.00 USD" in sent[0] and "cash to the courier" in sent[0]
+
+
+def test_wakilni_collects_only_the_delivery_even_for_an_order_placed_before(app):
+    from app.services import wakilni
+
+    old_order = {
+        "id": "5f4c0509-aaaa", "user_id": "u1", "status": "printing", "quantity": 1, "size": "A4",
+        "unit_price_cents": 3500, "shipping_price_cents": 500, "total_price_cents": 4000,
+        "shipping_address": {"full_name": "Rita Haddad", "phone": "70123456", "street": "Rue Sioufi", "city": "Beirut"},
+    }
+    payload = wakilni.delivery_payload(old_order, {"email": "rita@example.com"})
+    assert payload["collection_amount"] == 5.0
+    assert payload["cash_collection_type_id"] == wakilni.COLLECTION_ON_DELIVERY
+    assert payload["waybill"] == "EB-5F4C0509"

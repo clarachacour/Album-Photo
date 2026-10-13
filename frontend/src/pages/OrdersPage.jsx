@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { amountDueCents } from "@/lib/pricing";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
@@ -82,7 +83,7 @@ export default function OrdersPage() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-medium">{o.total_price_cents > 0 ? formatPrice(o.total_price_cents, o.currency) : t("checkout.free")}</div>
+                  <div className="text-sm font-medium">{amountDueCents(o) > 0 ? formatPrice(amountDueCents(o), o.currency) : t("checkout.free")}</div>
                   <div className={`text-xs uppercase tracking-widest font-semibold ${STATUS_COLORS[o.status] || ""}`}>
                     {t(`orders.status.${o.status}`, { defaultValue: o.status.replace(/_/g, " ") })}
                   </div>

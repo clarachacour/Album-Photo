@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRICE_TABLE, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
+import { FREE_TRIAL, PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 
 describe("pricing", () => {
   it("bills an album as the smallest tier that holds it", () => {
@@ -27,5 +27,11 @@ describe("pricing", () => {
   it("makes every album free during the test week (delivery stays)", () => {
     expect(computeUnitPrice("A4", 200, true)).toBe(0);
     expect(computeDigitalPrice("A5", 24, true)).toBe(0);
+  });
+
+  it("asks only for the delivery during the test week, even for an older order", () => {
+    const old = { kind: "print", total_price_cents: 4000, shipping_price_cents: 500 };
+    expect(amountDueCents(old)).toBe(FREE_TRIAL ? 500 : 4000);
+    expect(amountDueCents({ kind: "digital", total_price_cents: 2000 })).toBe(FREE_TRIAL ? 0 : 2000);
   });
 });

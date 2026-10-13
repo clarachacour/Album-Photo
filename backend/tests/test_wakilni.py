@@ -173,3 +173,10 @@ def test_if_wakilni_refuses_the_courier_is_emailed_and_the_admin_told(client, db
     assert "receiver area" in order["delivery"]["error"]
     assert courier["sent"]["courier"] == [order_id] and len(courier["sent"]["problem"]) == 1
     assert "/api/v2/clients/end_bulk/77" in [p for _, p, _ in courier["fake"].calls]  # the empty pickup is closed
+
+
+def test_outside_the_test_week_the_courier_collects_the_whole_total(app):
+    from app.services import wakilni
+
+    order = {"id": "5f4c0509-aaaa", "status": "printing", "total_price_cents": 4000, "shipping_price_cents": 500, "shipping_address": {}}
+    assert wakilni.delivery_payload(order, {})["collection_amount"] == 40.0
