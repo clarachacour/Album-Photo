@@ -8,7 +8,7 @@ from app.config import R2_BUCKET_NAME
 from app.core.auth import decode_token, get_current_user, require_admin
 from app.db import db
 from app.monitoring import send_test_error
-from app.schemas import OrderStatusUpdate
+from app.schemas import OrderStatusUpdate, ShippingAddress
 from app.services.email import (
     send_order_delivered_feedback_email,
     send_order_shipped_email,
@@ -227,6 +227,28 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
         if customer:
             await run_email(email_fn, customer.get("email"), customer.get("name"), fresh)
     return fresh
+
+
+@router.patch("/admin/orders/{order_id}/shipping-address")
+async def admin_update_shipping_address(order_id: str, data: ShippingAddress, user: dict = Depends(get_current_user)):
+    """Corrects a printed order's delivery address (a wrong address typed by
+    the customer). Refused once a Wakilni delivery exists for it: cancel that
+    delivery first (it carries the old address), then a new one is created
+    with the corrected address."""
+    require_admin(user)
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order_kind(order) != "print":
+        raise HTTPException(status_code=400, detail="A digital album has no delivery address")
+    if (order.get("delivery") or {}).get("delivery_id"):
+        raise HTTPException(status_code=409, detail="A Wakilni delivery already exists with the old address: cancel it first, then change the address")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"shipping_address": data.dict(), "updated_at": now}, "$push": {"address_history": {"previous": order.get("shipping_address"), "at": now, "by": user.get("email")}}},
+    )
+    return await db.orders.find_one({"id": order_id}, {"_id": 0})
 
 
 # ---------- Wakilni delivery, by hand ----------

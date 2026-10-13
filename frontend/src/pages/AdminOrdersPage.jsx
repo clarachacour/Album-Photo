@@ -125,6 +125,19 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // A wrong delivery address, corrected (before the Wakilni delivery exists).
+  const [editingAddressId, setEditingAddressId] = useState(null);
+  const saveAddress = async (orderId, address) => {
+    try {
+      const { data } = await api.patch(`/admin/orders/${orderId}/shipping-address`, address);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
+      setEditingAddressId(null);
+      toast.success("Address updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't update the address");
+    }
+  };
+
   // The printer's email again (download + "ready" links), without
   // regenerating the PDF — e.g. after fixing PRINTER_EMAIL.
   const [resendingId, setResendingId] = useState(null);
@@ -219,9 +232,29 @@ export default function AdminOrdersPage() {
                         {o.customer?.email && <div className="text-xs text-[color:var(--ink)]/60 break-all">{o.customer.email}</div>}
                       </td>
                       <td className="p-3 text-[color:var(--ink)]/70">
-                        {addr.street}{addr.building ? `, ${addr.building}` : ""}<br />
-                        {addr.city}{addr.area ? ` · ${addr.area}` : ""}
-                        {addr.additional_info && <div className="text-xs italic mt-0.5">{addr.additional_info}</div>}
+                        {editingAddressId === o.id ? (
+                          <AddressEditor
+                            address={addr}
+                            onCancel={() => setEditingAddressId(null)}
+                            onSave={(next) => saveAddress(o.id, next)}
+                          />
+                        ) : (
+                          <>
+                            {addr.street}{addr.building ? `, ${addr.building}` : ""}<br />
+                            {addr.city}{addr.area ? ` · ${addr.area}` : ""}
+                            {addr.additional_info && <div className="text-xs italic mt-0.5">{addr.additional_info}</div>}
+                            {o.kind !== "digital" && !["shipped", "delivered", "cancelled"].includes(o.status) && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingAddressId(o.id)}
+                                data-testid={`admin-edit-address-${o.id}`}
+                                className="mt-1 flex items-center gap-1 text-xs underline underline-offset-2 text-[color:var(--muted)] hover:text-[color:var(--coral)]"
+                              >
+                                <Pencil size={11} /> Edit address
+                              </button>
+                            )}
+                          </>
+                        )}
                       </td>
                       <td className="p-3">
                         <Link to={`/orders/${o.id}`} className="hover:text-[color:var(--coral)] inline-flex items-center gap-1">
@@ -413,5 +446,54 @@ function SentryTestButton() {
       <Bug size={14} />
       <span className="text-xs font-semibold tracking-widest uppercase">{busy ? "Testing…" : "Test Sentry"}</span>
     </button>
+  );
+}
+
+// Inline form to correct a printed order's delivery address.
+const ADDRESS_FIELDS = [
+  ["full_name", "Full name", true],
+  ["phone", "Phone", true],
+  ["street", "Street", true],
+  ["building", "Building", false],
+  ["city", "City", true],
+  ["area", "Area (Wakilni)", false],
+  ["additional_info", "Notes", false],
+];
+
+function AddressEditor({ address, onSave, onCancel }) {
+  const [form, setForm] = useState(() => Object.fromEntries(ADDRESS_FIELDS.map(([k]) => [k, address?.[k] || ""])));
+  const [saving, setSaving] = useState(false);
+  const missing = ADDRESS_FIELDS.some(([k, , required]) => required && !form[k].trim());
+  return (
+    <form
+      className="space-y-1 min-w-[220px]"
+      data-testid="admin-address-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (missing) return;
+        setSaving(true);
+        const clean = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() || null]));
+        await onSave(clean);
+        setSaving(false);
+      }}
+    >
+      {ADDRESS_FIELDS.map(([key, label, required]) => (
+        <input
+          key={key}
+          value={form[key]}
+          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+          placeholder={required ? `${label} *` : label}
+          aria-label={label}
+          className="w-full border border-[color:var(--ink)]/20 px-2 py-1 text-xs bg-white focus:border-[color:var(--ink)] focus:outline-none"
+          data-testid={`admin-address-${key}`}
+        />
+      ))}
+      <div className="flex gap-2 pt-1">
+        <button type="submit" disabled={saving || missing} className="text-xs bg-[color:var(--ink)] text-[color:var(--paper)] px-2.5 py-1 disabled:opacity-50" data-testid="admin-address-save">
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button type="button" onClick={onCancel} className="text-xs underline">Cancel</button>
+      </div>
+    </form>
   );
 }
