@@ -19,7 +19,6 @@
       "cta": "Créer mon album",
       "image_alt": "Albums photo imprimés Everbook",
       "perks": [
-        "Gratuit jusqu'à la commande",
         "À partir de {{price}} $",
         "Livré au Liban en ~1 semaine"
       ]
@@ -85,7 +84,7 @@
     "footer": {
       "title_line1": "Vos plus beaux souvenirs",
       "title_line2": "méritent d'être imprimés.",
-      "cta": "Créer mon album — gratuit jusqu'à la commande"
+      "cta": "Créer mon album"
     }
   },
   "auth": {

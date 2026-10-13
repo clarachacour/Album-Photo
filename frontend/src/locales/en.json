@@ -19,7 +19,6 @@
       "cta": "Create my album",
       "image_alt": "Printed Everbook photo albums",
       "perks": [
-        "Free until you order",
         "From ${{price}}",
         "Delivered in Lebanon in ~1 week"
       ]
@@ -85,7 +84,7 @@
     "footer": {
       "title_line1": "Your best memories",
       "title_line2": "deserve to be printed.",
-      "cta": "Create my album — free until you order"
+      "cta": "Create my album"
     }
   },
   "auth": {
