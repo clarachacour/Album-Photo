@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { orderNumber } from "@/lib/orderNumber";
+import { isLebanesePhone } from "@/lib/phone";
 import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
@@ -463,7 +464,8 @@ const ADDRESS_FIELDS = [
 function AddressEditor({ address, onSave, onCancel }) {
   const [form, setForm] = useState(() => Object.fromEntries(ADDRESS_FIELDS.map(([k]) => [k, address?.[k] || ""])));
   const [saving, setSaving] = useState(false);
-  const missing = ADDRESS_FIELDS.some(([k, , required]) => required && !form[k].trim());
+  const badPhone = form.phone.trim() !== "" && !isLebanesePhone(form.phone);
+  const missing = badPhone || ADDRESS_FIELDS.some(([k, , required]) => required && !form[k].trim());
   return (
     <form
       className="space-y-1 min-w-[220px]"
@@ -488,6 +490,7 @@ function AddressEditor({ address, onSave, onCancel }) {
           data-testid={`admin-address-${key}`}
         />
       ))}
+      {badPhone && <p className="text-xs text-red-600">Not a Lebanese number (e.g. 70 123 456)</p>}
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={saving || missing} className="text-xs bg-[color:var(--ink)] text-[color:var(--paper)] px-2.5 py-1 disabled:opacity-50" data-testid="admin-address-save">
           {saving ? "Saving…" : "Save"}

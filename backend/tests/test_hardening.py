@@ -103,7 +103,7 @@ def test_order_price_uses_the_real_page_count(client, db, monkeypatch):
     # The client lowers the page count it "chose" before ordering.
     assert client.patch(f"/api/albums/{album_id}", json={"target_pages": 24}, headers=headers).status_code == 200
 
-    address = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
+    address = {"full_name": "A", "phone": "70 123 456", "street": "S", "city": "C"}
     res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": address, "accepted_terms_version": TERMS_VERSION}, headers=headers)
     assert res.status_code == 200, res.text
     assert res.json()["unit_price_cents"] == compute_order_price_cents("A4", 250)
@@ -124,7 +124,7 @@ def test_order_needs_the_terms_and_records_them(client, db, monkeypatch):
     _, headers = _signup(client, db=db)
     album_id = _album(client, headers, size="A4", target_pages=24)
     asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"pages": [{"id": "1", "items": []}], "status": "ready"}}))
-    address = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
+    address = {"full_name": "A", "phone": "70 123 456", "street": "S", "city": "C"}
 
     for accepted in (None, "", "2020-01-01"):
         body = {"album_id": album_id, "shipping_address": address}

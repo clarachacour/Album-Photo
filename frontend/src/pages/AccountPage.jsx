@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { isLebanesePhone } from "@/lib/phone";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -28,6 +29,10 @@ export default function AccountPage() {
 
   const saveProfile = async (e) => {
     e.preventDefault();
+    if (form.phone && !isLebanesePhone(form.phone)) {
+      toast.error(t("checkout.phoneInvalid"));
+      return;
+    }
     setSaving(true);
     try {
       const { data } = await api.put("/auth/me", form);
@@ -100,7 +105,7 @@ export default function AccountPage() {
             </div>
             <div>
               <label className="eyebrow block mb-2">{t("account.phone")}</label>
-              <input className={inputClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <input className={inputClass} type="tel" inputMode="tel" placeholder="70 123 456" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>
               <label className="eyebrow block mb-2">{t("account.street")}</label>

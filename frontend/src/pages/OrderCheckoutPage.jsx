@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { FREE_TRIAL, SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
+import { isLebanesePhone } from "@/lib/phone";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 export default function OrderCheckoutPage() {
@@ -102,6 +103,8 @@ export default function OrderCheckoutPage() {
   const credit = !digital && orderedKinds.digital ? Math.min(orderedKinds.digital.total_price_cents / 100, dueUnitPrice * quantity) : 0;
   const total = digital ? dueUnitPrice : dueUnitPrice * quantity + SHIPPING_PRICE - credit;
 
+  const [phoneError, setPhoneError] = useState(false);
+
   const placeOrder = async (e) => {
     e.preventDefault();
     const required = digital ? [] : ["full_name", "phone", "street", "city", ...(areas.length ? ["area"] : [])];
@@ -110,6 +113,11 @@ export default function OrderCheckoutPage() {
         toast.error(t("checkout.requiredFields"));
         return;
       }
+    }
+    if (!digital && !isLebanesePhone(address.phone)) {
+      setPhoneError(true);
+      toast.error(t("checkout.phoneInvalid"));
+      return;
     }
     if (!digital && areas.length && !areas.some((a) => a.toLowerCase() === address.area.trim().toLowerCase())) {
       toast.error(t("checkout.areaFromList"));
@@ -250,7 +258,21 @@ export default function OrderCheckoutPage() {
               </div>
               <div className="md:col-span-2">
                 <label className="eyebrow block mb-2">{t("checkout.phone")}</label>
-                <input className={inputClass} value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} required />
+                <input
+                  className={`${inputClass} ${phoneError ? "border-red-500" : ""}`}
+                  value={address.phone}
+                  onChange={(e) => {
+                    setAddress({ ...address, phone: e.target.value });
+                    setPhoneError(false);
+                  }}
+                  onBlur={() => address.phone && setPhoneError(!isLebanesePhone(address.phone))}
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="70 123 456"
+                  data-testid="checkout-phone"
+                  required
+                />
+                {phoneError && <p className="text-xs text-red-600 mt-1" data-testid="checkout-phone-error">{t("checkout.phoneInvalid")}</p>}
               </div>
               <div>
                 <label className="eyebrow block mb-2">{t("checkout.street")}</label>

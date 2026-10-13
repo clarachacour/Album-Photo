@@ -7,7 +7,7 @@ import pytest
 from tests.test_api import _signup
 from app.services.pricing import TERMS_VERSION
 
-ADDRESS = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
+ADDRESS = {"full_name": "A", "phone": "70 123 456", "street": "S", "city": "C"}
 
 
 def _album_with_pages(client, db, headers, pages=3):

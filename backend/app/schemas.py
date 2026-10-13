@@ -4,6 +4,8 @@ from typing import Annotated, Any, Dict, List, Literal, Optional
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
+from app.core.phone import normalize_lebanese_phone, optional_lebanese_phone
+
 
 def _fits_bcrypt(password: str) -> str:
     # bcrypt only reads the first 72 bytes and the library refuses longer
@@ -20,8 +22,9 @@ NewPassword = Annotated[str, Field(min_length=6), AfterValidator(_fits_bcrypt)]
 # name or a 2 MB contact message was stored (and emailed) as is.
 Name = Annotated[str, Field(min_length=1, max_length=100)]
 OptName = Annotated[Optional[str], Field(default=None, max_length=100)]
-Phone = Annotated[str, Field(min_length=1, max_length=40)]
-OptPhone = Annotated[Optional[str], Field(default=None, max_length=40)]
+# A Lebanese number (delivery is in Lebanon only), stored as 8 digits.
+Phone = Annotated[str, Field(min_length=1, max_length=40), AfterValidator(normalize_lebanese_phone)]
+OptPhone = Annotated[Optional[str], Field(default=None, max_length=40), AfterValidator(optional_lebanese_phone)]
 Line = Annotated[str, Field(min_length=1, max_length=200)]
 OptLine = Annotated[Optional[str], Field(default=None, max_length=200)]
 OptNote = Annotated[Optional[str], Field(default=None, max_length=500)]

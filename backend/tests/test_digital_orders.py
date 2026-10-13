@@ -8,7 +8,7 @@ import pytest
 from app.services.pricing import DIGITAL_DISCOUNT_CENTS, SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
 from tests.test_api import _signup
 
-ADDRESS = {"full_name": "A", "phone": "1", "street": "S", "city": "C"}
+ADDRESS = {"full_name": "A", "phone": "70 123 456", "street": "S", "city": "C"}
 
 
 @pytest.fixture()
