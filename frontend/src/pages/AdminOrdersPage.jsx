@@ -3,7 +3,7 @@ import { orderNumber } from "@/lib/orderNumber";
 import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { Download, ExternalLink, RefreshCw, Bug, Pencil } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail } from "lucide-react";
 import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 
@@ -125,6 +125,21 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // The printer's email again (download + "ready" links), without
+  // regenerating the PDF — e.g. after fixing PRINTER_EMAIL.
+  const [resendingId, setResendingId] = useState(null);
+  const resendPrinterEmail = async (orderId) => {
+    setResendingId(orderId);
+    try {
+      await api.post(`/admin/orders/${orderId}/resend-printer-email`);
+      toast.success("Printer email sent again");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't send the printer email");
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
     try {
@@ -136,7 +151,7 @@ export default function AdminOrdersPage() {
       if (data.pdf_queued) {
         toast.success("Regeneration started — refresh this page in a few minutes");
       } else if (data.pdf_ready) {
-        toast.success("PDF regenerated — the printer has been notified");
+        toast.success("PDF regenerated — use \"Printer\" to send the printer email again if needed");
       } else {
         toast.error("Regeneration failed again — check the Cloud Run logs");
       }
@@ -305,7 +320,20 @@ export default function AdminOrdersPage() {
                               <Download size={12} />
                               Download
                             </button>
-                          ) : o.pdf_generating ? (
+                          ) : null}
+                          {o.pdf_ready && o.kind !== "digital" && (
+                            <button
+                              onClick={() => resendPrinterEmail(o.id)}
+                              disabled={resendingId === o.id}
+                              title="Send the printer email again (PDF download + Ready link)"
+                              data-testid={`admin-resend-printer-${o.id}`}
+                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                            >
+                              <Mail size={12} />
+                              Printer
+                            </button>
+                          )}
+                          {o.pdf_ready ? null : o.pdf_generating ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
                               <RefreshCw size={12} className="animate-spin" />
                               Generating…
@@ -321,7 +349,7 @@ export default function AdminOrdersPage() {
                             <button
                               onClick={() => regeneratePdf(o.id)}
                               disabled={regeneratingId === o.id}
-                              title="Regenerate PDF — re-runs generation and re-notifies the printer, nothing needed from the customer"
+                              title="Regenerate PDF — re-runs generation (the printer is emailed automatically only the first time; use Printer to send it again)"
                               className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
                             >
                               <RefreshCw size={12} className={regeneratingId === o.id ? "animate-spin" : ""} />
