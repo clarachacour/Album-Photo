@@ -41,3 +41,11 @@ def test_a_customer_cannot_change_it(client, db, admin):
     _order(db, "addr-3")
     _, customer = _signup(client, db=db)
     assert client.patch("/api/admin/orders/addr-3/shipping-address", json=NEW, headers=customer).status_code == 403
+
+
+def test_the_country_is_lebanon_and_nothing_else(client, db, admin):
+    _order(db, "addr-4")
+    res = client.patch("/api/admin/orders/addr-4/shipping-address", json=NEW, headers=admin)
+    assert res.json()["shipping_address"]["country"] == "Lebanon"
+    _order(db, "addr-5")
+    assert client.patch("/api/admin/orders/addr-5/shipping-address", json={**NEW, "country": "France"}, headers=admin).status_code == 422

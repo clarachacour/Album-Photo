@@ -101,6 +101,8 @@ class ShippingAddress(BaseModel):
     # The courier's (Wakilni's) area name, e.g. "Hamra".
     area: OptLine = None
     additional_info: OptNote
+    # Delivery is in Lebanon only: always "Lebanon" (filled in, not editable).
+    country: Literal["Lebanon"] = "Lebanon"
 
 class OrderCreate(BaseModel):
     album_id: Id

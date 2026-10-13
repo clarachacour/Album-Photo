@@ -991,6 +991,8 @@
   },
   "checkout": {
     "loadError": "Impossible de charger cet album",
+    "country": "Pays",
+    "lebanon": "Liban",
     "phoneInvalid": "Entrez un numéro de téléphone libanais (ex. 70 123 456 ou 03 123 456).",
     "requiredFields": "Merci de remplir tous les champs obligatoires de l'adresse de livraison",
     "alreadyOrdered": "Vous avez déjà commandé cet album.",

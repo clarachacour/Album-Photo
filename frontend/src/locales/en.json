@@ -991,6 +991,8 @@
   },
   "checkout": {
     "loadError": "Failed to load this album",
+    "country": "Country",
+    "lebanon": "Lebanon",
     "phoneInvalid": "Please enter a Lebanese phone number (e.g. 70 123 456 or 03 123 456).",
     "requiredFields": "Please fill in all required shipping fields",
     "alreadyOrdered": "You've already placed an order for this album.",

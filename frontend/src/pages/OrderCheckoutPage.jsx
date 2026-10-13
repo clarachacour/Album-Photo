@@ -31,6 +31,7 @@ export default function OrderCheckoutPage() {
     city: user?.city || "",
     area: "",
     additional_info: user?.additional_info || "",
+    country: "Lebanon", // delivery in Lebanon only
   });
   // The courier's (Wakilni's) area names, suggested for the "Area" field;
   // when there's a list, the area must be one of them.
@@ -299,6 +300,11 @@ export default function OrderCheckoutPage() {
                 <datalist id="delivery-areas">
                   {areas.map((a) => <option key={a} value={a} />)}
                 </datalist>
+              </div>
+              <div>
+                <label className="eyebrow block mb-2">{t("checkout.country")}</label>
+                {/* Delivery in Lebanon only: filled in, not editable. */}
+                <input className={`${inputClass} opacity-70 cursor-not-allowed`} value={t("checkout.lebanon")} disabled readOnly data-testid="checkout-country" />
               </div>
               <div className="md:col-span-2">
                 <label className="eyebrow block mb-2">{t("checkout.additionalInfo")}</label>

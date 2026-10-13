@@ -242,7 +242,7 @@ export default function AdminOrdersPage() {
                         ) : (
                           <>
                             {addr.street}{addr.building ? `, ${addr.building}` : ""}<br />
-                            {addr.city}{addr.area ? ` · ${addr.area}` : ""}
+                            {addr.city}{addr.area ? ` · ${addr.area}` : ""} · Lebanon
                             {addr.additional_info && <div className="text-xs italic mt-0.5">{addr.additional_info}</div>}
                             {o.kind !== "digital" && !["shipped", "delivered", "cancelled"].includes(o.status) && (
                               <button
@@ -474,7 +474,7 @@ function AddressEditor({ address, onSave, onCancel }) {
         e.preventDefault();
         if (missing) return;
         setSaving(true);
-        const clean = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() || null]));
+        const clean = { ...Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() || null])), country: "Lebanon" };
         await onSave(clean);
         setSaving(false);
       }}
@@ -490,6 +490,7 @@ function AddressEditor({ address, onSave, onCancel }) {
           data-testid={`admin-address-${key}`}
         />
       ))}
+      <input value="Lebanon" disabled readOnly aria-label="Country" className="w-full border border-[color:var(--ink)]/20 px-2 py-1 text-xs bg-[color:var(--paper)] opacity-70" />
       {badPhone && <p className="text-xs text-red-600">Not a Lebanese number (e.g. 70 123 456)</p>}
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={saving || missing} className="text-xs bg-[color:var(--ink)] text-[color:var(--paper)] px-2.5 py-1 disabled:opacity-50" data-testid="admin-address-save">

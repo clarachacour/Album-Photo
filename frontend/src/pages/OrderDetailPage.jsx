@@ -177,6 +177,7 @@ export default function OrderDetailPage() {
               <div>{addr.full_name}</div>
               <div>{addr.street}{addr.building && `, ${addr.building}`}</div>
               <div>{addr.city}{addr.area && ` · ${addr.area}`}</div>
+              <div>{t("checkout.lebanon")}</div>
               {addr.additional_info && <div>{addr.additional_info}</div>}
               {addr.phone && <div className="pt-1">{addr.phone}</div>}
             </div>
