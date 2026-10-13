@@ -29,7 +29,7 @@ def _h(value) -> str:
     return html.escape(str(value if value is not None else ""))
 
 
-def send_email(to_email: str, subject: str, body: str, html_body: str = None):
+def send_email(to_email: str, subject: str, body: str, html_body: str = None, reply_to: str = None):
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         # No email provider configured — log it so it's usable in local/dev
         # testing without silently failing. Set SMTP_HOST/SMTP_USER/
@@ -52,6 +52,10 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None):
         msg["Subject"] = " ".join(str(subject).split())
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
+        if reply_to:
+            # "Reply" in the mail app then writes to this address (the
+            # customer, for the contact form) instead of to the site.
+            msg["Reply-To"] = " ".join(str(reply_to).split())
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
             server.starttls()
             server.login(SMTP_USER, SMTP_PASSWORD)

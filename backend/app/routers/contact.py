@@ -9,7 +9,7 @@ from app.core.rate_limit import CONTACT_LIMIT_PER_IP, rate_limiter
 from app.core.security import client_ip
 from app.db import db
 from app.schemas import ContactInput
-from app.services.email import send_email
+from app.services.email import _h, send_email
 from app.core.executors import run_email
 
 router = APIRouter()
@@ -34,10 +34,29 @@ async def submit_contact(data: ContactInput, request: Request):
     # email sending isn't set up (already logged by send_email in that case).
     support_email = os.environ.get("SUPPORT_EMAIL")
     if support_email:
+        # The sender's address written out in full (not as <address>, which
+        # some mail apps hide as if it were markup) and set as Reply-To, so
+        # "Reply" answers the customer directly.
+        body = (
+            f"Name: {data.name}\n"
+            f"Email: {data.email}\n"
+            f"Subject: {data.subject}\n\n"
+            f"{data.message}\n\n"
+            f"— Reply to this email to answer {data.name} directly."
+        )
+        html_body = (
+            f"<p><strong>Name:</strong> {_h(data.name)}<br>"
+            f"<strong>Email:</strong> <a href=\"mailto:{_h(data.email)}\">{_h(data.email)}</a><br>"
+            f"<strong>Subject:</strong> {_h(data.subject)}</p>"
+            f"<p style=\"white-space:pre-wrap\">{_h(data.message)}</p>"
+            f"<p style=\"color:#73716A;font-size:13px\">Reply to this email to answer {_h(data.name)} directly.</p>"
+        )
         await run_email(
             send_email,
             support_email,
             f"[Contact] {data.subject}",
-            f"From: {data.name} <{data.email}>\n\n{data.message}",
+            body,
+            html_body,
+            data.email,
         )
     return {"message": "Message sent — we'll get back to you soon."}
