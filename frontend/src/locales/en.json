@@ -929,6 +929,9 @@
     },
     "notFound": {
       "title": "Page not found"
+    },
+    "printer": {
+      "title": "Order to print"
     }
   },
   "coverPanel": {
@@ -1186,5 +1189,18 @@
     "copyFailed": "Couldn't copy the link",
     "orEmail": "You can also create your account here with your email and a password.",
     "close": "Close"
+  },
+  "printer": {
+    "eyebrow": "Order to print",
+    "quantity_one": "{{count}} copy",
+    "quantity_other": "{{count}} copies",
+    "download": "Download print-ready PDF",
+    "markReady": "Mark ready for delivery",
+    "markReadyHint": "Once the book is printed and packed, with the order number written on the package. The courier is notified right away.",
+    "marked": "Thanks — the book is marked ready. The courier has been notified.",
+    "alreadyReady": "This book is already marked ready for delivery.",
+    "cancelled": "This order was cancelled: please don't print it.",
+    "badLink": "This link isn't valid. Please use the link from the latest email.",
+    "error": "Something went wrong. Please try again."
   }
 }

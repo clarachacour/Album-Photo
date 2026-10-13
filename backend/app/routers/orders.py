@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from pymongo.errors import DuplicateKeyError
 
 from app.config import R2_BUCKET_NAME
@@ -17,7 +17,7 @@ from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.delivery import dispatch_delivery
 from app.core.order_number import order_number
 from app.services import pricing
-from app.services.email import send_order_confirmation_email, send_team_order_update_email
+from app.services.email import printer_ready_url, send_order_confirmation_email, send_team_order_update_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
     order_kind,
@@ -160,17 +160,45 @@ async def order_action_download_pdf(order_id: str, token: str = Query(None)):
     return RedirectResponse(url)
 
 @router.get("/order-actions/{order_id}/ready")
-async def order_action_mark_ready(order_id: str, token: str = Query(None)):
-    """The printer's "ready for delivery" link — moves the order to
-    ready_for_delivery and, right then, notifies the delivery company
-    (see send_delivery_pickup_email). Returns a plain confirmation page
-    since a person at the print shop is the one clicking this in their
-    browser, not calling it as an API."""
+async def order_action_ready_link(order_id: str, token: str = Query(None)):
+    """Links mailed before the printer page existed: opening a link must not
+    mark the book ready (mail scanners open every link of an email), so it
+    leads to the page on the site where the printer confirms."""
+    if not verify_order_action(order_id, "ready", token):
+        raise HTTPException(status_code=403, detail="Invalid or expired link")
+    return RedirectResponse(printer_ready_url(order_id, token))
+
+@router.get("/order-actions/{order_id}/info")
+async def order_action_info(order_id: str, token: str = Query(None)):
+    """For the printer's page: the order number and whether it's already
+    marked ready. Nothing about the price or the customer."""
     if not verify_order_action(order_id, "ready", token):
         raise HTTPException(status_code=403, detail="Invalid or expired link")
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    return {
+        "order_number": order_number(order),
+        "album_title": order.get("album_title", "Album"),
+        "size": order.get("size"),
+        "orientation": order.get("orientation"),
+        "quantity": order.get("quantity", 1),
+        "ready": order["status"] in ("ready_for_delivery", "shipped", "delivered"),
+        "cancelled": order["status"] == "cancelled",
+    }
+
+@router.post("/order-actions/{order_id}/ready")
+async def order_action_mark_ready(order_id: str, token: str = Query(None)):
+    """The printer's "ready for delivery" button (on the site's printer page,
+    see send_printer_order_email) — moves the order to ready_for_delivery
+    and, right then, notifies the delivery company."""
+    if not verify_order_action(order_id, "ready", token):
+        raise HTTPException(status_code=403, detail="Invalid or expired link")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order["status"] == "cancelled":
+        raise HTTPException(status_code=409, detail="This order was cancelled")
     if order["status"] != "ready_for_delivery":
         now = datetime.now(timezone.utc).isoformat()
         await db.orders.update_one(
@@ -184,10 +212,7 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
         if pricing.FREE_TRIAL:
             await run_email(send_team_order_update_email, dispatched or order, "ready")
     # The order number only — nothing about the price on the printer's side.
-    return HTMLResponse("<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
-                         f"<h2>Thanks — order {order_number(order)} is marked ready.</h2>"
-                         "<p>The delivery company has been notified. Please make sure the order number is written on the package.</p>"
-                         "</body></html>")
+    return {"order_number": order_number(order), "ready": True}
 
 @router.get("/delivery/areas")
 async def delivery_areas(user: dict = Depends(get_current_user)):

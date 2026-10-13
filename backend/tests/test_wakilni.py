@@ -89,7 +89,7 @@ def courier(client, db, monkeypatch):
 
 
 def _ready(client, order_id):
-    return client.get(f"/api/order-actions/{order_id}/ready", params={"token": sign_order_action(order_id, "ready")})
+    return client.post(f"/api/order-actions/{order_id}/ready", params={"token": sign_order_action(order_id, "ready")})
 
 
 def _order(db, order_id):

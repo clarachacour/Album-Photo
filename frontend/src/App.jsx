@@ -40,6 +40,10 @@ const OrderFeedback = lazyPage(() => import("@/pages/OrderFeedback"));
 const OrderCheckoutPage = lazyPage(() => import("@/pages/OrderCheckoutPage"));
 const AdminOrdersPage = lazyPage(() => import("@/pages/AdminOrdersPage"));
 const VerifyEmailPending = lazyPage(() => import("@/pages/VerifyEmailPending"));
+const PrinterOrderPage = lazyPage(() => import("@/pages/PrinterOrderPage"));
+const PrinterDownloadRedirect = lazyPage(() =>
+  import("@/pages/PrinterOrderPage").then((m) => ({ default: m.PrinterDownloadRedirect }))
+);
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
 function AppChrome({ children }) {
@@ -108,6 +112,9 @@ export function AppRoutes() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/mobile-upload/:token" element={<MobileUpload />} />
             <Route path="/print/:id" element={<PrintAlbum />} />
+            {/* The print shop's links, from its email (no account). */}
+            <Route path="/printer/:orderId" element={<PrinterOrderPage />} />
+            <Route path="/printer/:orderId/download" element={<PrinterDownloadRedirect />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/contact" element={<ContactPage />} />
             {/* Not wrapped in ProtectedRoute — it IS the destination

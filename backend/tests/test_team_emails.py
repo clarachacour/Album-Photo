@@ -30,7 +30,7 @@ def _ready(client, monkeypatch, oid):
         return await orders_router.db.orders.find_one({"id": order_id}, {"_id": 0})
 
     monkeypatch.setattr(orders_router, "dispatch_delivery", fake_dispatch)
-    return client.get(f"/api/order-actions/{oid}/ready?token={sign_order_action(oid, 'ready')}")
+    return client.post(f"/api/order-actions/{oid}/ready?token={sign_order_action(oid, 'ready')}")
 
 
 @pytest.mark.free_trial

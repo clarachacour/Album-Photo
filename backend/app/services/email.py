@@ -4,6 +4,7 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate, make_msgid, parseaddr
 
 from app.config import (
     ADMIN_EMAIL,
@@ -54,6 +55,11 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None, re
         msg["Subject"] = " ".join(str(subject).split())
         msg["From"] = SMTP_FROM
         msg["To"] = to_email
+        # Standard headers Python doesn't add on its own: spam filters
+        # (Outlook especially) mark down an email without them.
+        msg["Date"] = formatdate(localtime=False)
+        sender_domain = parseaddr(SMTP_FROM)[1].rpartition("@")[2] or None
+        msg["Message-ID"] = make_msgid(domain=sender_domain)
         if reply_to:
             # "Reply" in the mail app then writes to this address (the
             # customer, for the contact form) instead of to the site.
@@ -530,6 +536,14 @@ def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_l
     )
     send_email(to_email, subject, body, html_body=html_body)
 
+def printer_download_url(order_id: str, token: str) -> str:
+    return f"{FRONTEND_URL}/printer/{order_id}/download?token={token}"
+
+
+def printer_ready_url(order_id: str, token: str) -> str:
+    return f"{FRONTEND_URL}/printer/{order_id}?token={token}"
+
+
 def send_printer_order_email(order: dict):
     """Sent automatically the moment an order's PDF finishes generating.
     Carries a signed download link (not the file itself — a full-
@@ -542,8 +556,11 @@ def send_printer_order_email(order: dict):
         return
     download_token = sign_order_action(order["id"], "download")
     ready_token = sign_order_action(order["id"], "ready")
-    download_url = f"{BACKEND_URL}/api/order-actions/{order['id']}/download?token={download_token}"
-    ready_url = f"{BACKEND_URL}/api/order-actions/{order['id']}/ready?token={ready_token}"
+    # Links on the site's own address, not the server's (…run.app): mail
+    # filters (Outlook above all) drop emails whose links lead to a hosting
+    # address they don't know, while showing them as delivered.
+    download_url = printer_download_url(order["id"], download_token)
+    ready_url = printer_ready_url(order["id"], ready_token)
     subject = f"New book to print — {order.get('album_title', 'Album')} ({order_number(order)})"
     number = order_number(order)
     # No price anywhere in what the printer receives — only what's needed
@@ -556,7 +573,7 @@ def send_printer_order_email(order: dict):
         f"Format: {order.get('size')} · {order.get('orientation')}\n"
         f"Quantity: {order.get('quantity', 1)}\n\n"
         f"Download the print-ready PDF:\n{download_url}\n\n"
-        f"Once printed and ready for the courier to collect, click here:\n{ready_url}"
+        f"Once printed and ready for the courier to collect, open this page and confirm:\n{ready_url}"
     )
     # Two calls to action here, not one — the shared wrapper's single
     # cta_label/cta_url slot only fits one, so both buttons are built by
