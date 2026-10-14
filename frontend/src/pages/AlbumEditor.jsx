@@ -3,8 +3,8 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, coverImageUrl, rememberPhotoLinks } from "@/lib/api";
 import { toast } from "sonner";
-import { getTemplate } from "@/lib/coverTemplates";
-import { CoverEditorPanel } from "@/components/CoverEditorPanel";
+import { getTemplate, COVER_COLOR_PRESETS } from "@/lib/coverTemplates";
+import { CoverEditorPanel, ColorField } from "@/components/CoverEditorPanel";
 import { makeCoverEditingActions, computeAlignSnap, computeResizeAlignSnap } from "@/lib/coverEditing";
 import { fullPageTemplate, layoutTemplates } from "@/lib/layoutPatterns";
 import { useHistoryState } from "@/lib/useHistoryState";
@@ -1300,6 +1300,38 @@ export default function AlbumEditor() {
               </span>
             </button>
           </div>
+
+          {/* The cover's color, without having to select the cover first
+              (selecting it shows the same field among its settings). */}
+          {!coverSel && (
+            <div className="border-t border-[color:var(--border-soft)] pt-4 mb-4" data-testid="editor-cover-color">
+              <div className="eyebrow mb-3">{t("albumEditor.coverColor")}</div>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {COVER_COLOR_PRESETS.map((p) => {
+                  const current = (album.cover?.bg_color || albumTemplate.bg).toLowerCase() === p.bg_color.toLowerCase();
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => updateCover({ bg_color: p.bg_color })}
+                      title={p.name}
+                      aria-label={p.name}
+                      aria-pressed={current}
+                      className={`w-7 h-7 border transition-shadow ${current ? "ring-2 ring-offset-1 ring-[color:var(--ink)]" : "border-[color:var(--ink)]/20 hover:ring-1 hover:ring-[color:var(--ink)]/40"}`}
+                      style={{ background: p.bg_color }}
+                    />
+                  );
+                })}
+              </div>
+              <ColorField
+                label={t("coverPanel.bgColorShort")}
+                value={album.cover?.bg_color || albumTemplate.bg}
+                onChange={(v) => updateCover({ bg_color: v || null })}
+                tid="editor-cover-bg-color"
+                onReset={() => updateCover({ bg_color: null })}
+              />
+            </div>
+          )}
 
           <div className="border-t border-[color:var(--border-soft)] pt-4">
             <div className="eyebrow mb-3">{t("albumEditor.editing")}</div>

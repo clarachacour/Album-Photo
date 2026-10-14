@@ -568,7 +568,8 @@
     "addPhotosButton": "Ajouter des photos",
     "addBlankPage": "Ajouter une page vide",
     "pagesShortTitle_one": "Votre album fait {{count}} page au lieu des {{target}} choisies.",
-    "pagesShortTitle_other": "Votre album fait {{count}} pages au lieu des {{target}} choisies."
+    "pagesShortTitle_other": "Votre album fait {{count}} pages au lieu des {{target}} choisies.",
+    "coverColor": "Couleur de la couverture"
   },
   "toolbars": {
     "editPhoto": "Modifier la photo : recadrer, zoomer, tourner",
