@@ -161,7 +161,9 @@ export default function AdminOrdersPage() {
       // and the row shows "Generating…" until it's done (refresh the page);
       // without it, it waits for the generation itself.
       const { data } = await api.post(`/admin/orders/${orderId}/regenerate-pdf`);
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data, pdf_generating: !!data.pdf_queued } : o)));
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, ...data, pdf_generating: !!data.pdf_queued, album_changed_since_pdf: false } : o))
+      );
       if (data.pdf_queued) {
         toast.success("Regeneration started — refresh this page in a few minutes");
       } else if (data.pdf_ready) {
@@ -345,7 +347,7 @@ export default function AdminOrdersPage() {
                         )}
                       </td>
                       <td className="p-3">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           {o.pdf_ready ? (
                             <button
                               onClick={() => downloadPdf(o.id)}
@@ -383,13 +385,26 @@ export default function AdminOrdersPage() {
                             <button
                               onClick={() => regeneratePdf(o.id)}
                               disabled={regeneratingId === o.id}
-                              title="Regenerate PDF — re-runs generation (the printer is emailed automatically only the first time; use Printer to send it again)"
-                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                              title="Make the PDF again from the album as it is now (the printer is emailed automatically only the first time; use Printer to send it again)"
+                              data-testid={`admin-regenerate-${o.id}`}
+                              className={`inline-flex items-center gap-1.5 text-xs border px-2.5 py-1.5 transition-colors disabled:opacity-60 ${
+                                o.album_changed_since_pdf
+                                  ? "border-[color:var(--coral)] text-[color:var(--coral)] font-semibold"
+                                  : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+                              }`}
                             >
                               <RefreshCw size={12} className={regeneratingId === o.id ? "animate-spin" : ""} />
+                              Regenerate PDF
                             </button>
                           )}
                         </div>
+                        {/* The PDF is made once: after editing the album, it has
+                            to be made again or the old version gets printed. */}
+                        {o.album_changed_since_pdf && !o.pdf_generating && (
+                          <p className="mt-1.5 text-xs text-[color:var(--coral)] max-w-[260px]" data-testid={`admin-album-changed-${o.id}`}>
+                            Album edited since this PDF was made: click Regenerate PDF, then Printer to send it again.
+                          </p>
+                        )}
                       </td>
                       <td className="p-3 max-w-[220px]">
                         {feedbackComment ? (

@@ -78,7 +78,27 @@ async def admin_list_orders(user: dict = Depends(get_current_user)):
     for o in orders:
         customer = users.get(o.get("user_id")) or {}
         o["customer"] = {"name": customer.get("name"), "email": customer.get("email")}
+    # The PDF is made once, from the album as it was then: an album edited
+    # afterwards (the admin fixing it before printing) needs its PDF made
+    # again, or the printer gets the old one.
+    edited = {
+        a["id"]: a.get("updated_at")
+        async for a in db.albums.find({"id": {"$in": list({o["album_id"] for o in orders if o.get("album_id")})}}, {"_id": 0, "id": 1, "updated_at": 1})
+    }
+    for o in orders:
+        made_at = pdf_made_at(o)
+        album_edited_at = edited.get(o.get("album_id"))
+        o["album_changed_since_pdf"] = bool(o.get("pdf_ready") and made_at and album_edited_at and album_edited_at > made_at)
     return orders
+
+
+def pdf_made_at(order: dict) -> str | None:
+    """When the order's PDF was made. Orders from before pdf_generated_at
+    was kept: the PDF went with the move to "printing"."""
+    if order.get("pdf_generated_at"):
+        return order["pdf_generated_at"]
+    printing = [h["at"] for h in order.get("status_history") or [] if h.get("status") == "printing"]
+    return printing[-1] if printing else None
 
 @router.get("/admin/orders/{order_id}/pdf")
 async def admin_download_order_pdf(order_id: str, auth: str = Query(None), authorization: str = Header(None)):
