@@ -140,3 +140,39 @@ export function zoomToFillTurned(frameAspect, degrees) {
   const fa = frameAspect || 1;
   return cos + Math.max(fa, 1 / fa) * sin;
 }
+
+/**
+ * A photo frame resized from a side or corner crops its photo: the photo
+ * stays where it is on the page (same size, same place) and only the frame's
+ * edge moves over it. Adds the zoom and focal point that keep it there to
+ * `patch` (new x/y/w/h). Pulled past the photo's edge, the photo grows to
+ * keep the frame filled. A photo turned in its frame keeps the old way.
+ */
+export function cropPatch(item, patch, orientation, photoAspect) {
+  if (!photoAspect || item.rotation || (patch.w === undefined && patch.h === undefined)) return patch;
+  const pa = pageAspect(orientation);
+  const n = { x: item.x, y: item.y, w: item.w, h: item.h, ...patch };
+  // Frame sizes in one unit (page height = 1).
+  const fw = item.w * pa, fh = item.h;
+  const nw = n.w * pa, nh = n.h;
+  if (!(fw > 0 && fh > 0 && nw > 0 && nh > 0)) return patch;
+  // How far the frame's own top-left corner moved, along its own sides.
+  const a = (-(item.frame_rotation || 0) * Math.PI) / 180;
+  const dcx = (n.x + n.w / 2 - (item.x + item.w / 2)) * pa;
+  const dcy = n.y + n.h / 2 - (item.y + item.h / 2);
+  const ox = dcx * Math.cos(a) - dcy * Math.sin(a) - (nw - fw) / 2;
+  const oy = dcx * Math.sin(a) + dcy * Math.cos(a) - (nh - fh) / 2;
+  // The photo now, in the frame.
+  const zoom = item.scale ?? 1;
+  const c = coverSize(fw / fh, photoAspect);
+  const iw = c.w * zoom * fw, ih = c.h * zoom * fh;
+  const left = (fw - iw) * (item.focal_x ?? 0.5) - ox;
+  const top = (fh - ih) * (item.focal_y ?? 0.5) - oy;
+  // Same size in the new frame (never smaller than filling it, unless it
+  // was already shown smaller).
+  const nc = coverSize(nw / nh, photoAspect);
+  const nz = Math.min(MAX_ZOOM, Math.max(Math.min(1, zoom), iw / (nc.w * nw)));
+  const niw = nc.w * nz * nw, nih = nc.h * nz * nh;
+  const focal = (offset, frame, img) => (Math.abs(frame - img) < 1e-9 ? 0.5 : Math.min(1, Math.max(0, offset / (frame - img))));
+  return { ...patch, scale: nz, focal_x: focal(left, nw, niw), focal_y: focal(top, nh, nih) };
+}

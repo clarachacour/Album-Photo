@@ -28,6 +28,8 @@ import { RotateCw } from "lucide-react";
  *                  (see dragGhost) while the item itself is hidden
  *   rotateHandleBelow - the handle goes on the side facing down (photo
  *                  frames: their toolbar is above them)
+ *   edgeHandles  - handles on the 4 sides and 4 corners, not just the
+ *                  bottom-right corner (photo frames: cropping a side)
  */
 export function rotationFromDrag(startRotation, startAngle, angle) {
   let r = startRotation + angle - startAngle;
@@ -55,6 +57,43 @@ export function rotatedResize(ds, dxPx, dyPx, minW, minH) {
   const cy = (ds.startItemY + ds.startItemH / 2) * ds.rectH + dw * sin + dh * cos;
   return { x: cx / ds.rectW - w / 2, y: cy / ds.rectH - h / 2, w, h };
 }
+
+// Resizing from any of the 8 handles: (hx, hy) says which sides move
+// (-1 left/top, 1 right/bottom, 0 that axis stays). The opposite side stays
+// where it is, on a turned frame too (the movement is read along its own
+// sides). An unturned frame stays on its page.
+export function edgeResize(ds, dxPx, dyPx, minW, minH) {
+  const a = ((ds.rotation || 0) * Math.PI) / 180;
+  const cos = Math.cos(a), sin = Math.sin(a);
+  const along = dxPx * cos + dyPx * sin;
+  const across = -dxPx * sin + dyPx * cos;
+  let w = ds.hx ? Math.max(minW, Math.min(1, ds.startItemW + (ds.hx * along) / ds.rectW)) : ds.startItemW;
+  let h = ds.hy ? Math.max(minH, Math.min(1, ds.startItemH + (ds.hy * across) / ds.rectH)) : ds.startItemH;
+  if (!ds.rotation) {
+    if (ds.hx < 0) w = Math.min(w, ds.startItemX + ds.startItemW);
+    if (ds.hx > 0) w = Math.min(w, 1 - ds.startItemX);
+    if (ds.hy < 0) h = Math.min(h, ds.startItemY + ds.startItemH);
+    if (ds.hy > 0) h = Math.min(h, 1 - ds.startItemY);
+  }
+  // The center moves by half the growth, towards the side pulled.
+  const lx = (ds.hx * (w - ds.startItemW) * ds.rectW) / 2;
+  const ly = (ds.hy * (h - ds.startItemH) * ds.rectH) / 2;
+  const cx = (ds.startItemX + ds.startItemW / 2) * ds.rectW + lx * cos - ly * sin;
+  const cy = (ds.startItemY + ds.startItemH / 2) * ds.rectH + lx * sin + ly * cos;
+  return { x: cx / ds.rectW - w / 2, y: cy / ds.rectH - h / 2, w, h };
+}
+
+// The 7 handles added by edgeHandles (the bottom-right one is always
+// there): where they sit and the cursor they show.
+const EDGE_HANDLES = [
+  { hx: -1, hy: -1, name: "top-left", cls: "-top-1.5 -left-1.5 w-3.5 h-3.5 cursor-nwse-resize" },
+  { hx: 1, hy: -1, name: "top-right", cls: "-top-1.5 -right-1.5 w-3.5 h-3.5 cursor-nesw-resize" },
+  { hx: -1, hy: 1, name: "bottom-left", cls: "-bottom-1.5 -left-1.5 w-3.5 h-3.5 cursor-nesw-resize" },
+  { hx: 0, hy: -1, name: "top", cls: "-top-1 left-1/2 -translate-x-1/2 w-6 h-2 cursor-ns-resize" },
+  { hx: 0, hy: 1, name: "bottom", cls: "-bottom-1 left-1/2 -translate-x-1/2 w-6 h-2 cursor-ns-resize" },
+  { hx: -1, hy: 0, name: "left", cls: "-left-1 top-1/2 -translate-y-1/2 w-2 h-6 cursor-ew-resize" },
+  { hx: 1, hy: 0, name: "right", cls: "-right-1 top-1/2 -translate-y-1/2 w-2 h-6 cursor-ew-resize" },
+];
 
 const HANDLE_SIDE_CLASS = {
   top: "-top-9 left-1/2 -translate-x-1/2",
@@ -121,7 +160,7 @@ function dragGhost(itemEl, pageEl, startItemX, startItemY) {
   };
 }
 
-export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false, onDropOutside, doubleClickMouseOnly = false }) {
+export function DraggableItem({ item, onChange, onSelect, selected, containerRef, editable, children, extraStyle, tid, minW = 0.05, minH = 0.03, onDragStateChange, onDoubleClick, rotation = 0, onRotate, turnedFrame = false, rotateHandleInside = false, rotateHandleBelow = false, onDropOutside, doubleClickMouseOnly = false, edgeHandles = false }) {
   const [outside, setOutside] = useState(false);
   const itemRef = useRef(null);
   const ghostRef = useRef(null);
@@ -168,7 +207,9 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
     e.currentTarget.setPointerCapture(e.pointerId);
   }, [editable, item.x, item.y, onSelect, containerRef, onDragStateChange, onDoubleClick, doubleClickMouseOnly]);
 
-  const onResizePointerDown = useCallback((e) => {
+  // hx/hy: the sides that handle moves (see edgeResize); the bottom-right
+  // corner keeps its own way (only w/h change, see onPointerMove).
+  const onResizePointerDown = useCallback((e, hx = 1, hy = 1) => {
     if (!editable) return;
     e.stopPropagation();
     onSelect && onSelect();
@@ -185,6 +226,8 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       rotation: turnedFrame ? rotation || 0 : 0,
       rectW: rect.width,
       rectH: rect.height,
+      hx,
+      hy,
     };
     onDragStateChange && onDragStateChange(true);
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -238,6 +281,8 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       const nx = Math.max(0, Math.min(1 - item.w, ds.startItemX + dx));
       const ny = Math.max(0, Math.min(1 - item.h, ds.startItemY + dy));
       onChange({ x: nx, y: ny });
+    } else if (ds.mode === "resize" && !(ds.hx === 1 && ds.hy === 1)) {
+      onChange(edgeResize(ds, e.clientX - ds.startX, e.clientY - ds.startY, minW, minH));
     } else if (ds.mode === "resize" && ds.rotation) {
       onChange(rotatedResize(ds, e.clientX - ds.startX, e.clientY - ds.startY, minW, minH));
     } else if (ds.mode === "resize") {
@@ -306,6 +351,20 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
           title={t("albumPage.resize")}
         />
       )}
+      {editable && selected && edgeHandles &&
+        EDGE_HANDLES.map((hd) => (
+          <div
+            key={hd.name}
+            className={`absolute ${hd.cls} bg-[color:var(--coral)] z-10 rounded-sm touch-none after:content-[''] after:absolute after:-inset-2.5`}
+            onPointerDown={(e) => onResizePointerDown(e, hd.hx, hd.hy)}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            data-testid={`${tid}-resize-${hd.name}`}
+            data-handle
+            title={t("albumPage.crop")}
+          />
+        ))}
       {selected && onRotate && (editable || rotateHandleInside) && (
         // Round handle on the side of the frame that faces up on screen,
         // whatever its turn (down when the frame touches the top of the

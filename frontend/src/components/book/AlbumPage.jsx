@@ -10,7 +10,7 @@ import { DraggableItem } from "@/components/book/DraggableItem";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 import { FramedPhoto } from "@/components/book/FramedPhoto";
-import { isCropped, minZoom, pageAspect, wholePhotoFields, zoomToFillTurned } from "@/lib/photoFit";
+import { cropPatch, isCropped, minZoom, pageAspect, wholePhotoFields, zoomToFillTurned } from "@/lib/photoFit";
 
 /**
  * AlbumPage renders one printable page with draggable + resizable items.
@@ -207,7 +207,9 @@ export function AlbumPage({
             <React.Fragment key={item.id}>
               <DraggableItem
                 item={item}
-                onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+                // Resizing crops: the photo stays put, the frame's edge moves.
+                onChange={(patch) => onUpdateItem && onUpdateItem(item.id, isEmpty ? patch : cropPatch(item, patch, orientation, photoAspect))}
+                edgeHandles
                 onSelect={() => onSelectItem && onSelectItem(item)}
                 onDoubleClick={() => editable && !isEmpty && onSwapAction && onSwapAction(pageIndex, item.id)}
                 doubleClickMouseOnly

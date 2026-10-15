@@ -359,12 +359,15 @@ export default function AlbumEditor() {
         // A frame placed by the editor itself (with its slot, e.g. "show the
         // whole photo") goes exactly where it's put: no snapping.
         const placed = patch.slot !== undefined;
-        if (updatedPatch.x !== undefined && !placed) {
+        // A side or corner pulled (x and w together): the far side stays
+        // exactly where it is, so no snapping that would move it.
+        const edgeResized = patch.w !== undefined || patch.h !== undefined;
+        if (updatedPatch.x !== undefined && !placed && !edgeResized) {
           const s = moveSnap.x ?? computeAlignSnap(updatedPatch.x, currentW, siblings, "x");
           updatedPatch.x = s.value;
           guideX = s.guide;
         }
-        if (updatedPatch.y !== undefined && !placed) {
+        if (updatedPatch.y !== undefined && !placed && !edgeResized) {
           const s = moveSnap.y ?? computeAlignSnap(updatedPatch.y, currentH, siblings, "y");
           updatedPatch.y = s.value;
           guideY = s.guide;

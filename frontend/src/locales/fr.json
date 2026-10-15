@@ -632,7 +632,8 @@
     "confirmDeletePage": "Supprimer toute cette page ? Les photos qu'elle contient restent dans votre bibliothèque — vous les retrouverez sous « Toutes vos photos » pour les placer ailleurs.",
     "insertPageAfter": "Ajouter une page blanche juste après celle-ci",
     "deletePage": "Supprimer toute cette page",
-    "addTextBox": "Ajouter une zone de texte à cette page — cliquez où vous voulez la placer"
+    "addTextBox": "Ajouter une zone de texte à cette page — cliquez où vous voulez la placer",
+    "crop": "Recadrer : tirez ce côté ou ce coin"
   },
   "verifyEmail": {
     "title": "Vérifiez votre boîte mail.",

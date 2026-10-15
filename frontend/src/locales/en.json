@@ -632,7 +632,8 @@
     "confirmDeletePage": "Delete this whole page? Any photos on it stay in your library — you'll find them under \"All your photos\" to place elsewhere.",
     "insertPageAfter": "Add a blank page right after this one",
     "deletePage": "Delete this whole page",
-    "addTextBox": "Add a text box to this page — click where you want it to go"
+    "addTextBox": "Add a text box to this page — click where you want it to go",
+    "crop": "Crop: drag this side or corner"
   },
   "verifyEmail": {
     "title": "Check your inbox.",
