@@ -311,7 +311,7 @@ export const COVER_THEMES = [
           spine_title_size: 32,
           spine_title_font: BALOO,
           extra_items: [
-            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.286, y: 0.36, w: 0.428, h: 0.55 }),
+            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.277, y: 0.36, w: 0.446, h: 0.55 }),
             textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
           ],
         },
@@ -336,7 +336,7 @@ export const COVER_THEMES = [
           spine_title_size: 32,
           spine_title_font: BALOO,
           extra_items: [
-            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.45, w: 0.84, h: 0.4 }),
+            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.46, w: 0.84, h: 0.387 }),
             textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
           ],
         },
