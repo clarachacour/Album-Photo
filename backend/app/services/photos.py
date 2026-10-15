@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from app.config import APP_NAME, UPLOAD_CONCURRENCY
 from app.core.executors import photo_processing_executor
 from app.db import db
-from app.services.curation import ahash_to_str, compute_ahash, compute_brightness, extract_exif_info
+from app.services.curation import ahash_to_str, compute_ahash, compute_brightness, compute_visual_signature, extract_exif_info
 from app.services.storage import get_object, put_object
 
 logger = logging.getLogger(__name__)
@@ -257,6 +257,7 @@ def _process_photo_sync(data: bytes, content_type: str, filename: str, user_id: 
         "gps_lat": exif_info["gps_lat"],
         "gps_lng": exif_info["gps_lng"],
         "phash": ahash_to_str(compute_ahash(data)),
+        "vsig": compute_visual_signature(data),
         **(compute_brightness(data) or {}),
     }
 
@@ -315,7 +316,7 @@ async def brightened_copy(photo: dict, level: str) -> dict:
     new_id = str(uuid.uuid4())
     loop = asyncio.get_event_loop()
     stored = await loop.run_in_executor(photo_processing_executor, _store_brightened_sync, original, level, new_id)
-    keep = ("album_id", "user_id", "original_filename", "ai_score", "ai_description", "ai_group", "ai_focal_x", "ai_focal_y", "taken_at", "gps_lat", "gps_lng", "phash")
+    keep = ("album_id", "user_id", "original_filename", "ai_score", "ai_description", "ai_group", "ai_focal_x", "ai_focal_y", "taken_at", "gps_lat", "gps_lng", "phash", "vsig")
     doc = {
         **{k: original.get(k) for k in keep},
         **stored,
@@ -475,6 +476,7 @@ async def store_new_photo(album_id: str, user_id: str, filename: str, content_ty
         "gps_lat": processed["gps_lat"],
         "gps_lng": processed["gps_lng"],
         "phash": processed["phash"],
+        "vsig": processed.get("vsig"),
         # Mean lightness and that of the brightest tenth (0-1), for the
         # "may print dark" warning; missing when the photo couldn't be read.
         "brightness": processed.get("brightness"),

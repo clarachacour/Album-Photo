@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import requests
-from PIL import ExifTags, Image
+from PIL import ExifTags, Image, ImageOps
 
 from app.config import BASE_DIR, GEMINI_API_KEY, GEMINI_CONCURRENCY, GEMINI_MODEL
 from app.core.executors import r2_io_executor
@@ -113,6 +113,9 @@ def compute_ahash(data: bytes) -> Optional[int]:
     try:
         img = Image.open(BytesIO(data))
         img.draft("L", (32, 32))  # decode near the target size directly, not full-resolution
+        # As shown (the camera's orientation applied): a photo and its copy
+        # saved turned otherwise must hash alike.
+        img = ImageOps.exif_transpose(img)
         img = img.convert("L").resize((8, 8), Image.LANCZOS)
         pixels = list(img.getdata())
         avg = sum(pixels) / len(pixels)
@@ -121,6 +124,58 @@ def compute_ahash(data: bytes) -> Optional[int]:
     except Exception as e:
         logger.debug(f"Hash computation failed: {e}")
         return None
+
+
+def compute_visual_signature(data: bytes) -> Optional[str]:
+    """A finer look than the 8x8 aHash, for telling near-duplicates from
+    photos that merely look alike: a 16x16 average hash (256 bits) of the
+    photo as shown, plus its colors on a 4x4 grid (two photos of the sea
+    can share their light and dark areas, rarely their colors). Stored as
+    hex: 64 characters for the hash, then 96 for the 16 colors."""
+    try:
+        img = Image.open(BytesIO(data))
+        img.draft("RGB", (64, 64))
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        gray = list(img.convert("L").resize((16, 16), Image.LANCZOS).getdata())
+        avg = sum(gray) / len(gray)
+        bits = int("".join("1" if p >= avg else "0" for p in gray), 2)
+        colors = img.resize((4, 4), Image.LANCZOS).getdata()
+        return f"{bits:064x}" + "".join(f"{c:02x}" for rgb in colors for c in rgb)
+    except Exception as e:
+        logger.debug(f"Visual signature failed: {e}")
+        return None
+
+
+# Weight of the colors in visual_distance, and how much a color difference
+# counts: tuned on test images so that a photo shifted, zoomed or lightened
+# a little stays as close as with the aHash, while different photos (same
+# colors included) end up further apart than with it.
+SIGNATURE_COLOR_WEIGHT = 0.25
+SIGNATURE_COLOR_GAIN = 4
+
+
+def _signature_distance(a: str, b: str) -> float:
+    shape = bin(int(a[:64], 16) ^ int(b[:64], 16)).count("1") / 4  # 0-64, like the aHash
+    ca, cb = bytes.fromhex(a[64:]), bytes.fromhex(b[64:])
+    color = min(64.0, sum(abs(x - y) for x, y in zip(ca, cb)) / (len(ca) * 255) * 64 * SIGNATURE_COLOR_GAIN)
+    return (1 - SIGNATURE_COLOR_WEIGHT) * shape + SIGNATURE_COLOR_WEIGHT * color
+
+
+def has_signatures(a: dict, b: dict) -> bool:
+    sa, sb = a.get("vsig"), b.get("vsig")
+    return bool(sa and sb and len(sa) == 160 and len(sb) == 160)
+
+
+def visual_distance(a: dict, b: dict) -> float:
+    """How different two photos look, 0 (same) to 64, on the aHash's scale:
+    from their visual signatures when both have one, else their aHash
+    (photos uploaded before signatures existed)."""
+    if has_signatures(a, b):
+        try:
+            return _signature_distance(a["vsig"], b["vsig"])
+        except ValueError:
+            pass
+    return hamming_distance(a.get("phash"), b.get("phash"))
 
 
 def ahash_to_str(h: Optional[int]) -> Optional[str]:
@@ -307,9 +362,7 @@ def _redundancy(a: dict, b: dict) -> float:
     """How much two photos next to each other in the album repeat each
     other — lower means more alike: looking alike (hash distance, 0-64)
     plus being taken apart in time (a few points per minute, up to 30)."""
-    dist = hamming_distance(a.get("phash"), b.get("phash"))
-    if dist is None:
-        dist = 32
+    dist = visual_distance(a, b)
     ta, tb = _taken_at(a), _taken_at(b)
     if ta and tb:
         minutes = abs((ta - tb).total_seconds()) / 60
@@ -479,6 +532,12 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
     # pending a before/after comparison from curation_stats on the next
     # real batch. ----
     HASH_THRESHOLD = 8
+    # With visual signatures on both photos (see compute_visual_signature):
+    # different photos land further apart than with the aHash alone, so a
+    # photo without a date (WhatsApp, screenshots, downloads) or taken later
+    # can match a slightly reframed copy of itself (a 4-8% shift or zoom
+    # measures 9-13) without merging different photos (23 and more).
+    HASH_THRESHOLD_SIGNATURE = 11
     BURST_HASH_THRESHOLD = 12
     BURST_SECONDS = 20
     # ~50m — "standing in the same spot", a much tighter radius than
@@ -517,7 +576,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         return haversine_km(lat1, lng1, lat2, lng2) <= radius_km
 
     def _is_match(p, other):
-        dist = hamming_distance(p.get("phash"), other.get("phash"))
+        dist = visual_distance(p, other)
         t1, t2 = taken_at_cache.get(p["id"]), taken_at_cache.get(other["id"])
         if t1 and t2 and abs((t1 - t2).total_seconds()) <= BURST_SECONDS:
             return dist <= BURST_HASH_THRESHOLD
@@ -526,7 +585,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         # almost as strong a same-subject signal as taken moments apart.
         if _same_spot(p, other, MOMENT_GPS_KM):
             return dist <= BURST_HASH_THRESHOLD
-        return dist <= HASH_THRESHOLD
+        return dist <= (HASH_THRESHOLD_SIGNATURE if has_signatures(p, other) else HASH_THRESHOLD)
 
     def _is_burst(cluster):
         """Shot one after another, seconds apart: the same moment, whatever
@@ -590,7 +649,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
                 passthrough.append(cluster)
                 continue
             max_dist = max(
-                (hamming_distance(a.get("phash"), b.get("phash"))
+                (visual_distance(a, b)
                  for i, a in enumerate(new_in_cluster) for b in new_in_cluster[i + 1:]),
                 default=0,
             )
@@ -804,6 +863,11 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
     MOMENT_HASH_THRESHOLD = 16
     MOMENT_SECONDS = 300
     MOMENT_HASH_THRESHOLD_NO_ANCHOR = 10  # tighter than MOMENT_HASH_THRESHOLD — no date or GPS to corroborate, so demand a closer visual match before treating two photos as the same moment
+    MOMENT_HASH_THRESHOLD_NO_ANCHOR_SIGNATURE = 12  # same, measured with visual signatures (see HASH_THRESHOLD_SIGNATURE)
+    # Within this, the AI's "different photos" no longer protects a pair:
+    # shots a minute apart, looking this alike, are one moment (a slightly
+    # different pose is what the AI tends to call a different photo).
+    AI_SPLIT_TRUSTED_AFTER_SECONDS = 60
     MAX_PER_MOMENT = 1
     redundant_removed = 0
 
@@ -812,13 +876,14 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         # "different photos" — don't let this cruder classical check
         # silently re-merge them regardless of how visually similar they
         # look.
+        t1, t2 = _parse_taken_at(p), _parse_taken_at(other)
+        close_in_time = bool(t1 and t2 and abs((t1 - t2).total_seconds()) <= AI_SPLIT_TRUSTED_AFTER_SECONDS)
         p_group, o_group = p.get("_ai_group"), other.get("_ai_group")
-        if p_group and o_group and p_group[0] == o_group[0] and p_group[1] != o_group[1]:
+        if p_group and o_group and p_group[0] == o_group[0] and p_group[1] != o_group[1] and not close_in_time:
             return False
-        dist = hamming_distance(p.get("phash"), other.get("phash"))
+        dist = visual_distance(p, other)
         if dist > MOMENT_HASH_THRESHOLD:
             return False
-        t1, t2 = _parse_taken_at(p), _parse_taken_at(other)
         if t1 and t2:
             return abs((t1 - t2).total_seconds()) <= MOMENT_SECONDS
         if _same_spot(p, other, MOMENT_GPS_KM):
@@ -826,7 +891,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         # Neither a shared date nor GPS to anchor on — fall back to visual
         # similarity alone, at a tighter threshold since there's nothing
         # else corroborating that these are really the same moment.
-        return dist <= MOMENT_HASH_THRESHOLD_NO_ANCHOR
+        return dist <= (MOMENT_HASH_THRESHOLD_NO_ANCHOR_SIGNATURE if has_signatures(p, other) else MOMENT_HASH_THRESHOLD_NO_ANCHOR)
 
     if selected:
         moment_clusters: List[List[dict]] = []
