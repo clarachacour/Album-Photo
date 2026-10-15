@@ -12,6 +12,9 @@ from app.assets.cover_assets import CORAL_LOGO_BYTES
 from app.assets.theme_assets import (
     TRAVEL_AUSTRALIA_ICON,
     TRAVEL_BARCELONA_ICON,
+    TRAVEL_BEIRUT_ICON,
+    TRAVEL_CAIRO_ICON,
+    TRAVEL_DUBAI_ICON,
     TRAVEL_HAWAII_ICON,
     TRAVEL_MOROCCO_ICON,
     TRAVEL_PAROS_ICON,
@@ -44,6 +47,9 @@ BUNDLED_ASSETS_BYTES = {
     "travel_morocco": TRAVEL_MOROCCO_ICON,
     "travel_australia": TRAVEL_AUSTRALIA_ICON,
     "travel_barcelona": TRAVEL_BARCELONA_ICON,
+    "travel_beirut": TRAVEL_BEIRUT_ICON,
+    "travel_dubai": TRAVEL_DUBAI_ICON,
+    "travel_cairo": TRAVEL_CAIRO_ICON,
 }
 
 async def export_pdf_reportlab_legacy(album_id: str, auth: str = Query(None), authorization: str = Header(None)):

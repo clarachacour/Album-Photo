@@ -11,6 +11,9 @@ import {
   TRAVEL_MOROCCO_ICON,
   TRAVEL_AUSTRALIA_ICON,
   TRAVEL_BARCELONA_ICON,
+  TRAVEL_BEIRUT_ICON,
+  TRAVEL_DUBAI_ICON,
+  TRAVEL_CAIRO_ICON,
 } from "@/lib/themeAssets";
 
 // Spine logos, files in public/cover-art (see coverAssets.js).
@@ -43,6 +46,8 @@ const BALOO = "'Baloo 2', sans-serif";
 const MANROPE = "'Manrope', sans-serif";
 const CORMORANT = "'Cormorant Garamond', serif";
 const SCRIPT = "'Alex Brush', cursive";
+// Baloo's Arabic cut (same look), for subtitles written in Arabic.
+const ARABIC = "'Baloo Bhaijaan 2', sans-serif";
 
 function iconItem(imageUrl, assetKey, box = { x: 0.28, y: 0.42, w: 0.44, h: 0.36 }) {
   return { id: "template-icon", type: "image", image_url: imageUrl, asset: assetKey, ...box };
@@ -257,6 +262,82 @@ export const COVER_THEMES = [
           extra_items: [
             iconItem(TRAVEL_BARCELONA_ICON, "travel_barcelona", { x: 0.201, y: 0.44, w: 0.599, h: 0.5 }),
             textItem("subtitle", "Catalonia", { role: "subtitle", x: 0.34, y: 0.22, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 26, color: "#D9764A", text_align: "right" }),
+          ],
+        },
+      },
+      // For travellers from Lebanon: Beirut, Dubai, Cairo.
+      {
+        id: "travel-beirut",
+        name: "Beirut, Lebanon",
+        landingImage: "/theme-covers/travel-beirut.webp",
+        title: "Beirut",
+        cover: {
+          bg_color: "#F4EFDB",
+          accent_color: "#B3342F",
+          text_color: "#6B1E2A",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "Liban",
+          spine_subtitle_color: "#B3342F",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_BEIRUT_ICON, "travel_beirut", { x: 0.1, y: 0.4, w: 0.8, h: 0.442 }),
+            textItem("subtitle", "Liban", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#B3342F", text_align: "right" }),
+          ],
+        },
+      },
+      {
+        id: "travel-dubai",
+        name: "Dubai",
+        landingImage: "/theme-covers/travel-dubai.webp",
+        title: "Dubai",
+        cover: {
+          bg_color: "#027C80",
+          accent_color: "#0E2A4F",
+          text_color: "#FFFFFF",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "دبي",
+          spine_subtitle_color: "#0E2A4F",
+          spine_subtitle_font: ARABIC,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.286, y: 0.36, w: 0.428, h: 0.55 }),
+            textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
+          ],
+        },
+      },
+      {
+        id: "travel-cairo",
+        name: "Cairo, Egypt",
+        landingImage: "/theme-covers/travel-cairo.webp",
+        title: "Cairo",
+        cover: {
+          bg_color: "#B78242",
+          accent_color: "#6E2E12",
+          text_color: "#F4E9D3",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "Egypt",
+          spine_subtitle_color: "#6E2E12",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.45, w: 0.84, h: 0.4 }),
+            textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
           ],
         },
       },
