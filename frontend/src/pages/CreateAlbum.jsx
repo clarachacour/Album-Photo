@@ -9,7 +9,7 @@ import { makeCoverEditingActions, cryptoRandom } from "@/lib/coverEditing";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { CoverSpine } from "@/components/CoverSpine";
-import { spineRatio, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
+import { spineRatio, pageDimsMm, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
 import { computeUnitPrice, PAGE_TIERS } from "@/lib/pricing";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
@@ -338,9 +338,10 @@ export default function CreateAlbum() {
     <main className="min-h-screen bg-[color:var(--paper)] pt-24 pb-24 px-6 md:px-12">
       <div className="max-w-[1400px] mx-auto">
         {/* Stepper */}
-        <div className="flex items-center gap-4 mb-14">
+        {/* Tighter on a phone, where it ran past the screen's edge. */}
+        <div className="flex items-center gap-2 sm:gap-4 mb-10 md:mb-14">
           {STEPS.map((s, i) => (
-            <div key={i} className="flex items-center gap-4">
+            <div key={i} className="flex items-center gap-2 sm:gap-4">
               <div
                 className={`w-6 h-6 flex items-center justify-center text-[10px] font-semibold ${
                   i <= step ? "bg-[color:var(--ink)] text-[color:var(--paper)]" : "bg-[color:var(--editor-canvas)] text-[color:var(--muted)]"
@@ -349,7 +350,7 @@ export default function CreateAlbum() {
                 {i + 1}
               </div>
               <span className={`eyebrow ${i === step ? "text-[color:var(--ink)]" : "text-[color:var(--muted)]"}`}>{s}</span>
-              {i < STEPS.length - 1 && <div className="w-8 h-px bg-[color:var(--border-soft)]" />}
+              {i < STEPS.length - 1 && <div className="w-3 sm:w-8 h-px bg-[color:var(--border-soft)]" />}
             </div>
           ))}
         </div>
@@ -426,7 +427,15 @@ export default function CreateAlbum() {
 
 
 function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // The page's real size, in cm (21 × 29.7 for an A4 portrait).
+  const dims = pageDimsMm(size, orientation);
+  // Plain formatting: Intl.NumberFormat throws on some browser language
+  // tags (en-US@posix), which took the whole page down.
+  const cm = (mm) => {
+    const value = String(Math.round(mm) / 10);
+    return i18n.language?.startsWith("fr") ? value.replace(".", ",") : value;
+  };
   const getAspectClass = () => (orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]");
   // A3 was removed — the printing office's max open (flat) size for a
   // hardcover is 70×33cm, and A3 exceeds that in both orientations
@@ -440,20 +449,25 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
   const isCustom = !PAGE_TIERS.includes(targetPages);
 
   return (
-    <section className="animate-fade-up grid grid-cols-1 md:grid-cols-2 gap-16">
-      <div>
+    // Phone: the size and orientation choices beside the preview (not one
+    // under the other), the page count below them. From tablet width: the
+    // choices on the left, the preview on the right.
+    <section className="animate-fade-up grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-16 md:gap-y-10">
+      <div className="col-span-2 md:col-span-1 md:col-start-1">
         <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.format.title")}</h2>
-        <p className="text-[color:var(--ink)]/70 mb-10">{t("createAlbum.format.subtitle")}</p>
-        <div className="mb-10">
+        <p className="text-[color:var(--ink)]/70">{t("createAlbum.format.subtitle")}</p>
+      </div>
+      <div className="col-start-1 min-w-0">
+        <div className="mb-8 md:mb-10">
           <div className="eyebrow mb-4">{t("createAlbum.format.size")}</div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             {["A4", "A5"].map((s) => (
               <button
                 key={s}
                 data-testid={TID.sizeOption}
                 data-size={s}
                 onClick={() => setSize(s)}
-                className={`px-6 py-3 border ${
+                className={`px-4 md:px-6 py-3 border ${
                   size === s
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                     : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
@@ -464,9 +478,9 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
             ))}
           </div>
         </div>
-        <div className="mb-10">
+        <div>
           <div className="eyebrow mb-4">{t("createAlbum.format.orientation")}</div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             {[
               { v: "portrait", l: t("createAlbum.format.portrait") },
               { v: "landscape", l: t("createAlbum.format.landscape") },
@@ -476,17 +490,19 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 data-testid={TID.orientationOption}
                 data-orientation={o.v}
                 onClick={() => setOrientation(o.v)}
-                className={`px-6 py-3 border ${
+                className={`px-3 md:px-6 py-3 border ${
                   orientation === o.v
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                     : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
                 } transition-colors`}
               >
-                <span className="font-semibold tracking-widest text-sm">{o.l}</span>
+                <span className="font-semibold tracking-wider md:tracking-widest text-xs md:text-sm">{o.l}</span>
               </button>
             ))}
           </div>
         </div>
+      </div>
+      <div className="col-span-2 md:col-span-1 md:col-start-1">
         <div>
           <div className="eyebrow mb-4">{t("createAlbum.format.pageCount")}</div>
           <div className="flex flex-wrap gap-3">
@@ -536,17 +552,35 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
           </p>
         </div>
       </div>
-      <div className="flex items-center justify-center">
-        <div className="bg-[color:var(--editor-canvas)] p-8 transition-all duration-300 flex items-center justify-center w-full">
-          <div
-            className={`${getAspectClass()} relative transition-all duration-300 shadow-sm border border-[color:var(--border-soft)]`}
-            style={{ background: "#E4E1D8", width: "100%", ...sizeContainerStyle }}
-          >
-            <div className="absolute inset-0 grain" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-serif-display text-xl md:text-2xl text-[color:var(--ink)]/60">
-                {size} · {orientation === "landscape" ? t("createAlbum.format.landscapeLower") : t("createAlbum.format.portraitLower")}
-              </span>
+      <div className="col-start-2 row-start-2 md:row-start-1 md:row-span-3 flex items-center justify-center min-w-0">
+        <div className="bg-[color:var(--editor-canvas)] p-3 md:p-8 transition-all duration-300 flex items-center justify-center w-full">
+          <div className="w-full" style={sizeContainerStyle} data-testid="format-preview">
+            {/* Width above the page, height beside it — the page's real size. */}
+            <div className="flex items-center gap-1.5 mb-1.5 pr-[22px] md:pr-[26px] text-[10px] md:text-xs text-[color:var(--ink)]/60 whitespace-nowrap">
+              <span className="h-px flex-1 bg-current opacity-50" />
+              {cm(dims.w)} cm
+              <span className="h-px flex-1 bg-current opacity-50" />
+            </div>
+            <div className="flex items-stretch gap-1.5">
+              <div
+                className={`${getAspectClass()} flex-1 min-w-0 relative transition-all duration-300 shadow-sm border border-[color:var(--border-soft)]`}
+                style={{ background: "#E4E1D8" }}
+              >
+                <div className="absolute inset-0 grain" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
+                  <span className="font-serif-display text-base md:text-2xl text-[color:var(--ink)]/60">
+                    {size} · {orientation === "landscape" ? t("createAlbum.format.landscapeLower") : t("createAlbum.format.portraitLower")}
+                  </span>
+                  <span className="mt-1 text-[10px] md:text-sm text-[color:var(--ink)]/50" data-testid="format-dimensions">
+                    {cm(dims.w)} × {cm(dims.h)} cm
+                  </span>
+                </div>
+              </div>
+              <div className="w-4 md:w-5 flex flex-col items-center gap-1.5 text-[10px] md:text-xs text-[color:var(--ink)]/60">
+                <span className="w-px flex-1 bg-current opacity-50" />
+                <span className="whitespace-nowrap" style={{ writingMode: "vertical-rl" }}>{cm(dims.h)} cm</span>
+                <span className="w-px flex-1 bg-current opacity-50" />
+              </div>
             </div>
           </div>
         </div>
