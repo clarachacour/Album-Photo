@@ -981,7 +981,8 @@
       "rounded": "arrondie",
       "serif": "à empattements",
       "script": "manuscrite",
-      "sans": "sans empattements"
+      "sans": "sans empattements",
+      "italic": "italique"
     },
     "toast": {
       "textAdded": "Texte ajouté à la couverture",

@@ -15,6 +15,7 @@ import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { useHistoryState } from "@/lib/useHistoryState";
+import { HistoryPreviewContext } from "@/lib/historyPreview";
 import { ArrowRight, ArrowLeft, Loader2, Sparkles, Undo2, Redo2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
@@ -335,6 +336,8 @@ export default function CreateAlbum() {
   }
 
   return (
+    // Fonts tried out in a list aren't added to the undo history.
+    <HistoryPreviewContext.Provider value={albumHistory.withoutHistory}>
     <main className="min-h-screen bg-[color:var(--paper)] pt-24 pb-24 px-6 md:px-12">
       <div className="max-w-[1400px] mx-auto">
         {/* Stepper */}
@@ -419,6 +422,7 @@ export default function CreateAlbum() {
         )}
       </div>
     </main>
+    </HistoryPreviewContext.Provider>
   );
 }
 

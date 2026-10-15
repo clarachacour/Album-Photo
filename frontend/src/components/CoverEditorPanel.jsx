@@ -5,6 +5,7 @@ import { coverItemImageSrc } from "@/lib/api";
 import { DEFAULT_COVER } from "@/lib/coverTemplates";
 import { deletePatch } from "@/lib/coverEditing";
 import { DegreesInput } from "@/components/DegreesInput";
+import { FontPicker } from "@/components/FontPicker";
 import {
   Bold,
   Type,
@@ -169,15 +170,12 @@ export function CoverEditorPanel({
             placeholder={t("coverPanel.titlePlaceholder")}
           />
           <div className="flex items-center gap-2">
-            <select
-              data-testid="cover-title-font"
-              aria-label={t("coverPanel.font")}
+            <FontPicker
+              tid="cover-title-font"
               value={cover.title_font || "'Baloo 2', sans-serif"}
-              onChange={(e) => updateCover({ title_font: e.target.value })}
-              className={`${field} flex-1 min-w-0`}
-            >
-              <FontOptions />
-            </select>
+              onChange={(v) => updateCover({ title_font: v })}
+              className="flex-1"
+            />
             <BoldToggle
               tid="cover-title-bold"
               weight={cover.title_font_weight}
@@ -301,15 +299,12 @@ export function CoverEditorPanel({
           )}
 
           <div className="flex items-center gap-2">
-            <select
-              data-testid={`${testidPrefix}-font`}
-              aria-label={t("coverPanel.font")}
+            <FontPicker
+              tid={`${testidPrefix}-font`}
               value={cover[`${prefix}_font`] || "'Manrope', sans-serif"}
-              onChange={(e) => updateCover({ [`${prefix}_font`]: e.target.value })}
-              className={`${field} flex-1 min-w-0`}
-            >
-              <FontOptions />
-            </select>
+              onChange={(v) => updateCover({ [`${prefix}_font`]: v })}
+              className="flex-1"
+            />
             <BoldToggle
               tid={`${testidPrefix}-bold`}
               weight={cover[`${prefix}_weight`]}
@@ -366,15 +361,12 @@ export function CoverEditorPanel({
                 className={field}
               />
               <div className="flex items-center gap-2">
-                <select
-                  data-testid="cover-item-font"
-                  aria-label={t("coverPanel.font")}
+                <FontPicker
+                  tid="cover-item-font"
                   value={selectedItem.font || "'Manrope', sans-serif"}
-                  onChange={(e) => updateCoverItem(selectedItem.id, { font: e.target.value }, side)}
-                  className={`${field} flex-1 min-w-0`}
-                >
-                  <FontOptions />
-                </select>
+                  onChange={(v) => updateCoverItem(selectedItem.id, { font: v }, side)}
+                  className="flex-1"
+                />
                 <BoldToggle
                   tid="cover-item-bold"
                   weight={selectedItem.font_weight}
@@ -656,22 +648,3 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
   );
 }
 
-// The fonts offered for every text on the cover.
-const FONTS = [
-  ["'Baloo 2', sans-serif", "Baloo", "rounded"],
-  ["'Manrope', sans-serif", "Manrope", "sans"],
-  ["'Cormorant Garamond', serif", "Cormorant", "serif"],
-  ["'Alex Brush', cursive", "Alex Brush", "script"],
-  ["Georgia, serif", "Georgia"],
-  ["Helvetica, Arial, sans-serif", "Helvetica"],
-  ["'Courier New', monospace", "Courier"],
-];
-
-function FontOptions() {
-  const { t } = useTranslation();
-  return FONTS.map(([value, name, kind]) => (
-    <option key={value} value={value}>
-      {kind ? `${name} (${t(`coverPanel.fonts.${kind}`)})` : name}
-    </option>
-  ));
-}

@@ -13,6 +13,7 @@ export function useHistoryState(initialValue) {
   const futureRef = useRef([]);
   const pendingRef = useRef(null); // pre-change snapshot waiting to be committed
   const timerRef = useRef(null);
+  const transientRef = useRef(false);
   const GROUP_WINDOW_MS = 600;
   const MAX_HISTORY = 60;
 
@@ -30,9 +31,12 @@ export function useHistoryState(initialValue) {
 
   const setState = useCallback(
     (updater) => {
+      // Decided when the change is asked for: the updater itself runs later.
+      const transient = transientRef.current;
       setStateRaw((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater;
         if (next === prev) return prev;
+        if (transient) return next;
         if (pendingRef.current === null) pendingRef.current = prev;
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(flushPending, GROUP_WINDOW_MS);
@@ -83,8 +87,19 @@ export function useHistoryState(initialValue) {
     });
   }, []);
 
+  // Changes made inside fn are shown but not added to the undo history:
+  // a font tried out by hovering it in a list, then put back or chosen.
+  const withoutHistory = useCallback((fn) => {
+    transientRef.current = true;
+    try {
+      fn();
+    } finally {
+      transientRef.current = false;
+    }
+  }, []);
+
   const canUndo = () => pastRef.current.length > 0 || pendingRef.current !== null;
   const canRedo = () => futureRef.current.length > 0;
 
-  return [state, setState, { undo, redo, canUndo, canRedo, resetState, mergeState }];
+  return [state, setState, { undo, redo, canUndo, canRedo, resetState, mergeState, withoutHistory }];
 }

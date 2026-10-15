@@ -981,7 +981,8 @@
       "rounded": "rounded",
       "serif": "serif",
       "script": "script",
-      "sans": "sans"
+      "sans": "sans",
+      "italic": "italic"
     },
     "toast": {
       "textAdded": "Text added to the cover",

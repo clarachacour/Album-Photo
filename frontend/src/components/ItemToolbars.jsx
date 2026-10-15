@@ -3,14 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Pencil, Trash2, Check, Bold, Palette, ArrowLeftRight, ChevronUp, ChevronDown, Expand, Sun, Loader2, Copy } from "lucide-react";
 import { MAX_ZOOM } from "@/lib/photoFit";
 import { DegreesInput } from "@/components/DegreesInput";
-
-const TOOLBAR_FONTS = [
-  { label: "Manrope", value: "'Manrope', sans-serif" },
-  { label: "Baloo", value: "'Baloo 2', sans-serif" },
-  { label: "Cormorant", value: "'Cormorant Garamond', serif" },
-  { label: "Georgia", value: "Georgia, serif" },
-  { label: "Courier", value: "'Courier New', monospace" },
-];
+import { FontPicker } from "@/components/FontPicker";
 
 const TOOLBAR_COLORS = ["#1A1A17", "#F9F8F6", "#E07A5F", "#3D405B", "#81B29A"];
 
@@ -263,18 +256,15 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete, onDuplicate
   const [pickerOpen, setPickerOpen] = React.useState(false);
   return (
     <ToolbarShell x={x} y={y} w={w} wide>
-      <select
-        value={item.font || TOOLBAR_FONTS[0].value}
-        onChange={(e) => onChange({ font: e.target.value })}
-        className="bg-transparent text-[color:var(--paper)] text-xs border border-white/30 rounded-sm px-1 py-1"
-        data-testid="text-toolbar-font"
-      >
-        {TOOLBAR_FONTS.map((f) => (
-          <option key={f.value} value={f.value} className="text-[color:var(--ink)]">
-            {f.label}
-          </option>
-        ))}
-      </select>
+      <FontPicker
+        dark
+        preferUp
+        tid="text-toolbar-font"
+        // What the page shows for a text without a font (AlbumPage).
+        value={item.font || "'Cormorant Garamond', serif"}
+        onChange={(v) => onChange({ font: v })}
+        className="w-[104px] shrink-0"
+      />
       <div className="flex items-center gap-1 shrink-0">
         <ToolbarButton
           onClick={() => onChange({ font_size: Math.max(8, (item.font_size || 16) - 2) })}

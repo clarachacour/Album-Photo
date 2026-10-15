@@ -8,6 +8,7 @@ import { CoverEditorPanel, ColorField } from "@/components/CoverEditorPanel";
 import { makeCoverEditingActions, computeAlignSnap, computeResizeAlignSnap } from "@/lib/coverEditing";
 import { fullPageTemplate, layoutTemplates } from "@/lib/layoutPatterns";
 import { useHistoryState } from "@/lib/useHistoryState";
+import { HistoryPreviewContext } from "@/lib/historyPreview";
 import PhotoTray from "@/components/PhotoTray";
 import PhotoGallery from "@/components/PhotoGallery";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
@@ -909,6 +910,8 @@ export default function AlbumEditor() {
   const albumTemplate = getTemplate();
 
   return (
+    // Fonts tried out in a list aren't added to the undo history.
+    <HistoryPreviewContext.Provider value={albumHistory.withoutHistory}>
     <main className="min-h-screen bg-[color:var(--editor-canvas)] pt-16 pb-16 relative">
       <div className="absolute inset-0 grain pointer-events-none" />
 
@@ -1263,16 +1266,19 @@ export default function AlbumEditor() {
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               <span className="text-sm font-semibold tracking-widest uppercase">{t("common.save")}</span>
             </button>
-            {(saver.status !== "saved" || saver.lastSavedAt) && (
-              <p
-                className={`text-[11px] text-center -mt-1 ${saver.status === "offline" || saver.status === "error" ? "text-amber-700" : "text-[color:var(--muted)]"}`}
-                data-testid="editor-save-status"
-              >
-                {saver.status === "saved"
+            {/* Its line is always there, empty until the first change: the
+                panel below doesn't jump when it shows up (a font list under
+                the pointer would move by a line). */}
+            <p
+              className={`text-[11px] leading-4 min-h-[1rem] text-center -mt-1 ${saver.status === "offline" || saver.status === "error" ? "text-amber-700" : "text-[color:var(--muted)]"}`}
+              data-testid={saver.status !== "saved" || saver.lastSavedAt ? "editor-save-status" : undefined}
+            >
+              {saver.status !== "saved"
+                ? t(`albumEditor.saveStatus.${saver.status}`)
+                : saver.lastSavedAt
                   ? t("albumEditor.savedAt", { time: saver.lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
-                  : t(`albumEditor.saveStatus.${saver.status}`)}
-              </p>
-            )}
+                  : ""}
+            </p>
             {/* Not for the admin fixing a customer's album: it's hers to order. */}
             {!album.admin_editing && (
               <button
@@ -1373,5 +1379,6 @@ export default function AlbumEditor() {
       </div>
       {tour.element}
     </main>
+    </HistoryPreviewContext.Provider>
   );
 }
