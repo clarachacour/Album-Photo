@@ -39,7 +39,8 @@ def _rows(content):
 
 def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
     _order(db, "5f4c0509-a1", "ready_for_delivery", "A4", 50, qty=2)
-    _order(db, "6a1b0000-a2", "printing", "A5", 24, printer_paid_at="2026-10-15T08:00:00+00:00")
+    _order(db, "6a1b0000-a2", "delivered", "A5", 24, printer_paid_at="2026-10-15T08:00:00+00:00")
+    _order(db, "9d4e0000-a5", "printing", "A4", 50)  # still being printed: not yet
     _order(db, "7c2d0000-a3", "pending_payment")  # not sent to print yet
     _order(db, "8e3f0000-a4", "cancelled")  # sent, then cancelled: not the printer's
     token = admin["Authorization"].split(" ", 1)[1]
@@ -49,8 +50,9 @@ def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
     body = [r for r in rows[1:] if r[0] and r[0].startswith("EB-")]
     assert [r[0] for r in body] == ["EB-5F4C0509", "EB-6A1B0000"]
     first, second = body
-    assert first[7] == 33 and first[8] == 66 and first[9] == "To pay"
-    assert second[7] == 24 and second[9] == "Paid"
+    # Unit price, envelopes (0.50 per album), total.
+    assert first[7] == 33 and first[8] == 1 and first[9] == 67 and first[10] == "To pay"
+    assert second[7] == 24 and second[8] == 0.5 and second[9] == 24.5 and second[10] == "Paid"
     # Nothing about the customer or what they paid.
     text = " ".join(str(c) for ws in wb for row in ws.iter_rows(values_only=True) for c in row if c is not None)
     assert "Rita" not in text and "Sioufi" not in text and "Secret title" not in text and "49" not in text and "54" not in text
@@ -58,7 +60,7 @@ def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
 
 
 def test_the_printer_link_and_payment_mark(client, db, admin):  # noqa: F811
-    _order(db, "5f4c0509-b1", "printing", "A4", 100)
+    _order(db, "5f4c0509-b1", "ready_for_delivery", "A4", 100)
     url = client.get("/api/admin/printer-statement-link", headers=admin).json()["url"]
     key = url.split("key=", 1)[1]
     assert client.get(f"/api/printer-statement.xlsx?key={key}").status_code == 200
@@ -66,10 +68,10 @@ def test_the_printer_link_and_payment_mark(client, db, admin):  # noqa: F811
 
     assert client.patch("/api/admin/orders/5f4c0509-b1/printer-payment", json={"paid": True}, headers=admin).json()["printer_paid_at"]
     _, rows = _rows(client.get(f"/api/printer-statement.xlsx?key={key}").content)
-    assert rows[1][9] == "Paid" and rows[1][7] == 40
+    assert rows[1][10] == "Paid" and rows[1][7] == 40 and rows[1][9] == 40.5
     client.patch("/api/admin/orders/5f4c0509-b1/printer-payment", json={"paid": False}, headers=admin)
     _, rows = _rows(client.get(f"/api/printer-statement.xlsx?key={key}").content)
-    assert rows[1][9] == "To pay"
+    assert rows[1][10] == "To pay"
 
 
 def test_the_summary_goes_by_the_ready_for_pickup_month(app):
@@ -79,15 +81,13 @@ def test_the_summary_goes_by_the_ready_for_pickup_month(app):
 
     def row(number, sent, ready, total):
         return {"number": number, "sent": sent, "ready": ready, "format": "A4 · portrait", "pages": 50, "tier": 50,
-                "quantity": 1, "unit": total, "total": total, "paid": False, "paid_on": None}
+                "quantity": 1, "unit": total, "envelope": 0.5, "total": total, "paid": False, "paid_on": None}
 
     rows = [
         row("EB-1", datetime(2026, 10, 30), datetime(2026, 11, 2), 33),   # sent in October, ready in November
         row("EB-2", datetime(2026, 10, 10), datetime(2026, 10, 12), 27),
-        row("EB-3", datetime(2026, 11, 20), None, 40),                    # still being printed
     ]
     wb = load_workbook(io.BytesIO(build_statement_xlsx(rows)))
     summary = [r for r in wb["Summary"].iter_rows(values_only=True)][1:]
     assert summary[0][:3] == ("October 2026", 1, 27)
     assert summary[1][:3] == ("November 2026", 1, 33)
-    assert summary[2][:3] == ("Not ready yet", 1, 40)
