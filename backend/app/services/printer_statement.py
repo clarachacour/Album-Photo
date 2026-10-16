@@ -83,7 +83,8 @@ def statement_rows(orders: list, page_counts: dict) -> list:
             "paid": bool(o.get("printer_paid_at")),
             "paid_on": _date(o.get("printer_paid_at")),
         })
-    rows.sort(key=lambda r: r["sent"] or datetime.min)
+    # In the order the books were ready for pickup; those still printing last.
+    rows.sort(key=lambda r: (r["ready"] is None, r["ready"] or datetime.min, r["sent"] or datetime.min))
     return rows
 
 
@@ -134,17 +135,18 @@ def build_statement_xlsx(rows: list) -> bytes:
     # Month by month: what was printed, paid, and still to pay.
     rs = wb.create_sheet("Summary")
     _header(rs, ["Month", "Albums", "Total", "Paid", "Left to pay"], [18, 10, 12, 12, 14])
+    # By the month the printer had the book ready for pickup; books still
+    # being printed come last, on their own line.
     months = OrderedDict()
-    for r in rows:
-        if not r["sent"]:
-            continue
-        key = (r["sent"].year, r["sent"].month)
+    for r in sorted(rows, key=lambda r: (r["ready"] is None, r["ready"] or datetime.min)):
+        key = (r["ready"].year, r["ready"].month) if r["ready"] else None
         m = months.setdefault(key, {"albums": 0, "total": 0, "paid": 0})
         m["albums"] += r["quantity"]
         m["total"] += r["total"] or 0
         m["paid"] += (r["total"] or 0) if r["paid"] else 0
-    for (y, mo), m in months.items():
-        rs.append([f"{MONTHS[mo - 1]} {y}", m["albums"], m["total"], m["paid"], m["total"] - m["paid"]])
+    for key, m in months.items():
+        label = f"{MONTHS[key[1] - 1]} {key[0]}" if key else "Not ready yet"
+        rs.append([label, m["albums"], m["total"], m["paid"], m["total"] - m["paid"]])
         for col in (3, 4, 5):
             rs.cell(row=rs.max_row, column=col).number_format = MONEY_FMT
     if months:

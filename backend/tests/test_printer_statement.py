@@ -70,3 +70,24 @@ def test_the_printer_link_and_payment_mark(client, db, admin):  # noqa: F811
     client.patch("/api/admin/orders/5f4c0509-b1/printer-payment", json={"paid": False}, headers=admin)
     _, rows = _rows(client.get(f"/api/printer-statement.xlsx?key={key}").content)
     assert rows[1][9] == "To pay"
+
+
+def test_the_summary_goes_by_the_ready_for_pickup_month(app):
+    from datetime import datetime
+    from openpyxl import load_workbook
+    from app.services.printer_statement import build_statement_xlsx
+
+    def row(number, sent, ready, total):
+        return {"number": number, "sent": sent, "ready": ready, "format": "A4 · portrait", "pages": 50, "tier": 50,
+                "quantity": 1, "unit": total, "total": total, "paid": False, "paid_on": None}
+
+    rows = [
+        row("EB-1", datetime(2026, 10, 30), datetime(2026, 11, 2), 33),   # sent in October, ready in November
+        row("EB-2", datetime(2026, 10, 10), datetime(2026, 10, 12), 27),
+        row("EB-3", datetime(2026, 11, 20), None, 40),                    # still being printed
+    ]
+    wb = load_workbook(io.BytesIO(build_statement_xlsx(rows)))
+    summary = [r for r in wb["Summary"].iter_rows(values_only=True)][1:]
+    assert summary[0][:3] == ("October 2026", 1, 27)
+    assert summary[1][:3] == ("November 2026", 1, 33)
+    assert summary[2][:3] == ("Not ready yet", 1, 40)
