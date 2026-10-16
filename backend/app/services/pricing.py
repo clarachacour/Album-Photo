@@ -6,7 +6,7 @@
 # billed at the smallest tier that holds its real page count (15 pages → 24,
 # 35 → 50); beyond the largest tier, a per-page surcharge is added — see
 # compute_order_price_cents.
-PAGE_TIERS = [24, 50, 100, 150, 200]
+PAGE_TIERS = [24, 50, 100, 150]
 
 # Test week: every album is free — only delivery is due, in cash to the
 # courier. Set back to False to charge albums again. Keep in sync with
@@ -14,14 +14,13 @@ PAGE_TIERS = [24, 50, 100, 150, 200]
 FREE_TRIAL = True
 
 # Price by format AND page tier, in cents — server-side only, the client
-# never gets to set its own price. These are PLACEHOLDER values (Clara
-# hasn't finalized real pricing with the printer yet) — adjust freely, this
-# is the one place that needs to change once real prices are set.
+# never gets to set its own price. An album between two tiers pays the
+# tier above (35 pages → the 50-page price); 150 pages at most.
 # A3 removed — exceeds the printing office's max open (flat) hardcover size
 # (70×33cm) in both orientations, so it was never actually printable.
 ORDER_PRICE_CENTS = {
-    "A5": {24: 2500, 50: 3500, 100: 5500, 150: 7500, 200: 9200},
-    "A4": {24: 3500, 50: 4900, 100: 7900, 150: 10900, 200: 13400},
+    "A5": {24: 4300, 50: 6300, 100: 8300, 150: 11300},
+    "A4": {24: 5300, 50: 7300, 100: 9900, 150: 12900},
 }
 
 # A digital album (the PDF to download, no printing or delivery) costs the

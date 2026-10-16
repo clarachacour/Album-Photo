@@ -23,8 +23,13 @@ def test_a_page_count_between_tiers_is_billed_as_the_next_tier():
 
 
 def test_past_the_largest_tier_each_page_is_added():
-    expected = ORDER_PRICE_CENTS["A4"][200] + 10 * OVERAGE_PER_PAGE_CENTS["A4"]
-    assert compute_order_price_cents("A4", 210) == expected
+    expected = ORDER_PRICE_CENTS["A4"][150] + 10 * OVERAGE_PER_PAGE_CENTS["A4"]
+    assert compute_order_price_cents("A4", 160) == expected
+
+
+def test_the_price_list():
+    assert ORDER_PRICE_CENTS["A4"] == {24: 5300, 50: 7300, 100: 9900, 150: 12900}
+    assert ORDER_PRICE_CENTS["A5"] == {24: 4300, 50: 6300, 100: 8300, 150: 11300}
 
 
 def test_unknown_size_is_priced_as_a4():

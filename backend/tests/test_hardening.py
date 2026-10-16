@@ -97,8 +97,8 @@ def test_order_price_uses_the_real_page_count(client, db, monkeypatch):
     monkeypatch.setattr(orders, "send_order_confirmation_email", lambda *a, **k: None)
 
     _, headers = _signup(client, db=db)
-    album_id = _album(client, headers, size="A4", target_pages=250)
-    pages = [{"id": str(i), "items": []} for i in range(250)]
+    album_id = _album(client, headers, size="A4", target_pages=150)
+    pages = [{"id": str(i), "items": []} for i in range(150)]
     asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"pages": pages, "status": "ready"}}))
     # The client lowers the page count it "chose" before ordering.
     assert client.patch(f"/api/albums/{album_id}", json={"target_pages": 24}, headers=headers).status_code == 200
@@ -106,7 +106,7 @@ def test_order_price_uses_the_real_page_count(client, db, monkeypatch):
     address = {"full_name": "A", "phone": "70 123 456", "street": "S", "city": "C"}
     res = client.post("/api/orders", json={"album_id": album_id, "shipping_address": address, "accepted_terms_version": TERMS_VERSION}, headers=headers)
     assert res.status_code == 200, res.text
-    assert res.json()["unit_price_cents"] == compute_order_price_cents("A4", 250)
+    assert res.json()["unit_price_cents"] == compute_order_price_cents("A4", 150)
     assert res.json()["unit_price_cents"] > compute_order_price_cents("A4", 24)
 
 
@@ -226,3 +226,9 @@ def test_sentry_test_without_dsn_reports_not_configured(client, db, monkeypatch)
     res = client.post("/api/admin/sentry-test", headers=headers)
     assert res.status_code == 200, res.text
     assert res.json() == {"configured": False, "event_id": None}
+
+
+def test_an_album_is_made_for_150_pages_at_most(client, db):
+    _, headers = _signup(client, db=db)
+    assert client.post("/api/albums", json={"title": "Trip", "target_pages": 200}, headers=headers).status_code == 422
+    assert client.post("/api/albums", json={"title": "Trip", "target_pages": 150}, headers=headers).status_code == 200

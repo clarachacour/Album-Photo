@@ -15,11 +15,12 @@
 // backend/app/services/pricing.py (which charges).
 export const FREE_TRIAL = true;
 
-export const PAGE_TIERS = [24, 50, 100, 150, 200];
+// 150 pages at most; between two tiers, the tier above is charged.
+export const PAGE_TIERS = [24, 50, 100, 150];
 
 export const PRICE_TABLE = {
-  A5: { 24: 25, 50: 35, 100: 55, 150: 75, 200: 92 },
-  A4: { 24: 35, 50: 49, 100: 79, 150: 109, 200: 134 },
+  A5: { 24: 43, 50: 63, 100: 83, 150: 113 },
+  A4: { 24: 53, 50: 73, 100: 99, 150: 129 },
 };
 
 export const OVERAGE_PER_PAGE = { A5: 0.3, A4: 0.45 };

@@ -30,8 +30,8 @@ OptLine = Annotated[Optional[str], Field(default=None, max_length=200)]
 OptNote = Annotated[Optional[str], Field(default=None, max_length=500)]
 Token = Annotated[str, Field(max_length=4096)]
 Id = Annotated[str, Field(max_length=100)]
-# Pages an album can have (tiers go up to 200; custom counts above that).
-MAX_ALBUM_PAGES = 500
+# Pages an album can be made for: the largest tier (24, 50, 100, 150).
+MAX_ALBUM_PAGES = 150
 
 
 # ---------- Models ----------
@@ -140,7 +140,7 @@ class AlbumCreate(BaseModel):
     cover: Optional[Dict[str, Any]] = None
     size: str = Field(default="A4", max_length=10)  # A4 or A5
     orientation: str = Field(default="portrait", max_length=20)  # portrait or landscape
-    target_pages: int = Field(default=50, ge=1, le=MAX_ALBUM_PAGES)  # one of PAGE_TIERS, or any custom page count
+    target_pages: int = Field(default=50, ge=1, le=MAX_ALBUM_PAGES)  # one of PAGE_TIERS
     # The site's current UI language (see i18n.js on the frontend) at the
     # moment of creation — used only to pick which language the title
     # page's pre-filled hint text is written in (see make_title_page).

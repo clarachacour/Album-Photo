@@ -11,7 +11,13 @@ describe("pricing", () => {
   });
 
   it("adds each page past the largest tier", () => {
-    expect(computeUnitPrice("A4", 210, false)).toBeCloseTo(PRICE_TABLE.A4[200] + 10 * 0.45);
+    expect(computeUnitPrice("A4", 160, false)).toBeCloseTo(PRICE_TABLE.A4[150] + 10 * 0.45);
+  });
+
+  it("uses the price list: 24/50/100/150 pages, 150 at most", () => {
+    expect(PRICE_TABLE.A4).toEqual({ 24: 53, 50: 73, 100: 99, 150: 129 });
+    expect(PRICE_TABLE.A5).toEqual({ 24: 43, 50: 63, 100: 83, 150: 113 });
+    expect(computeUnitPrice("A4", 120, false)).toBe(129); // the tier above
   });
 
   it("counts the album's real pages, not the ones chosen", () => {

@@ -450,7 +450,6 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
   const sizeContainerStyle = {
     maxWidth: `${orientation === "landscape" ? maxWidthBySize[size] : maxWidthBySize[size] * 0.72}px`,
   };
-  const isCustom = !PAGE_TIERS.includes(targetPages);
 
   return (
     // Phone: the size and orientation choices beside the preview (not one
@@ -526,30 +525,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 </span>
               </button>
             ))}
-            <button
-              onClick={() => setTargetPages(isCustom ? targetPages : PAGE_TIERS[PAGE_TIERS.length - 1] + 1)}
-              className={`px-6 py-3 border ${
-                isCustom
-                  ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
-                  : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
-              } transition-colors`}
-            >
-              <span className="font-semibold tracking-widest text-sm">{t("createAlbum.format.custom")}</span>
-            </button>
           </div>
-          {isCustom && (
-            <div className="mt-4">
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={targetPages}
-                onChange={(e) => setTargetPages(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-32 px-4 py-2 border border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] outline-none"
-              />
-              <span className="text-sm text-[color:var(--ink)]/60 ml-3">{t("createAlbum.format.customPagesNote")}</span>
-            </div>
-          )}
           <p className="text-sm text-[color:var(--ink)]/70 mt-5">
             {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
             <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
