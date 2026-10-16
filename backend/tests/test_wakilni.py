@@ -18,6 +18,7 @@ class FakeWakilni:
     def __init__(self):
         self.calls = []
         self.status_logs = []
+        self.comments = []
         self.fail_add = False
 
     def request(self, method, url, json=None, params=None, headers=None, timeout=None):
@@ -39,7 +40,7 @@ class FakeWakilni:
         if "/end_bulk/" in path:
             return _Res(200, {"message": "Closed Bulk order", "bulk_id": 77})
         if path.endswith("/orders/status"):
-            return _Res(200, {"success": True, "data": {"tracking_id": "WK123", "comments": [], "logs": self.status_logs}})
+            return _Res(200, {"success": True, "data": {"tracking_id": "WK123", "comments": self.comments, "logs": self.status_logs}})
         if path.endswith("/cancel"):
             return _Res(200, {"message": "Order canceled", "delivery_id": 9001})
         return _Res(404, {"message": "unknown"})
@@ -180,3 +181,25 @@ def test_outside_the_test_week_the_courier_collects_the_whole_total(app):
 
     order = {"id": "5f4c0509-aaaa", "status": "printing", "total_price_cents": 4000, "shipping_price_cents": 500, "shipping_address": {}}
     assert wakilni.delivery_payload(order, {})["collection_amount"] == 40.0
+
+
+def test_the_admin_sees_the_whole_delivery_history(client, db, courier, monkeypatch):
+    from app.core import auth
+
+    order_id = courier["order"]["id"]
+    _ready(client, order_id)
+    courier["fake"].status_logs = [
+        {"status": "Processing", "status_code": 3, "created_at": "2026-10-14 10:58:49"},
+        {"status": "Confirmed", "status_code": 2, "created_at": "2026-10-14 09:40:22"},
+        {"status": "Success", "status_code": 4, "created_at": "2026-10-14 15:22:24"},
+    ]
+    courier["fake"].comments = ["Call before delivery", "No answer"]
+    email, admin = _signup(client, db=db)
+    monkeypatch.setattr(auth, "ADMIN_EMAIL", email)
+    res = client.get(f"/api/admin/orders/{order_id}/delivery/history", headers=admin)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert [log["status"] for log in body["logs"]] == ["Confirmed", "Processing", "Success"]  # oldest first
+    assert body["comments"] == ["Call before delivery", "No answer"] and body["tracking_id"] == "WK123"
+    # Not for a customer.
+    assert client.get(f"/api/admin/orders/{order_id}/delivery/history", headers=courier["customer"]).status_code == 403

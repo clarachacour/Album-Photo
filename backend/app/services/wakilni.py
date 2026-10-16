@@ -216,6 +216,19 @@ def delivery_status(delivery_id) -> dict:
     return {"code": _field(status, "status_code"), "label": label, "rejected": "reject" in label.lower()}
 
 
+def delivery_history(delivery_id) -> dict:
+    """Everything Wakilni says about a delivery: each step with its time
+    (oldest first) and the courier's comments ("No answer", "Call before
+    delivery"…) — to see why a delivery is stuck or failed."""
+    body = _call("GET", "/api/v2/clients/orders/status", params={"order_id": delivery_id})
+    logs = sorted(_field(body, "logs") or [], key=lambda log: (log.get("created_at") or "", log.get("status_code") or 0))
+    return {
+        "tracking_id": _field(body, "tracking_id"),
+        "logs": [{"status": log.get("status"), "code": log.get("status_code"), "at": log.get("created_at")} for log in logs],
+        "comments": [str(c) for c in (_field(body, "comments") or [])],
+    }
+
+
 def cancel_delivery(delivery_id, reason: str) -> dict:
     return _call("PUT", f"/api/v2/clients/orders/{delivery_id}/cancel", json={"reason": reason})
 

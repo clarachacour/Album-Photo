@@ -154,6 +154,22 @@ export default function AdminOrdersPage() {
     }
   };
 
+  // Wakilni's full history of a delivery, shown under its order.
+  const [deliveryHistory, setDeliveryHistory] = useState({});
+  const toggleDeliveryHistory = async (orderId) => {
+    if (deliveryHistory[orderId]) {
+      setDeliveryHistory(({ [orderId]: _, ...rest }) => rest);
+      return;
+    }
+    setDeliveryHistory((prev) => ({ ...prev, [orderId]: { loading: true } }));
+    try {
+      const { data } = await api.get(`/admin/orders/${orderId}/delivery/history`);
+      setDeliveryHistory((prev) => ({ ...prev, [orderId]: data }));
+    } catch (err) {
+      setDeliveryHistory((prev) => ({ ...prev, [orderId]: { error: err?.response?.data?.detail || "Couldn't reach Wakilni" } }));
+    }
+  };
+
   const copyPrinterLink = async () => {
     try {
       const { data } = await api.get("/admin/printer-statement-link");
@@ -372,6 +388,11 @@ export default function AdminOrdersPage() {
                                   {o.delivery?.error ? "Retry Wakilni" : "Send to Wakilni"}
                                 </button>
                               )}
+                              {o.delivery?.delivery_id && (
+                                <button type="button" onClick={() => toggleDeliveryHistory(o.id)} className="underline" data-testid={`admin-delivery-history-${o.id}`}>
+                                  {deliveryHistory[o.id] ? "Hide history" : "History"}
+                                </button>
+                              )}
                               {o.delivery?.delivery_id && !["delivered", "cancelled"].includes(o.status) && (
                                 <button type="button" disabled={deliveryBusy === o.id} onClick={() => deliveryAction(o.id, "refresh")} className="underline disabled:opacity-50">
                                   Refresh
@@ -383,6 +404,35 @@ export default function AdminOrdersPage() {
                                 </button>
                               )}
                             </div>
+                            {/* Wakilni's own steps and the courier's comments ("No answer"…): why a delivery is stuck or failed. */}
+                            {deliveryHistory[o.id] && (
+                              <div className="mt-1 border border-[color:var(--border-soft)] bg-[color:var(--paper)] p-2 max-w-[260px]" data-testid={`admin-delivery-history-panel-${o.id}`}>
+                                {deliveryHistory[o.id].loading ? (
+                                  <span className="text-[color:var(--muted)]">Loading…</span>
+                                ) : deliveryHistory[o.id].error ? (
+                                  <span className="text-red-500">{deliveryHistory[o.id].error}</span>
+                                ) : (
+                                  <>
+                                    <ol className="space-y-0.5">
+                                      {deliveryHistory[o.id].logs.map((log, i) => (
+                                        <li key={i} className="whitespace-nowrap">
+                                          <span className="text-[color:var(--muted)]">{log.at}</span>{" "}
+                                          <span className={[5, 6, 7, 8, 9].includes(log.code) || /reject/i.test(log.status || "") ? "text-red-500 font-semibold" : ""}>{log.status}</span>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                    {deliveryHistory[o.id].comments.length > 0 && (
+                                      <div className="mt-1.5">
+                                        <div className="font-semibold">Courier comments</div>
+                                        <ul className="list-disc pl-4">
+                                          {deliveryHistory[o.id].comments.map((c, i) => <li key={i}>{c}</li>)}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </td>

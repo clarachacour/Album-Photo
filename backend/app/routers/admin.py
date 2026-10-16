@@ -29,7 +29,7 @@ from app.services import wakilni
 from app.services import printer_statement
 from app.config import BACKEND_URL
 from app.services.storage import get_r2_client
-from app.core.executors import run_email
+from app.core.executors import run_blocking, run_email
 
 router = APIRouter()
 
@@ -307,6 +307,20 @@ async def admin_refresh_delivery(order_id: str, user: dict = Depends(get_current
     await _printed_order(order_id)
     try:
         return await deliveries.sync_delivery(order_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Wakilni: {e}")
+
+
+@router.get("/admin/orders/{order_id}/delivery/history")
+async def admin_delivery_history(order_id: str, user: dict = Depends(get_current_user)):
+    """The Wakilni delivery's full history: every step and the courier's comments."""
+    require_admin(user)
+    order = await _printed_order(order_id)
+    delivery_id = (order.get("delivery") or {}).get("delivery_id")
+    if not delivery_id:
+        raise HTTPException(status_code=404, detail="No Wakilni delivery for this order")
+    try:
+        return await run_blocking(wakilni.delivery_history, delivery_id)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Wakilni: {e}")
 
