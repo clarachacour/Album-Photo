@@ -9,7 +9,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PRICE_TABLE, DIGITAL_PRICE } from "@/lib/pricing";
 
 // Cheapest album, for the "From $…" on the home page: follows the price table.
-const FROM_PRICE = Math.min(...Object.values(PRICE_TABLE).flatMap((tiers) => Object.values(tiers)));
+// The lowest price on the site: the PDF album or the smallest printed one.
+const FROM_PRICE = Math.min(DIGITAL_PRICE, ...Object.values(PRICE_TABLE).flatMap((tiers) => Object.values(tiers)));
 
 // Reloads the page once if its code can't be downloaded (a release since
 // the page was opened, a dropped connection) — see lazyPage.
@@ -66,7 +67,7 @@ export default function Landing() {
               </button>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[color:var(--ink)]/70" data-testid="landing-perks">
-              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE, pdfPrice: DIGITAL_PRICE }).map((perk) => (
+              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE }).map((perk) => (
                 <li key={perk} className="inline-flex items-center gap-1.5">
                   <Check size={14} className="text-[color:var(--coral)]" />
                   {perk}
