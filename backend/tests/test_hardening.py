@@ -228,7 +228,20 @@ def test_sentry_test_without_dsn_reports_not_configured(client, db, monkeypatch)
     assert res.json() == {"configured": False, "event_id": None}
 
 
-def test_an_album_is_made_for_150_pages_at_most(client, db):
+def test_an_album_is_made_for_160_pages_at_most(client, db):
     _, headers = _signup(client, db=db)
     assert client.post("/api/albums", json={"title": "Trip", "target_pages": 200}, headers=headers).status_code == 422
     assert client.post("/api/albums", json={"title": "Trip", "target_pages": 150}, headers=headers).status_code == 200
+
+
+def test_an_album_cannot_grow_past_160_pages(client, db):
+    _, headers = _signup(client, db=db)
+    album_id = _album(client, headers, target_pages=150)
+    page = lambda i: {"id": str(i), "items": []}
+    assert client.patch(f"/api/albums/{album_id}", json={"pages": [page(i) for i in range(160)]}, headers=headers).status_code == 200
+    assert client.patch(f"/api/albums/{album_id}", json={"pages": [page(i) for i in range(161)]}, headers=headers).status_code == 400
+    # An older album already past it can still be saved, not grow.
+    asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"pages": [page(i) for i in range(200)]}}))
+    assert client.patch(f"/api/albums/{album_id}", json={"pages": [page(i) for i in range(200)]}, headers=headers).status_code == 200
+    assert client.patch(f"/api/albums/{album_id}", json={"pages": [page(i) for i in range(201)]}, headers=headers).status_code == 400
+    assert client.post(f"/api/albums/{album_id}/repack-pages", json={"target_pages": 161}, headers=headers).status_code == 422

@@ -30,8 +30,9 @@ OptLine = Annotated[Optional[str], Field(default=None, max_length=200)]
 OptNote = Annotated[Optional[str], Field(default=None, max_length=500)]
 Token = Annotated[str, Field(max_length=4096)]
 Id = Annotated[str, Field(max_length=100)]
-# Pages an album can be made for: the largest tier (24, 50, 100, 150).
-MAX_ALBUM_PAGES = 150
+# The most pages an album can have: the largest tier (150) plus a margin
+# for a few pages added by hand in the editor.
+MAX_ALBUM_PAGES = 160
 
 
 # ---------- Models ----------

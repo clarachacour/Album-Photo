@@ -29,7 +29,7 @@ from app.core.auth import (
     is_admin_id,
 )
 from app.db import db
-from app.schemas import AlbumCreate, AlbumUpdate, RepackPagesInput
+from app.schemas import MAX_ALBUM_PAGES, AlbumCreate, AlbumUpdate, RepackPagesInput
 from app.services.albums import reject_if_ordered
 from app.services.layout import (
     LAYOUT_PATTERN,
@@ -188,6 +188,10 @@ async def update_album(album_id: str, data: AlbumUpdate, user: dict = Depends(ge
     await reject_if_ordered(album_id, user=user)
     if data.size is not None and data.size not in ALLOWED_ALBUM_SIZES:
         raise HTTPException(status_code=400, detail=f"Unsupported album size — choose one of: {', '.join(sorted(ALLOWED_ALBUM_SIZES))}")
+    # At most MAX_ALBUM_PAGES pages. An album that already had more (made
+    # before the limit) can still be saved, just not grow.
+    if data.pages is not None and len(data.pages) > max(MAX_ALBUM_PAGES, len(album.get("pages") or [])):
+        raise HTTPException(status_code=400, detail=f"An album can have at most {MAX_ALBUM_PAGES} pages")
     update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
     base_version = update.pop("base_version", None)
     if "cover" in update:

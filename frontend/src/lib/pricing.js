@@ -15,8 +15,13 @@
 // backend/app/services/pricing.py (which charges).
 export const FREE_TRIAL = true;
 
-// 150 pages at most; between two tiers, the tier above is charged.
+// Between two tiers, the tier above is charged.
 export const PAGE_TIERS = [24, 50, 100, 150];
+
+// The most pages an album can have: the largest tier plus a margin for a
+// few pages added by hand in the editor. Same as MAX_ALBUM_PAGES in
+// backend/app/schemas.py, which refuses more.
+export const MAX_ALBUM_PAGES = 160;
 
 export const PRICE_TABLE = {
   A5: { 24: 43, 50: 63, 100: 83, 150: 113 },

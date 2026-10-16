@@ -21,6 +21,7 @@ import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
 import { RepackPagesForm } from "@/components/editor/RepackPagesForm";
 import { spreadNumberToPageCount } from "@/components/editor/spreads";
 import { cryptoRandom } from "@/lib/cryptoRandom";
+import { MAX_ALBUM_PAGES } from "@/lib/pricing";
 import { fitItemToPhoto } from "@/lib/photoFit";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
@@ -610,7 +611,15 @@ export default function AlbumEditor() {
   // photo from "All your photos" onto) — for when album.pages is shorter
   // than the page count the person actually chose and paid for (e.g. after
   // deleting some, or if the AI fell short — see pages_below_target).
+  // No page past MAX_ALBUM_PAGES (the server refuses it too).
+  const atPageLimit = () => {
+    if ((album?.pages || []).length < MAX_ALBUM_PAGES) return false;
+    toast.error(t("albumEditor.pageLimit", { count: MAX_ALBUM_PAGES }));
+    return true;
+  };
+
   const addBlankPage = () => {
+    if (atPageLimit()) return;
     setAlbum((prev) => {
       if (!prev) return prev;
       const template = fullPageTemplate(prev.orientation);
@@ -646,6 +655,7 @@ export default function AlbumEditor() {
   // The other pages (and their layouts) stay exactly as they are; photos
   // or a layout can then be put on it like on any page.
   const insertBlankPageAfter = (pageIdx) => {
+    if (atPageLimit()) return;
     setAlbum((prev) => {
       if (!prev) return prev;
       const newPage = { id: cryptoRandom(), layout: "blank", items: [] };
@@ -663,6 +673,10 @@ export default function AlbumEditor() {
   // hand-edited) completely untouched.
   const handleRepackPages = async ({ targetPages, keepFirstPages }) => {
     if (!album) return;
+    if (targetPages > MAX_ALBUM_PAGES) {
+      toast.error(t("albumEditor.pageLimit", { count: MAX_ALBUM_PAGES }));
+      return;
+    }
     setRepacking(true);
     try {
       // The pages are rebuilt from the saved album: edits here go first.

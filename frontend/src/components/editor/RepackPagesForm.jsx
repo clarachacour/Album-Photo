@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { spreadNumberToPageCount } from "@/components/editor/spreads";
-import { PAGE_TIERS, billedTier } from "@/lib/pricing";
+import { MAX_ALBUM_PAGES } from "@/lib/pricing";
 
 // Lets the person shrink or grow an already-created album's total page
 // count without starting over — e.g. "this 150-page album is too much,
@@ -14,11 +14,7 @@ import { PAGE_TIERS, billedTier } from "@/lib/pricing";
 
 export function RepackPagesForm({ currentPageCount, currentTargetPages, busy, onCancel, onSubmit }) {
   const { t } = useTranslation();
-  // One of the page tiers (24, 50, 100, 150): no other page count is sold.
-  const [targetPages, setTargetPages] = useState(() => {
-    const wanted = currentTargetPages || currentPageCount;
-    return PAGE_TIERS.includes(wanted) ? wanted : Math.min(billedTier(wanted), PAGE_TIERS[PAGE_TIERS.length - 1]);
-  });
+  const [targetPages, setTargetPages] = useState(currentTargetPages || currentPageCount);
   // Defaults to protecting the *entire* current album, not just the first
   // spread — with the old default of 1, simply raising the page count
   // (the single most common reason to open this form) silently rebuilt
@@ -40,18 +36,14 @@ export function RepackPagesForm({ currentPageCount, currentTargetPages, busy, on
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="flex flex-col justify-between">
           <label className="text-xs text-[color:var(--muted)] block mb-1">{t("albumEditor.repack.newTotal")}</label>
-          <select
+          <input
+            type="number"
+            min={1}
+            max={MAX_ALBUM_PAGES}
             value={targetPages}
-            onChange={(e) => setTargetPages(Number(e.target.value))}
-            className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm bg-white"
-            data-testid="repack-target-pages"
-          >
-            {PAGE_TIERS.map((tier) => (
-              <option key={tier} value={tier}>
-                {t("createAlbum.format.pagesCount", { count: tier })}
-              </option>
-            ))}
-          </select>
+            onChange={(e) => setTargetPages(Math.min(MAX_ALBUM_PAGES, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+            className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
+          />
         </div>
         <div className="flex flex-col justify-between">
           <label className="text-xs text-[color:var(--muted)] block mb-1">{t("albumEditor.repack.rebuildAfter")}</label>
