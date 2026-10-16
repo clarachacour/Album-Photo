@@ -101,7 +101,7 @@ export default function OrderCheckoutPage() {
   // Test week: the album's price is shown, but it's offered — only delivery is due.
   const dueUnitPrice = FREE_TRIAL ? 0 : unitPrice;
   // The digital album already ordered is taken off the printed book.
-  const credit = !digital && orderedKinds.digital ? Math.min(orderedKinds.digital.total_price_cents / 100, dueUnitPrice * quantity) : 0;
+  const credit = !digital && orderedKinds.digital && !orderedKinds.digital.handed_over_unpaid ? Math.min(orderedKinds.digital.total_price_cents / 100, dueUnitPrice * quantity) : 0;
   const total = digital ? dueUnitPrice : dueUnitPrice * quantity + SHIPPING_PRICE - credit;
 
   const [phoneError, setPhoneError] = useState(false);
@@ -388,7 +388,7 @@ export default function OrderCheckoutPage() {
             <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6">
               {/* Test week: the album is free — what's left is the delivery,
                   paid in cash to the courier (nothing at all for a PDF). */}
-              <span>{FREE_TRIAL ? t(digital ? "checkout.freeTotal" : "checkout.cashToCourier") : t("checkout.total")}</span>
+              <span>{digital ? t(FREE_TRIAL ? "checkout.freeTotal" : "checkout.total") : t("checkout.cashToCourier")}</span>
               <span>{FREE_TRIAL && digital ? t("checkout.free") : `$${total.toFixed(2)}`}</span>
             </div>
             <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-[color:var(--ink)]/80"}`}>

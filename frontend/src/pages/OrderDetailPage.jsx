@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { orderNumber } from "@/lib/orderNumber";
-import { FREE_TRIAL, amountDueCents } from "@/lib/pricing";
+import { albumOffered, amountDueCents } from "@/lib/pricing";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
@@ -147,7 +147,7 @@ export default function OrderDetailPage() {
               {order.unit_price_cents > 0 && (
                 <div>
                   {t("orderDetail.unitPrice")}:{" "}
-                  {FREE_TRIAL ? (
+                  {albumOffered(order) ? (
                     <>
                       <span className="line-through">{formatPrice(order.unit_price_cents, order.currency)}</span>{" "}
                       <span className="font-semibold text-[color:var(--coral)]">{t("checkout.free")}</span>
@@ -158,14 +158,14 @@ export default function OrderDetailPage() {
                 </div>
               )}
               {!digital && order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
-              {order.credit_cents > 0 && !FREE_TRIAL && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
-              {/* A free album (test week): only the delivery, in cash to the courier. */}
+              {order.credit_cents > 0 && !albumOffered(order) && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
+              {/* A printed album is paid in cash to the courier (only the
+                  delivery when the album is offered); a PDF has nothing to
+                  pay while online payment isn't set up. */}
               <div className="font-medium text-[color:var(--ink)] pt-1">
                 {amountDueCents(order) === 0
                   ? t("checkout.free")
-                  : FREE_TRIAL || order.unit_price_cents === 0
-                    ? `${t("checkout.cashToCourier")}: ${formatPrice(amountDueCents(order), order.currency)}`
-                    : `${t("orderDetail.total")}: ${formatPrice(order.total_price_cents, order.currency)}`}
+                  : `${t("checkout.cashToCourier")}: ${formatPrice(amountDueCents(order), order.currency)}`}
               </div>
               <div className="pt-2 text-[color:var(--muted)]">{t("orderDetail.placedOn", { date: parseDate(order.created_at).toLocaleDateString(i18n.language) })}</div>
             </div>

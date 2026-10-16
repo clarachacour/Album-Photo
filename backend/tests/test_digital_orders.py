@@ -46,7 +46,9 @@ def _order(client, shop, kind, **extra):
     return client.post("/api/orders", json=body, headers=shop["customer"])
 
 
-def test_a_digital_album_is_handed_over_once_paid(client, db, shop):
+def test_a_digital_album_is_handed_over_at_once(client, db, shop):
+    """Online payment isn't set up yet: the PDF is made and handed over
+    without anything to do on the admin side."""
     res = _order(client, shop, "digital")
     assert res.status_code == 200, res.text
     order = res.json()
@@ -55,34 +57,39 @@ def test_a_digital_album_is_handed_over_once_paid(client, db, shop):
     assert order["shipping_price_cents"] == 0 and order["quantity"] == 1
     assert shop["sent"]["confirmation"] == ["digital"]
 
-    # Made at once, in the reader's version, never sent to the printer…
+    # Made at once, in the reader's version, never sent to the printer,
+    # and handed over: the customer gets the email, once, and the download.
     assert "digital=1" in shop["sent"]["renders"][0]
-    assert order["pdf_ready"] and order["status"] == "pending_payment"
-    assert shop["sent"]["printer"] == [] and shop["sent"]["ready"] == []
-    # …and not downloadable before the payment is confirmed.
+    assert order["pdf_ready"] and order["status"] == "available"
+    assert shop["sent"]["printer"] == [] and shop["sent"]["ready"] == [order["id"]]
     url = f"/api/orders/{order['id']}/download"
-    assert client.get(url, headers=shop["customer"]).status_code == 403
+    assert client.get(url, headers=shop["customer"]).json() == {"url": "https://r2/album.pdf"}
     detail = client.get(f"/api/orders/{order['id']}", headers=shop["customer"]).json()
     assert [s["status"] for s in detail["timeline"]] == ["pending_payment", "paid", "available"]
 
     # The admin can't move it to a printed book's status.
     status_url = f"/api/admin/orders/{order['id']}/status"
     assert client.patch(status_url, json={"status": "printing"}, headers=shop["admin"]).status_code == 400
-    # Paid: the customer gets the email, once, and the download.
-    paid = client.patch(status_url, json={"status": "paid"}, headers=shop["admin"]).json()
-    assert paid["status"] == "available"
     client.patch(status_url, json={"status": "available"}, headers=shop["admin"])
     assert shop["sent"]["ready"] == [order["id"]]
-    assert client.get(url, headers=shop["customer"]).json() == {"url": "https://r2/album.pdf"}
 
 
-def test_the_printed_book_after_the_digital_album_costs_the_difference(client, shop):
+def test_the_printed_book_after_the_digital_album_costs_the_difference(client, db, shop):
     digital = _order(client, shop, "digital").json()
     assert _order(client, shop, "digital").status_code == 409  # one of each kind
     assert _order(client, shop, "print").status_code == 400  # a printed book needs an address
 
+    # A PDF paid for is taken off the printed book.
+    asyncio.run(db.orders.update_one({"id": digital["id"]}, {"$unset": {"handed_over_unpaid": ""}}))
     printed = _order(client, shop, "print", shipping_address=ADDRESS).json()
     assert printed["kind"] == "print" and printed["credit_cents"] == digital["total_price_cents"]
     assert printed["total_price_cents"] == compute_order_price_cents("A4", 24) + SHIPPING_PRICE_CENTS - digital["total_price_cents"]
     assert shop["sent"]["printer"] == [printed["id"]]
     assert "digital=1" not in shop["sent"]["renders"][-1]
+
+
+def test_a_pdf_handed_over_unpaid_takes_nothing_off_the_printed_book(client, shop):
+    _order(client, shop, "digital")
+    printed = _order(client, shop, "print", shipping_address=ADDRESS).json()
+    assert printed["credit_cents"] == 0
+    assert printed["total_price_cents"] == compute_order_price_cents("A4", 24) + SHIPPING_PRICE_CENTS

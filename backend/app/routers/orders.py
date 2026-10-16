@@ -75,11 +75,11 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     quantity = 1 if digital else data.quantity
     shipping = 0 if digital else SHIPPING_PRICE_CENTS
     # The printed book after the digital album: what was paid for the
-    # digital one is taken off.
+    # digital one is taken off (nothing for a PDF handed over unpaid).
     credit = 0
     if not digital:
         digital_order = await db.orders.find_one({"album_id": album["id"], "kind": "digital", "status": {"$ne": "cancelled"}})
-        if digital_order:
+        if digital_order and not digital_order.get("handed_over_unpaid"):
             credit = min(digital_order.get("total_price_cents", 0), unit_price * quantity)
     order_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -100,10 +100,14 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
         "terms_accepted_at": now,
         "currency": "usd",
         "shipping_address": data.shipping_address.dict() if data.shipping_address and not digital else None,
-        # Nothing to pay (a free digital album, test week): paid at once,
-        # so the PDF is handed over as soon as it's made.
-        "status": "paid" if digital and unit_price == 0 else "pending_payment",
-        "status_history": [{"status": "paid" if digital and unit_price == 0 else "pending_payment", "at": now}],
+        # A digital album: online payment isn't set up yet, so it's handed
+        # over at once — the PDF is sent as soon as it's made, with nothing
+        # to do on the admin side. A printed one is paid in cash to the
+        # courier.
+        "status": "paid" if digital else "pending_payment",
+        # No credit on a printed copy for a PDF nobody paid for.
+        "handed_over_unpaid": digital,
+        "status_history": [{"status": "paid" if digital else "pending_payment", "at": now}],
         "pdf_ready": False,
         "pdf_path": None,
         "tracking_number": None,
@@ -208,9 +212,8 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
         order["status"] = "ready_for_delivery"
         # A Wakilni delivery (or, without Wakilni, an email to the courier).
         dispatched = await dispatch_delivery(order_id)
-        # Test phase: the team hears about each book ready for pickup.
-        if pricing.FREE_TRIAL:
-            await run_email(send_team_order_update_email, dispatched or order, "ready")
+        # The team hears about each book ready for pickup.
+        await run_email(send_team_order_update_email, dispatched or order, "ready")
     # The order number only — nothing about the price on the printer's side.
     return {"order_number": order_number(order), "ready": True}
 

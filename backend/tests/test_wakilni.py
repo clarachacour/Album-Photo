@@ -179,8 +179,20 @@ def test_if_wakilni_refuses_the_courier_is_emailed_and_the_admin_told(client, db
 def test_outside_the_test_week_the_courier_collects_the_whole_total(app):
     from app.services import wakilni
 
-    order = {"id": "5f4c0509-aaaa", "status": "printing", "total_price_cents": 4000, "shipping_price_cents": 500, "shipping_address": {}}
+    order = {"id": "5f4c0509-aaaa", "status": "printing", "total_price_cents": 4000, "unit_price_cents": 3500, "shipping_price_cents": 500,
+             "created_at": "2026-10-20T09:00:00+00:00", "shipping_address": {}}
     assert wakilni.delivery_payload(order, {})["collection_amount"] == 40.0
+
+
+def test_an_order_placed_before_the_test_week_stays_offered(app):
+    from app.services import wakilni
+
+    order = {"id": "5f4c0509-aaaa", "status": "printing", "total_price_cents": 4000, "unit_price_cents": 3500, "shipping_price_cents": 500,
+             "created_at": "2026-10-10T09:00:00+00:00", "shipping_address": {}}
+    assert wakilni.delivery_payload(order, {})["collection_amount"] == 5.0
+    # …and so does one placed during it, at 0 for the album.
+    order.update(created_at="2026-10-15T09:00:00+00:00", unit_price_cents=0, total_price_cents=500)
+    assert wakilni.delivery_payload(order, {})["collection_amount"] == 5.0
 
 
 def test_the_admin_sees_the_whole_delivery_history(client, db, courier, monkeypatch):

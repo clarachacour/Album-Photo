@@ -84,6 +84,7 @@ def test_shots_a_minute_apart_stay_one_moment_even_if_the_ai_splits_them(app, db
     for p in photos:
         p["phash"] = curation.ahash_to_str(curation.compute_ahash(p["_bytes"]))
     data = {p["storage_path"]: p.pop("_bytes") for p in photos}
+    asyncio.run(db.photos.delete_many({"id": {"$in": [p["id"] for p in photos]}}))  # left by another test
     asyncio.run(db.photos.insert_many([dict(p) for p in photos]))
 
     async def split_everything(cluster):
@@ -105,6 +106,7 @@ def test_the_ai_split_still_holds_for_photos_taken_further_apart(app, db, monkey
     for p in photos:
         p["phash"] = curation.ahash_to_str(curation.compute_ahash(p["_bytes"]))
     data = {p["storage_path"]: p.pop("_bytes") for p in photos}
+    asyncio.run(db.photos.delete_many({"id": {"$in": [p["id"] for p in photos]}}))  # left by another test
     asyncio.run(db.photos.insert_many([dict(p) for p in photos]))
 
     async def split_everything(cluster):

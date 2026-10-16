@@ -1,5 +1,5 @@
-"""The team's order inbox hears when the printer marks a book ready (test
-phase only) and when an order is delivered."""
+"""The team's order inbox hears when the printer marks a book ready and
+when an order is delivered."""
 import asyncio
 
 import pytest
@@ -45,10 +45,11 @@ def test_ready_for_pickup_is_emailed_to_orders_during_the_test_phase(client, db,
     assert "$" not in team[0][2]
 
 
-def test_not_after_the_test_phase(client, db, sent, monkeypatch):
+def test_also_after_the_test_phase(client, db, sent, monkeypatch):
     _order(db, "5f4c0509-team2")
     _ready(client, monkeypatch, "5f4c0509-team2")
-    assert not [s for s in sent if s[0] == "orders@everbook.test"]
+    team = [s for s in sent if s[0] == "orders@everbook.test"]
+    assert len(team) == 1 and "Ready for pickup" in team[0][1]
 
 
 def test_delivered_is_emailed_to_orders(app, sent):

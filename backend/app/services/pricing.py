@@ -9,9 +9,25 @@
 PAGE_TIERS = [24, 50, 100, 150]
 
 # Test week: every album is free — only delivery is due, in cash to the
-# courier. Set back to False to charge albums again. Keep in sync with
-# FREE_TRIAL in frontend/src/lib/pricing.js (which hides the prices).
-FREE_TRIAL = True
+# courier. Set to True to offer albums again. Keep in sync with FREE_TRIAL
+# in frontend/src/lib/pricing.js (which hides the prices).
+FREE_TRIAL = False
+
+# Orders placed before the test week (which started on 2026-10-13) had the
+# album's price in their total, but were offered too: only the delivery is
+# collected for them. Keep in sync with OFFERED_BEFORE in
+# frontend/src/lib/pricing.js.
+OFFERED_BEFORE = "2026-10-14T00:00:00+00:00"
+
+
+def album_offered(order: dict) -> bool:
+    """Whether the album itself is free for this order (only the delivery
+    is due): during the test week, for an order placed at 0 for the album,
+    or for one placed before the test week."""
+    if FREE_TRIAL or int(order.get("unit_price_cents") or 0) == 0:
+        return True
+    created = order.get("created_at")
+    return bool(created) and str(created) < OFFERED_BEFORE
 
 # Price by format AND page tier, in cents — server-side only, the client
 # never gets to set its own price. An album between two tiers pays the

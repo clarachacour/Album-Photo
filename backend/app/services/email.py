@@ -331,7 +331,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         f"Thanks for your order! We've received it and will start preparing your book.\n\n"
         + (f"Your album is free. Only the delivery, {total:.2f} {order.get('currency', 'usd').upper()}, is to be paid in cash to the courier.\n"
            if not order.get("unit_price_cents") else
-           f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included)\n")
+           f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.\n")
         +
         f"Quantity: {order.get('quantity', 1)}\n\n"
         f"You can follow its status here:\n{order_url}\n\n"
@@ -345,7 +345,7 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
             + (f"<p>Your album is free. Only the delivery, <strong>{total:.2f} {order.get('currency', 'usd').upper()}</strong>, is to be paid in cash to the courier.<br>"
                if not order.get("unit_price_cents") else
-               f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included)<br>")
+               f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.<br>")
             +
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
             f"<p>We'll email you again once it ships.</p>"
@@ -359,16 +359,16 @@ def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict
     currency = order.get("currency", "usd").upper()
     subject = "Your Everbook digital album is ordered"
     free = total == 0
+    # Online payment isn't set up yet: the PDF is handed over at once either way.
     intro = (
         "Thanks for your order! Your digital album is free: it will be ready to download as a PDF in a few minutes."
         if free else
-        "Thanks for your order! Your album will be ready to download as a PDF as soon as we've received your payment — we'll contact you to arrange it."
+        "Thanks for your order! Online payment isn't set up yet, so there's nothing to pay for now: your album will be ready to download as a PDF in a few minutes."
     )
     body = (
         f"Hi {name or ''},\n\n"
         f"{intro}\n\n"
-        + ("" if free else f"Order total: {total:.2f} {currency}\n\n")
-        + f"You can follow your order here:\n{order_url}\n\n"
+        f"You can follow your order here:\n{order_url}\n\n"
         f"We'll email you again the moment your PDF is ready."
     )
     html_body = _email_wrapper(
@@ -377,8 +377,7 @@ def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
             f"<p>{intro}</p>"
-            + ("" if free else f"<p><strong>Order total:</strong> {total:.2f} {currency}</p>")
-            + f"<p>We'll email you again the moment your PDF is ready.</p>"
+            f"<p>We'll email you again the moment your PDF is ready.</p>"
         ),
         cta_label="View your order",
         cta_url=order_url,

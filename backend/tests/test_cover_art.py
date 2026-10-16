@@ -33,7 +33,7 @@ def test_every_address_points_to_an_existing_file():
     source = "\n".join(p.read_text() for p in (FRONTEND / "src" / "lib").glob("*.js"))
     urls = set(re.findall(r'"(/cover-art/[^"]+)"', source)) | set(re.findall(r'"(/cover-art/[^"]+)"', (Path(__file__).resolve().parents[1] / "app/services/cover_art.py").read_text()))
     urls = {u for u in urls if "{" not in u}  # the v1 → v2 table is built from names
-    assert len(urls) == 19
+    assert len(urls) == 22  # with Beirut, Dubai, Cairo
     for url in urls:
         assert (FRONTEND / "public" / url.lstrip("/")).is_file(), url
 

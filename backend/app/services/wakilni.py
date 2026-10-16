@@ -119,10 +119,10 @@ def waybill(order: dict) -> str:
 
 
 def cash_due(order: dict) -> int:
-    """What the courier collects, in cents: the order's total — but during
-    the test week (FREE_TRIAL) only the delivery, even for an order placed
-    before it with the album's price in its total."""
-    if pricing.FREE_TRIAL:
+    """What the courier collects, in cents: the order's total — but only the
+    delivery when the album is offered (test week, or an order placed
+    before it with the album's price in its total)."""
+    if pricing.album_offered(order):
         shipping = order.get("shipping_price_cents")
         return pricing.SHIPPING_PRICE_CENTS if shipping is None else int(shipping)
     return int(order.get("total_price_cents", 0))

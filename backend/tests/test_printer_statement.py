@@ -38,6 +38,7 @@ def _rows(content):
 
 
 def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
+    asyncio.run(db.orders.delete_many({}))  # only this test's orders on the statement
     _order(db, "5f4c0509-a1", "ready_for_delivery", "A4", 50, qty=2)
     _order(db, "6a1b0000-a2", "delivered", "A5", 24, printer_paid_at="2026-10-15T08:00:00+00:00")
     _order(db, "9d4e0000-a5", "printing", "A4", 50)  # still being printed: not yet
@@ -60,6 +61,7 @@ def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
 
 
 def test_the_printer_link_and_payment_mark(client, db, admin):  # noqa: F811
+    asyncio.run(db.orders.delete_many({}))
     _order(db, "5f4c0509-b1", "ready_for_delivery", "A4", 100)
     url = client.get("/api/admin/printer-statement-link", headers=admin).json()["url"]
     key = url.split("key=", 1)[1]

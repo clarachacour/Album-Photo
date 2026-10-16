@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FREE_TRIAL, PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
+import { PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 
 describe("pricing", () => {
   it("bills an album as the smallest tier that holds it", () => {
@@ -35,9 +35,13 @@ describe("pricing", () => {
     expect(computeDigitalPrice("A5", 24, true)).toBe(0);
   });
 
-  it("asks only for the delivery during the test week, even for an older order", () => {
-    const old = { kind: "print", total_price_cents: 4000, shipping_price_cents: 500 };
-    expect(amountDueCents(old)).toBe(FREE_TRIAL ? 500 : 4000);
-    expect(amountDueCents({ kind: "digital", total_price_cents: 2000 })).toBe(FREE_TRIAL ? 0 : 2000);
+  it("asks for the total in cash, but only the delivery for an offered album", () => {
+    const order = { kind: "print", unit_price_cents: 3500, total_price_cents: 4000, shipping_price_cents: 500, created_at: "2026-10-20T09:00:00+00:00" };
+    expect(amountDueCents(order)).toBe(4000);
+    // Placed before the test week, or at 0 for the album during it: offered.
+    expect(amountDueCents({ ...order, created_at: "2026-10-10T09:00:00+00:00" })).toBe(500);
+    expect(amountDueCents({ ...order, unit_price_cents: 0, total_price_cents: 500 })).toBe(500);
+    // A PDF: nothing to pay while online payment isn't set up.
+    expect(amountDueCents({ kind: "digital", unit_price_cents: 2500, total_price_cents: 2500 })).toBe(0);
   });
 });

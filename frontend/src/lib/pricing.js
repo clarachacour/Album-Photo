@@ -10,10 +10,22 @@
 // of sync.
 
 // Test week: prices are shown as usual, but the album is offered when
-// ordering — only delivery is due, in cash to the courier. Set back to false
-// to charge albums again. Keep in sync with FREE_TRIAL in
+// ordering — only delivery is due, in cash to the courier. Set to true to
+// offer albums again. Keep in sync with FREE_TRIAL in
 // backend/app/services/pricing.py (which charges).
-export const FREE_TRIAL = true;
+export const FREE_TRIAL = false;
+
+// Orders placed before the test week were offered too (only the delivery is
+// due) — same as OFFERED_BEFORE in backend/app/services/pricing.py.
+export const OFFERED_BEFORE = "2026-10-14T00:00:00+00:00";
+
+// Whether the album itself is free for this order (album_offered in the
+// backend): test week, an order placed at 0 for the album, or one placed
+// before the test week.
+export function albumOffered(order) {
+  if (FREE_TRIAL || !order?.unit_price_cents) return true;
+  return !!order.created_at && String(order.created_at) < OFFERED_BEFORE;
+}
 
 // Between two tiers, the tier above is charged.
 export const PAGE_TIERS = [24, 50, 100, 150];
@@ -73,11 +85,12 @@ export const SHIPPING_PRICE = 5;
 // TERMS_VERSION in backend/app/services/pricing.py.
 export const TERMS_VERSION = "2026-10-16";
 
-// What the customer pays for an order, in cents: its total — but during the
-// test week only the delivery (nothing for a PDF), even for an order placed
-// before it (same as cash_due in backend/app/services/wakilni.py).
+// What the customer pays for an order, in cents: its total — but only the
+// delivery when the album is offered (same as cash_due in
+// backend/app/services/wakilni.py), and nothing for a PDF while online
+// payment isn't set up (it's handed over at once).
 export function amountDueCents(order) {
-  if (!FREE_TRIAL) return order?.total_price_cents || 0;
   if (order?.kind === "digital") return 0;
+  if (!albumOffered(order)) return order?.total_price_cents || 0;
   return order?.shipping_price_cents ?? SHIPPING_PRICE * 100;
 }
