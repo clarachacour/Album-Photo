@@ -6,12 +6,10 @@ import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Tru
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { lazyPage } from "@/lib/lazyPage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { PRICE_TABLE, DIGITAL_DISCOUNT } from "@/lib/pricing";
+import { PRICE_TABLE, DIGITAL_PRICE } from "@/lib/pricing";
 
 // Cheapest album, for the "From $…" on the home page: follows the price table.
 const FROM_PRICE = Math.min(...Object.values(PRICE_TABLE).flatMap((tiers) => Object.values(tiers)));
-// The album as a PDF to download: told from the start, not only at checkout.
-const FROM_PDF_PRICE = Math.max(0, FROM_PRICE - DIGITAL_DISCOUNT);
 
 // Reloads the page once if its code can't be downloaded (a release since
 // the page was opened, a dropped connection) — see lazyPage.
@@ -68,7 +66,7 @@ export default function Landing() {
               </button>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[color:var(--ink)]/70" data-testid="landing-perks">
-              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE, pdfPrice: FROM_PDF_PRICE }).map((perk) => (
+              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE, pdfPrice: DIGITAL_PRICE }).map((perk) => (
                 <li key={perk} className="inline-flex items-center gap-1.5">
                   <Check size={14} className="text-[color:var(--coral)]" />
                   {perk}
@@ -97,7 +95,7 @@ export default function Landing() {
       {/* Process strip */}
       <section className="border-y border-[color:var(--border-soft)] py-16 md:py-24 bg-white">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-12">
-          {t("landing.process.steps", { returnObjects: true, discount: DIGITAL_DISCOUNT }).map((s, i) => (
+          {t("landing.process.steps", { returnObjects: true }).map((s, i) => (
             <div key={i} className="flex gap-6 items-start">
               <div className="font-serif-display text-4xl text-[color:var(--coral)]">{String(i + 1).padStart(2, "0")}</div>
               <div>

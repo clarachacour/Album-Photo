@@ -25,9 +25,9 @@ describe("pricing", () => {
     expect(billedPageCount({ target_pages: 50, pages: [] })).toBe(50);
   });
 
-  it("prices the digital album $15 below the printed one", () => {
-    expect(computeDigitalPrice("A5", 24, false)).toBe(PRICE_TABLE.A5[24] - 15);
-    expect(computeDigitalPrice("A4", 35, false)).toBe(PRICE_TABLE.A4[50] - 15);
+  it("prices the digital album $25, whatever its size and pages", () => {
+    expect(computeDigitalPrice("A5", 24, false)).toBe(25);
+    expect(computeDigitalPrice("A4", 150, false)).toBe(25);
   });
 
   it("makes every album free during the test week (delivery stays)", () => {

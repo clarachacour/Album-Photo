@@ -40,7 +40,7 @@
         },
         {
           "title": "We print and deliver",
-          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? Get it as a PDF to download, ${{discount}} less."
+          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? Get it as a PDF to download."
         }
       ]
     },
@@ -674,7 +674,7 @@
     "madeIn": "Made in Lebanon"
   },
   "legal": {
-    "lastUpdated": "Last updated: October 11, 2026",
+    "lastUpdated": "Last updated: October 16, 2026",
     "terms": {
       "eyebrow": "Legal",
       "title": "Terms of sale",
@@ -717,7 +717,7 @@
         },
         {
           "heading": "10. Prices",
-          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe price of the digital album is that of the corresponding printed album, less USD 15, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
+          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe digital album costs USD 25, whatever its format and number of pages, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
         },
         {
           "heading": "11. Payment",

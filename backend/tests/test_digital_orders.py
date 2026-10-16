@@ -1,11 +1,11 @@
 """The digital album: the PDF to download, priced at the printed album's
-price minus DIGITAL_DISCOUNT_CENTS, made at once but handed over only once
+price is fixed (DIGITAL_PRICE_CENTS), made at once but handed over only once
 the payment is confirmed in the admin."""
 import asyncio
 
 import pytest
 
-from app.services.pricing import DIGITAL_DISCOUNT_CENTS, SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
+from app.services.pricing import DIGITAL_PRICE_CENTS, SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
 from tests.test_api import _signup
 
 ADDRESS = {"full_name": "A", "phone": "70 123 456", "street": "S", "city": "C"}
@@ -51,7 +51,7 @@ def test_a_digital_album_is_handed_over_once_paid(client, db, shop):
     assert res.status_code == 200, res.text
     order = res.json()
     assert order["kind"] == "digital" and order["shipping_address"] is None
-    assert order["total_price_cents"] == compute_order_price_cents("A4", 24) - DIGITAL_DISCOUNT_CENTS
+    assert order["total_price_cents"] == DIGITAL_PRICE_CENTS == 2500
     assert order["shipping_price_cents"] == 0 and order["quantity"] == 1
     assert shop["sent"]["confirmation"] == ["digital"]
 

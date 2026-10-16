@@ -23,10 +23,10 @@ ORDER_PRICE_CENTS = {
     "A4": {24: 5300, 50: 7300, 100: 9900, 150: 12900},
 }
 
-# A digital album (the PDF to download, no printing or delivery) costs the
-# printed album's price minus this, in cents. Keep in sync with
-# DIGITAL_DISCOUNT in frontend/src/lib/pricing.js.
-DIGITAL_DISCOUNT_CENTS = 1500
+# A digital album (the PDF to download, no printing or delivery): one
+# fixed price whatever its format and page count, in cents. Keep in sync
+# with DIGITAL_PRICE in frontend/src/lib/pricing.js.
+DIGITAL_PRICE_CENTS = 2500
 
 # Delivery (Lebanon only), per order, in cents. Shown at checkout — keep in
 # sync with SHIPPING_PRICE in frontend/src/lib/pricing.js.
@@ -35,7 +35,7 @@ SHIPPING_PRICE_CENTS = 500
 # The version of the terms of sale the site shows (the "last updated" date
 # of legal.terms in the locale files). An order records the one the
 # customer accepted; change both together when the terms change.
-TERMS_VERSION = "2026-10-11"
+TERMS_VERSION = "2026-10-16"
 
 # Per extra page beyond the largest tier, in cents — also a placeholder
 # until real per-page economics are confirmed.
@@ -70,5 +70,5 @@ def compute_order_price_cents(size: str, page_count: int) -> int:
 
 
 def compute_digital_price_cents(size: str, page_count: int) -> int:
-    """A digital album's price: the printed one's minus DIGITAL_DISCOUNT_CENTS."""
-    return max(0, compute_order_price_cents(size, page_count) - DIGITAL_DISCOUNT_CENTS)
+    """A digital album's price: DIGITAL_PRICE_CENTS, whatever the album."""
+    return 0 if FREE_TRIAL else DIGITAL_PRICE_CENTS

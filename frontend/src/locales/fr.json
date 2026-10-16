@@ -40,7 +40,7 @@
         },
         {
           "title": "On imprime et on livre",
-          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban. Vous le préférez en numérique ? Recevez-le en PDF à télécharger, {{discount}} $ de moins."
+          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban. Vous le préférez en numérique ? Recevez-le en PDF à télécharger."
         }
       ]
     },
@@ -674,7 +674,7 @@
     "madeIn": "Fabriqué au Liban"
   },
   "legal": {
-    "lastUpdated": "Dernière mise à jour : 11 octobre 2026",
+    "lastUpdated": "Dernière mise à jour : 16 octobre 2026",
     "terms": {
       "eyebrow": "Légal",
       "title": "Conditions générales de vente",
@@ -717,7 +717,7 @@
         },
         {
           "heading": "10. Prix",
-          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nLe prix de l'album numérique est celui de l'album imprimé correspondant, diminué de 15 USD, sans frais de livraison.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
+          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nL'album numérique coûte 25 USD, quels que soient son format et son nombre de pages, sans frais de livraison.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
         },
         {
           "heading": "11. Paiement",

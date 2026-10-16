@@ -54,13 +54,14 @@ export function billedPageCount(album) {
   return (album?.pages || []).length || Number(album?.target_pages) || PAGE_TIERS[0];
 }
 
-// A digital album (the PDF to download) costs the printed album's price
-// minus this — keep in sync with DIGITAL_DISCOUNT_CENTS in
+// A digital album (the PDF to download): one fixed price whatever its
+// format and page count — keep in sync with DIGITAL_PRICE_CENTS in
 // backend/app/services/pricing.py, which charges it.
-export const DIGITAL_DISCOUNT = 15;
+export const DIGITAL_PRICE = 25;
 
+// size/pageCount kept for the callers: the price is the same for all.
 export function computeDigitalPrice(size, pageCount, freeTrial = false) {
-  return Math.max(0, computeUnitPrice(size, pageCount, freeTrial) - DIGITAL_DISCOUNT);
+  return freeTrial ? 0 : DIGITAL_PRICE;
 }
 
 // Delivery (Lebanon only), per order — keep in sync with SHIPPING_PRICE_CENTS
@@ -70,7 +71,7 @@ export const SHIPPING_PRICE = 5;
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
 // TERMS_VERSION in backend/app/services/pricing.py.
-export const TERMS_VERSION = "2026-10-11";
+export const TERMS_VERSION = "2026-10-16";
 
 // What the customer pays for an order, in cents: its total — but during the
 // test week only the delivery (nothing for a PDF), even for an order placed
