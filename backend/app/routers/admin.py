@@ -342,7 +342,7 @@ async def _statement_file() -> Response:
         async for a in db.albums.find({"id": {"$in": missing}}, {"_id": 0, "id": 1, "pages": 1}):
             page_counts[a["id"]] = len(a.get("pages") or [])
     data = printer_statement.build_statement_xlsx(printer_statement.statement_rows(orders, page_counts))
-    name = f"everbook-releve-imprimerie-{datetime.now(timezone.utc):%Y-%m-%d}.xlsx"
+    name = f"everbook-printer-statement-{datetime.now(timezone.utc):%Y-%m-%d}.xlsx"
     return Response(
         data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

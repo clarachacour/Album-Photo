@@ -26,7 +26,7 @@ PRINTER_PRICES = OrderedDict([
 # Statuses an order has once its book went to the printer.
 SENT_TO_PRINTER = ("printing", "ready_for_delivery", "shipped", "delivered")
 
-MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 
 def printer_tier(pages: int) -> Optional[int]:
@@ -75,7 +75,7 @@ def statement_rows(orders: list, page_counts: dict) -> list:
             "number": order_number(o),
             "sent": _date(sent or o.get("created_at")),
             "ready": _date(_history_time(o, "ready_for_delivery")),
-            "format": f"{o.get('size', 'A4')} · {'paysage' if o.get('orientation') == 'landscape' else 'portrait'}",
+            "format": f"{o.get('size', 'A4')} · {'landscape' if o.get('orientation') == 'landscape' else 'portrait'}",
             "pages": pages,
             "tier": printer_tier(pages),
             "quantity": qty,
@@ -111,13 +111,13 @@ def build_statement_xlsx(rows: list) -> bytes:
 
     ws = wb.active
     ws.title = "Albums"
-    _header(ws, ["N° commande", "Envoyé à l'imprimerie", "Prêt (livraison)", "Format", "Pages", "Prix pour", "Quantité",
-                 "Prix unitaire", "Total", "Paiement", "Payé le"],
+    _header(ws, ["Order number", "Sent to printer", "Ready for pickup", "Format", "Pages", "Priced as", "Quantity",
+                 "Unit price", "Total", "Payment", "Paid on"],
             [16, 14, 14, 16, 8, 11, 10, 12, 11, 12, 12])
     for r in rows:
-        status = "Annulée" if r["cancelled"] else ("Payé" if r["paid"] else "À payer")
+        status = "Cancelled" if r["cancelled"] else ("Paid" if r["paid"] else "To pay")
         ws.append([r["number"], r["sent"], r["ready"], r["format"], r["pages"],
-                   f"{r['tier']} pages" if r["tier"] else "à vérifier", r["quantity"],
+                   f"{r['tier']} pages" if r["tier"] else "to check", r["quantity"],
                    r["unit"], r["total"], status, r["paid_on"]])
         row = ws.max_row
         for col in (2, 3, 11):
@@ -134,8 +134,8 @@ def build_statement_xlsx(rows: list) -> bytes:
         ws.cell(row=total_row, column=9).number_format = MONEY_FMT
 
     # Month by month: what was printed, paid, and still to pay.
-    rs = wb.create_sheet("Récapitulatif")
-    _header(rs, ["Mois", "Albums", "Total", "Payé", "Reste à payer"], [18, 10, 12, 12, 14])
+    rs = wb.create_sheet("Summary")
+    _header(rs, ["Month", "Albums", "Total", "Paid", "Left to pay"], [18, 10, 12, 12, 14])
     months = OrderedDict()
     for r in rows:
         if r["cancelled"] or not r["sent"]:
@@ -146,7 +146,7 @@ def build_statement_xlsx(rows: list) -> bytes:
         m["total"] += r["total"] or 0
         m["paid"] += (r["total"] or 0) if r["paid"] else 0
     for (y, mo), m in months.items():
-        rs.append([f"{MONTHS_FR[mo - 1]} {y}", m["albums"], m["total"], m["paid"], m["total"] - m["paid"]])
+        rs.append([f"{MONTHS[mo - 1]} {y}", m["albums"], m["total"], m["paid"], m["total"] - m["paid"]])
         for col in (3, 4, 5):
             rs.cell(row=rs.max_row, column=col).number_format = MONEY_FMT
     if months:
@@ -157,14 +157,14 @@ def build_statement_xlsx(rows: list) -> bytes:
         for col in (3, 4, 5):
             rs.cell(row=rs.max_row, column=col).number_format = MONEY_FMT
 
-    ts = wb.create_sheet("Tarifs")
-    _header(ts, ["Pages", "A5 (par album)", "A4 (par album)"], [12, 16, 16])
+    ts = wb.create_sheet("Prices")
+    _header(ts, ["Pages", "A5 (per album)", "A4 (per album)"], [12, 16, 16])
     for tier, prices in PRINTER_PRICES.items():
         ts.append([f"{tier} pages", prices["A5"], prices["A4"]])
         for col in (2, 3):
             ts.cell(row=ts.max_row, column=col).number_format = MONEY_FMT
     ts.append([])
-    ts.append(["Un album entre deux paliers est compté au palier supérieur (ex. 35 pages → prix 50 pages)."])
+    ts.append(["An album between two tiers is priced at the next tier up (e.g. 35 pages: the 50-page price)."])
 
     buf = BytesIO()
     wb.save(buf)

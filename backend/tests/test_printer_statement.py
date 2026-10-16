@@ -48,8 +48,8 @@ def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
     body = [r for r in rows[1:] if r[0] and r[0].startswith("EB-")]
     assert [r[0] for r in body] == ["EB-5F4C0509", "EB-6A1B0000"]
     first, second = body
-    assert first[7] == 33 and first[8] == 66 and first[9] == "À payer"
-    assert second[7] == 24 and second[9] == "Payé"
+    assert first[7] == 33 and first[8] == 66 and first[9] == "To pay"
+    assert second[7] == 24 and second[9] == "Paid"
     # Nothing about the customer or what they paid.
     text = " ".join(str(c) for ws in wb for row in ws.iter_rows(values_only=True) for c in row if c is not None)
     assert "Rita" not in text and "Sioufi" not in text and "Secret title" not in text and "49" not in text and "54" not in text
@@ -65,7 +65,7 @@ def test_the_printer_link_and_payment_mark(client, db, admin):  # noqa: F811
 
     assert client.patch("/api/admin/orders/5f4c0509-b1/printer-payment", json={"paid": True}, headers=admin).json()["printer_paid_at"]
     _, rows = _rows(client.get(f"/api/printer-statement.xlsx?key={key}").content)
-    assert rows[1][9] == "Payé" and rows[1][7] == 40
+    assert rows[1][9] == "Paid" and rows[1][7] == 40
     client.patch("/api/admin/orders/5f4c0509-b1/printer-payment", json={"paid": False}, headers=admin)
     _, rows = _rows(client.get(f"/api/printer-statement.xlsx?key={key}").content)
-    assert rows[1][9] == "À payer"
+    assert rows[1][9] == "To pay"
