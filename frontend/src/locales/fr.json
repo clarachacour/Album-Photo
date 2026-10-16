@@ -571,7 +571,8 @@
     "pagesShortTitle_one": "Votre album fait {{count}} page au lieu des {{target}} choisies.",
     "pagesShortTitle_other": "Votre album fait {{count}} pages au lieu des {{target}} choisies.",
     "coverColor": "Couleur de la couverture",
-    "pageLimit": "Un album peut avoir au maximum {{count}} pages."
+    "pageLimit": "Un album peut avoir au maximum {{count}} pages.",
+    "showPhotoPage": "Cliquez pour la voir sur sa page, glissez pour la déplacer"
   },
   "toolbars": {
     "editPhoto": "Modifier la photo : recadrer, zoomer, tourner",

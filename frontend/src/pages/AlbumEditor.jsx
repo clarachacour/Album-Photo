@@ -895,6 +895,27 @@ export default function AlbumEditor() {
     setAlbum({ ...album, pages: newPages });
   };
 
+  // From "Rearrange the photos": to the double page holding the n-th
+  // photo of the album, with that photo selected.
+  const showPhotoAt = (seqIndex) => {
+    const pages = album?.pages || [];
+    let n = 0;
+    for (let p = 0; p < pages.length; p++) {
+      for (const item of pages[p].items || []) {
+        if (item.type !== "photo" || !item.photo_id) continue;
+        if (n++ === seqIndex) {
+          // Book views: 0 is the cover alone, then [blank, page 0], [page 1, page 2]…
+          bookRef.current?.goTo(Math.floor((p + 3) / 2));
+          setCropMode(false);
+          setCoverSel(null);
+          setSelected({ pageIdx: p, item });
+          document.querySelector('[data-tour="book"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+      }
+    }
+  };
+
   const photoSequence = () => {
     const seq = [];
     for (const p of album?.pages || []) {
@@ -1205,6 +1226,8 @@ export default function AlbumEditor() {
               <PhotoTray
                 photoIds={photoSequence()}
                 onReorder={reorderPhotoSequence}
+                onOpen={showPhotoAt}
+                openTitle={t("albumEditor.showPhotoPage")}
               />
             </div>
           )}

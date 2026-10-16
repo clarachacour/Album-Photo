@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { photoImageUrl } from "@/lib/api";
 import { usePhotoHoverPreview } from "@/components/PhotoHoverPreview";
 
-function SortablePhoto({ id, index, previewProps }) {
+function SortablePhoto({ id, index, previewProps, onOpen, openTitle }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `slot-${index}` });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -33,6 +33,10 @@ function SortablePhoto({ id, index, previewProps }) {
       {...attributes}
       {...listeners}
       {...previewProps}
+      // A click (not a drag: that needs a few pixels of movement, or a
+      // long press on a phone) goes to the photo's page.
+      onClick={onOpen ? () => onOpen(index) : undefined}
+      title={openTitle}
       data-testid={`tray-photo-${index}`}
       className="relative w-20 h-20 md:w-24 md:h-24 bg-white cursor-grab active:cursor-grabbing border border-[color:var(--border-soft)] overflow-hidden shrink-0 group"
     >
@@ -44,7 +48,7 @@ function SortablePhoto({ id, index, previewProps }) {
   );
 }
 
-export default function PhotoTray({ photoIds, onReorder }) {
+export default function PhotoTray({ photoIds, onReorder, onOpen, openTitle }) {
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     // On a phone: press and hold to move a photo; a quick swipe still
@@ -75,7 +79,7 @@ export default function PhotoTray({ photoIds, onReorder }) {
         <SortableContext items={items} strategy={horizontalListSortingStrategy}>
           <div className="flex gap-2 overflow-x-auto pb-2" data-testid="photo-tray">
             {photoIds.map((photoId, idx) => (
-              <SortablePhoto key={`${photoId}-${idx}`} id={photoId} index={idx} previewProps={preview.bind(photoId)} />
+              <SortablePhoto key={`${photoId}-${idx}`} id={photoId} index={idx} previewProps={preview.bind(photoId)} onOpen={onOpen && ((i) => { preview.hide(); onOpen(i); })} openTitle={openTitle} />
             ))}
           </div>
         </SortableContext>
