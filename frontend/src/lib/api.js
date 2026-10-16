@@ -85,6 +85,10 @@ export function coverItemImageSrc(item, variant = "original") {
   return path ? coverAssetUrl(path, variant) : url; // images built into templates (data: URLs) as is
 }
 
+export function adminPrinterStatementUrl() {
+  return `${API}/admin/printer-statement.xlsx?auth=${encodeURIComponent(getToken() || "")}`;
+}
+
 export function adminOrderPdfUrl(orderId) {
   const t = getToken();
   return `${API}/admin/orders/${orderId}/pdf?auth=${encodeURIComponent(t || "")}`;

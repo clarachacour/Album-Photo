@@ -1,0 +1,183 @@
+"""The printer's statement: every album sent to the printer, what it costs
+Everbook (the printer's price list, not the customer's price), and whether
+it's been paid to the printer. Built as an Excel file whenever it's asked
+for, so it's always up to date (admin download, or the printer's own link)."""
+from collections import OrderedDict
+from datetime import datetime
+from io import BytesIO
+from typing import Optional
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+
+from app.core.order_number import order_number
+from app.core.signed_links import sign_order_action, verify_order_action
+
+# What the printer charges per copy, in dollars, by page tier and format.
+# 150 pages is the most an album can have.
+PRINTER_PRICES = OrderedDict([
+    (24, {"A5": 24, "A4": 27}),
+    (50, {"A5": 30, "A4": 33}),
+    (100, {"A5": 37, "A4": 40}),
+    (150, {"A5": 45, "A4": 55}),
+])
+
+# Statuses an order has once its book went to the printer.
+SENT_TO_PRINTER = ("printing", "ready_for_delivery", "shipped", "delivered")
+
+MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+def printer_tier(pages: int) -> Optional[int]:
+    """The price tier of an album of `pages` pages: the smallest that holds
+    it (35 pages → the 50-page price). None past the largest tier."""
+    return next((t for t in PRINTER_PRICES if t >= max(1, int(pages or 0))), None)
+
+
+def printer_unit_price(size: str, pages: int) -> Optional[int]:
+    tier = printer_tier(pages)
+    if tier is None:
+        return None
+    return PRINTER_PRICES[tier].get(size if size in ("A4", "A5") else "A4")
+
+
+def _history_time(order: dict, status: str) -> Optional[str]:
+    times = [h["at"] for h in order.get("status_history") or [] if h.get("status") == status]
+    return times[0] if times else None
+
+
+def _date(iso: Optional[str]):
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def statement_rows(orders: list, page_counts: dict) -> list:
+    """One row per printed order, oldest first. page_counts: album id →
+    page count, for orders from before the page count was kept on them."""
+    rows = []
+    for o in orders:
+        if o.get("kind", "print") != "print":
+            continue
+        sent = _history_time(o, "printing")
+        if o.get("status") not in SENT_TO_PRINTER and not sent:
+            continue
+        if o.get("status") == "cancelled" and not sent:
+            continue
+        pages = o.get("page_count") or page_counts.get(o.get("album_id")) or 0
+        unit = printer_unit_price(o.get("size"), pages)
+        qty = int(o.get("quantity") or 1)
+        rows.append({
+            "number": order_number(o),
+            "sent": _date(sent or o.get("created_at")),
+            "ready": _date(_history_time(o, "ready_for_delivery")),
+            "format": f"{o.get('size', 'A4')} · {'paysage' if o.get('orientation') == 'landscape' else 'portrait'}",
+            "pages": pages,
+            "tier": printer_tier(pages),
+            "quantity": qty,
+            "unit": unit,
+            "total": unit * qty if unit is not None else None,
+            "paid": bool(o.get("printer_paid_at")),
+            "paid_on": _date(o.get("printer_paid_at")),
+            "cancelled": o.get("status") == "cancelled",
+        })
+    rows.sort(key=lambda r: r["sent"] or datetime.min)
+    return rows
+
+
+HEADER_FILL = PatternFill("solid", fgColor="1A1A17")
+HEADER_FONT = Font(bold=True, color="F9F8F6")
+DATE_FMT = "dd/mm/yyyy"
+MONEY_FMT = '#,##0 "$"'
+
+
+def _header(ws, titles, widths):
+    ws.append(titles)
+    for i, w in enumerate(widths, start=1):
+        cell = ws.cell(row=1, column=i)
+        cell.fill, cell.font = HEADER_FILL, HEADER_FONT
+        cell.alignment = Alignment(vertical="center", wrap_text=True)
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.row_dimensions[1].height = 30
+    ws.freeze_panes = "A2"
+
+
+def build_statement_xlsx(rows: list) -> bytes:
+    wb = Workbook()
+
+    ws = wb.active
+    ws.title = "Albums"
+    _header(ws, ["N° commande", "Envoyé à l'imprimerie", "Prêt (livraison)", "Format", "Pages", "Prix pour", "Quantité",
+                 "Prix unitaire", "Total", "Paiement", "Payé le"],
+            [16, 14, 14, 16, 8, 11, 10, 12, 11, 12, 12])
+    for r in rows:
+        status = "Annulée" if r["cancelled"] else ("Payé" if r["paid"] else "À payer")
+        ws.append([r["number"], r["sent"], r["ready"], r["format"], r["pages"],
+                   f"{r['tier']} pages" if r["tier"] else "à vérifier", r["quantity"],
+                   r["unit"], r["total"], status, r["paid_on"]])
+        row = ws.max_row
+        for col in (2, 3, 11):
+            ws.cell(row=row, column=col).number_format = DATE_FMT
+        for col in (8, 9):
+            ws.cell(row=row, column=col).number_format = MONEY_FMT
+        ws.cell(row=row, column=10).font = Font(bold=True, color="2E7D32" if r["paid"] else "B42727")
+    if rows:
+        last = ws.max_row
+        ws.append(["Total", None, None, None, None, None, f"=SUM(G2:G{last})", None, f"=SUM(I2:I{last})"])
+        total_row = ws.max_row
+        for col in range(1, 12):
+            ws.cell(row=total_row, column=col).font = Font(bold=True)
+        ws.cell(row=total_row, column=9).number_format = MONEY_FMT
+
+    # Month by month: what was printed, paid, and still to pay.
+    rs = wb.create_sheet("Récapitulatif")
+    _header(rs, ["Mois", "Albums", "Total", "Payé", "Reste à payer"], [18, 10, 12, 12, 14])
+    months = OrderedDict()
+    for r in rows:
+        if r["cancelled"] or not r["sent"]:
+            continue
+        key = (r["sent"].year, r["sent"].month)
+        m = months.setdefault(key, {"albums": 0, "total": 0, "paid": 0})
+        m["albums"] += r["quantity"]
+        m["total"] += r["total"] or 0
+        m["paid"] += (r["total"] or 0) if r["paid"] else 0
+    for (y, mo), m in months.items():
+        rs.append([f"{MONTHS_FR[mo - 1]} {y}", m["albums"], m["total"], m["paid"], m["total"] - m["paid"]])
+        for col in (3, 4, 5):
+            rs.cell(row=rs.max_row, column=col).number_format = MONEY_FMT
+    if months:
+        last = rs.max_row
+        rs.append(["Total", f"=SUM(B2:B{last})", f"=SUM(C2:C{last})", f"=SUM(D2:D{last})", f"=SUM(E2:E{last})"])
+        for col in range(1, 6):
+            rs.cell(row=rs.max_row, column=col).font = Font(bold=True)
+        for col in (3, 4, 5):
+            rs.cell(row=rs.max_row, column=col).number_format = MONEY_FMT
+
+    ts = wb.create_sheet("Tarifs")
+    _header(ts, ["Pages", "A5 (par album)", "A4 (par album)"], [12, 16, 16])
+    for tier, prices in PRINTER_PRICES.items():
+        ts.append([f"{tier} pages", prices["A5"], prices["A4"]])
+        for col in (2, 3):
+            ts.cell(row=ts.max_row, column=col).number_format = MONEY_FMT
+    ts.append([])
+    ts.append(["Un album entre deux paliers est compté au palier supérieur (ex. 35 pages → prix 50 pages)."])
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+# The printer's own link: the same statement, behind a fixed secret key.
+STATEMENT_KEY_SUBJECT = "printer-statement"
+
+
+def statement_key() -> str:
+    return sign_order_action(STATEMENT_KEY_SUBJECT, "view")
+
+
+def valid_statement_key(key: Optional[str]) -> bool:
+    return verify_order_action(STATEMENT_KEY_SUBJECT, "view", key)

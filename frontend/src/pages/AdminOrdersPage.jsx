@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { orderNumber } from "@/lib/orderNumber";
 import { isLebanesePhone } from "@/lib/phone";
 import { Link } from "react-router-dom";
-import { api, adminOrderPdfUrl } from "@/lib/api";
+import { api, adminOrderPdfUrl, adminPrinterStatementUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail, FileSpreadsheet, Link2 } from "lucide-react";
 import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 
@@ -154,6 +154,25 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const copyPrinterLink = async () => {
+    try {
+      const { data } = await api.get("/admin/printer-statement-link");
+      await navigator.clipboard.writeText(data.url);
+      toast.success("Link copied — paste it in WhatsApp to the printer");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't copy the link");
+    }
+  };
+
+  const setPrinterPaid = async (orderId, paid) => {
+    try {
+      const { data } = await api.patch(`/admin/orders/${orderId}/printer-payment`, { paid });
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, printer_paid_at: data.printer_paid_at } : o)));
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't save the payment");
+    }
+  };
+
   const regeneratePdf = async (orderId) => {
     setRegeneratingId(orderId);
     try {
@@ -194,7 +213,28 @@ export default function AdminOrdersPage() {
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <h1 className="font-serif-display text-4xl tracking-tight">All orders</h1>
-          <SentryTestButton />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* The printer's statement (Excel): made from the orders each time
+                it's opened, so always up to date. */}
+            <button
+              type="button"
+              onClick={() => window.open(adminPrinterStatementUrl(), "_blank")}
+              data-testid="admin-printer-statement"
+              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-3 py-2 hover:border-[color:var(--ink)] transition-colors"
+            >
+              <FileSpreadsheet size={13} /> Printer statement (Excel)
+            </button>
+            <button
+              type="button"
+              onClick={copyPrinterLink}
+              data-testid="admin-printer-statement-link"
+              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-3 py-2 hover:border-[color:var(--ink)] transition-colors"
+              title="A fixed link to send the printer once (WhatsApp): it always opens the statement as it is that day"
+            >
+              <Link2 size={13} /> Copy link for the printer
+            </button>
+            <SentryTestButton />
+          </div>
         </div>
 
         {loading ? (
@@ -400,6 +440,16 @@ export default function AdminOrdersPage() {
                         </div>
                         {/* The PDF is made once: after editing the album, it has
                             to be made again or the old version gets printed. */}
+                        {/* Paid to the printer (the printer's statement shows it). */}
+                        {o.kind !== "digital" && (o.status_history || []).some((h) => h.status === "printing") && (
+                          <label className="mt-2 flex items-center gap-1.5 text-xs cursor-pointer select-none" data-testid={`admin-printer-paid-${o.id}`}>
+                            <input type="checkbox" checked={!!o.printer_paid_at} onChange={(e) => setPrinterPaid(o.id, e.target.checked)} />
+                            Paid to printer
+                            {o.printer_paid_at && (
+                              <span className="text-[color:var(--muted)]">({parseDate(o.printer_paid_at).toLocaleDateString()})</span>
+                            )}
+                          </label>
+                        )}
                         {o.album_changed_since_pdf && !o.pdf_generating && (
                           <p className="mt-1.5 text-xs text-[color:var(--coral)] max-w-[260px]" data-testid={`admin-album-changed-${o.id}`}>
                             Album edited since this PDF was made: click Regenerate PDF, then Printer to send it again.

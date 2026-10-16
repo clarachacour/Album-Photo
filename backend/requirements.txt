@@ -41,6 +41,8 @@ dnspython==2.8.0
     #   pymongo
 email-validator==2.3.0
     # via pydantic
+et-xmlfile==2.0.0
+    # via openpyxl
 fastapi==0.141.1
     # via -r requirements.in
 google-auth==2.58.0
@@ -67,6 +69,8 @@ numpy==2.4.6
     #   -r requirements.in
     #   opencv-python-headless
 opencv-python-headless==5.0.0.93
+    # via -r requirements.in
+openpyxl==3.1.5
     # via -r requirements.in
 pillow==12.3.0
     # via

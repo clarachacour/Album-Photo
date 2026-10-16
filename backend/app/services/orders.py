@@ -199,7 +199,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
         )
         path = f"{APP_NAME}/orders/{order_id}.pdf"
         await run_blocking(put_object, path, pdf_bytes, "application/pdf")
-        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True, "pdf_error": None, "pdf_generated_at": datetime.now(timezone.utc).isoformat()}, "$unset": {"pdf_queued_at": ""}})
+        await db.orders.update_one({"id": order_id}, {"$set": {"pdf_path": path, "pdf_ready": True, "pdf_error": None, "pdf_generated_at": datetime.now(timezone.utc).isoformat(), "page_count": len(interior_pages)}, "$unset": {"pdf_queued_at": ""}})
         logger.info(f"Commande {order_id} : PDF complet généré en {_time.monotonic() - t_start:.1f}s au total")
 
         # Moved in from create_order/admin_regenerate_order_pdf: this

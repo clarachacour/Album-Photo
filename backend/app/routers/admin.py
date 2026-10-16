@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 
 from app.config import R2_BUCKET_NAME
 from app.core.auth import decode_token, get_current_user, require_admin
@@ -26,6 +26,8 @@ from app.services.orders import (
 )
 from app.services import delivery as deliveries
 from app.services import wakilni
+from app.services import printer_statement
+from app.config import BACKEND_URL
 from app.services.storage import get_r2_client
 from app.core.executors import run_email
 
@@ -318,3 +320,66 @@ async def admin_cancel_delivery(order_id: str, user: dict = Depends(get_current_
         return await deliveries.cancel_delivery(order_id, "Cancelled by Everbook")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Wakilni: {e}")
+
+
+async def _admin_from_query_or_header(auth: str = None, authorization: str = None) -> dict:
+    """The admin, from a Bearer header or an ?auth= token (a file the
+    browser downloads by opening the link)."""
+    token = authorization.split(" ", 1)[1] if authorization and authorization.lower().startswith("bearer ") else auth
+    user_id = decode_token(token) if token else None
+    user = await db.users.find_one({"id": user_id}, {"_id": 0}) if user_id else None
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    require_admin(user)
+    return user
+
+
+async def _statement_file() -> Response:
+    orders = await db.orders.find({"kind": {"$ne": "digital"}}, {"_id": 0}).to_list(10000)
+    missing = list({o["album_id"] for o in orders if o.get("album_id") and not o.get("page_count")})
+    page_counts = {}
+    if missing:
+        async for a in db.albums.find({"id": {"$in": missing}}, {"_id": 0, "id": 1, "pages": 1}):
+            page_counts[a["id"]] = len(a.get("pages") or [])
+    data = printer_statement.build_statement_xlsx(printer_statement.statement_rows(orders, page_counts))
+    name = f"everbook-releve-imprimerie-{datetime.now(timezone.utc):%Y-%m-%d}.xlsx"
+    return Response(
+        data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"},
+    )
+
+
+@router.get("/admin/printer-statement.xlsx")
+async def admin_printer_statement(auth: str = Query(None), authorization: str = Header(None)):
+    """The printer's statement as Excel, made now from the orders."""
+    await _admin_from_query_or_header(auth, authorization)
+    return await _statement_file()
+
+
+@router.get("/admin/printer-statement-link")
+async def admin_printer_statement_link(user: dict = Depends(get_current_user)):
+    """The fixed link to send the printer once (WhatsApp): it always
+    downloads the statement as it is that day. No customer price or
+    details in it."""
+    require_admin(user)
+    return {"url": f"{BACKEND_URL}/api/printer-statement.xlsx?key={printer_statement.statement_key()}"}
+
+
+@router.get("/printer-statement.xlsx")
+async def printer_statement_for_printer(key: str = Query(None)):
+    if not printer_statement.valid_statement_key(key):
+        raise HTTPException(status_code=403, detail="Invalid link")
+    return await _statement_file()
+
+
+@router.patch("/admin/orders/{order_id}/printer-payment")
+async def admin_set_printer_payment(order_id: str, body: dict, user: dict = Depends(get_current_user)):
+    """Marks an order paid to the printer (or not), with today's date."""
+    require_admin(user)
+    paid = bool(body.get("paid"))
+    value = datetime.now(timezone.utc).isoformat() if paid else None
+    res = await db.orders.update_one({"id": order_id}, {"$set": {"printer_paid_at": value}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"printer_paid_at": value}
