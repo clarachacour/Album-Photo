@@ -63,11 +63,10 @@ def statement_rows(orders: list, page_counts: dict) -> list:
     for o in orders:
         if o.get("kind", "print") != "print":
             continue
+        # Only what's with the printer: sent to print and not cancelled.
+        if o.get("status") not in SENT_TO_PRINTER:
+            continue
         sent = _history_time(o, "printing")
-        if o.get("status") not in SENT_TO_PRINTER and not sent:
-            continue
-        if o.get("status") == "cancelled" and not sent:
-            continue
         pages = o.get("page_count") or page_counts.get(o.get("album_id")) or 0
         unit = printer_unit_price(o.get("size"), pages)
         qty = int(o.get("quantity") or 1)
@@ -83,7 +82,6 @@ def statement_rows(orders: list, page_counts: dict) -> list:
             "total": unit * qty if unit is not None else None,
             "paid": bool(o.get("printer_paid_at")),
             "paid_on": _date(o.get("printer_paid_at")),
-            "cancelled": o.get("status") == "cancelled",
         })
     rows.sort(key=lambda r: r["sent"] or datetime.min)
     return rows
@@ -115,7 +113,7 @@ def build_statement_xlsx(rows: list) -> bytes:
                  "Unit price", "Total", "Payment", "Paid on"],
             [16, 14, 14, 16, 8, 11, 10, 12, 11, 12, 12])
     for r in rows:
-        status = "Cancelled" if r["cancelled"] else ("Paid" if r["paid"] else "To pay")
+        status = "Paid" if r["paid"] else "To pay"
         ws.append([r["number"], r["sent"], r["ready"], r["format"], r["pages"],
                    f"{r['tier']} pages" if r["tier"] else "to check", r["quantity"],
                    r["unit"], r["total"], status, r["paid_on"]])
@@ -138,7 +136,7 @@ def build_statement_xlsx(rows: list) -> bytes:
     _header(rs, ["Month", "Albums", "Total", "Paid", "Left to pay"], [18, 10, 12, 12, 14])
     months = OrderedDict()
     for r in rows:
-        if r["cancelled"] or not r["sent"]:
+        if not r["sent"]:
             continue
         key = (r["sent"].year, r["sent"].month)
         m = months.setdefault(key, {"albums": 0, "total": 0, "paid": 0})

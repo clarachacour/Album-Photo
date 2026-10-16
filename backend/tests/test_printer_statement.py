@@ -41,6 +41,7 @@ def test_the_admin_downloads_the_statement(client, db, admin):  # noqa: F811
     _order(db, "5f4c0509-a1", "ready_for_delivery", "A4", 50, qty=2)
     _order(db, "6a1b0000-a2", "printing", "A5", 24, printer_paid_at="2026-10-15T08:00:00+00:00")
     _order(db, "7c2d0000-a3", "pending_payment")  # not sent to print yet
+    _order(db, "8e3f0000-a4", "cancelled")  # sent, then cancelled: not the printer's
     token = admin["Authorization"].split(" ", 1)[1]
     res = client.get(f"/api/admin/printer-statement.xlsx?auth={token}")
     assert res.status_code == 200 and res.headers["content-type"].startswith("application/vnd.openxmlformats")
