@@ -15,12 +15,13 @@
       "title_line1": "A photo book",
       "title_highlight": "signed",
       "title_line2": "by your memories.",
-      "subtitle": "Drop in all your photos, even unsorted. Everbook removes duplicates and blurry shots, puts the rest in order by date and place, and lays out your album in minutes. Adjust anything you like — we print it and deliver it to you.",
+      "subtitle": "Drop in all your photos, even unsorted. Everbook removes duplicates and blurry shots, puts the rest in order by date and place, and lays out your album in minutes. Adjust anything you like — we print it and deliver it to you, or you download it as a PDF.",
       "cta": "Create my album",
       "image_alt": "Printed Everbook photo albums",
       "perks": [
         "From ${{price}}",
-        "Delivered in Lebanon in ~1 week"
+        "Delivered in Lebanon in ~1 week",
+        "Or as a PDF, from ${{pdfPrice}}"
       ]
     },
     "process": {
@@ -39,7 +40,7 @@
         },
         {
           "title": "We print and deliver",
-          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon."
+          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? Get it as a PDF to download, ${{discount}} less."
         }
       ]
     },
@@ -371,7 +372,8 @@
       "customPagesNote": "pages — billed as the next standard tier up (35 pages = the 50-page price)",
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
-      "perCopy": "per copy"
+      "perCopy": "per copy",
+      "pdfPrice": "or ${{price}} as a PDF to download"
     },
     "edit": {
       "title": "Make it yours.",

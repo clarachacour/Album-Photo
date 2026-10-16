@@ -15,12 +15,13 @@
       "title_line1": "Un album photo",
       "title_highlight": "signé",
       "title_line2": "par vos souvenirs.",
-      "subtitle": "Déposez toutes vos photos, même en vrac. Everbook enlève les doublons et les photos floues, les range par date et par lieu, et met votre album en page en quelques minutes. Vous ajustez ce que vous voulez — on l'imprime et on vous le livre.",
+      "subtitle": "Déposez toutes vos photos, même en vrac. Everbook enlève les doublons et les photos floues, les range par date et par lieu, et met votre album en page en quelques minutes. Vous ajustez ce que vous voulez — on l'imprime et on vous le livre, ou vous le téléchargez en PDF.",
       "cta": "Créer mon album",
       "image_alt": "Albums photo imprimés Everbook",
       "perks": [
         "À partir de {{price}} $",
-        "Livré au Liban en ~1 semaine"
+        "Livré au Liban en ~1 semaine",
+        "Ou en PDF, à partir de {{pdfPrice}} $"
       ]
     },
     "process": {
@@ -39,7 +40,7 @@
         },
         {
           "title": "On imprime et on livre",
-          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban."
+          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban. Vous le préférez en numérique ? Recevez-le en PDF à télécharger, {{discount}} $ de moins."
         }
       ]
     },
@@ -371,7 +372,8 @@
       "customPagesNote": "pages — facturé comme le palier standard supérieur (35 pages = prix de 50)",
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
-      "perCopy": "par exemplaire"
+      "perCopy": "par exemplaire",
+      "pdfPrice": "ou {{price}} $ en PDF à télécharger"
     },
     "edit": {
       "title": "Faites-le vôtre.",

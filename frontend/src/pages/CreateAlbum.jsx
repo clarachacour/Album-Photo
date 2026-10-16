@@ -10,7 +10,7 @@ import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { spineRatio, pageDimsMm, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
-import { computeUnitPrice, PAGE_TIERS } from "@/lib/pricing";
+import { computeUnitPrice, computeDigitalPrice, PAGE_TIERS } from "@/lib/pricing";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
@@ -529,6 +529,10 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
           <p className="text-sm text-[color:var(--ink)]/70 mt-5">
             {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
             <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
+            {/* The PDF version is chosen at checkout; it's told here already. */}
+            <span className="block text-[color:var(--ink)]/60 mt-1" data-testid="format-pdf-price">
+              {t("createAlbum.format.pdfPrice", { price: computeDigitalPrice(size, targetPages) })}
+            </span>
           </p>
         </div>
       </div>
