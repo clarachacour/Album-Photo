@@ -279,6 +279,42 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel(null);
   };
 
+  // A copy of a cover piece, slightly offset, selected.
+  const duplicateCoverItem = (itemId, side = coverSel?.side || "front") => {
+    const key = side === "back" ? "back_extra_items" : "extra_items";
+    const copyId = cryptoRandom();
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      const item = (cover[key] || []).find((it) => it.id === itemId);
+      if (!item) return prev;
+      const copy = {
+        ...JSON.parse(JSON.stringify(item)),
+        id: copyId,
+        x: Math.min((item.x || 0) + 0.03, Math.max(0, 1 - item.w)),
+        y: Math.min((item.y || 0) + 0.03, Math.max(0, 1 - item.h)),
+        slot: undefined,
+      };
+      return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), copy] } };
+    });
+    setCoverSel({ mode: "item", side, itemId: copyId });
+  };
+
+  // One step in front of (or behind) the other cover pieces.
+  const reorderCoverItem = (itemId, direction, side = coverSel?.side || "front") => {
+    const key = side === "back" ? "back_extra_items" : "extra_items";
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      const items = [...(cover[key] || [])];
+      const idx = items.findIndex((it) => it.id === itemId);
+      if (idx < 0) return prev;
+      const newIdx = direction === "forward" ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
+      if (newIdx === idx) return prev;
+      const [moved] = items.splice(idx, 1);
+      items.splice(newIdx, 0, moved);
+      return { ...prev, cover: { ...cover, [key]: items } };
+    });
+  };
+
   // Deletes the selected cover piece (panel's "Delete" button and the
   // Delete/Backspace key), see deletePatch.
   const clearSpineZone = (mode) => {
@@ -288,5 +324,5 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel(null);
   };
 
-  return { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };
+  return { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, duplicateCoverItem, reorderCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };
 }

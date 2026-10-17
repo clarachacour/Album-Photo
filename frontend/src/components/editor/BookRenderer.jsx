@@ -48,6 +48,9 @@ export function BookRenderer({
   onSelectCoverItem,
   onUpdateCoverTitle,
   onUpdateCoverItem,
+  onDuplicateCoverItem,
+  onReorderCoverItem,
+  onDeleteCoverItem,
   onUpdateCover,
   onSelectSpine,
 }) {
@@ -106,6 +109,9 @@ export function BookRenderer({
           onSelectItem={(item) => onSelectCoverItem(item, "front")}
           onUpdateTitle={onUpdateCoverTitle}
           onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "front")}
+          onDuplicateItem={onDuplicateCoverItem && ((itemId) => onDuplicateCoverItem(itemId, "front"))}
+          onReorderItem={onReorderCoverItem && ((itemId, direction) => onReorderCoverItem(itemId, direction, "front"))}
+          onDeleteItem={onDeleteCoverItem && ((itemId) => onDeleteCoverItem(itemId, "front"))}
           titleSelected={coverSel?.mode === "title"}
           selectedItemId={coverSel?.mode === "item" && coverSel?.side === "front" ? coverSel.itemId : null}
         />
@@ -163,6 +169,9 @@ export function BookRenderer({
       onSelectCover={() => onSelectCover("back")}
       onSelectItem={(item) => onSelectCoverItem(item, "back")}
       onUpdateItem={(itemId, patch) => onUpdateCoverItem(itemId, patch, "back")}
+      onDuplicateItem={onDuplicateCoverItem && ((itemId) => onDuplicateCoverItem(itemId, "back"))}
+      onReorderItem={onReorderCoverItem && ((itemId, direction) => onReorderCoverItem(itemId, direction, "back"))}
+      onDeleteItem={onDeleteCoverItem && ((itemId) => onDeleteCoverItem(itemId, "back"))}
       selectedItemId={coverSel?.mode === "item" && coverSel?.side === "back" ? coverSel.itemId : null}
     />,
   ];

@@ -4,6 +4,7 @@ import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 import { coverItemImageSrc } from "@/lib/api";
+import { CoverPhotoItem } from "@/components/book/CoverPhotoItem";
 
 export function CoverBackPage({
   template,
@@ -13,6 +14,9 @@ export function CoverBackPage({
   editable = false,
   onSelectItem,
   onUpdateItem,
+  onDuplicateItem,
+  onReorderItem,
+  onDeleteItem,
   onSelectCover,
   selectedItemId,
   // "medium" on screen; the print page asks for the full "original".
@@ -135,6 +139,26 @@ export function CoverBackPage({
             >
               <div className="w-full h-full pointer-events-none" />
             </DraggableItem>
+          );
+        }
+        if (item.type === "image" && item.is_photo) {
+          return (
+            <CoverPhotoItem
+              key={item.id}
+              item={item}
+              orientation={orientation}
+              editable={editable}
+              selected={isSel}
+              containerRef={containerRef}
+              imageVariant={imageVariant}
+              tid={`cover-back-image-${item.id}`}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              onUpdate={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onDuplicate={onDuplicateItem && (() => onDuplicateItem(item.id))}
+              onReorder={onReorderItem && ((direction) => onReorderItem(item.id, direction))}
+              onDelete={onDeleteItem && (() => onDeleteItem(item.id))}
+              onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
+            />
           );
         }
         if (item.type === "image") {

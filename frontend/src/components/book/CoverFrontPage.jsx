@@ -1,6 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay } from "@/components/ItemToolbars";
-import { ImagePlus } from "lucide-react";
 import { AutoFitText } from "@/components/book/AutoFitText";
 import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
@@ -9,8 +7,7 @@ import { useElementWidth } from "@/components/book/useElementWidth";
 import { useFitTitleFontSize } from "@/components/book/useFitTitleFontSize";
 import { DEFAULT_TITLE_BOX } from "@/lib/coverDefaults";
 import { findTemplate } from "@/lib/coverThemes";
-import { FramedPhoto } from "@/components/book/FramedPhoto";
-import { minZoom, pageAspect as pageAspectWH } from "@/lib/photoFit";
+import { CoverPhotoItem } from "@/components/book/CoverPhotoItem";
 import { coverItemImageSrc } from "@/lib/api";
 
 /**
@@ -28,6 +25,9 @@ export function CoverFrontPage({
   editable = false,
   onSelectItem,
   onUpdateItem,
+  onDuplicateItem,
+  onReorderItem,
+  onDeleteItem,
   onSelectTitle,
   onUpdateTitle,
   onTitleTextChange,
@@ -41,10 +41,6 @@ export function CoverFrontPage({
   const containerWidth = useElementWidth(containerRef);
   const [titleEditing, setTitleEditing] = useState(false);
   const [extraTextEditId, setExtraTextEditId] = useState(null);
-  // Which cover photo (if any) is currently in pan/zoom/rotate mode. Purely
-  // local UI state — not persisted, same idea as the interior page editor's
-  // cropMode.
-  const [cropItemId, setCropItemId] = useState(null);
   const aspect = orientation === "landscape" ? "aspect-[1.414/1]" : "aspect-[1/1.414]";
   const bg = cover.bg_color || template.bg;
   const accent = cover.accent_color || template.accent;
@@ -69,7 +65,6 @@ export function CoverFrontPage({
   const titleTextAlign = cover.title_text_align || "left";
   const extras = cover.extra_items || [];
   const [draggingId, setDraggingId] = useState(null);
-  const [loadedAspects, setLoadedAspects] = useState({});
   // Bumped exactly once, after actively triggering every font this cover
   // needs (title + all subtitle-role extras) to load. Confirmed by
   // inspecting the real rendered PDF export: a subtitle's font-size came
@@ -445,86 +440,51 @@ export function CoverFrontPage({
             </DraggableItem>
           );
         }
-        if (item.type === "image") {
-          const isPhoto = !!item.is_photo;
-          const inCrop = isPhoto && cropItemId === item.id;
-          const scale = item.scale ?? 1;
-          const rotation = item.rotation || 0;
-          const focalX = item.focal_x ?? 0.5;
-          const focalY = item.focal_y ?? 0.5;
-          const frameAspect = (item.w / item.h) * pageAspectWH(orientation);
-          const photoAspect = item.photo_aspect || loadedAspects[item.id];
+        if (item.type === "image" && item.is_photo) {
           return (
-            <React.Fragment key={item.id}>
-              <DraggableItem
-                item={item}
-                onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
-                onSelect={() => onSelectItem && onSelectItem(item)}
-                selected={isSel}
-                containerRef={containerRef}
-                editable={editable && !inCrop}
-                tid={`cover-image-${item.id}`}
-                onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
-                extraStyle={{ overflow: "hidden" }}
-              >
-                {item.image_url && isPhoto ? (
-                  <FramedPhoto
-                    src={coverItemImageSrc(item, imageVariant)}
-                    frameAspect={frameAspect}
-                    photoAspect={item.photo_aspect}
-                    zoom={scale}
-                    focalX={focalX}
-                    focalY={focalY}
-                    rotation={rotation}
-                    onAspect={(a) => setLoadedAspects((prev) => (prev[item.id] === a ? prev : { ...prev, [item.id]: a }))}
-                  />
-                ) : item.image_url ? (
-                  <img
-                    src={coverItemImageSrc(item, imageVariant)}
-                    alt=""
-                    className="w-full h-full pointer-events-none select-none"
-                    style={{ objectFit: "contain" }}
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-black/5 border-2 border-dashed border-current opacity-60 pointer-events-none">
-                    <ImagePlus size={18} />
-                    <span className="text-[9px] uppercase tracking-widest text-center px-1">Add a photo</span>
-                  </div>
-                )}
-                {inCrop && (
-                  <PhotoPanOverlay
-                    focalX={focalX}
-                    focalY={focalY}
-                    onPan={(fx, fy) => onUpdateItem && onUpdateItem(item.id, { focal_x: fx, focal_y: fy })}
-                  />
-                )}
-              </DraggableItem>
-              {isPhoto && item.image_url && isSel && editable && !inCrop && (
-                <PhotoFrameToolbar
-                  x={item.x}
-                  y={item.y}
-                  w={item.w}
-                  onEdit={() => setCropItemId(item.id)}
-                  onDelete={() => onUpdateItem && onUpdateItem(item.id, { image_url: null, storage_path: null, scale: 1, rotation: 0, focal_x: 0.5, focal_y: 0.5 })}
-                  hideSwap
-                  hideReorder
+            <CoverPhotoItem
+              key={item.id}
+              item={item}
+              orientation={orientation}
+              editable={editable}
+              selected={isSel}
+              containerRef={containerRef}
+              imageVariant={imageVariant}
+              tid={`cover-image-${item.id}`}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              onUpdate={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onDuplicate={onDuplicateItem && (() => onDuplicateItem(item.id))}
+              onReorder={onReorderItem && ((direction) => onReorderItem(item.id, direction))}
+              onDelete={onDeleteItem && (() => onDeleteItem(item.id))}
+              onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
+            />
+          );
+        }
+        if (item.type === "image") {
+          // A template's logo or drawing: shown whole, moved and resized.
+          return (
+            <DraggableItem
+              key={item.id}
+              item={item}
+              onChange={(patch) => onUpdateItem && onUpdateItem(item.id, patch)}
+              onSelect={() => onSelectItem && onSelectItem(item)}
+              selected={isSel}
+              containerRef={containerRef}
+              editable={editable}
+              tid={`cover-image-${item.id}`}
+              onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
+              extraStyle={{ overflow: "hidden" }}
+            >
+              {item.image_url && (
+                <img
+                  src={coverItemImageSrc(item, imageVariant)}
+                  alt=""
+                  className="w-full h-full pointer-events-none select-none"
+                  style={{ objectFit: "contain" }}
+                  draggable={false}
                 />
               )}
-              {inCrop && (
-                <PhotoEditToolbar
-                  x={item.x}
-                  y={item.y}
-                  w={item.w}
-                  scale={scale}
-                  minScale={minZoom(frameAspect, photoAspect)}
-                  onScaleChange={(s) => onUpdateItem && onUpdateItem(item.id, { scale: s })}
-                  rotation={rotation}
-                  onRotationChange={(r) => onUpdateItem && onUpdateItem(item.id, { rotation: r })}
-                  onDone={() => setCropItemId(null)}
-                />
-              )}
-            </React.Fragment>
+            </DraggableItem>
           );
         }
         return null;
