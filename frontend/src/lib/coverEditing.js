@@ -244,7 +244,9 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       // display which defaults to the thumbnail.
       const imageUrl = coverAssetUrl(data.storage_path, "original");
       if (replaceItemId) {
-        updateCoverItem(replaceItemId, { image_url: imageUrl, storage_path: data.storage_path, asset: null }, side);
+        // Becomes a photo (even in place of a template's logo): edited like
+        // the photos inside the album, starting fresh in its frame.
+        updateCoverItem(replaceItemId, { image_url: imageUrl, storage_path: data.storage_path, asset: null, is_photo: true, photo_aspect: null, scale: 1, rotation: 0, focal_x: 0.5, focal_y: 0.5 }, side);
         toast.success(i18n.t("coverPanel.toast.imageReplaced"));
       } else {
         const newItem = {

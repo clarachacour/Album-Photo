@@ -7,7 +7,7 @@ import { useElementWidth } from "@/components/book/useElementWidth";
 import { useFitTitleFontSize } from "@/components/book/useFitTitleFontSize";
 import { DEFAULT_TITLE_BOX } from "@/lib/coverDefaults";
 import { findTemplate } from "@/lib/coverThemes";
-import { CoverPhotoItem } from "@/components/book/CoverPhotoItem";
+import { CoverPhotoItem, isCoverPhoto } from "@/components/book/CoverPhotoItem";
 import { coverItemImageSrc } from "@/lib/api";
 
 /**
@@ -440,7 +440,7 @@ export function CoverFrontPage({
             </DraggableItem>
           );
         }
-        if (item.type === "image" && item.is_photo) {
+        if (isCoverPhoto(item)) {
           return (
             <CoverPhotoItem
               key={item.id}

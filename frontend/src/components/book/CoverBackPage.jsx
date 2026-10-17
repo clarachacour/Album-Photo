@@ -4,7 +4,7 @@ import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 import { coverItemImageSrc } from "@/lib/api";
-import { CoverPhotoItem } from "@/components/book/CoverPhotoItem";
+import { CoverPhotoItem, isCoverPhoto } from "@/components/book/CoverPhotoItem";
 
 export function CoverBackPage({
   template,
@@ -141,7 +141,7 @@ export function CoverBackPage({
             </DraggableItem>
           );
         }
-        if (item.type === "image" && item.is_photo) {
+        if (isCoverPhoto(item)) {
           return (
             <CoverPhotoItem
               key={item.id}

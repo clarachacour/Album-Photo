@@ -6,6 +6,13 @@ import { FramedPhoto } from "@/components/book/FramedPhoto";
 import { coverItemImageSrc } from "@/lib/api";
 import { cropPatch, isCropped, minZoom, pageAspect, wholePhotoFields, zoomToFillTurned } from "@/lib/photoFit";
 
+// A cover image that is a photo: a photo frame, or a template's logo the
+// person replaced with their own picture (uploaded: storage_path, no asset).
+// Template logos and drawings stay plain images.
+export function isCoverPhoto(item) {
+  return item?.type === "image" && (!!item.is_photo || (!!item.storage_path && !item.asset));
+}
+
 /**
  * A photo on the front or back cover, edited the same way as a photo inside
  * the album (see AlbumPage): resizing from a side or corner crops it,
@@ -32,13 +39,15 @@ export function CoverPhotoItem({
   const [loadedAspect, setLoadedAspect] = useState(null);
   const isEmpty = !item.image_url;
   const inCrop = inCropState && selected && !isEmpty;
-  const scale = item.scale ?? 1;
   const rotation = item.rotation || 0;
   const frameRotation = item.frame_rotation || 0;
   const focalX = item.focal_x ?? 0.5;
   const focalY = item.focal_y ?? 0.5;
   const frameAspect = (item.w / item.h) * pageAspect(orientation);
   const photoAspect = item.photo_aspect || loadedAspect;
+  // A logo replaced by a photo before it became a photo frame was shown
+  // whole in its box: kept that way (and printed that way) until edited.
+  const scale = item.scale ?? (item.is_photo ? 1 : minZoom(frameAspect, photoAspect));
   const update = (patch) => onUpdate && onUpdate(patch);
   // Turning the photo in its frame zooms in as needed to keep it filled.
   const turnPhotoPatch = (r) => ({ rotation: r, scale: Math.max(scale, zoomToFillTurned(frameAspect, r)) });
@@ -49,7 +58,7 @@ export function CoverPhotoItem({
       <DraggableItem
         item={item}
         // Resizing crops: the photo stays put, the frame's edge moves.
-        onChange={(patch) => update(isEmpty ? patch : cropPatch(item, patch, orientation, photoAspect))}
+        onChange={(patch) => update(isEmpty ? patch : cropPatch({ ...item, scale }, patch, orientation, photoAspect))}
         edgeHandles
         onSelect={onSelect}
         selected={selected}
