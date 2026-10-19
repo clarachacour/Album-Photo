@@ -20,10 +20,13 @@ class FakeWakilni:
         self.status_logs = []
         self.comments = []
         self.fail_add = False
+        self.down = False
 
     def request(self, method, url, json=None, params=None, headers=None, timeout=None):
         path = url.split("wakilni.test", 1)[1]
         self.calls.append((method, path, json))
+        if self.down:  # their database overloaded, as seen in production
+            return _Res(500, {"message": "SQLSTATE[HY000] [1040] Too many connections", "code": 1040, "status_code": 500})
         if path.endswith("/auth_token"):
             return _Res(200, {"message": "Auth token retrieved successfully", "token": "tok"})
         if path.endswith("/start_bulk"):
@@ -215,3 +218,34 @@ def test_the_admin_sees_the_whole_delivery_history(client, db, courier, monkeypa
     assert body["comments"] == ["Call before delivery", "No answer"] and body["tracking_id"] == "WK123"
     # Not for a customer.
     assert client.get(f"/api/admin/orders/{order_id}/delivery/history", headers=courier["customer"]).status_code == 403
+
+
+def test_wakilni_down_waits_for_the_next_round_and_alerts_only_after_hours(client, db, courier, caplog):
+    from datetime import datetime, timedelta, timezone
+
+    from app.services.delivery import sync_all_deliveries
+
+    _ready(client, courier["order"]["id"])
+    asyncio.run(db.app_state.delete_many({}))
+    courier["fake"].down = True
+    from app.services import wakilni
+    wakilni._token.update(value=None, at=0)
+    calls = len(courier["fake"].calls)
+    with caplog.at_level("WARNING"):
+        result = asyncio.run(sync_all_deliveries())
+    # Stopped at the first failure (no hammering), a warning, not an error.
+    assert result["wakilni_down"] and len(courier["fake"].calls) - calls <= 2
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    # Still down hours later: one error, once.
+    since = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
+    asyncio.run(db.app_state.update_one({"id": "wakilni_outage"}, {"$set": {"since": since}}))
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        asyncio.run(sync_all_deliveries())
+        asyncio.run(sync_all_deliveries())
+    assert len([r for r in caplog.records if r.levelname == "ERROR" and "injoignable" in r.message]) == 1
+    # Back up: the outage is over.
+    courier["fake"].down = False
+    courier["fake"].status_logs = [{"status": "Confirmed", "status_code": 2, "created_at": "2026-10-19 09:00:00"}]
+    assert asyncio.run(sync_all_deliveries())["checked"] >= 1
+    assert asyncio.run(db.app_state.find_one({"id": "wakilni_outage"})) is None

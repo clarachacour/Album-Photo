@@ -107,6 +107,12 @@ async def sync_delivery(order_id: str) -> dict:
     return await db.orders.find_one({"id": order_id}, {"_id": 0})
 
 
+# Wakilni down for this long (every round failing): the admin hears about
+# it, once. Shorter outages (an overloaded server…) just wait for the next
+# round, without an alert each time.
+OUTAGE_ALERT_AFTER_SECONDS = 3 * 3600
+
+
 async def sync_all_deliveries() -> dict:
     """Every Wakilni delivery still on its way, followed (the scheduler's job)."""
     orders = await db.orders.find(
@@ -118,10 +124,32 @@ async def sync_all_deliveries() -> dict:
         try:
             await sync_delivery(o["id"])
             checked += 1
+        except wakilni.WakilniUnavailable as e:
+            # Wakilni is down: the other deliveries would fail the same
+            # way — they wait for the next round.
+            failed += 1
+            await _wakilni_down(o["id"], e)
+            return {"checked": checked, "failed": failed, "wakilni_down": True}
         except Exception as e:
             failed += 1
             logger.error(f"Commande {o['id']} : suivi Wakilni impossible : {e}")
+    if checked:
+        await db.app_state.delete_one({"id": "wakilni_outage"})
     return {"checked": checked, "failed": failed}
+
+
+async def _wakilni_down(order_id: str, error: Exception):
+    now = datetime.now(timezone.utc)
+    await db.app_state.update_one(
+        {"id": "wakilni_outage"}, {"$setOnInsert": {"id": "wakilni_outage", "since": now.isoformat()}}, upsert=True
+    )
+    outage = await db.app_state.find_one({"id": "wakilni_outage"}, {"_id": 0})
+    hours = (now - datetime.fromisoformat(outage["since"])).total_seconds() / 3600
+    if hours * 3600 >= OUTAGE_ALERT_AFTER_SECONDS and not outage.get("alerted"):
+        await db.app_state.update_one({"id": "wakilni_outage"}, {"$set": {"alerted": True}})
+        logger.error(f"Wakilni injoignable depuis {hours:.0f} h : suivi des livraisons en attente ({error})")
+    else:
+        logger.warning(f"Commande {order_id} : Wakilni indisponible, nouvel essai au prochain passage : {error}")
 
 
 async def cancel_delivery(order_id: str, reason: str) -> dict:

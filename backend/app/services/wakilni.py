@@ -41,6 +41,18 @@ class WakilniError(Exception):
     pass
 
 
+class WakilniUnavailable(WakilniError):
+    """Wakilni itself is down or overloaded (a 5xx, a timeout, no
+    connection): nothing wrong on our side, worth trying again later."""
+
+
+def _send(method: str, url: str, **kwargs):
+    try:
+        return requests.request(method, url, timeout=TIMEOUT, **kwargs)
+    except requests.RequestException as e:
+        raise WakilniUnavailable(f"{method} {url}: {e}") from e
+
+
 def configured() -> bool:
     return bool(WAKILNI_KEY and WAKILNI_SECRET)
 
@@ -56,11 +68,13 @@ def _auth_token(fresh: bool = False) -> str:
     url = f"{WAKILNI_URL}/api/v2/third_party/auth_token"
     credentials = {"key": WAKILNI_KEY, "secret": WAKILNI_SECRET}
     # Documented as a GET with a JSON body; query parameters as a fallback.
-    res = requests.request("GET", url, json=credentials, timeout=TIMEOUT)
-    if res.status_code >= 400:
-        res = requests.get(url, params=credentials, timeout=TIMEOUT)
+    res = _send("GET", url, json=credentials)
+    if 400 <= res.status_code < 500:
+        res = _send("GET", url, params=credentials)
     body = _json(res)
     token = body.get("token") or (body.get("data") or {}).get("token")
+    if res.status_code >= 500:
+        raise WakilniUnavailable(f"auth failed ({res.status_code}): {_short(body)}")
     if res.status_code >= 400 or not token:
         raise WakilniError(f"auth failed ({res.status_code}): {_short(body)}")
     _token.update(value=token, at=_time.time())
@@ -82,10 +96,12 @@ def _short(body) -> str:
 def _call(method: str, path: str, json: Optional[dict] = None, params: Optional[dict] = None) -> dict:
     for attempt in (1, 2):
         headers = {"Authorization": f"Bearer {_auth_token(fresh=attempt == 2)}", "Accept": "application/json"}
-        res = requests.request(method, f"{WAKILNI_URL}{path}", json=json, params=params, headers=headers, timeout=TIMEOUT)
+        res = _send(method, f"{WAKILNI_URL}{path}", json=json, params=params, headers=headers)
         if res.status_code == 401 and attempt == 1:
             continue  # token expired: once more with a fresh one
         body = _json(res)
+        if res.status_code >= 500:
+            raise WakilniUnavailable(f"{method} {path} → {res.status_code}: {_short(body)}")
         if res.status_code >= 400:
             raise WakilniError(f"{method} {path} → {res.status_code}: {_short(body)}")
         return body
