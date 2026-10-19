@@ -8,7 +8,9 @@
     "signIn": "Sign in",
     "account": "My account",
     "menu": "Menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "cart_one": "Cart ({{count}} item)",
+    "cart_other": "Cart ({{count}} items)"
   },
   "landing": {
     "hero": {
@@ -164,7 +166,7 @@
       },
       {
         "q": "Can I get my album as a PDF?",
-        "a": "Yes: choose \"Digital album (PDF)\" when you order. There's no printing or delivery. You download it from \"My orders\" as soon as your payment is confirmed, and you can order the printed book later with what you've already paid taken off."
+        "a": "Yes: choose \"Digital album (PDF)\" when you add your album to your cart — on its own, or together with the printed book. There's no printing or delivery. You download it from \"My orders\" a few minutes after ordering."
       },
       {
         "q": "What if something arrives damaged or wrong?",
@@ -461,7 +463,7 @@
     "coverImageRemoveError": "Failed to remove cover image",
     "loadingAlbum": "Loading album…",
     "adminBanner": "Admin mode: you're editing a customer's album. Your changes are saved to their album; it stays locked on their side. When you're done, regenerate the order's PDF from the admin page.",
-    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order. You can still order the other version (printed book or PDF) with \"Order this album\".",
+    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order. You can still order the other version (printed book or PDF) with \"Add to cart\".",
     "previewQualityNote": "This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.",
     "previousPage": "Previous page",
     "nextPage": "Next page",
@@ -475,7 +477,7 @@
     "tools": "Tools",
     "undoTitle": "Undo (Ctrl+Z)",
     "redoTitle": "Redo (Ctrl+Y)",
-    "orderThisAlbum": "Order this album",
+    "orderThisAlbum": "Add to cart",
     "clickOnPage": "Click on the page…",
     "addTextButton": "Add Text",
     "editing": "Editing",
@@ -938,6 +940,9 @@
     },
     "printer": {
       "title": "Order to print"
+    },
+    "cart": {
+      "title": "Your cart"
     }
   },
   "coverPanel": {
@@ -1054,7 +1059,7 @@
     "kindPrintExtra": "Printed, bound and delivered to you in Lebanon (+${{price}} delivery).",
     "kindDigitalExtra": "Your album as a PDF to download and keep — no printing or delivery.",
     "kindAlreadyOrdered": "Already ordered.",
-    "digitalNote": "You'll get your album as a PDF: the cover, all your pages and the back cover, in screen quality, to view on your phone, tablet or computer and to share. It can be downloaded as soon as your payment is confirmed, with no time limit, from \"My orders\".",
+    "digitalNote": "You'll get your album as a PDF: the cover, all your pages and the back cover, in screen quality, to view on your phone, tablet or computer and to share. It's ready to download a few minutes after you order, with no time limit, from \"My orders\".",
     "digitalCredit": "Digital album already paid",
     "noPaymentDigital": "Online payment isn't set up yet, so there's nothing to pay for now: your PDF will be ready to download in a few minutes.",
     "placedBodyDigital": "Thanks — we're preparing the PDF of <b>{{title}}</b>. It can be downloaded as soon as your payment is confirmed.",
@@ -1215,5 +1220,32 @@
     "cancelled": "This order was cancelled: please don't print it.",
     "badLink": "This link isn't valid. Please use the link from the latest email.",
     "error": "Something went wrong. Please try again."
+  },
+  "cart": {
+    "eyebrow": "Cart",
+    "title": "Your cart",
+    "empty": "Your cart is empty.",
+    "toAlbums": "My albums",
+    "add": "Add to cart",
+    "update": "Update my cart",
+    "addHint": "You can add other albums before ordering: everything is ordered together, in one go.",
+    "chooseBoth": "Choose one or both.",
+    "deliveryOnce": "Delivery: ${{price}}, once for all the printed albums in your cart.",
+    "subtotal": "Subtotal",
+    "addAnother": "Add another album",
+    "oneAddress": "All your printed albums are delivered together, to this address.",
+    "deliveredTogether": "Your printed albums arrive together, in one package: delivery is paid once.",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "change": "Change",
+    "remove": "Remove",
+    "fixProblems": "Something in your cart can't be ordered any more: please remove it first.",
+    "placing": "We're placing your order — you'll find each album in your orders in a moment.",
+    "problem": {
+      "already_ordered": "Already ordered in this version: please remove it.",
+      "no_pages": "This album has no pages yet: please finish it or remove it."
+    }
   }
 }

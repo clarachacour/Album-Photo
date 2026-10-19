@@ -57,6 +57,30 @@ async def queue_for_printer(order_id: str):
     await db.orders.update_one({"id": order_id}, {"$set": {"printer_pending_at": _now().isoformat()}})
 
 
+# A cart's printed album whose PDF takes long (a big album) is waited for,
+# so they all go together — but not forever (a PDF that keeps failing).
+CART_WAIT_MAX_SECONDS = 24 * 3600
+
+
+async def _cart_still_making(orders: list) -> bool:
+    """Whether a printed album ordered in the same cart as these still has
+    its PDF being made."""
+    checkouts = {o["checkout_id"] for o in orders if o.get("checkout_id")}
+    if not checkouts:
+        return False
+    since = (_now() - timedelta(seconds=CART_WAIT_MAX_SECONDS)).isoformat()
+    waiting = await db.orders.find_one({
+        "checkout_id": {"$in": list(checkouts)},
+        "id": {"$nin": [o["id"] for o in orders]},
+        "kind": "print",
+        "status": "pending_payment",
+        "pdf_ready": False,
+        "pdf_error": {"$in": [None, ""]},
+        "created_at": {"$gte": since},
+    }, {"_id": 1})
+    return waiting is not None
+
+
 async def flush_printer_queue(force_order_id: str = None) -> int:
     """Sends the printer one email per group whose wait is over (or the
     group of force_order_id, at once). Returns the number of emails."""
@@ -69,16 +93,20 @@ async def flush_printer_queue(force_order_id: str = None) -> int:
     limit = (_now() - timedelta(seconds=GROUP_DELAY_SECONDS)).isoformat()
     sent = 0
     for orders in groups.values():
+        forced = any(o["id"] == force_order_id for o in orders)
         due = min(o["printer_pending_at"] for o in orders) <= limit
-        if not due and not any(o["id"] == force_order_id for o in orders):
+        if not forced and (not due or await _cart_still_making(orders)):
             continue
-        orders.sort(key=lambda o: o.get("created_at") or "")
+        # The one paying the delivery leads (a cart's albums are created
+        # together: same time).
+        orders.sort(key=lambda o: (o.get("created_at") or "", -int(o.get("shipping_price_cents") or 0)))
         lead = orders[0]
+        payer = next((o for o in orders if int(o.get("shipping_price_cents") or 0)), None)
         now = _now().isoformat()
         for o in orders:
             update = {"print_group": lead["id"], "printer_emailed_at": now}
             shipping = int(o.get("shipping_price_cents") or 0)
-            if o is not lead and shipping:
+            if o is not payer and shipping:
                 # One trip for the whole group: delivery paid once.
                 update.update(
                     shipping_price_cents=0,

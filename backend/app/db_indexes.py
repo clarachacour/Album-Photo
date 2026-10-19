@@ -29,6 +29,8 @@ INDEXES = [
     ("orders", "album_id", {}),
     ("orders", "user_id", {}),
     ("orders", "created_at", {}),  # admin order list
+    ("orders", "checkout_id", {"sparse": True}),  # a cart's orders, together
+    ("carts", "user_id", {"unique": True}),
     ("pdf_generation_slots", "order_id", {"unique": True}),
     ("mobile_sessions", "token", {"unique": True}),
     ("mobile_sessions", "expires", {"expireAfterSeconds": 0}),

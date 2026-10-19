@@ -1,7 +1,6 @@
 """Customer order routes and the signed printer links."""
 import logging
 import unicodedata
-import uuid
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -24,13 +23,8 @@ from app.services.orders import (
     start_order_pdf_generation,
     status_sequence,
 )
-from app.services.pricing import (
-    SHIPPING_PRICE_CENTS,
-    TERMS_VERSION,
-    billed_page_count,
-    compute_digital_price_cents,
-    compute_order_price_cents,
-)
+from app.services.checkout import build_order_doc
+from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION
 from app.services import wakilni
 from app.services.storage import get_r2_client
 from app.core.executors import run_blocking, run_email
@@ -70,50 +64,12 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     if data.accepted_terms_version != TERMS_VERSION:
         raise HTTPException(status_code=400, detail="Please accept the current terms of sale to place your order")
     digital = data.kind == "digital"
-    pages = billed_page_count(album)
-    unit_price = (compute_digital_price_cents if digital else compute_order_price_cents)(album.get("size", "A4"), pages)
-    quantity = 1 if digital else data.quantity
-    shipping = 0 if digital else SHIPPING_PRICE_CENTS
-    # The printed book after the digital album: what was paid for the
-    # digital one is taken off (nothing for a PDF handed over unpaid).
-    credit = 0
-    if not digital:
-        digital_order = await db.orders.find_one({"album_id": album["id"], "kind": "digital", "status": {"$ne": "cancelled"}})
-        if digital_order and not digital_order.get("handed_over_unpaid"):
-            credit = min(digital_order.get("total_price_cents", 0), unit_price * quantity)
-    order_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    order_doc = {
-        "id": order_id,
-        "user_id": user["id"],
-        "album_id": album["id"],
-        "album_title": album.get("title", "Album"),
-        "size": album.get("size", "A4"),
-        "orientation": album.get("orientation", "portrait"),
-        "kind": data.kind,
-        "quantity": quantity,
-        "unit_price_cents": unit_price,
-        "shipping_price_cents": shipping,
-        "credit_cents": credit,
-        "total_price_cents": unit_price * quantity + shipping - credit,
-        "terms_version": TERMS_VERSION,
-        "terms_accepted_at": now,
-        "currency": "usd",
-        "shipping_address": data.shipping_address.dict() if data.shipping_address and not digital else None,
-        # A digital album: online payment isn't set up yet, so it's handed
-        # over at once — the PDF is sent as soon as it's made, with nothing
-        # to do on the admin side. A printed one is paid in cash to the
-        # courier.
-        "status": "paid" if digital else "pending_payment",
-        # No credit on a printed copy for a PDF nobody paid for.
-        "handed_over_unpaid": digital,
-        "status_history": [{"status": "paid" if digital else "pending_payment", "at": now}],
-        "pdf_ready": False,
-        "pdf_path": None,
-        "tracking_number": None,
-        "created_at": now,
-        "updated_at": now,
-    }
+    order_doc = await build_order_doc(
+        user, album, data.kind, data.quantity,
+        data.shipping_address.dict() if data.shipping_address and not digital else None,
+        shipping=0 if digital else SHIPPING_PRICE_CENTS,
+    )
+    order_id = order_doc["id"]
     try:
         await db.orders.insert_one(order_doc)
     except DuplicateKeyError:

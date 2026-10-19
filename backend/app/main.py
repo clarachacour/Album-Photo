@@ -25,6 +25,7 @@ from app.routers import (
     admin,
     albums,
     auth,
+    cart,
     contact,
     covers,
     health,
@@ -61,7 +62,7 @@ app = FastAPI(title="Album AI Studio API", lifespan=lifespan)
 # Every route lives under /api. Order matters when two paths could match the
 # same URL, so keep this list in the same order as before the split.
 api_router = APIRouter(prefix="/api")
-for module in (auth, contact, albums, photos, mobile_upload, covers, orders, admin, internal, health):
+for module in (auth, contact, albums, photos, mobile_upload, covers, orders, cart, admin, internal, health):
     api_router.include_router(module.router)
 app.include_router(api_router)
 

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/lib/auth";
+import { CartProvider } from "@/lib/cart";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import TopNav from "@/components/TopNav";
@@ -38,6 +39,7 @@ const OrdersPage = lazyPage(() => import("@/pages/OrdersPage"));
 const OrderDetailPage = lazyPage(() => import("@/pages/OrderDetailPage"));
 const OrderFeedback = lazyPage(() => import("@/pages/OrderFeedback"));
 const OrderCheckoutPage = lazyPage(() => import("@/pages/OrderCheckoutPage"));
+const CartPage = lazyPage(() => import("@/pages/CartPage"));
 const AdminOrdersPage = lazyPage(() => import("@/pages/AdminOrdersPage"));
 const VerifyEmailPending = lazyPage(() => import("@/pages/VerifyEmailPending"));
 const PrinterOrderPage = lazyPage(() => import("@/pages/PrinterOrderPage"));
@@ -99,6 +101,7 @@ function AppChrome({ children }) {
 export function AppRoutes() {
   return (
         <AuthProvider>
+        <CartProvider>
         <ConfirmProvider>
           <AppChrome>
           {/* Each page's code is downloaded when it's first opened. */}
@@ -161,6 +164,14 @@ export function AppRoutes() {
               }
             />
             <Route
+              path="/cart"
+              element={
+                <ProtectedRoute>
+                  <CartPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/order/:albumId"
               element={
                 <ProtectedRoute>
@@ -216,6 +227,7 @@ export function AppRoutes() {
           </Suspense>
           </AppChrome>
         </ConfirmProvider>
+        </CartProvider>
         </AuthProvider>
   );
 }

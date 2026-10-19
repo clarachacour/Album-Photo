@@ -355,6 +355,52 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
+def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
+    """One email for everything ordered together from the cart: each album
+    and version, the total, how it's paid and what happens next."""
+    currency = (orders[0].get("currency") or "usd").upper()
+    prints = [o for o in orders if o.get("kind") != "digital"]
+    digitals = [o for o in orders if o.get("kind") == "digital"]
+    cash = sum(int(o.get("total_price_cents") or 0) for o in prints) / 100
+    subject = f"Your Everbook order is confirmed — {len(orders)} items"
+    orders_url = f"{FRONTEND_URL}/orders"
+
+    def line(o):
+        what = "PDF to download" if o.get("kind") == "digital" else f"printed album × {o.get('quantity', 1)}"
+        return f"{o.get('album_title', 'Album')} — {what} ({order_number(o)})"
+
+    notes = []
+    if prints:
+        notes.append(
+            f"Your printed albums are delivered together, in one package. Online payment isn't set up yet: "
+            f"the total, {cash:.2f} {currency} (delivery included), is paid in cash to the courier."
+        )
+    if digitals:
+        notes.append(
+            "Online payment isn't set up yet, so there's nothing to pay for your PDF for now: "
+            "we'll email you the moment it's ready to download, in a few minutes."
+        )
+    body = (
+        f"Hi {name or ''},\n\n"
+        f"Thanks for your order! We've received it and are starting on it:\n\n"
+        + "\n".join(f"- {line(o)}" for o in orders)
+        + "\n\n" + "\n\n".join(notes)
+        + f"\n\nYou can follow each of them here:\n{orders_url}"
+    )
+    html_body = _email_wrapper(
+        preheader="Thanks for your order! We've received it and are starting on it.",
+        title="Your order is confirmed.",
+        body_html=(
+            f"<p>Hi {_h(name or '')},</p>"
+            f"<p>Thanks for your order! We've received it and are starting on it:</p>"
+            "<ul>" + "".join(f"<li>{_h(line(o))}</li>" for o in orders) + "</ul>"
+            + "".join(f"<p>{_h(n)}</p>" for n in notes)
+        ),
+        cta_label="Track your orders",
+        cta_url=orders_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body)
+
 def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float):
     subject = "Your Everbook digital album is ordered"
     free = total == 0

@@ -8,7 +8,9 @@
     "signIn": "Se connecter",
     "account": "Mon compte",
     "menu": "Menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "cart_one": "Panier ({{count}} article)",
+    "cart_other": "Panier ({{count}} articles)"
   },
   "landing": {
     "hero": {
@@ -164,7 +166,7 @@
       },
       {
         "q": "Puis-je recevoir mon album en PDF ?",
-        "a": "Oui : choisissez « Album numérique (PDF) » au moment de la commande. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » dès la confirmation de votre paiement, et vous pourrez commander le livre imprimé plus tard en déduisant ce que vous avez déjà payé."
+        "a": "Oui : choisissez « Album numérique (PDF) » en ajoutant votre album au panier — seul, ou avec le livre imprimé. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » quelques minutes après la commande."
       },
       {
         "q": "Que faire si quelque chose arrive endommagé ou incorrect ?",
@@ -461,7 +463,7 @@
     "coverImageRemoveError": "Impossible de supprimer l'image de couverture",
     "loadingAlbum": "Chargement de l'album…",
     "adminBanner": "Mode admin : vous modifiez l'album d'une cliente. Vos changements s'enregistrent dans son album ; il reste verrouillé de son côté. Une fois terminé, régénérez le PDF de la commande depuis l'admin.",
-    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande. Vous pouvez encore commander l'autre version (livre imprimé ou PDF) avec « Commander cet album ».",
+    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande. Vous pouvez encore commander l'autre version (livre imprimé ou PDF) avec « Ajouter au panier ».",
     "previewQualityNote": "Cet aperçu est affiché en qualité réduite pour un chargement rapide — votre livre imprimé sera exporté en pleine résolution d'impression.",
     "previousPage": "Page précédente",
     "nextPage": "Page suivante",
@@ -475,7 +477,7 @@
     "tools": "Outils",
     "undoTitle": "Annuler (Ctrl+Z)",
     "redoTitle": "Rétablir (Ctrl+Y)",
-    "orderThisAlbum": "Commander cet album",
+    "orderThisAlbum": "Ajouter au panier",
     "clickOnPage": "Cliquez sur la page…",
     "addTextButton": "Ajouter du texte",
     "editing": "Édition",
@@ -938,6 +940,9 @@
     },
     "printer": {
       "title": "Commande à imprimer"
+    },
+    "cart": {
+      "title": "Votre panier"
     }
   },
   "coverPanel": {
@@ -1054,7 +1059,7 @@
     "kindPrintExtra": "Imprimé, relié et livré chez vous au Liban (+{{price}} $ de livraison).",
     "kindDigitalExtra": "Votre album en PDF, à télécharger et à garder — sans impression ni livraison.",
     "kindAlreadyOrdered": "Déjà commandé.",
-    "digitalNote": "Vous recevrez votre album en PDF : la couverture, toutes vos pages et la 4e de couverture, en qualité écran, à regarder sur votre téléphone, votre tablette ou votre ordinateur et à partager. Il sera téléchargeable dès la confirmation de votre paiement, sans limite de temps, depuis « Mes commandes ».",
+    "digitalNote": "Vous recevez votre album en PDF : la couverture, toutes vos pages et la quatrième de couverture, en qualité écran, à regarder sur téléphone, tablette ou ordinateur et à partager. Il est téléchargeable quelques minutes après la commande, sans limite de durée, depuis « Mes commandes ».",
     "digitalCredit": "Album numérique déjà payé",
     "noPaymentDigital": "Le paiement en ligne n'est pas encore en place, il n'y a donc rien à payer pour l'instant : votre PDF sera téléchargeable dans quelques minutes.",
     "placedBodyDigital": "Merci — nous préparons le PDF de <b>{{title}}</b>. Il sera téléchargeable dès la confirmation de votre paiement.",
@@ -1215,5 +1220,32 @@
     "cancelled": "Cette commande a été annulée : merci de ne pas l'imprimer.",
     "badLink": "Ce lien n'est pas valide. Utilisez le lien du dernier email.",
     "error": "Une erreur s'est produite. Veuillez réessayer."
+  },
+  "cart": {
+    "eyebrow": "Panier",
+    "title": "Votre panier",
+    "empty": "Votre panier est vide.",
+    "toAlbums": "Mes albums",
+    "add": "Ajouter au panier",
+    "update": "Mettre à jour mon panier",
+    "addHint": "Vous pouvez ajouter d'autres albums avant de commander : tout est commandé ensemble, en une seule fois.",
+    "chooseBoth": "Choisissez l'un ou les deux.",
+    "deliveryOnce": "Livraison : {{price}} $, une seule fois pour tous les albums imprimés de votre panier.",
+    "subtotal": "Sous-total",
+    "addAnother": "Ajouter un autre album",
+    "oneAddress": "Tous vos albums imprimés sont livrés ensemble, à cette adresse.",
+    "deliveredTogether": "Vos albums imprimés arrivent ensemble, dans un seul colis : la livraison est payée une seule fois.",
+    "items_one": "{{count}} article",
+    "items_other": "{{count}} articles",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "change": "Modifier",
+    "remove": "Retirer",
+    "fixProblems": "Un article de votre panier ne peut plus être commandé : retirez-le d'abord.",
+    "placing": "Nous enregistrons votre commande — vous retrouverez chaque album dans vos commandes dans un instant.",
+    "problem": {
+      "already_ordered": "Déjà commandé dans cette version : retirez-le.",
+      "no_pages": "Cet album n'a pas encore de pages : terminez-le ou retirez-le."
+    }
   }
 }

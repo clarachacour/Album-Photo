@@ -115,6 +115,19 @@ class OrderCreate(BaseModel):
     # The version of the terms of sale the customer ticked "I accept" for.
     accepted_terms_version: str = Field(default="", max_length=20)
 
+class CartItemInput(BaseModel):
+    album_id: Id
+    kind: Literal["print", "digital"] = "print"
+    quantity: int = Field(default=1, ge=1, le=20)
+
+class CartQuantityInput(BaseModel):
+    quantity: int = Field(ge=1, le=20)
+
+class CheckoutInput(BaseModel):
+    # Needed when the cart holds a printed album.
+    shipping_address: Optional[ShippingAddress] = None
+    accepted_terms_version: str = Field(default="", max_length=20)
+
 class AuthResponse(BaseModel):
     token: str
     user: UserOut

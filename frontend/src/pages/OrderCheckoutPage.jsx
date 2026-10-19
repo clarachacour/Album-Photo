@@ -1,71 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { useCart } from "@/lib/cart";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
-import { FREE_TRIAL, SHIPPING_PRICE, TERMS_VERSION, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
-import { isLebanesePhone } from "@/lib/phone";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { FREE_TRIAL, SHIPPING_PRICE, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
+/**
+ * Choosing what to order for one album — the printed book, the PDF, or
+ * both — then adding it to the cart (lib/cart.jsx). The delivery address,
+ * the terms and the order itself are on the cart page, once for all the
+ * albums in it (CartPage).
+ */
 export default function OrderCheckoutPage() {
   const { albumId } = useParams();
   const nav = useNavigate();
-  const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
+  const { cart, refresh, add, remove } = useCart();
   const [album, setAlbum] = useState(null);
-  // "print": the printed book, delivered. "digital": the album as a PDF to
-  // download. One order of each per album: once one is ordered, only the
-  // other is offered (and the printed book after the digital album has
-  // what was paid for it taken off).
-  const [kind, setKind] = useState(searchParams.get("kind") === "digital" ? "digital" : "print");
+  // What's chosen: { print: bool, digital: bool }. One order of each per
+  // album: a version already ordered can't be chosen again.
+  const [kinds, setKinds] = useState({ print: searchParams.get("kind") !== "digital", digital: searchParams.get("kind") === "digital" });
   const [orderedKinds, setOrderedKinds] = useState({});
   const [quantity, setQuantity] = useState(1);
-  const [address, setAddress] = useState({
-    full_name: user?.name || "",
-    phone: user?.phone || "",
-    street: user?.street || "",
-    building: user?.building || "",
-    city: user?.city || "",
-    area: "",
-    additional_info: user?.additional_info || "",
-    country: "Lebanon", // delivery in Lebanon only
-  });
-  // The courier's (Wakilni's) area names, suggested for the "Area" field;
-  // when there's a list, the area must be one of them.
-  const [areas, setAreas] = useState([]);
-  useEffect(() => {
-    api.get("/delivery/areas").then(({ data }) => setAreas(data?.areas || [])).catch(() => {});
-  }, []);
-  // Shown the instant the person clicks "Place order". The POST itself
-  // can take anywhere from a few minutes to a couple of hours — PDF
-  // generation is awaited synchronously on the server (see backend
-  // create_order), not dispatched as a background task; background
-  // dispatch was tried and reverted because Cloud Run could silently kill
-  // it mid-render with nothing in the logs. This screen replacing the
-  // form immediately is what stops a second click *in this tab* from
-  // placing a duplicate order — the actual guarantee against a duplicate
-  // (a reopened tab, the back button, a reload while the first request is
-  // still quietly pending) is server-side, in create_order.
-  const [justPlaced, setJustPlaced] = useState(false);
-  // The terms of sale must be accepted to order (the order records which version).
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [termsError, setTermsError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const inCart = (cart?.items || []).filter((i) => i.album_id === albumId);
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await api.get(`/albums/${albumId}`);
         setAlbum(data);
-        // Reopening this page for an album that's already been ordered —
-        // a second tab, the back button, a reload while the first order's
-        // request was still quietly pending (it can take minutes to
-        // hours) — used to just show the form again, ready to place a
-        // genuine duplicate order. create_order now rejects that
-        // server-side regardless, but catching it here means they land on
-        // their actual order instead of hitting a confusing error.
         if (data.was_ordered) {
           try {
             const { data: orders } = await api.get("/orders");
@@ -76,17 +44,24 @@ export default function OrderCheckoutPage() {
               return;
             }
             setOrderedKinds(byKind);
-            if (byKind.print) setKind("digital");
-            if (byKind.digital) setKind("print");
+            setKinds({ print: !byKind.print, digital: !!byKind.print });
           } catch {
-            /* fall through to showing the form; create_order's own guard still applies */
+            /* the server refuses a version already ordered anyway */
           }
         }
       } catch {
         toast.error(t("checkout.loadError"));
       }
+      // Already in the cart: shown as it is there.
+      const current = await refresh();
+      const mineInCart = (current?.items || []).filter((i) => i.album_id === albumId);
+      if (mineInCart.length) {
+        setKinds({ print: mineInCart.some((i) => i.kind === "print"), digital: mineInCart.some((i) => i.kind === "digital") });
+        const printed = mineInCart.find((i) => i.kind === "print");
+        if (printed) setQuantity(printed.quantity);
+      }
     })();
-    // Loaded once per album; nav and t don't change what's loaded.
+    // Loaded once per album.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albumId]);
 
@@ -94,109 +69,32 @@ export default function OrderCheckoutPage() {
   const darkCount = album ? darkPhotoItems(album).length : 0;
   const pageCount = album ? billedPageCount(album) : 0;
   const tier = billedTier(pageCount);
-  const digital = kind === "digital";
   const printPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
   const digitalPrice = album ? computeDigitalPrice(album.size || "A4", pageCount) : 0;
-  const unitPrice = digital ? digitalPrice : printPrice;
-  // Test week: the album's price is shown, but it's offered — only delivery is due.
-  const dueUnitPrice = FREE_TRIAL ? 0 : unitPrice;
-  // The digital album already ordered is taken off the printed book.
-  const credit = !digital && orderedKinds.digital && !orderedKinds.digital.handed_over_unpaid ? Math.min(orderedKinds.digital.total_price_cents / 100, dueUnitPrice * quantity) : 0;
-  const total = digital ? dueUnitPrice : dueUnitPrice * quantity + SHIPPING_PRICE - credit;
+  const subtotal = (kinds.print ? printPrice * quantity : 0) + (kinds.digital ? digitalPrice : 0);
+  const nothingChosen = !kinds.print && !kinds.digital;
 
-  const [phoneError, setPhoneError] = useState(false);
-
-  const placeOrder = async (e) => {
-    e.preventDefault();
-    const required = digital ? [] : ["full_name", "phone", "street", "city", ...(areas.length ? ["area"] : [])];
-    for (const field of required) {
-      if (!address[field]?.trim()) {
-        toast.error(t("checkout.requiredFields"));
-        return;
-      }
-    }
-    if (!digital && !isLebanesePhone(address.phone)) {
-      setPhoneError(true);
-      toast.error(t("checkout.phoneInvalid"));
-      return;
-    }
-    if (!digital && areas.length && !areas.some((a) => a.toLowerCase() === address.area.trim().toLowerCase())) {
-      toast.error(t("checkout.areaFromList"));
-      return;
-    }
-    if (!acceptedTerms) {
-      setTermsError(true);
-      toast.error(t("checkout.mustAcceptTerms"));
-      return;
-    }
-    setJustPlaced(true);
+  const addToCart = async () => {
+    if (nothingChosen || busy) return;
+    setBusy(true);
     try {
-      const { data } = await api.post("/orders", {
-        album_id: albumId,
-        kind,
-        ...(digital ? {} : { quantity, shipping_address: address }),
-        accepted_terms_version: TERMS_VERSION,
-      });
-      nav(`/orders/${data.id}`);
+      for (const kind of ["print", "digital"]) {
+        const line = inCart.find((i) => i.kind === kind);
+        if (kinds[kind]) await add(albumId, kind, kind === "print" ? quantity : 1);
+        else if (line) await remove(line.id);
+      }
+      nav("/cart");
     } catch (err) {
-      // create_order inserts the order into the database as its very
-      // first step, before the PDF generation starts (queued, or run in
-      // the same request without the queue) — so by the time this catch
-      // block can even run, the
-      // order has almost always already been created and the
-      // confirmation email already sent, whatever went wrong afterwards.
-      // The only genuine "nothing was created" failures are the specific,
-      // known validation errors below (safe to show and let them fix on
-      // the form); everything else — a dropped connection during the long
-      // wait, a timeout, an unexpected server error — gets a calm message
-      // and a redirect to their orders list instead of an alarming
-      // "failed" toast and raw backend error text, since the real
-      // technical detail is never something the customer should be
-      // reading (admin has that in the logs) and the order is very likely
-      // already there waiting for them.
-      setJustPlaced(false);
       const status = err?.response?.status;
-      if (status === 409) {
-        toast.error(t("checkout.alreadyOrdered"));
-        nav("/orders", { replace: true });
-        return;
-      }
-      // The terms of sale changed since this page was loaded (or the site
-      // and the server are on different versions for a moment, right
-      // after an update): reloading shows and sends the current ones.
-      if (status === 400 && /terms of sale/i.test(err?.response?.data?.detail || "")) {
-        toast.error(t("checkout.termsChanged"), { duration: 10000 });
-        return;
-      }
-      if (status === 404 || status === 400) {
-        toast.error(err?.response?.data?.detail || t("checkout.checkAlbum"));
-        return;
-      }
-      toast.info(t("checkout.slow"));
-      nav("/orders", { replace: true });
+      toast.error(status === 409 ? t("checkout.alreadyOrdered") : err?.response?.data?.detail || t("checkout.checkAlbum"));
+      setBusy(false);
     }
   };
-
-  const inputClass =
-    "w-full border border-[color:var(--ink)]/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
 
   if (!album) {
     return (
       <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
         <div className="max-w-[900px] mx-auto text-sm text-[color:var(--muted)]">{t("checkout.loading")}</div>
-      </main>
-    );
-  }
-
-  if (justPlaced) {
-    return (
-      <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12 flex items-center justify-center">
-        <div className="max-w-[500px] mx-auto text-center animate-fade-up">
-          <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t("checkout.placedTitle")}</h1>
-          <p className="text-[color:var(--ink)]/70">
-            <Trans i18nKey={digital ? "checkout.placedBodyDigital" : "checkout.placedBody"} values={{ title: album.title }} components={{ b: <span className="font-semibold" /> }} />
-          </p>
-        </div>
       </main>
     );
   }
@@ -214,30 +112,36 @@ export default function OrderCheckoutPage() {
         </div>
 
         <div className="grid md:grid-cols-[1fr_320px] gap-12">
-          <form onSubmit={placeOrder} id="checkout-form" noValidate>
-            <div className="eyebrow mb-4">{t("checkout.kindTitle")}</div>
-            <div className="grid sm:grid-cols-2 gap-3 mb-10" role="radiogroup" data-testid="checkout-kind">
+          <div>
+            <div className="eyebrow mb-1">{t("checkout.kindTitle")}</div>
+            <p className="text-xs text-[color:var(--muted)] mb-4">{t("cart.chooseBoth")}</p>
+            <div className="grid sm:grid-cols-2 gap-3 mb-6" data-testid="checkout-kind">
               {[
                 { value: "print", price: printPrice, extra: t("checkout.kindPrintExtra", { price: SHIPPING_PRICE.toFixed(2) }) },
                 { value: "digital", price: digitalPrice, extra: t("checkout.kindDigitalExtra") },
               ].map((option) => {
                 const taken = Boolean(orderedKinds[option.value]);
-                const chosen = kind === option.value;
+                const chosen = kinds[option.value] && !taken;
                 return (
                   <button
                     key={option.value}
                     type="button"
-                    role="radio"
+                    role="checkbox"
                     aria-checked={chosen}
                     disabled={taken}
-                    onClick={() => setKind(option.value)}
+                    onClick={() => setKinds((k) => ({ ...k, [option.value]: !k[option.value] }))}
                     data-testid={`checkout-kind-${option.value}`}
                     className={`text-left border p-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       chosen ? "border-[color:var(--ink)] bg-white" : "border-[color:var(--ink)]/20 hover:border-[color:var(--ink)]/50"
                     }`}
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-semibold">{t(`checkout.kind.${option.value}`)}</span>
+                      <span className="inline-flex items-center gap-2 font-semibold">
+                        <span className={`inline-flex items-center justify-center w-4 h-4 border ${chosen ? "bg-[color:var(--ink)] border-[color:var(--ink)] text-[color:var(--paper)]" : "border-[color:var(--ink)]/40"}`}>
+                          {chosen && <Check size={12} strokeWidth={3} />}
+                        </span>
+                        {t(`checkout.kind.${option.value}`)}
+                      </span>
                       <OfferedPrice price={option.price} />
                     </div>
                     <p className="text-xs text-[color:var(--muted)] mt-1">{taken ? t("checkout.kindAlreadyOrdered") : option.extra}</p>
@@ -245,76 +149,15 @@ export default function OrderCheckoutPage() {
                 );
               })}
             </div>
-            {digital ? (
-              <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed" data-testid="checkout-digital-note">
+            {kinds.digital && (
+              <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed mb-4" data-testid="checkout-digital-note">
                 {t("checkout.digitalNote")}
               </p>
-            ) : (
-            <>
-            <div className="eyebrow mb-6">{t("checkout.shippingAddress")}</div>
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">{t("checkout.fullName")}</label>
-                <input className={inputClass} value={address.full_name} onChange={(e) => setAddress({ ...address, full_name: e.target.value })} required />
-              </div>
-              <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">{t("checkout.phone")}</label>
-                <input
-                  className={`${inputClass} ${phoneError ? "border-red-500" : ""}`}
-                  value={address.phone}
-                  onChange={(e) => {
-                    setAddress({ ...address, phone: e.target.value });
-                    setPhoneError(false);
-                  }}
-                  onBlur={() => address.phone && setPhoneError(!isLebanesePhone(address.phone))}
-                  type="tel"
-                  inputMode="tel"
-                  placeholder="70 123 456"
-                  data-testid="checkout-phone"
-                  required
-                />
-                {phoneError && <p className="text-xs text-red-600 mt-1" data-testid="checkout-phone-error">{t("checkout.phoneInvalid")}</p>}
-              </div>
-              <div>
-                <label className="eyebrow block mb-2">{t("checkout.street")}</label>
-                <input className={inputClass} value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} required />
-              </div>
-              <div>
-                <label className="eyebrow block mb-2">{t("checkout.building")}</label>
-                <input className={inputClass} value={address.building} onChange={(e) => setAddress({ ...address, building: e.target.value })} />
-              </div>
-              <div>
-                <label className="eyebrow block mb-2">{t("checkout.city")}</label>
-                <input className={inputClass} value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} required />
-              </div>
-              <div>
-                <label className="eyebrow block mb-2">{t(areas.length ? "checkout.areaRequired" : "checkout.area")}</label>
-                <input
-                  className={inputClass}
-                  list="delivery-areas"
-                  value={address.area}
-                  onChange={(e) => setAddress({ ...address, area: e.target.value })}
-                  placeholder={t("checkout.areaPlaceholder")}
-                  data-testid="checkout-area"
-                />
-                <datalist id="delivery-areas">
-                  {areas.map((a) => <option key={a} value={a} />)}
-                </datalist>
-              </div>
-              <div>
-                <label className="eyebrow block mb-2">{t("checkout.country")}</label>
-                {/* Delivery in Lebanon only: filled in, not editable. */}
-                <input className={`${inputClass} opacity-70 cursor-not-allowed`} value={t("checkout.lebanon")} disabled readOnly data-testid="checkout-country" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">{t("checkout.additionalInfo")}</label>
-                <input className={inputClass} value={address.additional_info} onChange={(e) => setAddress({ ...address, additional_info: e.target.value })} placeholder={t("checkout.additionalInfoPlaceholder")} />
-              </div>
-            </div>
-            <p className="text-xs text-[color:var(--muted)] mt-1">{t("checkout.required")}</p>
-            </>
             )}
-          </form>
+            {kinds.print && !orderedKinds.print && (
+              <p className="text-xs text-[color:var(--muted)]" data-testid="checkout-delivery-time">{t("checkout.deliveryTime")}</p>
+            )}
+          </div>
 
           <aside className="border border-[color:var(--border-soft)] p-6 h-fit">
             <div className="eyebrow mb-5">{t("checkout.summary")}</div>
@@ -333,94 +176,64 @@ export default function OrderCheckoutPage() {
                   {t(tier === 24 ? "checkout.billedMinimum" : "checkout.billedTier", { count: pageCount, tier })}
                 </div>
               )}
-              {!digital && (
-              <>
-              <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
-                {t("checkout.previewQuality")}
-              </div>
-              {lowResCount > 0 && (
-                <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-low-res">
-                  {t("checkout.lowResolution", { count: lowResCount })}{" "}
-                  <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
-                </div>
+              {kinds.print && (
+                <>
+                  <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">
+                    {t("checkout.previewQuality")}
+                  </div>
+                  {lowResCount > 0 && (
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-low-res">
+                      {t("checkout.lowResolution", { count: lowResCount })}{" "}
+                      <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
+                    </div>
+                  )}
+                  {darkCount > 0 && (
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-dark">
+                      {t("checkout.tooDark", { count: darkCount })}{" "}
+                      <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[color:var(--muted)]">{t("checkout.quantity")}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                      className="w-16 border border-[color:var(--ink)]/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
+                      data-testid="checkout-quantity"
+                    />
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[color:var(--muted)]">{t("checkout.kind.print")}</span>
+                    <OfferedPrice price={printPrice * quantity} />
+                  </div>
+                </>
               )}
-              {darkCount > 0 && (
-                <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-dark">
-                  {t("checkout.tooDark", { count: darkCount })}{" "}
-                  <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
-                </div>
-              )}
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[color:var(--muted)]">{t("checkout.quantity")}</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                  className="w-16 border border-[color:var(--ink)]/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
-                />
-              </div>
-              <div className="flex justify-between mb-1">
-                <span className="text-[color:var(--muted)]">{t("checkout.unitPrice")}</span>
-                <OfferedPrice price={unitPrice} />
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[color:var(--muted)]">{t("checkout.shipping")}</span>
-                <span>${SHIPPING_PRICE.toFixed(2)}</span>
-              </div>
-              {credit > 0 && (
-                <div className="flex justify-between" data-testid="checkout-credit">
-                  <span className="text-[color:var(--muted)]">{t("checkout.digitalCredit")}</span>
-                  <span>−${credit.toFixed(2)}</span>
-                </div>
-              )}
-              <p className="text-xs text-[color:var(--muted)] mt-2" data-testid="checkout-delivery-time">{t("checkout.deliveryTime")}</p>
-              </>
-              )}
-              {digital && (
-                <div className="flex justify-between">
+              {kinds.digital && (
+                <div className="flex justify-between mb-1">
                   <span className="text-[color:var(--muted)]">{t("checkout.kind.digital")}</span>
                   <OfferedPrice price={digitalPrice} />
                 </div>
               )}
+              {kinds.print && <p className="text-xs text-[color:var(--muted)] mt-2">{t("cart.deliveryOnce", { price: SHIPPING_PRICE.toFixed(2) })}</p>}
             </div>
             <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6">
-              {/* Test week: the album is free — what's left is the delivery,
-                  paid in cash to the courier (nothing at all for a PDF). */}
-              <span>{digital ? t(FREE_TRIAL ? "checkout.freeTotal" : "checkout.total") : t("checkout.cashToCourier")}</span>
-              <span>{FREE_TRIAL && digital ? t("checkout.free") : `$${total.toFixed(2)}`}</span>
+              <span>{t("cart.subtotal")}</span>
+              <span>${subtotal.toFixed(2)}</span>
             </div>
-            <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-[color:var(--ink)]/80"}`}>
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => {
-                  setAcceptedTerms(e.target.checked);
-                  if (e.target.checked) setTermsError(false);
-                }}
-                className="mt-0.5 accent-[color:var(--ink)]"
-                aria-invalid={termsError}
-                data-testid="accept-terms"
-              />
-              <span>
-                <Trans
-                  i18nKey="checkout.acceptTerms"
-                  components={{ terms: <Link to="/terms" target="_blank" rel="noopener" className="underline hover:text-[color:var(--coral)]" /> }}
-                />
-              </span>
-            </label>
             <button
-              type="submit"
-              form="checkout-form"
-              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase"
-              data-testid="place-order-btn"
+              type="button"
+              onClick={addToCart}
+              disabled={nothingChosen || busy}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-50"
+              data-testid="add-to-cart-btn"
             >
-              {t("checkout.placeOrder")}
+              {busy && <Loader2 size={14} className="animate-spin" />}
+              {t(inCart.length ? "cart.update" : "cart.add")}
             </button>
-            <p className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed">
-              {t(FREE_TRIAL ? (digital ? "checkout.freeTrialDigital" : "checkout.freeTrialPrint") : digital ? "checkout.noPaymentDigital" : "checkout.noPayment", { price: SHIPPING_PRICE })}
-            </p>
+            <p className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed">{t("cart.addHint")}</p>
           </aside>
         </div>
       </div>
@@ -429,7 +242,7 @@ export default function OrderCheckoutPage() {
 }
 
 // An album's price; during the test week, struck through and "Free".
-function OfferedPrice({ price }) {
+export function OfferedPrice({ price }) {
   const { t } = useTranslation();
   if (!FREE_TRIAL) return <span>${price.toFixed(2)}</span>;
   return (

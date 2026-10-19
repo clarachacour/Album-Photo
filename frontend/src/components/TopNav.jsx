@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
+import { useCart } from "@/lib/cart";
 import { TID } from "@/constants/testIds";
-import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield, Menu, X } from "lucide-react";
+import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield, Menu, X, ShoppingBag } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function TopNav() {
   const { user, logout } = useAuth();
+  const { count: cartCount } = useCart();
   const { t } = useTranslation();
   const nav = useNavigate();
   const loc = useLocation();
@@ -85,6 +87,21 @@ export default function TopNav() {
             >
               <LogOut size={14} /> {t("nav.logout")}
             </button>
+            {/* The cart, with how many albums are waiting in it. */}
+            <Link
+              to="/cart"
+              aria-label={t("nav.cart", { count: cartCount })}
+              title={t("nav.cart", { count: cartCount })}
+              data-testid="nav-cart"
+              className="relative inline-flex items-center justify-center w-10 h-10 text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors"
+            >
+              <ShoppingBag size={18} />
+              {cartCount > 0 && (
+                <span className="absolute top-0.5 right-0 min-w-[18px] h-[18px] px-1 rounded-full bg-[color:var(--coral)] text-[color:var(--paper)] text-[10px] font-semibold leading-[18px] text-center" data-testid="nav-cart-count">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             <LanguageSwitcher className="ml-2 pl-2 border-l border-[color:var(--border-soft)]" />
             <div ref={menuRef} className="sm:hidden">
               <button
