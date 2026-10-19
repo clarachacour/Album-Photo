@@ -91,6 +91,22 @@ export default function AdminOrdersPage() {
   };
 
   const updateStatus = async (orderId, status) => {
+    // Put back before "ready" (the printer clicked too early) while a Wakilni
+    // delivery is still linked: cancelling it lets the printer's next
+    // "ready" click create a new one.
+    const order = orders.find((o) => o.id === orderId);
+    const before = ["pending_payment", "paid", "processing", "printing"];
+    if (order?.delivery?.delivery_id && before.includes(status) && !before.includes(order.status)) {
+      if (window.confirm(`Also cancel Wakilni delivery n° ${order.delivery.delivery_id}? (So the printer's next "ready" click creates a new one.)`)) {
+        try {
+          const { data } = await api.post(`/admin/orders/${orderId}/delivery/cancel`);
+          setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...data } : o)));
+          toast.success("Wakilni delivery cancelled");
+        } catch (err) {
+          toast.error(err?.response?.data?.detail || "Wakilni didn't answer — the delivery wasn't cancelled");
+        }
+      }
+    }
     setUpdatingId(orderId);
     try {
       const { data } = await api.patch(`/admin/orders/${orderId}/status`, { status });
@@ -398,7 +414,8 @@ export default function AdminOrdersPage() {
                                   Refresh
                                 </button>
                               )}
-                              {o.delivery?.delivery_id && o.delivery.status_code === 1 && (
+                              {/* Until the courier has the book (on its way, delivered). */}
+                              {o.delivery?.delivery_id && ![3, 4].includes(o.delivery.status_code) && !["shipped", "delivered"].includes(o.status) && (
                                 <button type="button" disabled={deliveryBusy === o.id} onClick={() => deliveryAction(o.id, "cancel")} className="underline text-red-500 disabled:opacity-50">
                                   Cancel
                                 </button>

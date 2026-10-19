@@ -86,6 +86,16 @@ async def sync_delivery(order_id: str) -> dict:
         {"id": order_id},
         {"$set": {"delivery.status_code": code, "delivery.status_label": label, "delivery.checked_at": _now()}},
     )
+    if code == wakilni.CANCELED:
+        # Cancelled at Wakilni (on their portal, e.g. the printer clicked
+        # "ready" too early): the order lets go of it, so the printer's next
+        # "ready" click creates a new delivery.
+        await _let_go_of_delivery(delivery, "cancelled at Wakilni")
+        fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+        await run_email(send_delivery_problem_email, fresh,
+                        f"the delivery was cancelled at Wakilni (n° {delivery['delivery_id']}): it's no longer linked to the order — "
+                        "a new one will be created when the printer marks the book ready again")
+        return fresh
     customer = None
     if code == wakilni.PROCESSING and order["status"] in ("pending_payment", "paid", "processing", "printing", "ready_for_delivery"):
         await _set_status(order_id, "shipped")
@@ -153,15 +163,27 @@ async def _wakilni_down(order_id: str, error: Exception):
 
 
 async def cancel_delivery(order_id: str, reason: str) -> dict:
-    """Cancels the Wakilni delivery (only possible while Wakilni hasn't
-    confirmed it); the order can then get a new one."""
+    """Cancels the Wakilni delivery; the order can then get a new one (the
+    printer's next "ready" click). Already cancelled at Wakilni (on their
+    portal): just let go of it here."""
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     delivery = (order or {}).get("delivery") or {}
     if not delivery.get("delivery_id"):
         return order or {}
-    await run_blocking(wakilni.cancel_delivery, delivery["delivery_id"], reason)
-    await db.orders.update_one(
-        {"id": order_id},
+    try:
+        await run_blocking(wakilni.cancel_delivery, delivery["delivery_id"], reason)
+    except wakilni.WakilniError:
+        status = await run_blocking(wakilni.delivery_status, delivery["delivery_id"])
+        if status.get("code") != wakilni.CANCELED:
+            raise
+        reason = f"{reason} (already cancelled at Wakilni)"
+    await _let_go_of_delivery(delivery, reason)
+    return await db.orders.find_one({"id": order_id}, {"_id": 0})
+
+
+async def _let_go_of_delivery(delivery: dict, reason: str):
+    """The delivery is cancelled: kept for the record, no longer the order's."""
+    await db.orders.update_many(
+        {"delivery.delivery_id": delivery["delivery_id"]},
         {"$set": {"delivery": {"provider": "wakilni", "cancelled": {**delivery, "at": _now(), "reason": reason}}}},
     )
-    return await db.orders.find_one({"id": order_id}, {"_id": 0})

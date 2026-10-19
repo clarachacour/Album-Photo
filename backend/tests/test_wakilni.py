@@ -20,6 +20,7 @@ class FakeWakilni:
         self.status_logs = []
         self.comments = []
         self.fail_add = False
+        self.fail_cancel = False
         self.down = False
 
     def request(self, method, url, json=None, params=None, headers=None, timeout=None):
@@ -44,6 +45,8 @@ class FakeWakilni:
             return _Res(200, {"message": "Closed Bulk order", "bulk_id": 77})
         if path.endswith("/orders/status"):
             return _Res(200, {"success": True, "data": {"tracking_id": "WK123", "comments": self.comments, "logs": self.status_logs}})
+        if path.endswith("/cancel") and self.fail_cancel:
+            return _Res(422, {"message": "Order can't be canceled"})
         if path.endswith("/cancel"):
             return _Res(200, {"message": "Order canceled", "delivery_id": 9001})
         return _Res(404, {"message": "unknown"})
@@ -249,3 +252,58 @@ def test_wakilni_down_waits_for_the_next_round_and_alerts_only_after_hours(clien
     courier["fake"].status_logs = [{"status": "Confirmed", "status_code": 2, "created_at": "2026-10-19 09:00:00"}]
     assert asyncio.run(sync_all_deliveries())["checked"] >= 1
     assert asyncio.run(db.app_state.find_one({"id": "wakilni_outage"})) is None
+
+
+def test_a_delivery_cancelled_on_wakilnis_portal_lets_go_and_a_new_one_is_made(client, db, courier):
+    from app.services.delivery import sync_delivery
+
+    order_id = courier["order"]["id"]
+    _ready(client, order_id)  # clicked too early
+    # Cancelled on Wakilni's portal; the admin puts the book back to printing.
+    courier["fake"].status_logs = [{"status": "Canceled", "status_code": 7, "created_at": "2026-10-20 10:00:00"}]
+    asyncio.run(sync_delivery(order_id))
+    order = _order(db, order_id)
+    assert "delivery_id" not in order["delivery"] and order["delivery"]["cancelled"]["delivery_id"]
+    assert len(courier["sent"]["problem"]) == 1 and "new one will be created" in courier["sent"]["problem"][0]
+    asyncio.run(db.orders.update_one({"id": order_id}, {"$set": {"status": "printing"}}))
+    # The printer's next click: a new delivery.
+    _ready(client, order_id)
+    assert _order(db, order_id)["delivery"].get("delivery_id")
+    assert sum("/add_delivery/" in p for _, p, _ in courier["fake"].calls) == 2
+
+
+def test_cancelling_a_delivery_already_cancelled_at_wakilni(client, db, courier, monkeypatch):
+    from app.core import auth
+
+    order_id = courier["order"]["id"]
+    _ready(client, order_id)
+    courier["fake"].fail_cancel = True
+    courier["fake"].status_logs = [{"status": "Canceled", "status_code": 7, "created_at": "2026-10-20 10:00:00"}]
+    email, admin = _signup(client, db=db)
+    monkeypatch.setattr(auth, "ADMIN_EMAIL", email)
+    res = client.post(f"/api/admin/orders/{order_id}/delivery/cancel", headers=admin)
+    assert res.status_code == 200, res.text
+    assert "delivery_id" not in _order(db, order_id)["delivery"]
+    # Still with Wakilni (not cancelled there): refused, kept.
+    asyncio.run(db.orders.update_one({"id": order_id}, {"$set": {"status": "printing"}}))
+    _ready(client, order_id)
+    assert _order(db, order_id)["delivery"].get("delivery_id")
+    courier["fake"].status_logs = [{"status": "Confirmed", "status_code": 2, "created_at": "2026-10-20 11:00:00"}]
+    assert client.post(f"/api/admin/orders/{order_id}/delivery/cancel", headers=admin).status_code == 502
+
+
+def test_putting_an_order_back_doesnt_email_the_customer_again(client, db, courier, monkeypatch):
+    from app.core import auth
+    from app.routers import admin as admin_router
+
+    sent = []
+    monkeypatch.setitem(admin_router.STATUS_CUSTOMER_EMAIL, "printing", lambda to, name, order: sent.append(order["status"]))
+    order_id = courier["order"]["id"]
+    asyncio.run(db.orders.update_one({"id": order_id}, {"$set": {"status": "ready_for_delivery"}}))
+    email, admin = _signup(client, db=db)
+    monkeypatch.setattr(auth, "ADMIN_EMAIL", email)
+    assert client.patch(f"/api/admin/orders/{order_id}/status", json={"status": "printing"}, headers=admin).status_code == 200
+    assert sent == []
+    asyncio.run(db.orders.update_one({"id": order_id}, {"$set": {"status": "paid"}}))
+    client.patch(f"/api/admin/orders/{order_id}/status", json={"status": "printing"}, headers=admin)
+    assert sent == ["printing"]  # forward: told, as before
