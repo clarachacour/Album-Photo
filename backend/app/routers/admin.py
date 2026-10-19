@@ -252,7 +252,11 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
     fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if data.status == "delivered" and order.get("status") != "delivered":
         await run_email(send_team_order_update_email, fresh, "delivered")
-    email_fn = STATUS_CUSTOMER_EMAIL.get(data.status)
+    # Only moving forward tells the customer: an order put back a step (the
+    # printer clicked "ready" too early…) doesn't re-send an older email.
+    sequence = status_sequence(order)
+    backwards = data.status in sequence and order.get("status") in sequence and sequence.index(data.status) <= sequence.index(order["status"])
+    email_fn = None if backwards else STATUS_CUSTOMER_EMAIL.get(data.status)
     if email_fn:
         customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
         if customer:
