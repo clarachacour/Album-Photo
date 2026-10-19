@@ -40,6 +40,7 @@ const OrderDetailPage = lazyPage(() => import("@/pages/OrderDetailPage"));
 const OrderFeedback = lazyPage(() => import("@/pages/OrderFeedback"));
 const OrderCheckoutPage = lazyPage(() => import("@/pages/OrderCheckoutPage"));
 const CartPage = lazyPage(() => import("@/pages/CartPage"));
+const GiftPage = lazyPage(() => import("@/pages/GiftPage"));
 const AdminOrdersPage = lazyPage(() => import("@/pages/AdminOrdersPage"));
 const VerifyEmailPending = lazyPage(() => import("@/pages/VerifyEmailPending"));
 const PrinterOrderPage = lazyPage(() => import("@/pages/PrinterOrderPage"));
@@ -119,6 +120,7 @@ export function AppRoutes() {
             <Route path="/printer/:orderId" element={<PrinterOrderPage />} />
             <Route path="/printer/:orderId/download" element={<PrinterDownloadRedirect />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/gift" element={<GiftPage />} />
             <Route path="/contact" element={<ContactPage />} />
             {/* Not wrapped in ProtectedRoute — it IS the destination
                 ProtectedRoute redirects an unverified account to, and

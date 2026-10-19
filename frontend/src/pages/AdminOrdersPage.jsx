@@ -527,6 +527,7 @@ export default function AdminOrdersPage() {
             </table>
           </div>
         )}
+        <AdminGiftCards />
       </div>
     </main>
   );
@@ -616,5 +617,67 @@ function AddressEditor({ address, onSave, onCancel }) {
         <button type="button" onClick={onCancel} className="text-xs underline">Cancel</button>
       </div>
     </form>
+  );
+}
+
+// Gift cards (PDF, never printed): who bought them, used or not; a card not
+// used yet can be cancelled (its code then no longer works).
+function AdminGiftCards() {
+  const [cards, setCards] = useState(null);
+  const load = () => api.get("/admin/gift-cards").then(({ data }) => setCards(data)).catch(() => setCards([]));
+  useEffect(() => {
+    load();
+  }, []);
+  const cancel = async (card) => {
+    if (!window.confirm(`Cancel gift card ${card.code}? Its code will no longer work.`)) return;
+    try {
+      await api.post(`/admin/gift-cards/${card.id}/cancel`);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Couldn't cancel this card");
+    }
+  };
+  if (!cards?.length) return null;
+  return (
+    <section className="mt-16" data-testid="admin-gift-cards">
+      <h2 className="font-serif-display text-3xl tracking-tight mb-4">Gift cards</h2>
+      <div className="overflow-x-auto border border-[color:var(--border-soft)]">
+        <table className="w-full text-sm">
+          <thead className="bg-[color:var(--editor-canvas)] text-left text-xs uppercase tracking-wider text-[color:var(--muted)]">
+            <tr>
+              <th className="p-3">Code</th>
+              <th className="p-3">Bought by</th>
+              <th className="p-3">For</th>
+              <th className="p-3">Album</th>
+              <th className="p-3">Value</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Date</th>
+              <th className="p-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {cards.map((c) => (
+              <tr key={c.id} className="border-t border-[color:var(--border-soft)]">
+                <td className="p-3 font-mono text-xs">{c.code}</td>
+                <td className="p-3 text-xs">{c.buyer_email}</td>
+                <td className="p-3 text-xs">{c.recipient_name || "—"}</td>
+                <td className="p-3 text-xs">{c.size} · {c.page_tier}p</td>
+                <td className="p-3 text-xs">{formatPrice(c.value_cents)}</td>
+                <td className="p-3 text-xs">
+                  {c.status}
+                  {c.payment && !c.payment.provider && <span className="block text-[color:var(--muted)]">no payment taken (not set up)</span>}
+                </td>
+                <td className="p-3 text-xs">{parseDate(c.created_at).toLocaleDateString()}</td>
+                <td className="p-3 text-xs">
+                  {["active", "pending_payment"].includes(c.status) && (
+                    <button type="button" onClick={() => cancel(c)} className="underline text-red-600">Cancel</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

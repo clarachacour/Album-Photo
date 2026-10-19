@@ -10,7 +10,7 @@ import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { spineRatio, pageDimsMm, DEFAULT_PAGE_COUNT_ESTIMATE } from "@/lib/printDims";
-import { computeUnitPrice, computeDigitalPrice, PAGE_TIERS } from "@/lib/pricing";
+import { computeUnitPrice, computeDigitalPrice, PAGE_TIERS, SHIPPING_PRICE } from "@/lib/pricing";
 import { CoverEditorPanel } from "@/components/CoverEditorPanel";
 import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
@@ -106,6 +106,21 @@ export default function CreateAlbum() {
   const [creationProgress, setCreationProgress] = useState(0);
   const [resuming, setResuming] = useState(!!resumeAlbumId);
   const nav = useNavigate();
+  // A gift card used on this account: its credit, and the album it offers —
+  // a new album starts in that format (it can still be changed).
+  const [gift, setGift] = useState(null);
+  useEffect(() => {
+    if (resumeAlbumId) return;
+    api.get("/credits").then(({ data }) => {
+      if (!data?.balance_cents) return;
+      setGift(data);
+      if (data.offered) {
+        setSize(data.offered.size);
+        setTargetPages(data.offered.page_tier);
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!resumeAlbumId) return;
@@ -358,7 +373,7 @@ export default function CreateAlbum() {
           ))}
         </div>
 
-        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} targetPages={targetPages} setTargetPages={setTargetPages} />}
+        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} targetPages={targetPages} setTargetPages={setTargetPages} gift={gift} />}
 
         {step === 1 && album && (
           <StepEdit
@@ -430,7 +445,7 @@ export default function CreateAlbum() {
 
 
 
-function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages }) {
+function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages, gift }) {
   const { t, i18n } = useTranslation();
   // The page's real size, in cm (21 × 29.7 for an A4 portrait).
   const dims = pageDimsMm(size, orientation);
@@ -526,6 +541,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
               </button>
             ))}
           </div>
+          {gift && <GiftDifference gift={gift} size={size} targetPages={targetPages} />}
           <p className="text-sm text-[color:var(--ink)]/70 mt-5">
             {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
             <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
@@ -801,5 +817,31 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
         }
       />
     </section>
+  );
+}
+
+// With a gift card's credit: what the chosen album (delivery included)
+// leaves to pay — or keeps as credit for a next order.
+function GiftDifference({ gift, size, targetPages }) {
+  const { t } = useTranslation();
+  const credit = gift.balance_cents / 100;
+  const price = computeUnitPrice(size, targetPages) + SHIPPING_PRICE;
+  const offered = gift.offered;
+  const diff = Math.round((price - credit) * 100) / 100;
+  return (
+    <div className="mt-5 border border-[color:var(--coral)]/40 bg-[color:var(--coral)]/5 px-4 py-3 text-sm" data-testid="format-gift">
+      <p className="font-semibold mb-1">
+        {offered
+          ? t("createAlbum.format.gift.offered", { size: offered.size, pages: offered.page_tier, from: offered.from_name || "", context: offered.from_name ? "from" : undefined })
+          : t("createAlbum.format.gift.credit", { amount: credit.toFixed(2) })}
+      </p>
+      <p className="text-[color:var(--ink)]/75">
+        {diff > 0
+          ? t("createAlbum.format.gift.pay", { diff: diff.toFixed(2) })
+          : diff < 0
+            ? t("createAlbum.format.gift.left", { left: (-diff).toFixed(2) })
+            : t("createAlbum.format.gift.covered")}
+      </p>
+    </div>
   );
 }

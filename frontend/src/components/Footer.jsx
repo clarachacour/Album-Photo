@@ -21,6 +21,7 @@ export default function Footer() {
           <ul className="space-y-2.5 text-sm">
             <li><Link to="/dashboard" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.myAlbums")}</Link></li>
             <li><Link to="/orders" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.orders")}</Link></li>
+            <li><Link to="/gift" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.gift")}</Link></li>
             <li><Link to="/faq" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.faq")}</Link></li>
             <li><Link to="/contact" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.contact")}</Link></li>
           </ul>

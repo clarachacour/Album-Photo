@@ -123,6 +123,17 @@ class CartItemInput(BaseModel):
 class CartQuantityInput(BaseModel):
     quantity: int = Field(ge=1, le=20)
 
+class GiftCardInput(BaseModel):
+    size: Literal["A4", "A5"] = "A4"
+    page_tier: int = Field(default=50, ge=1, le=MAX_ALBUM_PAGES)  # one of PAGE_TIERS
+    recipient_name: str = Field(default="", max_length=60)
+    message: str = Field(default="", max_length=300)
+    from_name: str = Field(default="", max_length=60)
+    lang: Literal["en", "fr"] = "en"
+
+class GiftCodeInput(BaseModel):
+    code: str = Field(min_length=4, max_length=40)
+
 class CheckoutInput(BaseModel):
     # Needed when the cart holds a printed album.
     shipping_address: Optional[ShippingAddress] = None

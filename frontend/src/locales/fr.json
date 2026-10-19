@@ -10,7 +10,8 @@
     "menu": "Menu",
     "closeMenu": "Fermer le menu",
     "cart_one": "Panier ({{count}} article)",
-    "cart_other": "Panier ({{count}} articles)"
+    "cart_other": "Panier ({{count}} articles)",
+    "gift": "Offrir un album"
   },
   "landing": {
     "hero": {
@@ -244,6 +245,21 @@
       "delivered": "Livrée",
       "cancelled": "Annulée",
       "available": "Prêt à télécharger"
+    },
+    "credit": {
+      "title": "Votre avoir carte cadeau",
+      "until": "Valable jusqu'au {{date}} — déduit de votre prochaine commande.",
+      "create": "Créer un album"
+    },
+    "gifts": {
+      "title": "Cartes cadeaux offertes",
+      "downloadError": "La carte n'a pas pu être téléchargée. Veuillez réessayer.",
+      "status": {
+        "active": "Pas encore utilisée",
+        "redeemed": "Utilisée",
+        "cancelled": "Annulée",
+        "pending_payment": "En attente de paiement"
+      }
     }
   },
   "orderDetail": {
@@ -375,7 +391,15 @@
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "par exemplaire",
-      "pdfPrice": "ou {{price}} $ en PDF à télécharger"
+      "pdfPrice": "ou {{price}} $ en PDF à télécharger",
+      "gift": {
+        "offered": "Votre carte cadeau : un album {{size}} jusqu'à {{pages}} pages",
+        "offered_from": "Votre cadeau de {{from}} : un album {{size}} jusqu'à {{pages}} pages",
+        "credit": "Votre avoir carte cadeau : {{amount}} $",
+        "pay": "Cet album (livraison comprise) coûte {{diff}} $ de plus que votre cadeau : vous paierez la différence.",
+        "left": "Couvert par votre cadeau — {{left}} $ resteront en avoir sur votre compte.",
+        "covered": "Entièrement couvert par votre cadeau."
+      }
     },
     "edit": {
       "title": "Faites-le vôtre.",
@@ -943,6 +967,10 @@
     },
     "cart": {
       "title": "Votre panier"
+    },
+    "gift": {
+      "title": "Offrir un album",
+      "description": "Offrez un album photo à créer : choisissez le format, écrivez quelques mots, et envoyez une carte cadeau."
     }
   },
   "coverPanel": {
@@ -1251,6 +1279,60 @@
     "problem": {
       "already_ordered": "Déjà commandé dans cette version : retirez-le.",
       "no_pages": "Cet album n'a pas encore de pages : terminez-le ou retirez-le."
+    },
+    "payment": {
+      "title": "Paiement",
+      "amount": "À payer maintenant : {{amount}}",
+      "notYet": "Le paiement en ligne n'est pas encore en place : votre carte cadeau est activée sans paiement pour l'instant."
+    },
+    "credit": "Avoir carte cadeau",
+    "creditLeft": "{{amount}} d'avoir restent sur votre compte pour une prochaine commande.",
+    "gift": {
+      "title": "Carte cadeau pour {{name}}",
+      "detail": "Un album {{size}} jusqu'à {{pages}} pages · livraison incluse · PDF"
+    }
+  },
+  "gift": {
+    "eyebrow": "Carte cadeau",
+    "title": "Offrir un album",
+    "subtitle": "Choisissez l'album que vous offrez et écrivez quelques mots : vous recevez une carte cadeau en PDF, à imprimer ou à envoyer. La personne qui la reçoit crée son propre album avec ses photos — livraison au Liban incluse.",
+    "haveCode": "J'ai reçu une carte cadeau",
+    "priceNote": "Prix de l'album, livraison incluse ({{shipping}} $). S'il choisit un album plus grand, il paie la différence ; un plus petit lui laisse un avoir.",
+    "recipient": "Pour",
+    "recipientPlaceholder": "Son prénom",
+    "message": "Votre message (facultatif)",
+    "messagePlaceholder": "Joyeux anniversaire ! Pour tous nos souvenirs…",
+    "from": "De la part de",
+    "cardPrice": "Carte cadeau",
+    "pdfNote": "Vous recevez la carte par email en PDF, juste après la commande. Valable 12 mois.",
+    "preview": "Aperçu",
+    "error": "Une erreur s'est produite. Veuillez réessayer.",
+    "card": {
+      "eyebrow": "CARTE CADEAU",
+      "for": "Un album photo pour toi, {{name}}",
+      "forAnonymous": "Un album photo pour toi",
+      "what": "Un album {{size}} jusqu'à {{pages}} pages · livraison au Liban incluse",
+      "code": "TON CODE",
+      "how": "Crée ton album sur everbook-album.com/gift et saisis ce code.",
+      "valid": "Valable jusqu'au {{date}}"
+    },
+    "redeem": {
+      "eyebrow": "Carte cadeau reçue",
+      "title": "Utiliser ma carte cadeau",
+      "subtitle": "Saisissez le code écrit sur votre carte : l'album est ajouté à votre compte, puis vous le créez avec vos photos.",
+      "use": "Utiliser ma carte",
+      "done": "Votre carte cadeau est prête",
+      "done_from": "Un cadeau de {{from}} !",
+      "doneBody": "Un album {{size}} jusqu'à {{pages}} pages, livraison incluse. Votre avoir : {{credit}} $ — déduit de votre commande.",
+      "create": "Créer mon album",
+      "errors": {
+        "not_found": "Ce code n'existe pas — vérifiez-le.",
+        "used": "Cette carte cadeau a déjà été utilisée.",
+        "expired": "Cette carte cadeau a expiré.",
+        "cancelled": "Cette carte cadeau a été annulée.",
+        "not_paid": "Cette carte cadeau ne peut pas encore être utilisée.",
+        "other": "Ce code ne peut pas être utilisé. Veuillez réessayer."
+      }
     }
   }
 }

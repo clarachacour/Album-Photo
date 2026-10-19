@@ -12,9 +12,11 @@ from app.core.auth import get_current_user
 from app.core.executors import run_email
 from app.db import db
 from app.routers.albums import _slim_stored_cover
-from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput
+from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput
 from app.services.checkout import build_order_doc, unit_price_cents
-from app.services.email import send_checkout_confirmation_email, send_order_confirmation_email
+from app.services import gift_cards
+from app.services.email import send_checkout_confirmation_email, send_gift_cards_email, send_order_confirmation_email
+from app.services.payments import collect_payment
 from app.services.orders import start_order_pdf_generation
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count
 
@@ -50,11 +52,32 @@ async def _problem(album: dict, kind: str):
     return None
 
 
+def _gift_line(item: dict) -> dict:
+    value = gift_cards.gift_value_cents(item["size"], int(item["page_tier"]))
+    return {**item, "quantity": 1, "unit_price_cents": value, "line_total_cents": value, "problem": None}
+
+
+def plan_credit(lines: list, shipping: int, balance: int) -> dict:
+    """How the customer's credit (gift cards) is used on the albums: the
+    printed ones and their delivery first (less for the courier to
+    collect), then the PDFs. Not on gift cards bought."""
+    prints = sum(line["line_total_cents"] for line in lines if line["kind"] == "print") + shipping
+    digitals = sum(line["line_total_cents"] for line in lines if line["kind"] == "digital")
+    on_prints = min(balance, prints)
+    on_digitals = min(balance - on_prints, digitals)
+    return {"applied": on_prints + on_digitals, "cash": prints - on_prints}
+
+
 async def _view(user: dict) -> dict:
     """The cart as the site shows it: each line priced on the server, the
-    delivery once for all the printed albums, the total."""
+    delivery once for all the printed albums, the credit taken off, the
+    total."""
     lines, kept = [], []
     for item in await _items(user):
+        if item["kind"] == "gift":
+            kept.append(item)
+            lines.append(_gift_line(item))
+            continue
         album = await db.albums.find_one({"id": item["album_id"], "user_id": user["id"]}, ALBUM_FIELDS)
         if not album:
             continue  # the album was deleted: gone from the cart too
@@ -76,8 +99,15 @@ async def _view(user: dict) -> dict:
     valid = [line for line in lines if not line["problem"]]
     shipping = SHIPPING_PRICE_CENTS if any(line["kind"] == "print" for line in valid) else 0
     subtotal = sum(line["line_total_cents"] for line in valid)
+    balance = await gift_cards.credit_balance(user["id"])
+    credit = plan_credit(valid, shipping, balance)
+    gifts = sum(line["line_total_cents"] for line in valid if line["kind"] == "gift")
     return {"items": lines, "count": len(lines), "subtotal_cents": subtotal, "shipping_cents": shipping,
-            "total_cents": subtotal + shipping, "currency": "usd"}
+            "credit_balance_cents": balance, "credit_applied_cents": credit["applied"],
+            "total_cents": subtotal + shipping - credit["applied"],
+            # What's paid through the payment step (gift cards), and what the
+            # courier collects in cash (the printed albums).
+            "pay_now_cents": gifts, "cash_cents": credit["cash"], "currency": "usd"}
 
 
 @router.get("/cart")
@@ -112,13 +142,30 @@ async def add_to_cart(data: CartItemInput, user: dict = Depends(get_current_user
     return await _view(user)
 
 
+@router.post("/cart/gifts")
+async def add_gift_to_cart(data: GiftCardInput, user: dict = Depends(get_current_user)):
+    """A gift card: an album (format, page count) offered to someone, with
+    the words written on the card."""
+    if not gift_cards.valid_choice(data.size, data.page_tier):
+        raise HTTPException(status_code=400, detail="Please choose a format and a page count")
+    items = await _items(user)
+    if len(items) >= 30:
+        raise HTTPException(status_code=400, detail="Your cart is full")
+    items.append({"id": str(uuid.uuid4()), "kind": "gift", "album_id": None, "quantity": 1,
+                  "size": data.size, "page_tier": data.page_tier, "recipient_name": data.recipient_name.strip(),
+                  "message": data.message.strip(), "from_name": data.from_name.strip(), "lang": data.lang,
+                  "added_at": datetime.now(timezone.utc).isoformat()})
+    await _save(user, items)
+    return await _view(user)
+
+
 @router.patch("/cart/items/{item_id}")
 async def set_cart_quantity(item_id: str, data: CartQuantityInput, user: dict = Depends(get_current_user)):
     items = await _items(user)
     item = next((i for i in items if i["id"] == item_id), None)
     if not item:
         raise HTTPException(status_code=404, detail="Not in your cart")
-    item["quantity"] = 1 if item["kind"] == "digital" else data.quantity
+    item["quantity"] = 1 if item["kind"] in ("digital", "gift") else data.quantity
     await _save(user, items)
     return await _view(user)
 
@@ -148,10 +195,18 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Please accept the current terms of sale to place your order")
     checkout_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    gift_lines = [line for line in view["items"] if line["kind"] == "gift"]
+    album_lines = [line for line in view["items"] if line["kind"] != "gift"]
+    # The payment step (gift cards for now; see services/payments.py).
+    payment = None
+    if gift_lines:
+        payment = await collect_payment(user, checkout_id, view["pay_now_cents"], f"{len(gift_lines)} gift card(s)")
+        if payment["status"] != "paid":
+            raise HTTPException(status_code=402, detail="The payment didn't go through — nothing was ordered")
     address = data.shipping_address.dict() if data.shipping_address else None
     orders, shipping_paid = [], False
     # Printed albums first: the first one carries the delivery.
-    for line in sorted(view["items"], key=lambda i: i["kind"] != "print"):
+    for line in sorted(album_lines, key=lambda i: i["kind"] != "print"):
         album = await db.albums.find_one({"id": line["album_id"], "user_id": user["id"]}, {"_id": 0, "pages.id": 1, "id": 1,
                                           "title": 1, "size": 1, "orientation": 1, "target_pages": 1})
         shipping = 0
@@ -167,17 +222,42 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
             continue
         doc.pop("_id", None)
         orders.append(doc)
-    if not orders:
+    if album_lines and not orders and not gift_lines:
         raise HTTPException(status_code=409, detail="An order already exists for these albums")
+    await _apply_credit(user, orders)
+    cards = [await gift_cards.create_gift_card(user, line, checkout_id, payment) for line in gift_lines]
     ordered = {(o["album_id"], o["kind"]) for o in orders}
-    await _save(user, [i for i in await _items(user) if (i["album_id"], i["kind"]) not in ordered])
-    if len(orders) == 1:
-        await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), orders[0])
-    else:
-        await run_email(send_checkout_confirmation_email, user.get("email"), user.get("name"), orders)
-    logger.info(f"Panier {checkout_id} : {len(orders)} commande(s) passée(s)")
+    gift_ids = {line["id"] for line in gift_lines}
+    await _save(user, [i for i in await _items(user) if (i.get("album_id"), i["kind"]) not in ordered and i["id"] not in gift_ids])
+    if orders:
+        orders = await db.orders.find({"checkout_id": checkout_id}, {"_id": 0}).to_list(50)
+        if len(orders) == 1:
+            await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), orders[0])
+        else:
+            await run_email(send_checkout_confirmation_email, user.get("email"), user.get("name"), orders)
+    if cards:
+        pdfs = [(f"Everbook gift card {c['code']}.pdf", gift_cards.render_gift_card_pdf(c), "application/pdf") for c in cards]
+        await run_email(send_gift_cards_email, user.get("email"), user.get("name"), cards, pdfs)
+    logger.info(f"Panier {checkout_id} : {len(orders)} commande(s), {len(cards)} carte(s) cadeau")
     # Each album's PDF (through the Cloud Tasks queue when configured).
     for order in orders:
         await start_order_pdf_generation(order)
     fresh = await db.orders.find({"checkout_id": checkout_id}, {"_id": 0}).to_list(50)
-    return {"checkout_id": checkout_id, "orders": fresh}
+    return {"checkout_id": checkout_id, "orders": fresh, "gift_cards": cards}
+
+
+async def _apply_credit(user: dict, orders: list):
+    """Takes the customer's credit (gift cards) off the new orders: printed
+    albums first (less for the courier to collect), then PDFs."""
+    if not orders:
+        return
+    planned = sum(o["total_price_cents"] for o in orders)
+    used = await gift_cards.use_credit(user["id"], min(planned, await gift_cards.credit_balance(user["id"])))
+    for o in sorted(orders, key=lambda o: o["kind"] != "print"):
+        if used <= 0:
+            break
+        take = min(used, o["total_price_cents"])
+        used -= take
+        await db.orders.update_one(
+            {"id": o["id"]}, {"$set": {"gift_credit_cents": take, "total_price_cents": o["total_price_cents"] - take}}
+        )

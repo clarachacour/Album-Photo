@@ -32,6 +32,12 @@ export function CartProvider({ children }) {
     setCart(data);
     return data;
   };
+  // A gift card: { size, page_tier, recipient_name, message, from_name, lang }.
+  const addGift = async (gift) => {
+    const { data } = await api.post("/cart/gifts", gift);
+    setCart(data);
+    return data;
+  };
   const setQuantity = async (itemId, quantity) => {
     const { data } = await api.patch(`/cart/items/${itemId}`, { quantity });
     setCart(data);
@@ -44,7 +50,7 @@ export function CartProvider({ children }) {
   };
 
   return (
-    <CartContext.Provider value={{ cart, count: cart?.count || 0, refresh, add, setQuantity, remove, setCart }}>
+    <CartContext.Provider value={{ cart, count: cart?.count || 0, refresh, add, addGift, setQuantity, remove, setCart }}>
       {children}
     </CartContext.Provider>
   );

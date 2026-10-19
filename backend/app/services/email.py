@@ -2,6 +2,7 @@
 import html
 import logging
 import smtplib
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate, make_msgid, parseaddr
@@ -32,7 +33,8 @@ def _h(value) -> str:
     return html.escape(str(value if value is not None else ""))
 
 
-def send_email(to_email: str, subject: str, body: str, html_body: str = None, reply_to: str = None):
+def send_email(to_email: str, subject: str, body: str, html_body: str = None, reply_to: str = None, attachments: list = None):
+    """attachments: [(file name, bytes, "application/pdf")…], only given when there are some."""
     if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
         # No email provider configured — log it so it's usable in local/dev
         # testing without silently failing. Set SMTP_HOST/SMTP_USER/
@@ -50,6 +52,15 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None, re
             msg.attach(MIMEText(html_body, "html"))
         else:
             msg = MIMEText(body)
+        if attachments:
+            # The text (and its HTML version) first, then the files.
+            mixed = MIMEMultipart("mixed")
+            mixed.attach(msg)
+            for filename, data, mime in attachments:
+                part = MIMEApplication(data, _subtype=mime.split("/", 1)[1])
+                part.add_header("Content-Disposition", "attachment", filename=filename)
+                mixed.attach(part)
+            msg = mixed
         # Album titles and contact subjects end up here: a line break would
         # start a new header line.
         msg["Subject"] = " ".join(str(subject).split())
@@ -400,6 +411,49 @@ def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
         cta_url=orders_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
+
+def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
+    """To the buyer: their gift card(s) as PDF, to print or send on, with
+    the code(s) written in the email too."""
+    fr = (cards[0].get("lang") == "fr")
+    many = len(cards) > 1
+    page_url = f"{FRONTEND_URL}/orders"
+    if fr:
+        subject = "Vos cartes cadeaux Everbook" if many else "Votre carte cadeau Everbook"
+        intro = (
+            "Merci ! Voici vos cartes cadeaux, en PDF : imprimez-les ou envoyez-les telles quelles."
+            if many else
+            "Merci ! Voici votre carte cadeau, en PDF : imprimez-la ou envoyez-la telle quelle."
+        )
+        how = f"La personne qui la reçoit saisit le code sur {FRONTEND_URL}/gift et crée son album. Valable 12 mois."
+        line = lambda c: f"{c['code']} — album {c['size']} jusqu'à {c['page_tier']} pages, pour {c.get('recipient_name') or '…'}"  # noqa: E731
+        again = "Vous les retrouvez aussi dans « Mes commandes »."
+        cta = "Mes commandes"
+    else:
+        subject = "Your Everbook gift cards" if many else "Your Everbook gift card"
+        intro = (
+            "Thank you! Here are your gift cards, as PDFs: print them or send them on as they are."
+            if many else
+            "Thank you! Here's your gift card, as a PDF: print it or send it on as it is."
+        )
+        how = f"Whoever gets it enters the code on {FRONTEND_URL}/gift and creates their album. Valid for 12 months."
+        line = lambda c: f"{c['code']} — {c['size']} album up to {c['page_tier']} pages, for {c.get('recipient_name') or '…'}"  # noqa: E731
+        again = "You'll also find them in \"My orders\"."
+        cta = "My orders"
+    hello = f"{'Bonjour' if fr else 'Hi'} {name or ''},"
+    body = f"{hello}\n\n{intro}\n\n" + "".join(f"- {line(c)}\n" for c in cards) + f"\n{how}\n\n{again}\n{page_url}"
+    html_body = _email_wrapper(
+        preheader=intro,
+        title=subject + ".",
+        body_html=(
+            f"<p>{_h(hello)}</p><p>{_h(intro)}</p>"
+            + "<ul>" + "".join(f"<li>{_h(line(c))}</li>" for c in cards) + "</ul>"
+            + f"<p>{_h(how)}</p><p>{_h(again)}</p>"
+        ),
+        cta_label=cta,
+        cta_url=page_url,
+    )
+    send_email(to_email, subject, body, html_body=html_body, attachments=pdfs)
 
 def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float):
     subject = "Your Everbook digital album is ordered"

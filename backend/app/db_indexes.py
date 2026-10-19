@@ -31,6 +31,11 @@ INDEXES = [
     ("orders", "created_at", {}),  # admin order list
     ("orders", "checkout_id", {"sparse": True}),  # a cart's orders, together
     ("carts", "user_id", {"unique": True}),
+    ("gift_cards", "id", {"unique": True}),
+    ("gift_cards", "code", {"unique": True}),
+    ("gift_cards", "buyer_user_id", {}),
+    ("credits", "id", {"unique": True}),
+    ("credits", "user_id", {}),
     ("pdf_generation_slots", "order_id", {"unique": True}),
     ("mobile_sessions", "token", {"unique": True}),
     ("mobile_sessions", "expires", {"expireAfterSeconds": 0}),

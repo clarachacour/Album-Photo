@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { CreditCard, Gift, Loader2, Plus, Trash2 } from "lucide-react";
 import { api, coverImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -54,6 +54,7 @@ export default function CartPage() {
   const items = cart?.items || [];
   const hasPrint = items.some((i) => i.kind === "print" && !i.problem);
   const hasDigital = items.some((i) => i.kind === "digital" && !i.problem);
+  const hasGift = items.some((i) => i.kind === "gift");
   const hasProblem = items.some((i) => i.problem);
 
   const placeOrder = async (e) => {
@@ -156,9 +157,13 @@ export default function CartPage() {
           <div className="grid md:grid-cols-[1fr_320px] gap-12">
             <form onSubmit={placeOrder} id="cart-form" noValidate>
               <ul className="divide-y divide-[color:var(--border-soft)] border-y border-[color:var(--border-soft)] mb-4" data-testid="cart-items">
-                {items.map((item) => (
-                  <CartLine key={item.id} item={item} onQuantity={(q) => setQuantity(item.id, q)} onRemove={() => remove(item.id)} />
-                ))}
+                {items.map((item) =>
+                  item.kind === "gift" ? (
+                    <GiftLine key={item.id} item={item} onRemove={() => remove(item.id)} />
+                  ) : (
+                    <CartLine key={item.id} item={item} onQuantity={(q) => setQuantity(item.id, q)} onRemove={() => remove(item.id)} />
+                  )
+                )}
               </ul>
               <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-[color:var(--ink)]/80 hover:text-[color:var(--coral)] mb-12" data-testid="cart-add-another">
                 <Plus size={14} /> {t("cart.addAnother")}
@@ -230,6 +235,22 @@ export default function CartPage() {
                   <p className="text-xs text-[color:var(--muted)] mt-1">{t("checkout.required")}</p>
                 </>
               )}
+
+              {/* The payment step: gift cards are paid here. Online payment
+                  isn't set up yet — the card is activated without charging
+                  (backend services/payments.py, to update then). */}
+              {hasGift && (
+                <div className={`${hasPrint ? "mt-12" : ""}`} data-testid="cart-payment">
+                  <div className="eyebrow mb-2">{t("cart.payment.title")}</div>
+                  <div className="border border-dashed border-[color:var(--ink)]/25 bg-white px-5 py-4 flex items-start gap-3">
+                    <CreditCard size={18} className="mt-0.5 text-[color:var(--muted)] shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium">{t("cart.payment.amount", { amount: money(cart.pay_now_cents) })}</p>
+                      <p className="text-[color:var(--muted)] text-xs mt-1">{t("cart.payment.notYet")}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </form>
 
             <aside className="border border-[color:var(--border-soft)] p-6 h-fit md:sticky md:top-24">
@@ -246,6 +267,13 @@ export default function CartPage() {
                   </div>
                 )}
                 {hasPrint && <p className="text-xs text-[color:var(--muted)] pt-1">{t("cart.deliveredTogether")}</p>}
+                {/* Gift card credit on the account, taken off the albums. */}
+                {cart.credit_applied_cents > 0 && (
+                  <div className="flex justify-between text-[color:var(--coral)] pt-1" data-testid="cart-credit">
+                    <span>{t("cart.credit")}</span>
+                    <span>−{money(cart.credit_applied_cents)}</span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6" data-testid="cart-total">
                 <span>{t("checkout.total")}</span>
@@ -254,11 +282,14 @@ export default function CartPage() {
               {/* What the courier collects: the printed albums and the
                   delivery (a PDF has nothing to pay while online payment
                   isn't set up). */}
-              {hasPrint && hasDigital && (
+              {hasPrint && cart.cash_cents !== cart.total_cents && (
                 <div className="flex justify-between text-sm -mt-3 mb-6" data-testid="cart-cash">
                   <span className="text-[color:var(--muted)]">{t("checkout.cashToCourier")}</span>
-                  <span>{money(items.filter((i) => i.kind === "print" && !i.problem).reduce((sum, i) => sum + i.line_total_cents, 0) + cart.shipping_cents)}</span>
+                  <span>{money(cart.cash_cents)}</span>
                 </div>
+              )}
+              {cart.credit_balance_cents > cart.credit_applied_cents && cart.credit_applied_cents > 0 && (
+                <p className="text-xs text-[color:var(--muted)] -mt-3 mb-6">{t("cart.creditLeft", { amount: money(cart.credit_balance_cents - cart.credit_applied_cents) })}</p>
               )}
               <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-[color:var(--ink)]/80"}`}>
                 <input
@@ -353,6 +384,31 @@ function CartLine({ item, onQuantity, onRemove }) {
             {t("cart.change")}
           </Link>
           <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-[color:var(--muted)] hover:text-red-700" data-testid={`cart-remove-${item.kind}-${item.album_id}`}>
+            <Trash2 size={12} /> {t("cart.remove")}
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function GiftLine({ item, onRemove }) {
+  const { t } = useTranslation();
+  return (
+    <li className="py-5 flex gap-4 items-start" data-testid="cart-item-gift">
+      <div className="w-16 shrink-0 aspect-[148/105] bg-[#F7F3EB] border border-[color:var(--border-soft)] flex items-center justify-center border-l-4 border-l-[color:var(--coral)]">
+        <Gift size={18} className="text-[color:var(--coral)]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-medium truncate">{t("cart.gift.title", { name: item.recipient_name || "…" })}</p>
+            <p className="text-xs text-[color:var(--muted)]">{t("cart.gift.detail", { size: item.size, pages: item.page_tier })}</p>
+          </div>
+          <span className="text-sm whitespace-nowrap">{money(item.line_total_cents)}</span>
+        </div>
+        <div className="flex items-center gap-4 mt-3">
+          <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-[color:var(--muted)] hover:text-red-700" data-testid="cart-remove-gift">
             <Trash2 size={12} /> {t("cart.remove")}
           </button>
         </div>

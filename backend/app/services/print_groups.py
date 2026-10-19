@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.executors import run_email
 from app.db import db
 from app.services.email import send_printer_order_email
+from app.services.gift_cards import GIFT_VALIDITY_DAYS, add_credit
 
 logger = logging.getLogger(__name__)
 
@@ -108,11 +109,13 @@ async def flush_printer_queue(force_order_id: str = None) -> int:
             shipping = int(o.get("shipping_price_cents") or 0)
             if o is not payer and shipping:
                 # One trip for the whole group: delivery paid once.
-                update.update(
-                    shipping_price_cents=0,
-                    shipping_waived_cents=shipping,
-                    total_price_cents=int(o.get("total_price_cents") or 0) - shipping,
-                )
+                total = int(o.get("total_price_cents") or 0) - shipping
+                update.update(shipping_price_cents=0, shipping_waived_cents=shipping, total_price_cents=max(0, total))
+                if total < 0:
+                    # Paid with credit (a gift card): what's no longer
+                    # owed goes back on the customer's account.
+                    await add_credit(o["user_id"], -total, "delivery_refund", (_now() + timedelta(days=GIFT_VALIDITY_DAYS)).isoformat(), order_id=o["id"])
+                    update["gift_credit_cents"] = int(o.get("gift_credit_cents") or 0) + total
             await db.orders.update_one({"id": o["id"]}, {"$set": update, "$unset": {"printer_pending_at": ""}})
         members = await group_of({**lead, "print_group": lead["id"]})
         await run_email(send_printer_order_email, members[0], members)

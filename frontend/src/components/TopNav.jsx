@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { TID } from "@/constants/testIds";
-import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield, Menu, X, ShoppingBag } from "lucide-react";
+import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield, Menu, X, ShoppingBag, Gift } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function TopNav() {
@@ -58,6 +58,13 @@ export default function TopNav() {
               className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
               <Package size={14} /> {t("nav.orders")}
+            </Link>
+            <Link
+              to="/gift"
+              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              data-testid="nav-gift"
+            >
+              <Gift size={14} /> {t("nav.gift")}
             </Link>
             <Link
               to="/faq"
@@ -118,6 +125,7 @@ export default function TopNav() {
                 <div className="absolute top-16 inset-x-0 bg-white border-y border-[color:var(--border-soft)] shadow-lg py-2" data-testid="nav-mobile-panel">
                   <Link to="/dashboard" className={mobileLink}><LayoutGrid size={16} /> {t("nav.myAlbums")}</Link>
                   <Link to="/orders" className={mobileLink}><Package size={16} /> {t("nav.orders")}</Link>
+                  <Link to="/gift" className={mobileLink}><Gift size={16} /> {t("nav.gift")}</Link>
                   <Link to="/faq" className={mobileLink}><HelpCircle size={16} /> {t("nav.faq")}</Link>
                   {user.is_admin && (
                     <Link to="/admin/orders" className={`${mobileLink} text-[color:var(--coral)]`}><Shield size={16} /> {t("nav.admin")}</Link>
@@ -133,6 +141,9 @@ export default function TopNav() {
         )}
         {!user && (
           <nav className="flex items-center gap-4">
+            <Link to="/gift" className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
+              <Gift size={14} /> {t("nav.gift")}
+            </Link>
             <Link to="/auth?mode=login" className="text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
               {t("nav.signIn")}
             </Link>

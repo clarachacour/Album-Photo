@@ -10,7 +10,8 @@
     "menu": "Menu",
     "closeMenu": "Close menu",
     "cart_one": "Cart ({{count}} item)",
-    "cart_other": "Cart ({{count}} items)"
+    "cart_other": "Cart ({{count}} items)",
+    "gift": "Gift an album"
   },
   "landing": {
     "hero": {
@@ -244,6 +245,21 @@
       "delivered": "Delivered",
       "cancelled": "Cancelled",
       "available": "Ready to download"
+    },
+    "credit": {
+      "title": "Your gift card credit",
+      "until": "Valid until {{date}} — taken off your next order.",
+      "create": "Create an album"
+    },
+    "gifts": {
+      "title": "Gift cards you offered",
+      "downloadError": "The card couldn't be downloaded. Please try again.",
+      "status": {
+        "active": "Not used yet",
+        "redeemed": "Used",
+        "cancelled": "Cancelled",
+        "pending_payment": "Awaiting payment"
+      }
     }
   },
   "orderDetail": {
@@ -375,7 +391,15 @@
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "per copy",
-      "pdfPrice": "or ${{price}} as a PDF to download"
+      "pdfPrice": "or ${{price}} as a PDF to download",
+      "gift": {
+        "offered": "Your gift card: a {{size}} album up to {{pages}} pages",
+        "offered_from": "Your gift from {{from}}: a {{size}} album up to {{pages}} pages",
+        "credit": "Your gift card credit: ${{amount}}",
+        "pay": "This album (delivery included) is ${{diff}} more than your gift: you'll pay the difference.",
+        "left": "Covered by your gift — ${{left}} will stay as credit on your account.",
+        "covered": "Fully covered by your gift."
+      }
     },
     "edit": {
       "title": "Make it yours.",
@@ -943,6 +967,10 @@
     },
     "cart": {
       "title": "Your cart"
+    },
+    "gift": {
+      "title": "Gift an album",
+      "description": "Give someone a photo album to create: choose the format, write a few words, and send them a gift card."
     }
   },
   "coverPanel": {
@@ -1251,6 +1279,60 @@
     "problem": {
       "already_ordered": "Already ordered in this version: please remove it.",
       "no_pages": "This album has no pages yet: please finish it or remove it."
+    },
+    "payment": {
+      "title": "Payment",
+      "amount": "To pay now: {{amount}}",
+      "notYet": "Online payment isn't set up yet: your gift card is activated without payment for now."
+    },
+    "credit": "Gift card credit",
+    "creditLeft": "{{amount}} of credit stays on your account for a next order.",
+    "gift": {
+      "title": "Gift card for {{name}}",
+      "detail": "A {{size}} album up to {{pages}} pages · delivery included · PDF"
+    }
+  },
+  "gift": {
+    "eyebrow": "Gift card",
+    "title": "Gift an album",
+    "subtitle": "Choose the album you're offering and write a few words: you get a gift card as a PDF, to print or send. Whoever receives it creates their own album with their photos — delivery in Lebanon included.",
+    "haveCode": "I received a gift card",
+    "priceNote": "Price of the album, delivery included (${{shipping}}). If they choose a bigger album, they pay the difference; a smaller one leaves them credit.",
+    "recipient": "For",
+    "recipientPlaceholder": "Their first name",
+    "message": "Your message (optional)",
+    "messagePlaceholder": "Happy birthday! For all our memories…",
+    "from": "From",
+    "cardPrice": "Gift card",
+    "pdfNote": "You'll receive the card by email as a PDF, right after ordering. Valid for 12 months.",
+    "preview": "Preview",
+    "error": "Something went wrong. Please try again.",
+    "card": {
+      "eyebrow": "GIFT CARD",
+      "for": "A photo album for you, {{name}}",
+      "forAnonymous": "A photo album for you",
+      "what": "A {{size}} album, up to {{pages}} pages · delivery in Lebanon included",
+      "code": "YOUR CODE",
+      "how": "Create your album on everbook-album.com/gift and enter this code.",
+      "valid": "Valid until {{date}}"
+    },
+    "redeem": {
+      "eyebrow": "Gift card received",
+      "title": "Use your gift card",
+      "subtitle": "Enter the code written on your card: the album is added to your account, then you create it with your photos.",
+      "use": "Use my card",
+      "done": "Your gift card is ready",
+      "done_from": "A gift from {{from}}!",
+      "doneBody": "An album {{size}} up to {{pages}} pages, delivery included. Your credit: ${{credit}} — taken off your order.",
+      "create": "Create my album",
+      "errors": {
+        "not_found": "This code doesn't exist — please check it.",
+        "used": "This gift card has already been used.",
+        "expired": "This gift card has expired.",
+        "cancelled": "This gift card was cancelled.",
+        "not_paid": "This gift card can't be used yet.",
+        "other": "This code can't be used. Please try again."
+      }
     }
   }
 }
