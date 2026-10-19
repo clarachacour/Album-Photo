@@ -19,6 +19,7 @@ from app.services.email import (
 )
 from app.services.backup import backup_database
 from app.services.delivery import sync_all_deliveries
+from app.services.print_groups import flush_printer_queue
 from app.services.storage import delete_object
 from app.core.executors import run_email
 
@@ -202,10 +203,14 @@ async def internal_backup(x_cleanup_secret: str = Header(None)):
 # ---------- Wakilni deliveries (Cloud Scheduler, e.g. every 30 minutes) ----------
 @router.post("/internal/sync-deliveries")
 async def internal_sync_deliveries(x_cleanup_secret: str = Header(None)):
-    """Follows every Wakilni delivery still on its way (see
-    services/delivery.py): shipped and delivered emails, alerts to the admin."""
+    """Sends the printer the albums whose grouping wait is over (see
+    services/print_groups.py), then follows every Wakilni delivery still on
+    its way (see services/delivery.py): shipped and delivered emails,
+    alerts to the admin."""
     if not CLEANUP_SECRET:
         raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
     if x_cleanup_secret != CLEANUP_SECRET:
         raise HTTPException(status_code=401, detail="Not authorized")
-    return await sync_all_deliveries()
+    # The printer's emails waiting to group a customer's albums go first.
+    printer_emails = await flush_printer_queue()
+    return {**(await sync_all_deliveries()), "printer_emails": printer_emails}

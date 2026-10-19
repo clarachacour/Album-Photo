@@ -130,8 +130,9 @@ def split_name(full_name: str) -> tuple:
 
 def waybill(order: dict) -> str:
     """Our reference for the order at Wakilni (required by them, as text):
-    the order number, the same the printer and the customer see."""
-    return order_number(order)
+    the order number, the same the printer and the customer see — for
+    albums delivered together, the group's (the number on the package)."""
+    return order_number({"id": order.get("print_group") or order["id"]})
 
 
 def cash_due(order: dict) -> int:
@@ -144,47 +145,63 @@ def cash_due(order: dict) -> int:
     return int(order.get("total_price_cents", 0))
 
 
-def delivery_payload(order: dict, customer: dict) -> dict:
-    """The "add delivery" body for one of our printed orders."""
-    address = order.get("shipping_address") or {}
+def _paid(order: dict) -> bool:
+    return order.get("status") == "paid" or any(h.get("status") == "paid" for h in order.get("status_history") or [])
+
+
+def delivery_payload(order, customer: dict) -> dict:
+    """The "add delivery" body for one of our printed orders — or for a
+    customer's orders delivered together (a list, lead first, see
+    services/print_groups.py): one package, the lead's number on it."""
+    orders = order if isinstance(order, list) else [order]
+    lead = orders[0]
+    address = lead.get("shipping_address") or {}
     first, last = split_name(address.get("full_name"))
-    paid = order.get("status") == "paid" or any(h.get("status") == "paid" for h in order.get("status_history") or [])
+    # Already paid (marked so in the admin): nothing to collect for it.
+    # Otherwise the courier collects what's due in cash (see cash_due).
+    due = sum(cash_due(o) for o in orders if not _paid(o))
     directions = ", ".join(x for x in (address.get("street"), address.get("city"), address.get("additional_info")) if x)
+    numbers = ", ".join(order_number(o) for o in orders)
     return {
         "get_order_details": False,
         "get_barcode": False,
-        "waybill": waybill(order),
-        "receiver_id": _number(order.get("user_id") or order["id"]),
+        "waybill": waybill(lead),
+        "receiver_id": _number(lead.get("user_id") or lead["id"]),
         "receiver_first_name": first,
         "receiver_last_name": last,
         "receiver_phone_number": address.get("phone") or "",
         "receiver_email": customer.get("email") or "",
-        "receiver_location_id": _number(order["id"]),
+        "receiver_location_id": _number(lead["id"]),
         "receiver_building": address.get("building") or "",
         "receiver_directions": directions,
         "receiver_area": address.get("area") or address.get("city") or "",
         "currency": CURRENCY_USD,
-        # Already paid (marked so in the admin): nothing to collect.
-        # Otherwise the courier collects what's due in cash (see cash_due).
-        "cash_collection_type_id": COLLECTION_PAID if paid or not cash_due(order) else COLLECTION_ON_DELIVERY,
-        "collection_amount": 0 if paid else round(cash_due(order) / 100, 2),
-        "note": f"Everbook order {order_number(order)} — photo album, keep flat and dry.",
+        "cash_collection_type_id": COLLECTION_ON_DELIVERY if due else COLLECTION_PAID,
+        "collection_amount": round(due / 100, 2),
+        "note": (
+            f"Everbook order {numbers} — photo album, keep flat and dry."
+            if len(orders) == 1 else
+            f"Everbook order {waybill(lead)} — {len(orders)} photo albums ({numbers}) in one package, keep flat and dry."
+        ),
         "car_needed": False,
         "is_express": False,
         "packages": [
             {
-                "quantity": int(order.get("quantity") or 1),
-                "type_id": PACKAGE_TYPE.get(order.get("size"), 58),
-                "name": f"Photo album — {order.get('album_title') or 'Everbook'}"[:255],
-                "sku": order_number(order),
+                "quantity": int(o.get("quantity") or 1),
+                "type_id": PACKAGE_TYPE.get(o.get("size"), 58),
+                "name": f"Photo album — {o.get('album_title') or 'Everbook'}"[:255],
+                "sku": order_number(o),
             }
+            for o in orders
         ],
     }
 
 
-def create_delivery(order: dict, customer: dict) -> dict:
+def create_delivery(order, customer: dict) -> dict:
     """Start bulk (pickup at the print shop), add the delivery, end bulk.
-    Returns what to keep on the order."""
+    `order` may be a group of orders (a list, lead first): one delivery.
+    Returns what to keep on the order(s)."""
+    lead = order[0] if isinstance(order, list) else order
     pickup = {"location_id": WAKILNI_PICKUP_LOCATION_ID, "floor": WAKILNI_PICKUP_FLOOR, "area": WAKILNI_PICKUP_AREA}
     if WAKILNI_PICKUP_LATITUDE and WAKILNI_PICKUP_LONGITUDE:
         pickup.update(latitude=WAKILNI_PICKUP_LATITUDE, longitude=WAKILNI_PICKUP_LONGITUDE)
@@ -209,7 +226,7 @@ def create_delivery(order: dict, customer: dict) -> dict:
         "provider": "wakilni",
         "bulk_id": bulk_id,
         "delivery_id": delivery_id,
-        "waybill": waybill(order),
+        "waybill": waybill(lead),
         "tracking_id": _field(added, "tracking_id"),
         "tracking_url": _field(added, "tracking_url"),
         "pickup_note": WAKILNI_PICKUP_DIRECTIONS,

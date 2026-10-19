@@ -543,16 +543,20 @@ def printer_ready_url(order_id: str, token: str) -> str:
     return f"{FRONTEND_URL}/printer/{order_id}?token={token}"
 
 
-def send_printer_order_email(order: dict):
-    """Sent automatically the moment an order's PDF finishes generating.
-    Carries a signed download link (not the file itself — a full-
-    resolution album PDF can easily be tens of MB, well past what many
-    inboxes accept as an attachment) and a signed "ready for delivery"
-    link the printer clicks once the physical book is done, which is what
-    actually notifies the delivery company — see send_delivery_pickup_email."""
+def send_printer_order_email(order: dict, group: list = None):
+    """Sent once an order's PDF is made (see services/print_groups.py: a
+    customer's albums ordered together come in one email, `group`, lead
+    first). Carries a signed download link per album (not the files — a
+    full-resolution album PDF can easily be tens of MB, past what many
+    inboxes accept) and one signed "ready for delivery" link the printer
+    opens once the books are done, which is what notifies the delivery
+    company — see send_delivery_pickup_email."""
+    group = group or [order]
     if not PRINTER_EMAIL:
         logger.warning(f"PRINTER_EMAIL non configuré — email d'impression non envoyé pour la commande {order['id']}")
         return
+    if len(group) > 1:
+        return _send_printer_group_email(group)
     download_token = sign_order_action(order["id"], "download")
     ready_token = sign_order_action(order["id"], "ready")
     # Links on the site's own address, not the server's (…run.app): mail
@@ -576,21 +580,10 @@ def send_printer_order_email(order: dict):
     )
     # Two calls to action here, not one — the shared wrapper's single
     # cta_label/cta_url slot only fits one, so both buttons are built by
-    # hand instead, matching the wrapper's own button styling (same
-    # colors, same shape) for visual consistency rather than passing a
-    # cta to the wrapper and losing the second action.
-    two_button_html = f"""
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px 0 0;">
-          <tr><td style="background-color:{_EMAIL_INK}; border-radius:2px;">
-            <a href="{download_url}" style="display:inline-block; padding:14px 28px; color:{_EMAIL_PAPER}; text-decoration:none; font-family:{_EMAIL_SANS}; font-size:13px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">Download print-ready PDF</a>
-          </td></tr>
-        </table>
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 14px 0 0;">
-          <tr><td style="background-color:{_EMAIL_CORAL}; border-radius:2px;">
-            <a href="{ready_url}" style="display:inline-block; padding:14px 28px; color:{_EMAIL_PAPER}; text-decoration:none; font-family:{_EMAIL_SANS}; font-size:13px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">Mark ready for delivery</a>
-          </td></tr>
-        </table>
-    """
+    # hand instead, matching the wrapper's own button styling.
+    two_button_html = _printer_button(download_url, "Download print-ready PDF", _EMAIL_INK, "28px") + _printer_button(
+        ready_url, "Mark ready for delivery", _EMAIL_CORAL, "14px"
+    )
     html_body = _email_wrapper(
         preheader=f"New book to print — {_h(order.get('album_title', 'Album'))}",
         title="New book to print.",
@@ -605,7 +598,59 @@ def send_printer_order_email(order: dict):
     )
     send_email(PRINTER_EMAIL, subject, body, html_body=html_body)
 
-def send_delivery_pickup_email(order: dict):
+
+def _printer_button(url: str, label: str, color: str, margin_top: str) -> str:
+    return f"""
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: {margin_top} 0 0;">
+          <tr><td style="background-color:{color}; border-radius:2px;">
+            <a href="{url}" style="display:inline-block; padding:14px 28px; color:{_EMAIL_PAPER}; text-decoration:none; font-family:{_EMAIL_SANS}; font-size:13px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">{label}</a>
+          </td></tr>
+        </table>
+    """
+
+
+def _send_printer_group_email(group: list):
+    """Several albums for one customer: printed, packed together in one
+    package (the lead's number on it) and marked ready with one click."""
+    lead = group[0]
+    number = order_number(lead)
+    ready_url = printer_ready_url(lead["id"], sign_order_action(lead["id"], "ready"))
+    books = sum(int(o.get("quantity") or 1) for o in group)
+    subject = f"New books to print — {len(group)} albums, one package ({number})"
+    lines, rows = [], []
+    for i, o in enumerate(group, 1):
+        url = printer_download_url(o["id"], sign_order_action(o["id"], "download"))
+        lines.append(
+            f"{i}. {o.get('album_title', 'Album')} ({order_number(o)}) — {o.get('size')} · {o.get('orientation')} · quantity {o.get('quantity', 1)}\n"
+            f"   Download the print-ready PDF: {url}"
+        )
+        rows.append(
+            f"<p style=\"margin:18px 0 0;\"><strong>{i}. {_h(o.get('album_title', 'Album'))}</strong> ({order_number(o)})<br>"
+            f"{o.get('size')} · {o.get('orientation')} · Quantity: {o.get('quantity', 1)}<br>"
+            f'<a href="{url}">Download print-ready PDF</a></p>'
+        )
+    body = (
+        f"New order to print: {len(group)} albums for the same customer, delivered together.\n\n"
+        f"ONE PACKAGE — ORDER NUMBER: {number}\n"
+        f"Please put all {books} books in one package and write this number on it: the courier identifies it with it.\n\n"
+        + "\n\n".join(lines)
+        + f"\n\nOnce they're all printed and ready for the courier to collect, open this page and confirm (once for all):\n{ready_url}"
+    )
+    html_body = _email_wrapper(
+        preheader=f"New books to print — {len(group)} albums, one package",
+        title="New books to print.",
+        body_html=(
+            f"<p style=\"font-size:22px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">One package — order number: {number}</p>"
+            f"<p style=\"color:{_EMAIL_MUTED}; margin:0 0 18px;\">{len(group)} albums for the same customer, delivered together. "
+            f"Please put all {books} books in one package and write this number on it: the courier identifies it with it.</p>"
+            + "".join(rows)
+            + f"<p style=\"margin:28px 0 0;\">Once they're all printed, confirm once for all:</p>"
+            + _printer_button(ready_url, "Mark all ready for delivery", _EMAIL_CORAL, "14px")
+        ),
+    )
+    send_email(PRINTER_EMAIL, subject, body, html_body=html_body)
+
+def send_delivery_pickup_email(order: dict, group: list = None):
     """Sent the moment the printer clicks their "ready for delivery" link
     — the delivery company only ever needs the shipping details, never the
     PDF or any account/order-management access."""
@@ -613,6 +658,8 @@ def send_delivery_pickup_email(order: dict):
         logger.warning(f"DELIVERY_EMAIL non configuré — email de livraison non envoyé pour la commande {order['id']}")
         return
     addr = order.get("shipping_address") or {}
+    # Albums ordered together (see services/print_groups.py): one package.
+    quantity = sum(int(o.get("quantity") or 1) for o in (group or [order]))
     subject = f"Ready for pickup — {order.get('album_title', 'Album')} ({order_number(order)})"
     body = (
         f"A book is ready for pickup and delivery.\n\n"
@@ -624,7 +671,7 @@ def send_delivery_pickup_email(order: dict):
         + f"\n{addr.get('city', '')}\n"
         f"Phone: {addr.get('phone', '')}\n"
         + (f"Notes: {addr.get('additional_info')}\n" if addr.get("additional_info") else "")
-        + f"\nQuantity: {order.get('quantity', 1)}"
+        + f"\nQuantity: {quantity}"
     )
     html_body = _email_wrapper(
         preheader=f"Ready for pickup — {_h(order.get('album_title', 'Album'))}",
@@ -638,7 +685,7 @@ def send_delivery_pickup_email(order: dict):
             f"{_h(addr.get('city', ''))}<br>"
             f"Phone: {_h(addr.get('phone', ''))}</p>"
             + (f"<p><strong>Notes:</strong> {_h(addr.get('additional_info'))}</p>" if addr.get("additional_info") else "")
-            + f"<p><strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
+            + f"<p><strong>Quantity:</strong> {quantity}</p>"
         ),
     )
     send_email(DELIVERY_EMAIL, subject, body, html_body=html_body)

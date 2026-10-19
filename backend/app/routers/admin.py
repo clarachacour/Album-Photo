@@ -25,6 +25,7 @@ from app.services.orders import (
     status_sequence,
 )
 from app.services import delivery as deliveries
+from app.services.print_groups import flush_printer_queue, group_of
 from app.services import wakilni
 from app.services import printer_statement
 from app.config import BACKEND_URL
@@ -201,7 +202,12 @@ async def admin_resend_printer_email(order_id: str, user: dict = Depends(get_cur
         raise HTTPException(status_code=400, detail="A digital album isn't printed: there's no printer email")
     if not order.get("pdf_ready") or not order.get("pdf_path"):
         raise HTTPException(status_code=400, detail="This order's PDF is not ready yet — regenerate it first")
-    await run_email(send_printer_order_email, order)
+    if order.get("printer_pending_at"):
+        # Still waiting to be grouped: sent now, with whatever is grouped.
+        await flush_printer_queue(force_order_id=order_id)
+    else:
+        group = await group_of(order)
+        await run_email(send_printer_order_email, group[0], group)
     return {"sent": True}
 
 # Which customer email (if any) fires automatically when an order moves

@@ -74,7 +74,7 @@ def courier(client, db, monkeypatch):
     monkeypatch.setattr(wakilni.requests, "get", fake.get)
 
     sent = {"courier": [], "problem": [], "shipped": [], "delivered": []}
-    monkeypatch.setattr(delivery, "send_delivery_pickup_email", lambda order: sent["courier"].append(order["id"]))
+    monkeypatch.setattr(delivery, "send_delivery_pickup_email", lambda order, group=None: sent["courier"].append(order["id"]))
     monkeypatch.setattr(delivery, "send_delivery_problem_email", lambda order, problem: sent["problem"].append(problem))
     monkeypatch.setattr(delivery, "send_order_shipped_email", lambda to, name, order: sent["shipped"].append(order["delivery"]["tracking_url"]))
     monkeypatch.setattr(delivery, "send_order_delivered_feedback_email", lambda to, name, order: sent["delivered"].append(order["id"]))
@@ -82,7 +82,9 @@ def courier(client, db, monkeypatch):
     monkeypatch.setattr(orders, "render_album_pdf_sync", lambda *a: b"%PDF")
     monkeypatch.setattr(orders, "put_object", lambda *a, **k: {"path": a[0]})
     monkeypatch.setattr(orders, "delete_object", lambda *a, **k: None)
-    monkeypatch.setattr(orders, "send_printer_order_email", lambda order: None)
+    from app.services import print_groups
+
+    monkeypatch.setattr(print_groups, "send_printer_order_email", lambda order, group=None: sent.setdefault("printer", []).append([o["id"] for o in (group or [order])]))
     monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda *a: None)
 
     _, customer = _signup(client, db=db)

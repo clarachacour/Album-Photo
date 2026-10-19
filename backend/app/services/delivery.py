@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from app.core.executors import run_blocking, run_email
 from app.db import db
 from app.services import wakilni
+from app.services.print_groups import group_of
 from app.services.email import (
     send_delivery_pickup_email,
     send_delivery_problem_email,
@@ -48,27 +49,37 @@ async def _customer(order: dict) -> dict:
 async def dispatch_delivery(order_id: str) -> dict:
     """The book is ready at the printer: a Wakilni delivery is created (once),
     or, without Wakilni, the courier is emailed. If Wakilni refuses, the
-    courier is emailed too and the admin is told. Returns the order."""
+    courier is emailed too and the admin is told. Albums ordered together
+    (see services/print_groups.py) get one delivery between them. Returns
+    the order."""
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         return {}
+    group = await group_of(order)
+    lead = group[0]
+    ids = [o["id"] for o in group]
     if not wakilni.configured():
-        await run_email(send_delivery_pickup_email, order)
+        await run_email(send_delivery_pickup_email, lead, group)
         return order
-    if (order.get("delivery") or {}).get("delivery_id"):
-        return order  # already created
+    existing = next(((o.get("delivery") or {}) for o in group if (o.get("delivery") or {}).get("delivery_id")), None)
+    if existing:
+        # Already created (for the group): every album of it follows it.
+        await db.orders.update_many({"id": {"$in": ids}, "delivery.delivery_id": {"$exists": False}}, {"$set": {"delivery": existing, "tracking_number": existing.get("tracking_id")}})
+        return await db.orders.find_one({"id": order_id}, {"_id": 0})
     try:
-        created = await run_blocking(wakilni.create_delivery, order, await _customer(order))
+        created = await run_blocking(wakilni.create_delivery, group if len(group) > 1 else lead, await _customer(lead))
     except Exception as e:
-        logger.error(f"Commande {order_id} : livraison Wakilni non créée : {e}")
-        await db.orders.update_one({"id": order_id}, {"$set": {"delivery": {"provider": "wakilni", "error": str(e)[:500], "at": _now()}}})
-        order = await db.orders.find_one({"id": order_id}, {"_id": 0})
-        await run_email(send_delivery_problem_email, order, f"the Wakilni delivery couldn't be created ({str(e)[:200]})")
-        await run_email(send_delivery_pickup_email, order)  # the courier still hears about it
-        return order
+        logger.error(f"Commande {lead['id']} : livraison Wakilni non créée : {e}")
+        await db.orders.update_many({"id": {"$in": ids}}, {"$set": {"delivery": {"provider": "wakilni", "error": str(e)[:500], "at": _now()}}})
+        lead = await db.orders.find_one({"id": lead["id"]}, {"_id": 0})
+        await run_email(send_delivery_problem_email, lead, f"the Wakilni delivery couldn't be created ({str(e)[:200]})")
+        await run_email(send_delivery_pickup_email, lead, group)  # the courier still hears about it
+        return await db.orders.find_one({"id": order_id}, {"_id": 0})
     created.update(created_at=_now(), status_code=wakilni.PENDING, status_label="Pending")
-    await db.orders.update_one({"id": order_id}, {"$set": {"delivery": created, "tracking_number": created.get("tracking_id")}})
-    logger.info(f"Commande {order_id} : livraison Wakilni {created.get('delivery_id')} créée")
+    if len(group) > 1:
+        created["order_ids"] = ids
+    await db.orders.update_many({"id": {"$in": ids}}, {"$set": {"delivery": created, "tracking_number": created.get("tracking_id")}})
+    logger.info(f"Commande(s) {', '.join(ids)} : livraison Wakilni {created.get('delivery_id')} créée")
     return await db.orders.find_one({"id": order_id}, {"_id": 0})
 
 
@@ -160,8 +171,9 @@ async def cancel_delivery(order_id: str, reason: str) -> dict:
     if not delivery.get("delivery_id"):
         return order or {}
     await run_blocking(wakilni.cancel_delivery, delivery["delivery_id"], reason)
-    await db.orders.update_one(
-        {"id": order_id},
+    # Every album of the delivery (albums ordered together share it).
+    await db.orders.update_many(
+        {"delivery.delivery_id": delivery["delivery_id"]},
         {"$set": {"delivery": {"provider": "wakilni", "cancelled": {**delivery, "at": _now(), "reason": reason}}}},
     )
     return await db.orders.find_one({"id": order_id}, {"_id": 0})

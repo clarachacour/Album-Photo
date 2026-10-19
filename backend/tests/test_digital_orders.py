@@ -27,7 +27,9 @@ def shop(client, db, monkeypatch):
     monkeypatch.setattr(orders, "render_album_pdf_sync", render)
     monkeypatch.setattr(orders, "put_object", lambda *a, **k: {"path": a[0]})
     monkeypatch.setattr(orders, "delete_object", lambda *a, **k: None)
-    monkeypatch.setattr(orders, "send_printer_order_email", lambda order: sent["printer"].append(order["id"]))
+    from app.services import print_groups
+
+    monkeypatch.setattr(print_groups, "send_printer_order_email", lambda order, group=None: sent["printer"].append(order["id"]))
     monkeypatch.setattr(orders, "send_digital_album_ready_email", lambda to, name, order: sent["ready"].append(order["id"]))
     monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda to, name, order: sent["confirmation"].append(order.get("kind")))
     monkeypatch.setattr(orders_router, "get_r2_client", lambda: type("R2", (), {"generate_presigned_url": lambda self, *a, **k: "https://r2/album.pdf"})())
@@ -84,6 +86,11 @@ def test_the_printed_book_after_the_digital_album_costs_the_difference(client, d
     printed = _order(client, shop, "print", shipping_address=ADDRESS).json()
     assert printed["kind"] == "print" and printed["credit_cents"] == digital["total_price_cents"]
     assert printed["total_price_cents"] == compute_order_price_cents("A4", 24) + SHIPPING_PRICE_CENTS - digital["total_price_cents"]
+    # The printer hears about it within the hour (see print_groups).
+    from app.services.print_groups import flush_printer_queue
+
+    assert shop["sent"]["printer"] == []
+    asyncio.run(flush_printer_queue(force_order_id=printed["id"]))
     assert shop["sent"]["printer"] == [printed["id"]]
     assert "digital=1" not in shop["sent"]["renders"][-1]
 

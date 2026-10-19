@@ -6,7 +6,8 @@ import { API } from "@/lib/api";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 /**
- * The print shop's page, opened from the email it gets for each order
+ * The print shop's page, opened from the email it gets for each order (or
+ * for a customer's albums ordered together: one package, one click)
  * (send_printer_order_email on the server). No account: the link carries a
  * signed token. The links in that email point here, on the site's own
  * address, rather than at the server's (mail filters drop emails linking to
@@ -25,6 +26,8 @@ export default function PrinterOrderPage() {
   const [info, setInfo] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Several albums for one customer, packed and delivered together.
+  const group = info?.albums?.length > 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -62,23 +65,52 @@ export default function PrinterOrderPage() {
         {error && <p className="text-sm text-red-600 mb-6">{error}</p>}
         {info && (
           <>
-            <p className="eyebrow text-[color:var(--coral)] mb-3">{t("printer.eyebrow")}</p>
-            <h1 className="font-serif-display text-4xl tracking-tight mb-2">{info.order_number}</h1>
-            <p className="text-[color:var(--ink)]/70 mb-1">{info.album_title}</p>
-            <p className="text-sm text-[color:var(--muted)] mb-8">
-              {info.size} · {info.orientation} · {t("printer.quantity", { count: info.quantity })}
-            </p>
-            <a
-              href={`${base}/download?${query}`}
-              className="flex items-center justify-center w-full bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-3 mb-4 hover:bg-[color:var(--coral)] transition-colors"
-            >
-              <span className="text-sm font-semibold tracking-widest uppercase">{t("printer.download")}</span>
-            </a>
+            {group ? (
+              <>
+                <p className="eyebrow text-[color:var(--coral)] mb-3">{t("printer.groupEyebrow", { count: info.albums.length })}</p>
+                <h1 className="font-serif-display text-4xl tracking-tight mb-2">{info.order_number}</h1>
+                <p className="text-sm text-[color:var(--ink)]/70 mb-6">{t("printer.groupHint")}</p>
+                {/* Each album with its own PDF. */}
+                <ol className="text-left mb-8 divide-y divide-[color:var(--ink)]/10 border-y border-[color:var(--ink)]/10" data-testid="printer-group">
+                  {info.albums.map((a, i) => (
+                    <li key={a.order_id} className="py-3 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{i + 1}. {a.album_title}</p>
+                        <p className="text-xs text-[color:var(--muted)]">
+                          {a.order_number} · {a.size} · {a.orientation} · {t("printer.quantity", { count: a.quantity })}
+                        </p>
+                      </div>
+                      <a
+                        href={`${API}/order-actions/${encodeURIComponent(a.order_id)}/download?token=${encodeURIComponent(a.download_token)}`}
+                        className="shrink-0 text-xs font-semibold tracking-widest uppercase bg-[color:var(--ink)] text-[color:var(--paper)] px-3 py-2 hover:bg-[color:var(--coral)] transition-colors"
+                      >
+                        PDF
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow text-[color:var(--coral)] mb-3">{t("printer.eyebrow")}</p>
+                <h1 className="font-serif-display text-4xl tracking-tight mb-2">{info.order_number}</h1>
+                <p className="text-[color:var(--ink)]/70 mb-1">{info.album_title}</p>
+                <p className="text-sm text-[color:var(--muted)] mb-8">
+                  {info.size} · {info.orientation} · {t("printer.quantity", { count: info.quantity })}
+                </p>
+                <a
+                  href={`${base}/download?${query}`}
+                  className="flex items-center justify-center w-full bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-3 mb-4 hover:bg-[color:var(--coral)] transition-colors"
+                >
+                  <span className="text-sm font-semibold tracking-widest uppercase">{t("printer.download")}</span>
+                </a>
+              </>
+            )}
             {info.cancelled ? (
               <p className="text-sm text-red-600">{t("printer.cancelled")}</p>
             ) : info.ready ? (
               <p className="text-sm text-[color:var(--ink)]/80" data-testid="printer-ready-done">
-                {info.justMarked ? t("printer.marked") : t("printer.alreadyReady")}
+                {info.justMarked ? t(group ? "printer.allMarked" : "printer.marked") : t(group ? "printer.allAlreadyReady" : "printer.alreadyReady")}
               </p>
             ) : (
               <>
@@ -90,9 +122,9 @@ export default function PrinterOrderPage() {
                   data-testid="printer-mark-ready"
                 >
                   {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span className="text-sm font-semibold tracking-widest uppercase">{t("printer.markReady")}</span>
+                  <span className="text-sm font-semibold tracking-widest uppercase">{t(group ? "printer.markAllReady" : "printer.markReady")}</span>
                 </button>
-                <p className="text-xs text-[color:var(--muted)] mt-3">{t("printer.markReadyHint")}</p>
+                <p className="text-xs text-[color:var(--muted)] mt-3">{t(group ? "printer.markAllReadyHint" : "printer.markReadyHint")}</p>
               </>
             )}
           </>

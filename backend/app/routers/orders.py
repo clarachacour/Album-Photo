@@ -11,10 +11,11 @@ from pymongo.errors import DuplicateKeyError
 
 from app.config import R2_BUCKET_NAME
 from app.core.auth import get_current_user
-from app.core.signed_links import verify_order_action
+from app.core.signed_links import sign_order_action, verify_order_action
 from app.db import db
 from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.delivery import dispatch_delivery
+from app.services.print_groups import group_of
 from app.core.order_number import order_number
 from app.services import pricing
 from app.services.email import printer_ready_url, send_order_confirmation_email, send_team_order_update_email
@@ -181,14 +182,30 @@ async def order_action_info(order_id: str, token: str = Query(None)):
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    # Albums ordered together: one package, each with its own PDF (the
+    # package goes on even if the group's first order was cancelled).
+    group = await group_of(order)
+    others = [o for o in group if o["id"] != order_id]
     return {
         "order_number": order_number(order),
         "album_title": order.get("album_title", "Album"),
         "size": order.get("size"),
         "orientation": order.get("orientation"),
         "quantity": order.get("quantity", 1),
-        "ready": order["status"] in ("ready_for_delivery", "shipped", "delivered"),
-        "cancelled": order["status"] == "cancelled",
+        "ready": all(o["status"] in ("ready_for_delivery", "shipped", "delivered") for o in group),
+        "cancelled": order["status"] == "cancelled" and not others,
+        "albums": [
+            {
+                "order_id": o["id"],
+                "order_number": order_number(o),
+                "album_title": o.get("album_title", "Album"),
+                "size": o.get("size"),
+                "orientation": o.get("orientation"),
+                "quantity": o.get("quantity", 1),
+                "download_token": sign_order_action(o["id"], "download"),
+            }
+            for o in group
+        ] if len(group) > 1 else [],
     }
 
 @router.post("/order-actions/{order_id}/ready")
@@ -201,19 +218,25 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order["status"] == "cancelled":
+    # Albums ordered together are marked ready together: one delivery
+    # (still for the others when the group's first order was cancelled).
+    group = await group_of(order)
+    if order["status"] == "cancelled" and not [o for o in group if o["id"] != order_id]:
         raise HTTPException(status_code=409, detail="This order was cancelled")
-    if order["status"] != "ready_for_delivery":
+    newly_ready = [o for o in group if o["status"] not in ("ready_for_delivery", "shipped", "delivered")]
+    if newly_ready:
         now = datetime.now(timezone.utc).isoformat()
-        await db.orders.update_one(
-            {"id": order_id},
-            {"$set": {"status": "ready_for_delivery", "updated_at": now}, "$push": {"status_history": {"status": "ready_for_delivery", "at": now}}},
-        )
-        order["status"] = "ready_for_delivery"
+        for o in newly_ready:
+            await db.orders.update_one(
+                {"id": o["id"]},
+                {"$set": {"status": "ready_for_delivery", "updated_at": now}, "$push": {"status_history": {"status": "ready_for_delivery", "at": now}}},
+            )
         # A Wakilni delivery (or, without Wakilni, an email to the courier).
-        dispatched = await dispatch_delivery(order_id)
+        await dispatch_delivery(group[0]["id"])
         # The team hears about each book ready for pickup.
-        await run_email(send_team_order_update_email, dispatched or order, "ready")
+        for o in newly_ready:
+            fresh = await db.orders.find_one({"id": o["id"]}, {"_id": 0})
+            await run_email(send_team_order_update_email, fresh or o, "ready")
     # The order number only — nothing about the price on the printer's side.
     return {"order_number": order_number(order), "ready": True}
 

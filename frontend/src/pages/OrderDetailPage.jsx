@@ -157,7 +157,13 @@ export default function OrderDetailPage() {
                   )}
                 </div>
               )}
-              {!digital && order.shipping_price_cents != null && <div>{t("orderDetail.shipping")}: {formatPrice(order.shipping_price_cents, order.currency)}</div>}
+              {!digital && order.shipping_price_cents != null && (
+                <div>
+                  {t("orderDetail.shipping")}:{" "}
+                  {/* Delivered with the customer's other albums: paid once, on the first. */}
+                  {order.shipping_waived_cents > 0 ? t("orderDetail.shippingShared") : formatPrice(order.shipping_price_cents, order.currency)}
+                </div>
+              )}
               {order.credit_cents > 0 && !albumOffered(order) && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
               {/* A printed album is paid in cash to the courier (only the
                   delivery when the album is offered); a PDF has nothing to

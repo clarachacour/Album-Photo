@@ -18,9 +18,9 @@ from app.services.email import (
     send_digital_album_ready_email,
     send_pdf_generation_failed_email,
     send_order_in_production_email,
-    send_printer_order_email,
 )
 from app.services.pdf import render_album_pdf_sync
+from app.services.print_groups import queue_for_printer
 from app.services.photos import generate_print_variant, print_needs_conversion
 from app.services.storage import delete_object, put_object
 from app.services.tasks import enqueue_order_pdf, pdf_tasks_enabled
@@ -222,7 +222,10 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
                 {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
             )
             order["status"] = "printing"
-            await run_email(send_printer_order_email, order)
+            # The printer hears about it within the hour, with the
+            # customer's other albums ordered meanwhile (one package, one
+            # delivery — see services/print_groups.py).
+            await queue_for_printer(order_id)
             # …and the customer hears their book is being printed.
             customer = await db.users.find_one({"id": order.get("user_id")}, {"_id": 0, "email": 1, "name": 1})
             if customer and customer.get("email"):

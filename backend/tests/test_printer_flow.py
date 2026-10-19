@@ -34,6 +34,23 @@ def test_the_printer_gets_the_order_number_and_never_the_price(app, monkeypatch)
         assert "134" not in text and "67" not in text and "$" not in text
 
 
+def test_albums_ordered_together_come_in_one_printer_email(app, monkeypatch):
+    from app.services import email as email_module
+
+    monkeypatch.setattr(email_module, "PRINTER_EMAIL", "print@shop.test")
+    sent = _capture(monkeypatch, email_module)
+    second = _order(id="6a1b0000-1111-2222-3333-444455556666", album_title="Batroun", quantity=1)
+    email_module.send_printer_order_email(_order(), [_order(), second])
+    (to, subject, body, html), = sent
+    assert "2 albums, one package (EB-5F4C0509)" in subject
+    # Both albums, each with its PDF; one ready link (the lead's), for both.
+    assert "EB-6A1B0000" in body and "Batroun" in html and "all 3 books in one package" in body
+    assert body.count("/printer/5f4c0509-1111-2222-3333-444455556666/download") == 1
+    assert body.count("/printer/6a1b0000-1111-2222-3333-444455556666/download") == 1
+    assert "/printer/6a1b0000-1111-2222-3333-444455556666?" not in body
+    assert "$" not in body and "134" not in body
+
+
 def test_the_courier_email_has_the_order_number_and_no_price(app, monkeypatch):
     from app.services import email as email_module
 
