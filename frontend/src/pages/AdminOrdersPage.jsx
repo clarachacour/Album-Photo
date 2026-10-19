@@ -364,14 +364,16 @@ export default function AdminOrdersPage() {
                           <div className="mt-2 text-xs space-y-1" data-testid={`admin-delivery-${o.id}`}>
                             {o.delivery?.delivery_id ? (
                               <>
+                                {/* Wakilni's order number: the one on the package. */}
                                 <div>
-                                  Wakilni:{" "}
-                                  {o.delivery.tracking_url ? (
-                                    <a href={o.delivery.tracking_url} target="_blank" rel="noopener noreferrer" className="underline">
-                                      {o.delivery.tracking_id || o.delivery.delivery_id}
-                                    </a>
-                                  ) : (
-                                    o.delivery.delivery_id
+                                  Wakilni n° <span className="font-semibold">{o.delivery.delivery_id}</span>
+                                  {o.delivery.tracking_url && (
+                                    <>
+                                      {" · "}
+                                      <a href={o.delivery.tracking_url} target="_blank" rel="noopener noreferrer" className="underline">
+                                        {o.delivery.tracking_id ? `tracking ${o.delivery.tracking_id}` : "tracking"}
+                                      </a>
+                                    </>
                                   )}
                                 </div>
                                 <div className="text-[color:var(--muted)]">

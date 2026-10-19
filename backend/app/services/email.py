@@ -644,16 +644,18 @@ def send_printer_order_email(order: dict, group: list = None):
     subject = f"New book to print — {order.get('album_title', 'Album')} ({order_number(order)})"
     number = order_number(order)
     # No price anywhere in what the printer receives — only what's needed
-    # to print, and the order number the courier will ask for.
+    # to print. The number to write on the package is the courier's
+    # (Wakilni's order number): it only exists once the printer confirms,
+    # and the page shows it then.
     body = (
         f"New order to print.\n\n"
-        f"ORDER NUMBER: {number}\n"
-        f"Please write it on the package: the courier identifies the book with it.\n\n"
+        f"Reference: {number}\n"
+        f"Don't write anything on the package yet: the number to write on it is shown when you confirm below.\n\n"
         f"Album: {order.get('album_title', 'Album')}\n"
         f"Format: {order.get('size')} · {order.get('orientation')}\n"
         f"Quantity: {order.get('quantity', 1)}\n\n"
         f"Download the print-ready PDF:\n{download_url}\n\n"
-        f"Once printed and ready for the courier to collect, open this page and confirm:\n{ready_url}"
+        f"Once printed and packed, open this page and confirm — it then shows the number to write on the package:\n{ready_url}"
     )
     # Two calls to action here, not one — the shared wrapper's single
     # cta_label/cta_url slot only fits one, so both buttons are built by
@@ -665,8 +667,9 @@ def send_printer_order_email(order: dict, group: list = None):
         preheader=f"New book to print — {_h(order.get('album_title', 'Album'))}",
         title="New book to print.",
         body_html=(
-            f"<p style=\"font-size:22px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">Order number: {number}</p>"
-            f"<p style=\"color:{_EMAIL_MUTED}; margin:0 0 18px;\">Please write it on the package: the courier identifies the book with it.</p>"
+            f"<p style=\"font-size:18px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">Reference: {number}</p>"
+            f"<p style=\"color:{_EMAIL_MUTED}; margin:0 0 18px;\">Don't write anything on the package yet: once it's printed and packed, "
+            f"click \"Mark ready for delivery\" — the page then shows the number to write on it.</p>"
             f"<p><strong>Album:</strong> {_h(order.get('album_title', 'Album'))}<br>"
             f"<strong>Format:</strong> {order.get('size')} · {order.get('orientation')}<br>"
             f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
@@ -688,7 +691,8 @@ def _printer_button(url: str, label: str, color: str, margin_top: str) -> str:
 
 def _send_printer_group_email(group: list):
     """Several albums for one customer: printed, packed together in one
-    package (the lead's number on it) and marked ready with one click."""
+    package and marked ready with one click (which shows the courier's
+    number to write on it)."""
     lead = group[0]
     number = order_number(lead)
     ready_url = printer_ready_url(lead["id"], sign_order_action(lead["id"], "ready"))
@@ -708,20 +712,20 @@ def _send_printer_group_email(group: list):
         )
     body = (
         f"New order to print: {len(group)} albums for the same customer, delivered together.\n\n"
-        f"ONE PACKAGE — ORDER NUMBER: {number}\n"
-        f"Please put all {books} books in one package and write this number on it: the courier identifies it with it.\n\n"
+        f"ONE PACKAGE — reference: {number}\n"
+        f"Please put all {books} books in one package. Don't write anything on it yet: the number to write on it is shown when you confirm below.\n\n"
         + "\n\n".join(lines)
-        + f"\n\nOnce they're all printed and ready for the courier to collect, open this page and confirm (once for all):\n{ready_url}"
+        + f"\n\nOnce they're all printed and packed, open this page and confirm (once for all) — it then shows the number to write on the package:\n{ready_url}"
     )
     html_body = _email_wrapper(
         preheader=f"New books to print — {len(group)} albums, one package",
         title="New books to print.",
         body_html=(
-            f"<p style=\"font-size:22px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">One package — order number: {number}</p>"
+            f"<p style=\"font-size:18px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">One package — reference: {number}</p>"
             f"<p style=\"color:{_EMAIL_MUTED}; margin:0 0 18px;\">{len(group)} albums for the same customer, delivered together. "
-            f"Please put all {books} books in one package and write this number on it: the courier identifies it with it.</p>"
+            f"Please put all {books} books in one package. Don't write anything on it yet: the number to write on it is shown when you confirm.</p>"
             + "".join(rows)
-            + "<p style=\"margin:28px 0 0;\">Once they're all printed, confirm once for all:</p>"
+            + "<p style=\"margin:28px 0 0;\">Once they're all printed and packed, confirm once for all — the page then shows the number to write on the package:</p>"
             + _printer_button(ready_url, "Mark all ready for delivery", _EMAIL_CORAL, "14px")
         ),
     )

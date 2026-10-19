@@ -97,7 +97,9 @@ def test_opening_the_ready_link_does_not_mark_the_book_ready(client, db):
     from app.core.signed_links import sign_order_action
 
     oid = "5f4c0509-1111-2222-3333-444455556666"
-    asyncio.run(db.orders.insert_one(_order()))
+    # Its own album id (the test database is shared, and album + kind is unique).
+    asyncio.run(db.orders.delete_many({"id": oid}))
+    asyncio.run(db.orders.insert_one(_order(album_id="alb-ready-link", kind="print")))
     token = sign_order_action(oid, "ready")
     r = client.get(f"/api/order-actions/{oid}/ready?token={token}", follow_redirects=False)
     assert r.status_code in (302, 307) and f"/printer/{oid}?token={token}" in r.headers["location"]

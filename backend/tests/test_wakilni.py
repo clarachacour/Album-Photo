@@ -181,9 +181,11 @@ def test_problems_are_reported_to_the_admin_once(client, db, courier):
 def test_if_wakilni_refuses_the_courier_is_emailed_and_the_admin_told(client, db, courier):
     courier["fake"].fail_add = True
     order_id = courier["order"]["id"]
-    _ready(client, order_id)
+    res = _ready(client, order_id)
     order = _order(db, order_id)
     assert "receiver area" in order["delivery"]["error"]
+    # No Wakilni number: ours goes on the package (Wakilni has it as the waybill).
+    assert res.json()["package_number"] == f"EB-{order_id[:8].upper()}" and res.json()["package_number_from"] == "everbook"
     assert courier["sent"]["courier"] == [order_id] and len(courier["sent"]["problem"]) == 1
     assert "/api/v2/clients/end_bulk/77" in [p for _, p, _ in courier["fake"].calls]  # the empty pickup is closed
 
@@ -258,3 +260,15 @@ def test_wakilni_down_waits_for_the_next_round_and_alerts_only_after_hours(clien
     courier["fake"].status_logs = [{"status": "Confirmed", "status_code": 2, "created_at": "2026-10-19 09:00:00"}]
     assert asyncio.run(sync_all_deliveries())["checked"] >= 1
     assert asyncio.run(db.app_state.find_one({"id": "wakilni_outage"})) is None
+
+
+def test_the_printer_gets_wakilnis_order_number_to_write_on_the_package(client, db, courier):
+    order_id = courier["order"]["id"]
+    token = {"token": sign_order_action(order_id, "ready")}
+    # Not before the click: the Wakilni order doesn't exist yet.
+    assert "package_number" not in client.get(f"/api/order-actions/{order_id}/info", params=token).json()
+    res = _ready(client, order_id).json()
+    assert res["package_number"] == str(courier["fake"].delivery_id) and res["package_number_from"] == "wakilni"
+    # Still there when the page is opened again.
+    info = client.get(f"/api/order-actions/{order_id}/info", params=token).json()
+    assert info["ready"] and info["package_number"] == str(courier["fake"].delivery_id)

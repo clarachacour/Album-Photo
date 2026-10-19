@@ -128,6 +128,18 @@ async def order_action_ready_link(order_id: str, token: str = Query(None)):
         raise HTTPException(status_code=403, detail="Invalid or expired link")
     return RedirectResponse(printer_ready_url(order_id, token))
 
+def package_number(group: list) -> dict:
+    """The number the printer writes on the package: Wakilni's order number
+    (asked for by Wakilni), known once the delivery is created by the
+    printer's "ready" click. Without one (Wakilni not used, or it failed),
+    ours — Wakilni has it too, as the waybill."""
+    for o in group:
+        delivery_id = (o.get("delivery") or {}).get("delivery_id")
+        if delivery_id:
+            return {"package_number": str(delivery_id), "package_number_from": "wakilni"}
+    return {"package_number": order_number({"id": group[0].get("print_group") or group[0]["id"]}), "package_number_from": "everbook"}
+
+
 @router.get("/order-actions/{order_id}/info")
 async def order_action_info(order_id: str, token: str = Query(None)):
     """For the printer's page: the order number and whether it's already
@@ -141,14 +153,17 @@ async def order_action_info(order_id: str, token: str = Query(None)):
     # package goes on even if the group's first order was cancelled).
     group = await group_of(order)
     others = [o for o in group if o["id"] != order_id]
+    ready = all(o["status"] in ("ready_for_delivery", "shipped", "delivered") for o in group)
     return {
         "order_number": order_number(order),
         "album_title": order.get("album_title", "Album"),
         "size": order.get("size"),
         "orientation": order.get("orientation"),
         "quantity": order.get("quantity", 1),
-        "ready": all(o["status"] in ("ready_for_delivery", "shipped", "delivered") for o in group),
+        "ready": ready,
         "cancelled": order["status"] == "cancelled" and not others,
+        # Once ready: the number to write on the package.
+        **(package_number(group) if ready else {}),
         "albums": [
             {
                 "order_id": o["id"],
@@ -192,8 +207,11 @@ async def order_action_mark_ready(order_id: str, token: str = Query(None)):
         for o in newly_ready:
             fresh = await db.orders.find_one({"id": o["id"]}, {"_id": 0})
             await run_email(send_team_order_update_email, fresh or o, "ready")
-    # The order number only — nothing about the price on the printer's side.
-    return {"order_number": order_number(order), "ready": True}
+    # The number to write on the package — nothing about the price on the
+    # printer's side.
+    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})  # with its delivery now
+    group = await group_of(fresh or order)
+    return {"order_number": order_number(order), "ready": True, **package_number(group)}
 
 @router.get("/delivery/areas")
 async def delivery_areas(user: dict = Depends(get_current_user)):

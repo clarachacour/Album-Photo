@@ -50,7 +50,8 @@ export default function PrinterOrderPage() {
     try {
       const r = await fetch(`${base}/ready?${query}`, { method: "POST" });
       if (!r.ok) throw new Error(t("printer.error"));
-      setInfo((i) => ({ ...i, ready: true, justMarked: true }));
+      const data = await r.json().catch(() => ({}));
+      setInfo((i) => ({ ...i, ready: true, justMarked: true, package_number: data.package_number, package_number_from: data.package_number_from }));
     } catch (e) {
       setError(e.message || t("printer.error"));
     } finally {
@@ -67,9 +68,12 @@ export default function PrinterOrderPage() {
           <>
             {group ? (
               <>
-                <p className="eyebrow text-[color:var(--coral)] mb-3">{t("printer.groupEyebrow", { count: info.albums.length })}</p>
-                <h1 className="font-serif-display text-4xl tracking-tight mb-2">{info.order_number}</h1>
-                <p className="text-sm text-[color:var(--ink)]/70 mb-6">{t("printer.groupHint")}</p>
+                <p className="eyebrow text-[color:var(--coral)] mb-3">{t("printer.eyebrow")}</p>
+                <h1 className="font-serif-display text-4xl tracking-tight mb-1">{t("printer.groupEyebrow", { count: info.albums.length })}</h1>
+                {/* Our reference, small: the number written on the package
+                    is Wakilni's, shown once the books are marked ready. */}
+                <p className="text-xs text-[color:var(--muted)] mb-3">{t("printer.reference", { number: info.order_number })}</p>
+                <p className="text-sm text-[color:var(--ink)]/70 mb-6">{t(info.ready ? "printer.groupHintReady" : "printer.groupHint")}</p>
                 {/* Each album with its own PDF. */}
                 <ol className="text-left mb-8 divide-y divide-[color:var(--ink)]/10 border-y border-[color:var(--ink)]/10" data-testid="printer-group">
                   {info.albums.map((a, i) => (
@@ -93,8 +97,8 @@ export default function PrinterOrderPage() {
             ) : (
               <>
                 <p className="eyebrow text-[color:var(--coral)] mb-3">{t("printer.eyebrow")}</p>
-                <h1 className="font-serif-display text-4xl tracking-tight mb-2">{info.order_number}</h1>
-                <p className="text-[color:var(--ink)]/70 mb-1">{info.album_title}</p>
+                <h1 className="font-serif-display text-4xl tracking-tight mb-1">{info.album_title}</h1>
+                <p className="text-xs text-[color:var(--muted)] mb-2">{t("printer.reference", { number: info.order_number })}</p>
                 <p className="text-sm text-[color:var(--muted)] mb-8">
                   {info.size} · {info.orientation} · {t("printer.quantity", { count: info.quantity })}
                 </p>
@@ -109,9 +113,22 @@ export default function PrinterOrderPage() {
             {info.cancelled ? (
               <p className="text-sm text-red-600">{t("printer.cancelled")}</p>
             ) : info.ready ? (
-              <p className="text-sm text-[color:var(--ink)]/80" data-testid="printer-ready-done">
-                {info.justMarked ? t(group ? "printer.allMarked" : "printer.marked") : t(group ? "printer.allAlreadyReady" : "printer.alreadyReady")}
-              </p>
+              <>
+                {/* The number to write on the package: Wakilni's order
+                    number, which only exists once the book is marked ready. */}
+                {info.package_number && (
+                  <div className="border-2 border-[color:var(--ink)] bg-white px-6 py-6 mb-6" data-testid="printer-package-number">
+                    <p className="eyebrow mb-3">{t("printer.writeNumber")}</p>
+                    <p className="font-mono text-5xl sm:text-6xl font-bold tracking-wider break-all">{info.package_number}</p>
+                    <p className="text-xs text-[color:var(--muted)] mt-3">
+                      {t(info.package_number_from === "wakilni" ? "printer.writeNumberHint" : "printer.writeNumberFallback")}
+                    </p>
+                  </div>
+                )}
+                <p className="text-sm text-[color:var(--ink)]/80" data-testid="printer-ready-done">
+                  {info.justMarked ? t(group ? "printer.allMarked" : "printer.marked") : t(group ? "printer.allAlreadyReady" : "printer.alreadyReady")}
+                </p>
+              </>
             ) : (
               <>
                 <button
