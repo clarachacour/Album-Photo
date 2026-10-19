@@ -12,6 +12,7 @@ import { AppRoutes } from "@/App";
 export const PUBLIC_PAGES = {
   "/": "landing",
   "/faq": "faq",
+  "/gift": "gift",
   "/contact": "contact",
   "/terms": "terms",
   "/privacy": "privacy",

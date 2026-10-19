@@ -43,7 +43,9 @@ const escapeText = (s) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 function setMeta(html, attr, name, content) {
   const re = new RegExp(`(<meta ${attr}="${name}" content=")[^"]*(")`);
   if (!re.test(html)) throw new Error(`index.html has no <meta ${attr}="${name}">`);
-  return html.replace(re, `$1${escapeAttr(content)}$2`);
+  // A function, not a "$1…$2" string: a "$" in the text ("From $25") would
+  // be read as a group reference and cut the description short.
+  return html.replace(re, (_, start, end) => `${start}${escapeAttr(content)}${end}`);
 }
 
 function pageHtml(path, { html, title, description }) {
@@ -52,16 +54,47 @@ function pageHtml(path, { html, title, description }) {
   out = out.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
   // The page shows without JavaScript now: no "enable JavaScript" notice.
   out = out.replace(/\s*<noscript>[\s\S]*?<\/noscript>/, "");
-  out = out.replace(/<title>[^<]*<\/title>/, `<title>${escapeText(title)}</title>`);
+  out = out.replace(/<title>[^<]*<\/title>/, () => `<title>${escapeText(title)}</title>`);
   out = setMeta(out, "name", "description", description);
   out = setMeta(out, "property", "og:title", title);
   out = setMeta(out, "property", "og:description", description);
   if (siteUrl) {
     const url = siteUrl + (path === "/" ? "/" : path);
     out = setMeta(out, "property", "og:url", url);
-    out = out.replace("</head>", `  <link rel="canonical" href="${url}" />\n  </head>`);
+    out = out.replace("</head>", () => `  <link rel="canonical" href="${url}" />\n  </head>`);
+    // The home page tells search engines who Everbook is (the brand shown
+    // for a search on its name, with its logo).
+    if (path === "/") out = out.replace("</head>", () => `  <script type="application/ld+json">${JSON.stringify(brandData(siteUrl, description))}</script>\n  </head>`);
   }
   return out;
+}
+
+function brandData(siteUrl, description) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${siteUrl}/#organization`,
+        name: "Everbook",
+        alternateName: ["Everbook Album", "Everbook Lebanon"],
+        url: `${siteUrl}/`,
+        logo: `${siteUrl}/favicon.png`,
+        email: "orders@everbook-album.com",
+        description,
+        areaServed: { "@type": "Country", name: "Lebanon" },
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        name: "Everbook",
+        alternateName: "Everbook Album",
+        url: `${siteUrl}/`,
+        inLanguage: ["en", "fr"],
+        publisher: { "@id": `${siteUrl}/#organization` },
+      },
+    ],
+  };
 }
 
 writeFileSync(join(buildDir, "app.html"), template);

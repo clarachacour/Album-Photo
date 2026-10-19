@@ -9,9 +9,9 @@
 // never compete with the real site in search results.
 
 // Public pages listed in the sitemap.
-const PUBLIC_PATHS = ["/", "/faq", "/contact", "/terms", "/privacy", "/returns", "/shipping"];
+const PUBLIC_PATHS = ["/", "/gift", "/faq", "/contact", "/terms", "/privacy", "/returns", "/shipping"];
 // Pages behind a login or for machines: never worth indexing.
-const PRIVATE_PATHS = ["/dashboard", "/editor/", "/create", "/choose-template", "/order/", "/orders", "/account", "/admin/", "/print/", "/mobile-upload/", "/verify-email", "/reset-password", "/forgot-password"];
+const PRIVATE_PATHS = ["/dashboard", "/editor/", "/create", "/choose-template", "/order/", "/orders", "/cart", "/account", "/admin/", "/print/", "/mobile-upload/", "/verify-email", "/reset-password", "/forgot-password"];
 
 export function siteInfo(env = process.env) {
   const raw = env.REACT_APP_SITE_URL || (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : "");
