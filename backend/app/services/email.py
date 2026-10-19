@@ -479,52 +479,84 @@ def send_order_in_production_email(to_email: str, name: str, order: dict):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_order_shipped_email(to_email: str, name: str, order: dict):
-    order_url = f"{FRONTEND_URL}/orders/{order['id']}"
+def send_order_shipped_email(to_email: str, name: str, order: dict, group: list = None):
+    """The book is on its way — or, for albums delivered together (`group`,
+    see services/print_groups.py), all of them: one email for the package."""
+    group = group or [order]
+    many = len(group) > 1
+    order_url = f"{FRONTEND_URL}/orders" if many else f"{FRONTEND_URL}/orders/{order['id']}"
     tracking = order.get("tracking_number")
     # The courier's own tracking page, when the delivery is a Wakilni one.
     tracking_url = (order.get("delivery") or {}).get("tracking_url")
-    subject = "Your Everbook order is on its way"
+    subject = f"Your {len(group)} Everbook albums are on their way" if many else "Your Everbook order is on its way"
+    news = (
+        f"Good news — your {len(group)} books have shipped, together in one package!"
+        if many else
+        "Good news — your book has shipped!"
+    )
+    titles = [f"{o.get('album_title', 'Album')} ({order_number(o)})" for o in group]
     body = (
         f"Hi {name or ''},\n\n"
-        f"Good news — your book has shipped!\n\n"
+        f"{news}\n\n"
+        + ("".join(f"- {t}\n" for t in titles) + "\n" if many else "")
         + (f"Tracking number: {tracking}\n\n" if tracking else "")
         + (f"Follow the courier here:\n{tracking_url}\n\n" if tracking_url else "")
-        + f"You can follow its status here:\n{order_url}"
+        + f"You can follow {'them' if many else 'its status'} here:\n{order_url}"
     )
     html_body = _email_wrapper(
-        preheader="Good news — your book has shipped!",
+        preheader=news,
         title="Your order has shipped.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Good news — your book has shipped!</p>"
+            f"<p>{news}</p>"
+            + ("<ul>" + "".join(f"<li>{_h(t)}</li>" for t in titles) + "</ul>" if many else "")
             + (f"<p><strong>Tracking number:</strong> {_h(tracking)}</p>" if tracking else "")
             + (f'<p><a href="{_h(tracking_url)}">Follow the courier</a></p>' if tracking_url else "")
         ),
-        cta_label="Track your order",
+        cta_label="Track your orders" if many else "Track your order",
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_order_delivered_feedback_email(to_email: str, name: str, order: dict):
+def send_order_delivered_feedback_email(to_email: str, name: str, order: dict, group: list = None):
+    """Delivered: we ask how it turned out — for albums delivered together
+    (`group`), one email with a feedback link per album."""
+    group = group or [order]
+    many = len(group) > 1
     feedback_url = f"{FRONTEND_URL}/orders/{order['id']}/feedback"
     contact_url = f"{FRONTEND_URL}/contact"
-    subject = "How did your Everbook turn out?"
+    subject = "How did your Everbook albums turn out?" if many else "How did your Everbook turn out?"
+    arrived = (
+        f"Your {len(group)} books should have arrived by now — we hope you love them!"
+        if many else
+        "Your book should have arrived by now — we hope you love it!"
+    )
+    links = [(o.get("album_title", "Album"), f"{FRONTEND_URL}/orders/{o['id']}/feedback") for o in group]
     body = (
         f"Hi {name or ''},\n\n"
-        f"Your book should have arrived by now — we hope you love it!\n\n"
-        f"We'd love to hear what you thought:\n{feedback_url}\n\n"
-        f"If anything wasn't right, contact us instead:\n{contact_url}\n\n"
+        f"{arrived}\n\n"
+        + (
+            "We'd love to hear what you thought of each one:\n" + "".join(f"- {t}: {u}\n" for t, u in links) + "\n"
+            if many else
+            f"We'd love to hear what you thought:\n{feedback_url}\n\n"
+        )
+        + f"If anything wasn't right, contact us instead:\n{contact_url}\n\n"
         f"Thank you for printing with Everbook."
     )
     html_body = _email_wrapper(
-        preheader="Your book should have arrived by now — we hope you love it!",
-        title="How did your book turn out?",
+        preheader=arrived,
+        title="How did your books turn out?" if many else "How did your book turn out?",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Your book should have arrived by now — we hope you love it!</p>"
-            f"<p>We'd love to hear what you thought.</p>"
-            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If anything wasn't right, "
+            f"<p>{arrived}</p>"
+            + (
+                "<p>We'd love to hear what you thought of each one:</p><ul>"
+                + "".join(f'<li><a href="{_h(u)}">{_h(t)}</a></li>' for t, u in links)
+                + "</ul>"
+                if many else
+                "<p>We'd love to hear what you thought.</p>"
+            )
+            + f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If anything wasn't right, "
             f"<a href=\"{contact_url}\" style=\"color:{_EMAIL_MUTED};\">contact us</a> instead — "
             f"we'll get back to you directly.</p>"
         ),

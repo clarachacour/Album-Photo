@@ -59,7 +59,7 @@ def test_albums_ordered_together_go_to_the_printer_and_the_courier_together(clie
     assert sent_delivery["collection_amount"] == (lead["total_price_cents"] + other_album["total_price_cents"]) / 100
     for oid in (first["id"], second["id"]):
         order = _order(db, oid)
-        assert order["status"] == "ready_for_delivery" and order["delivery"]["delivery_id"] == 9001
+        assert order["status"] == "ready_for_delivery" and order["delivery"]["delivery_id"] == courier["fake"].delivery_id
     assert _order(db, elsewhere["id"])["status"] == "printing"  # not part of it
 
     # Cancelling the delivery cancels it for both albums.
@@ -98,3 +98,33 @@ def test_the_package_still_goes_if_the_first_order_is_cancelled(client, db, cour
     # The number written on the package stays the group's.
     assert len(adds) == 1 and adds[0]["waybill"] == f"EB-{first['id'][:8].upper()}"
     assert [p["sku"] for p in adds[0]["packages"]] == [f"EB-{second['id'][:8].upper()}"]
+
+
+def test_the_customer_gets_one_shipped_and_one_delivered_email_for_the_package(client, db, courier):  # noqa: F811
+    from app.services.delivery import sync_all_deliveries
+    from app.services.print_groups import flush_printer_queue
+
+    first = courier["order"]
+    second = _second_order(client, db, courier["customer"])
+    asyncio.run(flush_printer_queue(force_order_id=first["id"]))
+    _ready(client, first["id"])
+    sent, fake = courier["sent"], courier["fake"]
+    fake.status_logs = [{"status": "Processing", "status_code": 3, "created_at": "2026-10-20 10:00:00"}]
+    package = [first["id"], second["id"]]
+    mine = lambda groups: [g for g in groups if set(g) & set(package)]  # noqa: E731 (other tests' deliveries too)
+    asyncio.run(sync_all_deliveries())
+    assert mine(sent["shipped_groups"]) == [package]
+    assert all(_order(db, oid)["status"] == "shipped" for oid in package)
+    asyncio.run(sync_all_deliveries())  # nothing new: no second email
+    assert len(mine(sent["shipped_groups"])) == 1
+    fake.status_logs.insert(0, {"status": "Success", "status_code": 4, "created_at": "2026-10-20 15:00:00"})
+    asyncio.run(sync_all_deliveries())
+    assert mine(sent["delivered_groups"]) == [package]
+    assert all(_order(db, oid)["status"] == "delivered" for oid in package)
+    # Wakilni was asked once per round for the package, not once per album.
+    from app.services.delivery import sync_delivery
+
+    before = len([p for _, p, _ in fake.calls if p.endswith("/orders/status")])
+    asyncio.run(db.orders.update_many({"id": {"$in": package}}, {"$set": {"status": "shipped"}}))
+    asyncio.run(sync_delivery(first["id"]))
+    assert len([p for _, p, _ in fake.calls if p.endswith("/orders/status")]) == before + 1

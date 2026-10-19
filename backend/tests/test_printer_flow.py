@@ -108,3 +108,18 @@ def test_opening_the_ready_link_does_not_mark_the_book_ready(client, db):
     assert "price" not in str(info) and "Rita" not in str(info)
     assert client.get(f"/api/order-actions/{oid}/info?token=wrong").status_code == 403
     assert client.post(f"/api/order-actions/{oid}/ready?token=wrong").status_code == 403
+
+
+def test_one_shipped_and_one_delivered_email_for_albums_delivered_together(app, monkeypatch):
+    from app.services import email as email_module
+
+    sent = _capture(monkeypatch, email_module)
+    second = _order(id="6a1b0000-1111-2222-3333-444455556666", album_title="Batroun")
+    group = [_order(delivery={"tracking_url": "https://track.wakilni.com/WK1"}), second]
+    email_module.send_order_shipped_email("rita@example.com", "Rita", group[0], group)
+    email_module.send_order_delivered_feedback_email("rita@example.com", "Rita", group[0], group)
+    (shipped_subject, shipped, _), (delivered_subject, delivered, _) = [(s, b, h) for _, s, b, h in sent]
+    assert "2 Everbook albums are on their way" in shipped_subject
+    assert "Sicily (EB-5F4C0509)" in shipped and "Batroun (EB-6A1B0000)" in shipped and "https://track.wakilni.com/WK1" in shipped
+    assert "turn out" in delivered_subject
+    assert "/orders/5f4c0509-1111-2222-3333-444455556666/feedback" in delivered and "/orders/6a1b0000-1111-2222-3333-444455556666/feedback" in delivered

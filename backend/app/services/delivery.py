@@ -84,38 +84,56 @@ async def dispatch_delivery(order_id: str) -> dict:
 
 
 async def sync_delivery(order_id: str) -> dict:
-    """Asks Wakilni where the delivery is and follows it on the order:
-    on its way → shipped (email), delivered → delivered (email), a problem →
-    the admin is emailed (once per status)."""
+    """Asks Wakilni where the delivery is and follows it on the order — and
+    on the customer's other albums in the same package (albums ordered
+    together share one delivery): on its way → shipped, delivered →
+    delivered, one email to the customer for the whole package each time;
+    a problem → the admin is emailed (once per status)."""
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
     delivery = (order or {}).get("delivery") or {}
     if not delivery.get("delivery_id") or not wakilni.configured():
         return order or {}
+    members = await db.orders.find(
+        {"delivery.delivery_id": delivery["delivery_id"], "status": {"$ne": "cancelled"}}, {"_id": 0}
+    ).to_list(50) or [order]
+    members.sort(key=lambda o: (o["id"] != (o.get("print_group") or o["id"]), o.get("created_at") or ""))
+    ids = [o["id"] for o in members]
     status = await run_blocking(wakilni.delivery_status, delivery["delivery_id"])
     code, label = status.get("code"), status.get("label") or ""
-    await db.orders.update_one(
-        {"id": order_id},
+    await db.orders.update_many(
+        {"id": {"$in": ids}},
         {"$set": {"delivery.status_code": code, "delivery.status_label": label, "delivery.checked_at": _now()}},
     )
-    customer = None
-    if code == wakilni.PROCESSING and order["status"] in ("pending_payment", "paid", "processing", "printing", "ready_for_delivery"):
-        await _set_status(order_id, "shipped")
-        customer = await _customer(order)
-        fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
-        await run_email(send_order_shipped_email, customer.get("email"), customer.get("name"), fresh)
-    elif code == wakilni.SUCCESS and not status.get("rejected") and order["status"] != "delivered":
-        await _set_status(order_id, "delivered")
-        customer = await _customer(order)
-        fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
-        await run_email(send_order_delivered_feedback_email, customer.get("email"), customer.get("name"), fresh)
-        await run_email(send_team_order_update_email, fresh, "delivered")
+    customer = await _customer(members[0])
+    if code == wakilni.PROCESSING:
+        moving = [o for o in members if o["status"] in ("pending_payment", "paid", "processing", "printing", "ready_for_delivery")]
+        for o in moving:
+            await _set_status(o["id"], "shipped")
+        if moving:
+            fresh = await _fresh(moving)
+            await run_email(send_order_shipped_email, customer.get("email"), customer.get("name"), fresh[0], fresh)
+    elif code == wakilni.SUCCESS and not status.get("rejected"):
+        arrived = [o for o in members if o["status"] != "delivered"]
+        for o in arrived:
+            await _set_status(o["id"], "delivered")
+        if arrived:
+            fresh = await _fresh(arrived)
+            await run_email(send_order_delivered_feedback_email, customer.get("email"), customer.get("name"), fresh[0], fresh)
+            for o in fresh:
+                await run_email(send_team_order_update_email, o, "delivered")
     problem = "the customer refused the book" if code == wakilni.SUCCESS and status.get("rejected") else PROBLEM_STATUSES.get(code)
     alert_key = f"{code}:{label}"
     if problem and delivery.get("alerted") != alert_key:
-        await db.orders.update_one({"id": order_id}, {"$set": {"delivery.alerted": alert_key}})
-        fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+        await db.orders.update_many({"id": {"$in": ids}}, {"$set": {"delivery.alerted": alert_key}})
+        fresh = await db.orders.find_one({"id": ids[0]}, {"_id": 0})
         await run_email(send_delivery_problem_email, fresh, f"{problem} (Wakilni: {label or code})")
     return await db.orders.find_one({"id": order_id}, {"_id": 0})
+
+
+async def _fresh(orders: list) -> list:
+    """The orders as they are now, in the same order."""
+    found = {o["id"]: o for o in await db.orders.find({"id": {"$in": [o["id"] for o in orders]}}, {"_id": 0}).to_list(50)}
+    return [found[o["id"]] for o in orders if o["id"] in found]
 
 
 # Wakilni down for this long (every round failing): the admin hears about
@@ -131,9 +149,16 @@ async def sync_all_deliveries() -> dict:
         {"_id": 0, "id": 1},
     ).to_list(1000)
     checked, failed = 0, 0
+    seen = set()
     for o in orders:
+        if o["id"] in seen:
+            continue  # followed with another album of its package
         try:
-            await sync_delivery(o["id"])
+            synced = await sync_delivery(o["id"])
+            # The other albums of the same delivery were followed with it.
+            delivery_id = ((synced or {}).get("delivery") or {}).get("delivery_id")
+            if delivery_id:
+                seen.update(x["id"] for x in await db.orders.find({"delivery.delivery_id": delivery_id}, {"_id": 0, "id": 1}).to_list(50))
             checked += 1
         except wakilni.WakilniUnavailable as e:
             # Wakilni is down: the other deliveries would fail the same

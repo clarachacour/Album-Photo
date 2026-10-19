@@ -1,6 +1,7 @@
 """Wakilni deliveries: created when the printer marks a book ready,
 followed until delivered, with a fake Wakilni answering as documented."""
 import asyncio
+import itertools
 
 import pytest
 
@@ -12,6 +13,9 @@ ADDRESS = {"full_name": "Rita Khoury Haddad", "phone": "+961 3 123 456", "street
            "city": "Beirut", "area": "Hamra", "additional_info": "3rd floor"}
 
 
+_delivery_numbers = itertools.count()
+
+
 class FakeWakilni:
     """Answers like Wakilni's API and records what it was sent."""
 
@@ -21,6 +25,9 @@ class FakeWakilni:
         self.comments = []
         self.fail_add = False
         self.down = False
+        # Its own delivery number for each test: the test database is
+        # shared, and albums with the same delivery are followed together.
+        self.delivery_id = 9001 + next(_delivery_numbers)
 
     def request(self, method, url, json=None, params=None, headers=None, timeout=None):
         path = url.split("wakilni.test", 1)[1]
@@ -38,14 +45,14 @@ class FakeWakilni:
                 return _Res(422, {"message": "Could not add delivery order.", "errors": {"waybill": ["The waybill field is required."]}})
             if not isinstance(json["waybill"], str):
                 return _Res(422, {"message": "Could not add delivery order.", "errors": {"waybill": ["The waybill must be a string."]}})
-            return _Res(200, {"message": "Delivery order added", "delivery_id": 9001, "tracking_id": "WK123",
+            return _Res(200, {"message": "Delivery order added", "delivery_id": self.delivery_id, "tracking_id": "WK123",
                               "tracking_url": "https://track.wakilni.com/WK123", "packages": []})
         if "/end_bulk/" in path:
             return _Res(200, {"message": "Closed Bulk order", "bulk_id": 77})
         if path.endswith("/orders/status"):
             return _Res(200, {"success": True, "data": {"tracking_id": "WK123", "comments": self.comments, "logs": self.status_logs}})
         if path.endswith("/cancel"):
-            return _Res(200, {"message": "Order canceled", "delivery_id": 9001})
+            return _Res(200, {"message": "Order canceled", "delivery_id": self.delivery_id})
         return _Res(404, {"message": "unknown"})
 
     def get(self, url, params=None, timeout=None):
@@ -76,8 +83,8 @@ def courier(client, db, monkeypatch):
     sent = {"courier": [], "problem": [], "shipped": [], "delivered": []}
     monkeypatch.setattr(delivery, "send_delivery_pickup_email", lambda order, group=None: sent["courier"].append(order["id"]))
     monkeypatch.setattr(delivery, "send_delivery_problem_email", lambda order, problem: sent["problem"].append(problem))
-    monkeypatch.setattr(delivery, "send_order_shipped_email", lambda to, name, order: sent["shipped"].append(order["delivery"]["tracking_url"]))
-    monkeypatch.setattr(delivery, "send_order_delivered_feedback_email", lambda to, name, order: sent["delivered"].append(order["id"]))
+    monkeypatch.setattr(delivery, "send_order_shipped_email", lambda to, name, order, group=None: (sent["shipped"].append(order["delivery"]["tracking_url"]), sent.setdefault("shipped_groups", []).append([o["id"] for o in group or [order]])))
+    monkeypatch.setattr(delivery, "send_order_delivered_feedback_email", lambda to, name, order, group=None: (sent["delivered"].append(order["id"]), sent.setdefault("delivered_groups", []).append([o["id"] for o in group or [order]])))
     monkeypatch.setattr(orders, "pdf_tasks_enabled", lambda: False)
     monkeypatch.setattr(orders, "render_album_pdf_sync", lambda *a: b"%PDF")
     monkeypatch.setattr(orders, "put_object", lambda *a, **k: {"path": a[0]})
