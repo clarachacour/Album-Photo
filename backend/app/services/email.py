@@ -356,7 +356,6 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     send_email(to_email, subject, body, html_body=html_body)
 
 def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float):
-    currency = order.get("currency", "usd").upper()
     subject = "Your Everbook digital album is ordered"
     free = total == 0
     # Online payment isn't set up yet: the PDF is handed over at once either way.
@@ -644,7 +643,7 @@ def _send_printer_group_email(group: list):
             f"<p style=\"color:{_EMAIL_MUTED}; margin:0 0 18px;\">{len(group)} albums for the same customer, delivered together. "
             f"Please put all {books} books in one package and write this number on it: the courier identifies it with it.</p>"
             + "".join(rows)
-            + f"<p style=\"margin:28px 0 0;\">Once they're all printed, confirm once for all:</p>"
+            + "<p style=\"margin:28px 0 0;\">Once they're all printed, confirm once for all:</p>"
             + _printer_button(ready_url, "Mark all ready for delivery", _EMAIL_CORAL, "14px")
         ),
     )

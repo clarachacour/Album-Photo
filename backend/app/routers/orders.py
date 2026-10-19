@@ -17,7 +17,6 @@ from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.delivery import dispatch_delivery
 from app.services.print_groups import group_of
 from app.core.order_number import order_number
-from app.services import pricing
 from app.services.email import printer_ready_url, send_order_confirmation_email, send_team_order_update_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
