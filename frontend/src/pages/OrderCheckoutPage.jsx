@@ -27,6 +27,11 @@ export default function OrderCheckoutPage() {
   const [orderedKinds, setOrderedKinds] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [busy, setBusy] = useState(false);
+  // Gift card credit on the account: taken off what's added here.
+  const [credit, setCredit] = useState(0);
+  useEffect(() => {
+    api.get("/credits").then(({ data }) => setCredit((data?.balance_cents || 0) / 100)).catch(() => {});
+  }, []);
   const inCart = (cart?.items || []).filter((i) => i.album_id === albumId);
 
   useEffect(() => {
@@ -72,6 +77,10 @@ export default function OrderCheckoutPage() {
   const printPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
   const digitalPrice = album ? computeDigitalPrice(album.size || "A4", pageCount) : 0;
   const subtotal = (kinds.print ? printPrice * quantity : 0) + (kinds.digital ? digitalPrice : 0);
+  // With a gift card, the delivery is counted here too (the card includes
+  // it), then the card's credit taken off.
+  const withDelivery = subtotal + (credit > 0 && kinds.print && !orderedKinds.print ? SHIPPING_PRICE : 0);
+  const giftCovers = Math.min(credit, withDelivery);
   const nothingChosen = !kinds.print && !kinds.digital;
 
   const addToCart = async () => {
@@ -217,12 +226,30 @@ export default function OrderCheckoutPage() {
                   <OfferedPrice price={digitalPrice} />
                 </div>
               )}
-              {kinds.print && <p className="text-xs text-[color:var(--muted)] mt-2">{t("cart.deliveryOnce", { price: SHIPPING_PRICE.toFixed(2) })}</p>}
+              {kinds.print && credit > 0 && (
+                <div className="flex justify-between mb-1">
+                  <span className="text-[color:var(--muted)]">{t("checkout.shipping")}</span>
+                  <span>${SHIPPING_PRICE.toFixed(2)}</span>
+                </div>
+              )}
+              {giftCovers > 0 && (
+                <div className="flex justify-between mb-1 text-[color:var(--coral)]" data-testid="checkout-gift-credit">
+                  <span>{t("cart.credit")}</span>
+                  <span>−${giftCovers.toFixed(2)}</span>
+                </div>
+              )}
+              {kinds.print && credit <= 0 && <p className="text-xs text-[color:var(--muted)] mt-2">{t("cart.deliveryOnce", { price: SHIPPING_PRICE.toFixed(2) })}</p>}
             </div>
-            <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-6">
-              <span>{t("cart.subtotal")}</span>
-              <span>${subtotal.toFixed(2)}</span>
+            <div className="flex justify-between text-base font-medium border-t border-[color:var(--border-soft)] pt-4 mb-2" data-testid="checkout-subtotal">
+              <span>{t(credit > 0 ? "checkout.total" : "cart.subtotal")}</span>
+              <span>${(withDelivery - giftCovers).toFixed(2)}</span>
             </div>
+            {giftCovers > 0 && (
+              <p className="text-xs text-[color:var(--coral)] mb-6">
+                {withDelivery - giftCovers <= 0 ? t("cart.coveredByGift") : t("cart.partlyCoveredByGift", { amount: (withDelivery - giftCovers).toFixed(2) })}
+              </p>
+            )}
+            {!giftCovers && <div className="mb-4" />}
             <button
               type="button"
               onClick={addToCart}

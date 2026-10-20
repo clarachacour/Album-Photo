@@ -509,26 +509,37 @@ def send_digital_album_ready_email(to_email: str, name: str, order: dict):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_order_in_production_email(to_email: str, name: str, order: dict):
-    """To the customer: their book has gone to the printer."""
-    order_url = f"{FRONTEND_URL}/orders/{order['id']}"
+def send_order_in_production_email(to_email: str, name: str, order: dict, group: list = None):
+    """To the customer: their book has gone to the printer — or, for albums
+    sent to the printer together (`group`, see services/print_groups.py),
+    all of them: one email for the order."""
+    group = group or [order]
+    many = len(group) > 1
+    order_url = f"{FRONTEND_URL}/orders" if many else f"{FRONTEND_URL}/orders/{order['id']}"
     number = order_number(order)
-    subject = f"Your Everbook album is being printed ({number})"
+    titles = [f"{o.get('album_title', 'Album')} ({order_number(o)})" for o in group]
+    if many:
+        subject = f"Your {len(group)} Everbook albums are being printed"
+        news = f"Your {len(group)} albums have gone to the printer:"
+        plain_news = news + "\n" + "".join(f"- {t}\n" for t in titles)
+        html_news = f"<p>{news}</p><ul>" + "".join(f"<li>{_h(t)}</li>" for t in titles) + "</ul>"
+        then = "Printing takes about 3 days, then they're handed to the courier together, in one package — we'll email you when they're on their way."
+    else:
+        subject = f"Your Everbook album is being printed ({number})"
+        plain_news = f"Your album \"{order.get('album_title', 'Album')}\" has gone to the printer (order {number}).\n"
+        html_news = f"<p>Your album <strong>{_h(order.get('album_title', 'Album'))}</strong> has gone to the printer (order {number}).</p>"
+        then = "Printing takes about 3 days, then it's handed to the courier — we'll email you when it's on its way."
     body = (
         f"Hi {name or ''},\n\n"
-        f"Your album \"{order.get('album_title', 'Album')}\" has gone to the printer (order {number}).\n"
-        f"Printing takes about 3 days, then it's handed to the courier — we'll email you when it's on its way.\n\n"
-        f"Follow your order here:\n{order_url}"
+        f"{plain_news}"
+        f"{then}\n\n"
+        f"Follow {'them' if many else 'your order'} here:\n{order_url}"
     )
     html_body = _email_wrapper(
-        preheader="Your album has gone to the printer.",
-        title="Your album is being printed.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Your album <strong>{_h(order.get('album_title', 'Album'))}</strong> has gone to the printer (order {number}).</p>"
-            f"<p>Printing takes about 3 days, then it's handed to the courier — we'll email you when it's on its way.</p>"
-        ),
-        cta_label="Follow your order",
+        preheader="Your albums have gone to the printer." if many else "Your album has gone to the printer.",
+        title="Your albums are being printed." if many else "Your album is being printed.",
+        body_html=f"<p>Hi {_h(name or '')},</p>{html_news}<p>{then}</p>",
+        cta_label="Follow your orders" if many else "Follow your order",
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)

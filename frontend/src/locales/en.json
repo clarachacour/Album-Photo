@@ -1290,7 +1290,9 @@
     "gift": {
       "title": "Gift card for {{name}}",
       "detail": "A {{size}} album up to {{pages}} pages · delivery included · PDF"
-    }
+    },
+    "coveredByGift": "Covered by your gift card: nothing to pay.",
+    "partlyCoveredByGift": "Your gift card covers part of it: ${{amount}} left to pay."
   },
   "gift": {
     "eyebrow": "Gift card",
@@ -1323,7 +1325,7 @@
       "use": "Use my card",
       "done": "Your gift card is ready",
       "done_from": "A gift from {{from}}!",
-      "doneBody": "An album {{size}} up to {{pages}} pages, delivery included. Your credit: ${{credit}} — taken off your order.",
+      "doneBody": "An album {{size}} up to {{pages}} pages, delivery included.",
       "create": "Create my album",
       "errors": {
         "not_found": "This code doesn't exist — please check it.",

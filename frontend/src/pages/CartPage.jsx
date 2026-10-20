@@ -288,6 +288,9 @@ export default function CartPage() {
                   <span>{money(cart.cash_cents)}</span>
                 </div>
               )}
+              {cart.credit_applied_cents > 0 && cart.total_cents === 0 && (
+                <p className="text-xs text-[color:var(--coral)] -mt-3 mb-6" data-testid="cart-covered">{t("cart.coveredByGift")}</p>
+              )}
               {cart.credit_balance_cents > cart.credit_applied_cents && cart.credit_applied_cents > 0 && (
                 <p className="text-xs text-[color:var(--muted)] -mt-3 mb-6">{t("cart.creditLeft", { amount: money(cart.credit_balance_cents - cart.credit_applied_cents) })}</p>
               )}
@@ -320,7 +323,7 @@ export default function CartPage() {
                 {t("checkout.placeOrder")}
               </button>
               <div className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed space-y-2">
-                {hasPrint && <p>{t("checkout.noPayment")}</p>}
+                {hasPrint && cart.cash_cents > 0 && <p>{t("checkout.noPayment")}</p>}
                 {hasDigital && <p>{t("checkout.noPaymentDigital")}</p>}
               </div>
             </aside>

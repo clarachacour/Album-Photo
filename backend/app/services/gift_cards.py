@@ -11,13 +11,14 @@ whatever a cheaper one leaves stays on the account for a next order.
 A card is valid GIFT_VALIDITY_DAYS from its purchase; the credit it gives
 keeps that same end date."""
 import logging
+import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 from reportlab.lib.pagesizes import A6, landscape
-from reportlab.lib.utils import simpleSplit
+from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfgen import canvas
 
 from app.config import FRONTEND_URL
@@ -210,9 +211,14 @@ def card_date(iso: str, lang: str) -> str:
     return d.strftime("%B %-d, %Y")
 
 
+# The four albums of the home page, on the right of the card.
+ALBUMS_IMAGE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "gift_card_albums.jpg")
+
+
 def render_gift_card_pdf(card: dict) -> bytes:
     """The card, A6 landscape, to print at home or send on: who it's for,
-    the buyer's words, the offered album, the code and how to use it."""
+    the buyer's words, the offered album, the code and how to use it — and
+    the albums of the home page beside them."""
     from app.services import pdf  # noqa: F401  (registers the site's fonts)
 
     t = TEXT.get(card.get("lang"), TEXT["en"])
@@ -225,48 +231,60 @@ def render_gift_card_pdf(card: dict) -> bytes:
     c.setFillColorRGB(*_CORAL)
     c.rect(0, 0, 10, h, stroke=0, fill=1)
     m = 28
+    # The albums, right column, the card's height.
+    img_h = h - 2 * 22
+    img_w = img_h * 456 / 614
+    c.drawImage(ImageReader(ALBUMS_IMAGE), w - 22 - img_w, 22, img_w, img_h)
+    tw = w - m - img_w - 22 - 16  # the text column's width
+
     c.setFillColorRGB(*_INK)
     c.setFont("CormorantGaramond-Bold", 20)
     c.drawString(m, h - 38, "Everbook")
     c.setFillColorRGB(*_CORAL)
     c.setFont("Manrope-Bold", 7)
-    c.drawRightString(w - m, h - 34, t["eyebrow"])
+    c.drawString(m, h - 50, t["eyebrow"])
 
-    y = h - 72
+    y = h - 76
     c.setFillColorRGB(*_INK)
     title = t["for"].format(name=card["recipient_name"]) if card.get("recipient_name") else t["for_anonymous"]
-    c.setFont("CormorantGaramond-Bold", 17)
-    for line in simpleSplit(title, "CormorantGaramond-Bold", 17, w - 2 * m)[:2]:
+    c.setFont("CormorantGaramond-Bold", 15)
+    for line in simpleSplit(title, "CormorantGaramond-Bold", 15, tw)[:2]:
         c.drawString(m, y, line)
-        y -= 19
+        y -= 17
     if card.get("message"):
-        c.setFont("CormorantGaramond-Regular", 11)
-        for line in simpleSplit(f"« {card['message']} »" if card.get("lang") == "fr" else f"“{card['message']}”",
-                                "CormorantGaramond-Regular", 11, w - 2 * m)[:4]:
-            y -= 2
+        c.setFont("CormorantGaramond-Regular", 10)
+        quoted = f"« {card['message']} »" if card.get("lang") == "fr" else f"“{card['message']}”"
+        for line in simpleSplit(quoted, "CormorantGaramond-Regular", 10, tw)[:4]:
+            y -= 1
             c.drawString(m, y, line)
-            y -= 11
+            y -= 10.5
     if card.get("from_name"):
-        c.setFont("CormorantGaramond-Regular", 11)
-        c.drawRightString(w - m, y - 2, t["from"].format(name=card["from_name"]))
+        c.setFont("CormorantGaramond-Regular", 10)
+        c.drawRightString(m + tw, y - 1, t["from"].format(name=card["from_name"]))
 
-    # The offered album, the code, how to use it.
+    # Bottom up: validity, how to use it, the code, the offered album.
     c.setFillColorRGB(*_MUTED)
-    c.setFont("Manrope-Regular", 7.5)
-    c.drawString(m, 92, t["what"].format(size=card["size"], pages=card["page_tier"]))
+    c.setFont("Manrope-Regular", 6.5)
+    c.drawString(m, 22, t["valid"].format(date=card_date(card["expires_at"], card.get("lang"))))
+    yy = 31
+    for line in reversed(simpleSplit(t["how"].format(site=_site()), "Manrope-Regular", 6.5, tw)):
+        c.drawString(m, yy, line)
+        yy += 8
+    box_y = yy + 2
     c.setStrokeColorRGB(*_INK)
     c.setLineWidth(0.8)
-    c.rect(m, 44, w - 2 * m, 40, stroke=1, fill=0)
-    c.setFillColorRGB(*_MUTED)
-    c.setFont("Manrope-Bold", 6.5)
-    c.drawString(m + 10, 71, t["code"])
+    c.rect(m, box_y, tw, 36, stroke=1, fill=0)
+    c.setFont("Manrope-Bold", 6)
+    c.drawString(m + 8, box_y + 25, t["code"])
     c.setFillColorRGB(*_INK)
-    c.setFont("Manrope-Bold", 17)
-    c.drawString(m + 10, 52, card["code"])
+    c.setFont("Manrope-Bold", 15)
+    c.drawString(m + 8, box_y + 8, card["code"])
     c.setFillColorRGB(*_MUTED)
-    c.setFont("Manrope-Regular", 7)
-    c.drawString(m, 28, t["how"].format(site=_site()))
-    c.drawString(m, 18, t["valid"].format(date=card_date(card["expires_at"], card.get("lang"))))
+    c.setFont("Manrope-Regular", 6.5)
+    yy = box_y + 44
+    for line in reversed(simpleSplit(t["what"].format(size=card["size"], pages=card["page_tier"]), "Manrope-Regular", 6.5, tw)):
+        c.drawString(m, yy, line)
+        yy += 8
     c.showPage()
     c.save()
     return out.getvalue()

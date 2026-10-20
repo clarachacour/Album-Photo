@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Gift, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -222,34 +222,32 @@ export function GiftCardPreview({ gift, lang, code = "EVER-XXXX-XXXX" }) {
   const { t } = useTranslation();
   const tl = (key, opts) => t(key, { ...opts, lng: lang });
   const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+  // Sizes in % of the card's width (cqw), as on the PDF (A6 landscape).
   return (
-    <div className="relative bg-[#F7F3EB] shadow-md aspect-[148/105] w-full overflow-hidden" data-testid="gift-preview">
-      <div className="absolute inset-y-0 left-0 w-[2%] bg-[color:var(--coral)]" />
-      <div className="absolute inset-0 pl-[8%] pr-[6%] pt-[6%] pb-[4%] flex flex-col" style={{ containerType: "inline-size" }}>
-        <div className="flex items-baseline justify-between">
-          <span className="font-serif-display font-semibold" style={{ fontSize: "6.5cqw" }}>Everbook</span>
-          <span className="font-semibold text-[color:var(--coral)] tracking-wider" style={{ fontSize: "2.2cqw" }}>
-            <Gift className="inline -mt-0.5 mr-1" style={{ width: "2.6cqw", height: "2.6cqw" }} />
-            {tl("gift.card.eyebrow")}
-          </span>
-        </div>
-        <p className="font-serif-display font-semibold mt-[3%] leading-tight" style={{ fontSize: "5.4cqw" }}>
+    <div className="relative bg-[#F7F3EB] shadow-md aspect-[148/105] w-full overflow-hidden" style={{ containerType: "inline-size" }} data-testid="gift-preview">
+      <div className="absolute inset-y-0 left-0 w-[2.4%] bg-[color:var(--coral)]" />
+      {/* The four albums of the home page, on the right. */}
+      <img src="/hero-shelf.webp" alt="" className="absolute right-[5.2%] top-[7.4%] h-[85.2%] w-auto" />
+      <div className="absolute left-[6.7%] w-[39.5%] top-[6%] bottom-[7%] flex flex-col">
+        <span className="font-serif-display font-semibold leading-none" style={{ fontSize: "4.8cqw" }}>Everbook</span>
+        <span className="font-semibold text-[color:var(--coral)] tracking-wider mt-[2%]" style={{ fontSize: "1.7cqw" }}>{tl("gift.card.eyebrow")}</span>
+        <p className="font-serif-display font-semibold mt-[6%] leading-tight" style={{ fontSize: "3.6cqw" }}>
           {gift.recipient_name ? tl("gift.card.for", { name: gift.recipient_name }) : tl("gift.card.forAnonymous")}
         </p>
         {gift.message && (
-          <p className="font-serif-display mt-[1.5%] leading-snug line-clamp-4" style={{ fontSize: "3.4cqw" }}>
+          <p className="font-serif-display mt-[2%] leading-snug line-clamp-4" style={{ fontSize: "2.4cqw" }}>
             {lang === "fr" ? `« ${gift.message} »` : `“${gift.message}”`}
           </p>
         )}
-        {gift.from_name && <p className="font-serif-display text-right" style={{ fontSize: "3.4cqw" }}>— {gift.from_name}</p>}
+        {gift.from_name && <p className="font-serif-display text-right" style={{ fontSize: "2.4cqw" }}>— {gift.from_name}</p>}
         <div className="mt-auto">
-          <p className="text-[color:var(--muted)]" style={{ fontSize: "2.4cqw" }}>{tl("gift.card.what", { size: gift.size, pages: gift.page_tier })}</p>
-          <div className="border border-[color:var(--ink)] mt-[1.5%] px-[3%] py-[1.5%]">
-            <p className="text-[color:var(--muted)] font-semibold" style={{ fontSize: "2cqw" }}>{tl("gift.card.code")}</p>
-            <p className="font-semibold tracking-wide" style={{ fontSize: "5cqw" }}>{code}</p>
+          <p className="text-[color:var(--muted)] leading-snug" style={{ fontSize: "1.55cqw" }}>{tl("gift.card.what", { size: gift.size, pages: gift.page_tier })}</p>
+          <div className="border border-[color:var(--ink)] mt-[3%] px-[4%] py-[2.5%]">
+            <p className="text-[color:var(--muted)] font-semibold" style={{ fontSize: "1.45cqw" }}>{tl("gift.card.code")}</p>
+            <p className="font-semibold tracking-wide whitespace-nowrap" style={{ fontSize: "3.5cqw" }}>{code}</p>
           </div>
-          <p className="text-[color:var(--muted)] mt-[1.5%]" style={{ fontSize: "2.2cqw" }}>{tl("gift.card.how")}</p>
-          <p className="text-[color:var(--muted)]" style={{ fontSize: "2.2cqw" }}>{tl("gift.card.valid", { date: until })}</p>
+          <p className="text-[color:var(--muted)] mt-[3%] leading-snug" style={{ fontSize: "1.55cqw" }}>{tl("gift.card.how")}</p>
+          <p className="text-[color:var(--muted)]" style={{ fontSize: "1.55cqw" }}>{tl("gift.card.valid", { date: until })}</p>
         </div>
       </div>
     </div>

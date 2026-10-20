@@ -1290,7 +1290,9 @@
     "gift": {
       "title": "Carte cadeau pour {{name}}",
       "detail": "Un album {{size}} jusqu'à {{pages}} pages · livraison incluse · PDF"
-    }
+    },
+    "coveredByGift": "Couvert par votre carte cadeau : rien à payer.",
+    "partlyCoveredByGift": "Votre carte cadeau en couvre une partie : {{amount}} $ restent à payer."
   },
   "gift": {
     "eyebrow": "Carte cadeau",
@@ -1323,7 +1325,7 @@
       "use": "Utiliser ma carte",
       "done": "Votre carte cadeau est prête",
       "done_from": "Un cadeau de {{from}} !",
-      "doneBody": "Un album {{size}} jusqu'à {{pages}} pages, livraison incluse. Votre avoir : {{credit}} $ — déduit de votre commande.",
+      "doneBody": "Un album {{size}} jusqu'à {{pages}} pages, livraison incluse.",
       "create": "Créer mon album",
       "errors": {
         "not_found": "Ce code n'existe pas — vérifiez-le.",

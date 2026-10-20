@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.executors import run_email
 from app.db import db
-from app.services.email import send_printer_order_email
+from app.services.email import send_order_in_production_email, send_printer_order_email
 from app.services.gift_cards import GIFT_VALIDITY_DAYS, add_credit
 
 logger = logging.getLogger(__name__)
@@ -119,6 +119,10 @@ async def flush_printer_queue(force_order_id: str = None) -> int:
             await db.orders.update_one({"id": o["id"]}, {"$set": update, "$unset": {"printer_pending_at": ""}})
         members = await group_of({**lead, "print_group": lead["id"]})
         await run_email(send_printer_order_email, members[0], members)
+        # …and the customer, once for all of them: their albums are being printed.
+        customer = await db.users.find_one({"id": lead.get("user_id")}, {"_id": 0, "email": 1, "name": 1})
+        if customer and customer.get("email"):
+            await run_email(send_order_in_production_email, customer["email"], customer.get("name"), members[0], members)
         if len(members) > 1:
             logger.info(f"Commandes {', '.join(o['id'] for o in members)} : envoyées ensemble à l'imprimerie")
         sent += 1
