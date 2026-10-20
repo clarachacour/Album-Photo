@@ -692,7 +692,6 @@
     "legal": "Legal",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy",
-    "returns": "Returns & Refunds",
     "shipping": "Shipping",
     "company": "Company",
     "legalName": "EFFET DESIGN - EVERBOOK",
@@ -859,24 +858,6 @@
         }
       ]
     },
-    "returns": {
-      "eyebrow": "Legal",
-      "title": "Returns & Refunds",
-      "sections": [
-        {
-          "heading": "1. Custom-made products",
-          "body": "Each album is printed specifically for you from your own photos. Because of this, we cannot accept returns for a simple change of mind once an order has been placed."
-        },
-        {
-          "heading": "2. Damaged or defective albums",
-          "body": "If your album arrives damaged, or if there's a genuine printing defect, email us at orders@everbook-album.com within 14 days of delivery with photos of the issue. We'll review it and arrange a reprint or a refund as appropriate."
-        },
-        {
-          "heading": "3. How to reach us",
-          "body": "Email us at orders@everbook-album.com, or use our Contact page, with your order number and a description (and photos, if relevant) of the problem."
-        }
-      ]
-    },
     "shipping": {
       "eyebrow": "Legal",
       "title": "Shipping",
@@ -931,10 +912,6 @@
     "privacy": {
       "title": "Privacy policy",
       "description": "How Everbook handles your photos and personal data."
-    },
-    "returns": {
-      "title": "Returns & refunds",
-      "description": "Everbook's returns and refunds policy."
     },
     "shipping": {
       "title": "Shipping",

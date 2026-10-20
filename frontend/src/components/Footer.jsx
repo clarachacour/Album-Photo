@@ -32,7 +32,6 @@ export default function Footer() {
           <ul className="space-y-2.5 text-sm">
             <li><Link to="/terms" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.terms")}</Link></li>
             <li><Link to="/privacy" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.privacy")}</Link></li>
-            <li><Link to="/returns" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.returns")}</Link></li>
             <li><Link to="/shipping" className="hover:text-[color:var(--coral)] transition-colors">{t("footer.shipping")}</Link></li>
           </ul>
         </div>

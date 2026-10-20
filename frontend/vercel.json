@@ -4,12 +4,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "build",
   "cleanUrls": true,
-  "rewrites": [
-    {
-      "source": "/((?!assets/|cover-art/).*)",
-      "destination": "/app"
-    }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",
@@ -28,6 +22,19 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/returns",
+      "destination": "/terms",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!assets/|cover-art/).*)",
+      "destination": "/app"
     }
   ]
 }

@@ -22,7 +22,6 @@ import FAQPage from "@/pages/FAQPage";
 import ContactPage from "@/pages/ContactPage";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
-import ReturnsPage from "@/pages/ReturnsPage";
 import ShippingPage from "@/pages/ShippingPage";
 import GiftPage from "@/pages/GiftPage";
 const AuthPage = lazyPage(() => import("@/pages/AuthPage"));
@@ -130,7 +129,6 @@ export function AppRoutes() {
             <Route path="/verify-email" element={<VerifyEmailPending />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/returns" element={<ReturnsPage />} />
             <Route path="/shipping" element={<ShippingPage />} />
 
             <Route

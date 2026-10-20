@@ -692,7 +692,6 @@
     "legal": "Légal",
     "terms": "Conditions Générales de Vente",
     "privacy": "Politique de confidentialité",
-    "returns": "Retours & Remboursements",
     "shipping": "Livraison",
     "company": "Société",
     "legalName": "EFFET DESIGN - EVERBOOK",
@@ -859,24 +858,6 @@
         }
       ]
     },
-    "returns": {
-      "eyebrow": "Légal",
-      "title": "Retours & Remboursements",
-      "sections": [
-        {
-          "heading": "1. Des produits sur-mesure",
-          "body": "Chaque album est imprimé spécifiquement pour vous à partir de vos propres photos. Pour cette raison, nous ne pouvons pas accepter de retours pour un simple changement d'avis une fois la commande passée."
-        },
-        {
-          "heading": "2. Albums endommagés ou défectueux",
-          "body": "Si votre album arrive endommagé, ou en cas de véritable défaut d'impression, écrivez-nous à orders@everbook-album.com dans les 14 jours suivant la livraison avec des photos du problème. Nous l'examinerons et organiserons une réimpression ou un remboursement selon le cas."
-        },
-        {
-          "heading": "3. Comment nous contacter",
-          "body": "Écrivez-nous à orders@everbook-album.com, ou utilisez notre page Contact, en indiquant votre numéro de commande et une description (avec photos, si pertinent) du problème."
-        }
-      ]
-    },
     "shipping": {
       "eyebrow": "Légal",
       "title": "Livraison",
@@ -931,10 +912,6 @@
     "privacy": {
       "title": "Politique de confidentialité",
       "description": "Comment Everbook traite vos photos et vos données personnelles."
-    },
-    "returns": {
-      "title": "Retours et remboursements",
-      "description": "La politique de retours et de remboursements d'Everbook."
     },
     "shipping": {
       "title": "Livraison",

@@ -9,7 +9,7 @@
 // never compete with the real site in search results.
 
 // Public pages listed in the sitemap.
-const PUBLIC_PATHS = ["/", "/gift", "/faq", "/contact", "/terms", "/privacy", "/returns", "/shipping"];
+const PUBLIC_PATHS = ["/", "/gift", "/faq", "/contact", "/terms", "/privacy", "/shipping"];
 // Pages behind a login or for machines: never worth indexing.
 const PRIVATE_PATHS = ["/dashboard", "/editor/", "/create", "/choose-template", "/order/", "/orders", "/cart", "/account", "/admin/", "/print/", "/mobile-upload/", "/verify-email", "/reset-password", "/forgot-password"];
 

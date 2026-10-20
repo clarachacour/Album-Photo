@@ -16,7 +16,6 @@ export const PUBLIC_PAGES = {
   "/contact": "contact",
   "/terms": "terms",
   "/privacy": "privacy",
-  "/returns": "returns",
   "/shipping": "shipping",
 };
 
