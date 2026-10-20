@@ -165,3 +165,17 @@ export function PrinterDownloadRedirect() {
     </main>
   );
 }
+
+/** The printer's statement link (sent once, on the site's address): straight on to the Excel file. */
+export function PrinterStatementRedirect() {
+  const [params] = useSearchParams();
+  useEffect(() => {
+    const key = encodeURIComponent(params.get("key") || "");
+    window.location.replace(`${API}/printer-statement.xlsx?key=${key}`);
+  }, [params]);
+  return (
+    <main className="min-h-[70vh] flex items-center justify-center p-8 bg-[color:var(--paper)]">
+      <Loader2 className="w-6 h-6 animate-spin text-[color:var(--muted)]" />
+    </main>
+  );
+}

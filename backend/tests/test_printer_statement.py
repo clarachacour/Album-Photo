@@ -64,8 +64,10 @@ def test_the_printer_link_and_payment_mark(client, db, admin):  # noqa: F811
     asyncio.run(db.orders.delete_many({}))
     _order(db, "5f4c0509-b1", "ready_for_delivery", "A4", 100)
     url = client.get("/api/admin/printer-statement-link", headers=admin).json()["url"]
+    assert "/everbook-statement?key=" in url  # on the site's address
     key = url.split("key=", 1)[1]
-    assert client.get(f"/api/printer-statement.xlsx?key={key}").status_code == 200
+    res = client.get(f"/api/printer-statement.xlsx?key={key}")
+    assert res.status_code == 200 and 'filename="Everbook statement ' in res.headers["content-disposition"]
     assert client.get("/api/printer-statement.xlsx?key=wrong").status_code == 403
 
     assert client.patch("/api/admin/orders/5f4c0509-b1/printer-payment", json={"paid": True}, headers=admin).json()["printer_paid_at"]

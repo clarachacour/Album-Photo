@@ -46,6 +46,9 @@ const PrinterOrderPage = lazyPage(() => import("@/pages/PrinterOrderPage"));
 const PrinterDownloadRedirect = lazyPage(() =>
   import("@/pages/PrinterOrderPage").then((m) => ({ default: m.PrinterDownloadRedirect }))
 );
+const PrinterStatementRedirect = lazyPage(() =>
+  import("@/pages/PrinterOrderPage").then((m) => ({ default: m.PrinterStatementRedirect }))
+);
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
 function AppChrome({ children }) {
@@ -118,6 +121,7 @@ export function AppRoutes() {
             {/* The print shop's links, from its email (no account). */}
             <Route path="/printer/:orderId" element={<PrinterOrderPage />} />
             <Route path="/printer/:orderId/download" element={<PrinterDownloadRedirect />} />
+            <Route path="/everbook-statement" element={<PrinterStatementRedirect />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/gift" element={<GiftPage />} />
             <Route path="/contact" element={<ContactPage />} />

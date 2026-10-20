@@ -28,7 +28,7 @@ from app.services import delivery as deliveries
 from app.services.print_groups import flush_printer_queue, group_of
 from app.services import wakilni
 from app.services import printer_statement
-from app.config import BACKEND_URL
+from app.config import FRONTEND_URL
 from app.services.storage import get_r2_client
 from app.core.executors import run_blocking, run_email
 
@@ -366,7 +366,7 @@ async def _statement_file() -> Response:
         async for a in db.albums.find({"id": {"$in": missing}}, {"_id": 0, "id": 1, "pages": 1}):
             page_counts[a["id"]] = len(a.get("pages") or [])
     data = printer_statement.build_statement_xlsx(printer_statement.statement_rows(orders, page_counts))
-    name = f"everbook-printer-statement-{datetime.now(timezone.utc):%Y-%m-%d}.xlsx"
+    name = f"Everbook statement {datetime.now(timezone.utc):%Y-%m-%d}.xlsx"
     return Response(
         data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -387,7 +387,10 @@ async def admin_printer_statement_link(user: dict = Depends(get_current_user)):
     downloads the statement as it is that day. No customer price or
     details in it."""
     require_admin(user)
-    return {"url": f"{BACKEND_URL}/api/printer-statement.xlsx?key={printer_statement.statement_key()}"}
+    # On the site's own address (a page that hands over the file), not the
+    # server's: shorter to read, and not dropped by mail filters. The
+    # server's link, sent before, still works.
+    return {"url": f"{FRONTEND_URL}/everbook-statement?key={printer_statement.statement_key()}"}
 
 
 @router.get("/printer-statement.xlsx")
