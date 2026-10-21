@@ -77,10 +77,14 @@ function brandData(siteUrl, description) {
         "@type": "Organization",
         "@id": `${siteUrl}/#organization`,
         name: "Everbook",
-        alternateName: ["Everbook Album", "Everbook Lebanon"],
+        // "Everbook Album" (the domain, the Instagram account) tells it apart
+        // from other businesses named Everbook.
+        alternateName: "Everbook Album",
         url: `${siteUrl}/`,
         logo: `${siteUrl}/favicon.png`,
         email: "orders@everbook-album.com",
+        // Its accounts: the same business as this site.
+        sameAs: ["https://www.instagram.com/everbook_album/"],
         description,
         areaServed: { "@type": "Country", name: "Lebanon" },
       },

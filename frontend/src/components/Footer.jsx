@@ -1,6 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Instagram } from "lucide-react";
+
+// The brand's accounts (also declared to search engines, see scripts/prerender.mjs).
+export const INSTAGRAM_URL = "https://www.instagram.com/everbook_album/";
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -43,6 +47,11 @@ export default function Footer() {
             <li>
               <a href={`mailto:${t("footer.email")}`} className="hover:text-[color:var(--coral)] transition-colors">
                 {t("footer.email")}
+              </a>
+            </li>
+            <li>
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-[color:var(--coral)] transition-colors" data-testid="footer-instagram">
+                <Instagram size={15} /> @everbook_album
               </a>
             </li>
           </ul>
