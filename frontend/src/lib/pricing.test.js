@@ -1,23 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
+import { PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice, tierMaxPages } from "@/lib/pricing";
 
 describe("pricing", () => {
-  it("bills an album as the smallest tier that holds it", () => {
+  it("bills an album as the nearest tier, as the printer does", () => {
     expect(billedTier(15)).toBe(24); // 24 pages is the minimum
     expect(billedTier(24)).toBe(24);
-    expect(billedTier(35)).toBe(50);
+    expect(billedTier(28)).toBe(24);
+    expect(billedTier(40)).toBe(50);
+    expect(billedTier(37)).toBe(50); // halfway: the tier above
+    expect(billedTier(120)).toBe(100);
+    expect(billedTier(160)).toBe(150);
     expect(computeUnitPrice("A4", 15, false)).toBe(PRICE_TABLE.A4[24]);
-    expect(computeUnitPrice("A5", 35, false)).toBe(PRICE_TABLE.A5[50]);
+    expect(computeUnitPrice("A5", 28, false)).toBe(PRICE_TABLE.A5[24]);
+    expect(computeUnitPrice("A4", 160, false)).toBe(PRICE_TABLE.A4[150]);
   });
 
-  it("adds each page past the largest tier", () => {
-    expect(computeUnitPrice("A4", 160, false)).toBeCloseTo(PRICE_TABLE.A4[150] + 10 * 0.45);
+  it("tells up to how many pages an album keeps its price", () => {
+    expect(tierMaxPages(24)).toBe(36);
+    expect(tierMaxPages(50)).toBe(74);
+    expect(tierMaxPages(100)).toBe(124);
+    expect(tierMaxPages(150)).toBe(160);
+    for (const tier of [24, 50, 100]) expect(billedTier(tierMaxPages(tier) + 1)).not.toBe(tier);
   });
 
-  it("uses the price list: 24/50/100/150 pages, 150 at most", () => {
+  it("uses the price list: 24/50/100/150 pages", () => {
     expect(PRICE_TABLE.A4).toEqual({ 24: 53, 50: 73, 100: 99, 150: 129 });
     expect(PRICE_TABLE.A5).toEqual({ 24: 43, 50: 63, 100: 83, 150: 113 });
-    expect(computeUnitPrice("A4", 120, false)).toBe(129); // the tier above
   });
 
   it("counts the album's real pages, not the ones chosen", () => {
@@ -25,9 +33,9 @@ describe("pricing", () => {
     expect(billedPageCount({ target_pages: 50, pages: [] })).toBe(50);
   });
 
-  it("prices the digital album $25, whatever its size and pages", () => {
-    expect(computeDigitalPrice("A5", 24, false)).toBe(25);
-    expect(computeDigitalPrice("A4", 150, false)).toBe(25);
+  it("prices the digital album $22, whatever its size and pages", () => {
+    expect(computeDigitalPrice("A5", 24, false)).toBe(22);
+    expect(computeDigitalPrice("A4", 150, false)).toBe(22);
   });
 
   it("makes every album free during the test week (delivery stays)", () => {

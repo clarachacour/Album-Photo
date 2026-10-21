@@ -14,8 +14,9 @@ def test_price_tiers():
     assert printer_unit_price("A5", 24) == 24 and printer_unit_price("A4", 24) == 27
     assert printer_unit_price("A4", 50) == 33 and printer_unit_price("A5", 100) == 37
     assert printer_unit_price("A4", 150) == 55
-    assert printer_tier(35) == 50 and printer_tier(10) == 24
-    assert printer_unit_price("A4", 151) is None
+    # The nearest tier, as the printer bills it: 28 → 24, 40 → 50, 160 → 150.
+    assert printer_tier(28) == 24 and printer_tier(40) == 50 and printer_tier(10) == 24
+    assert printer_unit_price("A4", 160) == 55
 
 
 def _order(db, oid, status, size="A4", page_count=50, qty=1, **extra):

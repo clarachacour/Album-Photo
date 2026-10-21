@@ -151,7 +151,7 @@
       },
       {
         "q": "How much does a photo album cost?",
-        "a": "A printed A5 album costs $43 (up to 24 pages), $63 (50 pages), $83 (100 pages) or $113 (150 pages). A printed A4 album costs $53 (24 pages), $73 (50 pages), $99 (100 pages) or $129 (150 pages). Delivery in Lebanon is $5 per order, whatever the number of albums. The album as a PDF to download is $25. Prices are in US dollars, and the printed album is paid in cash on delivery."
+        "a": "A printed A5 album costs $43 (24 pages), $63 (50 pages), $83 (100 pages) or $113 (150 pages). A printed A4 album costs $53 (24 pages), $73 (50 pages), $99 (100 pages) or $129 (150 pages). An album whose page count falls between two of these is priced at the nearest one: 28 pages is priced as 24 pages, 40 pages as 50 pages. Delivery in Lebanon is $5 per order, whatever the number of albums. The album as a PDF to download is $22, whatever its format and number of pages; ordered together with the printed album, each is at its own price. Prices are in US dollars, and the printed album is paid in cash on delivery."
       },
       {
         "q": "Where do you deliver, and how long does it take?",
@@ -409,8 +409,8 @@
       "perCopy": "per copy",
       "pdfPrice": "or ${{price}} as a PDF to download",
       "gift": {
-        "offered": "Your gift card: a {{size}} album up to {{pages}} pages",
-        "offered_from": "Your gift from {{from}}: a {{size}} album up to {{pages}} pages",
+        "offered": "Your gift card: a {{pages}}-page {{size}} album",
+        "offered_from": "Your gift from {{from}}: a {{pages}}-page {{size}} album",
         "credit": "Your gift card credit: ${{amount}}",
         "pay": "This album (delivery included) is ${{diff}} more than your gift: you'll pay the difference.",
         "left": "Covered by your gift — ${{left}} will stay as credit on your account.",
@@ -716,7 +716,7 @@
     "madeIn": "Made in Lebanon"
   },
   "legal": {
-    "lastUpdated": "Last updated: October 16, 2026",
+    "lastUpdated": "Last updated: October 21, 2026",
     "terms": {
       "eyebrow": "Legal",
       "title": "Terms of sale",
@@ -759,7 +759,7 @@
         },
         {
           "heading": "10. Prices",
-          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe digital album costs USD 25, whatever its format and number of pages, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
+          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe printed album's price depends on its format and on its number of pages, by size: 24, 50, 100 or 150 pages. An album whose number of pages falls between two sizes is priced at the nearest size (for example, a 28-page album is priced as a 24-page album, a 40-page album as a 50-page album); exactly halfway between two sizes, it is priced at the larger one.\n\nThe digital album costs USD 22, whatever its format and number of pages, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
         },
         {
           "heading": "11. Payment",
@@ -775,7 +775,7 @@
         },
         {
           "heading": "13 bis. Digital album (PDF)",
-          "body": "The customer may order their album in digital form: a PDF file containing the album's cover, pages and back cover, in screen quality. This file is neither printed nor delivered.\n\nThe file is made available in the customer area (\"My orders\") once payment has been confirmed; the customer is informed by email. It remains downloadable, as many times as wished, for as long as the customer's account exists. It is the customer's responsibility to keep a copy of it.\n\nThe customer may later order the printed version of the same album; the amount paid for the digital album is then deducted from the price of the printed album."
+          "body": "The customer may order their album in digital form: a PDF file containing the album's cover, pages and back cover, in screen quality. This file is neither printed nor delivered.\n\nThe file is made available in the customer area (\"My orders\") once payment has been confirmed; the customer is informed by email. It remains downloadable, as many times as wished, for as long as the customer's account exists. It is the customer's responsibility to keep a copy of it.\n\nThe digital album and the printed album are sold separately, each at its own price, whether they are ordered together or one after the other; no combined price applies."
         },
         {
           "heading": "14. Receipt – Damaged or non-conforming product",
@@ -911,7 +911,7 @@
   "meta": {
     "landing": {
       "title": "Everbook — your printed photo book, laid out for you",
-      "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon. From $25."
+      "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon. From $22."
     },
     "faq": {
       "title": "Frequently asked questions",
@@ -1067,8 +1067,8 @@
     "lowResolution_other": "{{count}} photos in your album may print blurry (marked ⚠ in the editor). If you keep them, you accept that risk.",
     "tooDark_one": "{{count}} photo in your album may print dark (marked ⚠ in the editor). If you keep it, you accept this risk.",
     "tooDark_other": "{{count}} photos in your album may print dark (marked ⚠ in the editor). If you keep them, you accept this risk.",
-    "billedMinimum": "Your album has {{count}} pages: it's billed as a 24-page album, the minimum. You can still add pages at no extra cost.",
-    "billedTier": "Your album has {{count}} pages: it's billed as a {{tier}}-page album. You can still add pages at no extra cost up to {{tier}}.",
+    "billedMinimum": "Your album has {{count}} pages: it's billed as a 24-page album, the minimum. It stays at this price up to {{max}} pages.",
+    "billedTier": "Your album has {{count}} pages: it's billed as a {{tier}}-page album, the nearest size. It stays at this price up to {{max}} pages.",
     "kind": {
       "print": "Printed book",
       "digital": "Digital album (PDF)"
@@ -1282,7 +1282,7 @@
     "creditLeft": "{{amount}} of credit stays on your account for a next order.",
     "gift": {
       "title": "Gift card for {{name}}",
-      "detail": "A {{size}} album up to {{pages}} pages · delivery included · PDF"
+      "detail": "A {{pages}}-page {{size}} album · delivery included · PDF"
     },
     "coveredByGift": "Covered by your gift card: nothing to pay.",
     "partlyCoveredByGift": "Your gift card covers part of it: ${{amount}} left to pay."
@@ -1306,7 +1306,7 @@
       "eyebrow": "GIFT CARD",
       "for": "A photo album for you, {{name}}",
       "forAnonymous": "A photo album for you",
-      "what": "A {{size}} album, up to {{pages}} pages · delivery in Lebanon included",
+      "what": "A {{pages}}-page {{size}} album · delivery in Lebanon included",
       "code": "YOUR CODE",
       "how": "Create your album on everbook-album.com/gift and enter this code.",
       "valid": "Valid until {{date}}"
@@ -1318,7 +1318,7 @@
       "use": "Use my card",
       "done": "Your gift card is ready",
       "done_from": "A gift from {{from}}!",
-      "doneBody": "An album {{size}} up to {{pages}} pages, delivery included.",
+      "doneBody": "A {{pages}}-page {{size}} album, delivery included.",
       "create": "Create my album",
       "errors": {
         "not_found": "This code doesn't exist — please check it.",

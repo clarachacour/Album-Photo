@@ -5,7 +5,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.db import db
 from app.services.pricing import (
     TERMS_VERSION,
     billed_page_count,
@@ -34,13 +33,9 @@ async def build_order_doc(
     digital = kind == "digital"
     unit_price = unit_price_cents(album, kind)
     quantity = 1 if digital else quantity
-    # The printed book after the digital album: what was paid for the
-    # digital one is taken off (nothing for a PDF handed over unpaid).
+    # No combined price: the PDF and the printed book of the same album are
+    # each at their own price.
     credit = 0
-    if not digital:
-        digital_order = await db.orders.find_one({"album_id": album["id"], "kind": "digital", "status": {"$ne": "cancelled"}})
-        if digital_order and not digital_order.get("handed_over_unpaid"):
-            credit = min(digital_order.get("total_price_cents", 0), unit_price * quantity)
     now = now or datetime.now(timezone.utc).isoformat()
     doc = {
         "id": str(uuid.uuid4()),

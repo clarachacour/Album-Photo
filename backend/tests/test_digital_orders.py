@@ -55,7 +55,7 @@ def test_a_digital_album_is_handed_over_at_once(client, db, shop):
     assert res.status_code == 200, res.text
     order = res.json()
     assert order["kind"] == "digital" and order["shipping_address"] is None
-    assert order["total_price_cents"] == DIGITAL_PRICE_CENTS == 2500
+    assert order["total_price_cents"] == DIGITAL_PRICE_CENTS == 2200
     assert order["shipping_price_cents"] == 0 and order["quantity"] == 1
     assert shop["sent"]["confirmation"] == ["digital"]
 
@@ -76,16 +76,17 @@ def test_a_digital_album_is_handed_over_at_once(client, db, shop):
     assert shop["sent"]["ready"] == [order["id"]]
 
 
-def test_the_printed_book_after_the_digital_album_costs_the_difference(client, db, shop):
+def test_the_pdf_and_the_printed_book_are_each_at_their_own_price(client, db, shop):
     digital = _order(client, shop, "digital").json()
+    assert digital["total_price_cents"] == DIGITAL_PRICE_CENTS
     assert _order(client, shop, "digital").status_code == 409  # one of each kind
     assert _order(client, shop, "print").status_code == 400  # a printed book needs an address
 
-    # A PDF paid for is taken off the printed book.
+    # No combined price: nothing of the PDF is taken off the printed book.
     asyncio.run(db.orders.update_one({"id": digital["id"]}, {"$unset": {"handed_over_unpaid": ""}}))
     printed = _order(client, shop, "print", shipping_address=ADDRESS).json()
-    assert printed["kind"] == "print" and printed["credit_cents"] == digital["total_price_cents"]
-    assert printed["total_price_cents"] == compute_order_price_cents("A4", 24) + SHIPPING_PRICE_CENTS - digital["total_price_cents"]
+    assert printed["kind"] == "print" and printed["credit_cents"] == 0
+    assert printed["total_price_cents"] == compute_order_price_cents("A4", 24) + SHIPPING_PRICE_CENTS
     # The printer hears about it within the hour (see print_groups).
     from app.services.print_groups import flush_printer_queue
 

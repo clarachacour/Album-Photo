@@ -32,7 +32,7 @@ export function productData(siteUrl) {
       offerCount: PAGE_TIERS.length,
       offers: PAGE_TIERS.map((pages) => ({
         "@type": "Offer",
-        name: `${size}, up to ${pages} pages`,
+        name: `${size}, ${pages} pages`,
         price: prices[pages],
         priceCurrency: "USD",
         availability: "https://schema.org/InStock",

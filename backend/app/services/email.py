@@ -426,7 +426,7 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
             "Merci ! Voici votre carte cadeau, en PDF : imprimez-la ou envoyez-la telle quelle."
         )
         how = f"La personne qui la reçoit saisit le code sur {FRONTEND_URL}/gift et crée son album. Valable 12 mois."
-        line = lambda c: f"{c['code']} — album {c['size']} jusqu'à {c['page_tier']} pages, pour {c.get('recipient_name') or '…'}"  # noqa: E731
+        line = lambda c: f"{c['code']} — album {c['size']} de {c['page_tier']} pages, pour {c.get('recipient_name') or '…'}"  # noqa: E731
         again = "Vous les retrouvez aussi dans « Mes commandes »."
         cta = "Mes commandes"
     else:
@@ -437,7 +437,7 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
             "Thank you! Here's your gift card, as a PDF: print it or send it on as it is."
         )
         how = f"Whoever gets it enters the code on {FRONTEND_URL}/gift and creates their album. Valid for 12 months."
-        line = lambda c: f"{c['code']} — {c['size']} album up to {c['page_tier']} pages, for {c.get('recipient_name') or '…'}"  # noqa: E731
+        line = lambda c: f"{c['code']} — {c['page_tier']}-page {c['size']} album, for {c.get('recipient_name') or '…'}"  # noqa: E731
         again = "You'll also find them in \"My orders\"."
         cta = "My orders"
     hello = f"{'Bonjour' if fr else 'Hi'} {name or ''},"

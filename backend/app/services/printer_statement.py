@@ -13,6 +13,7 @@ from openpyxl.utils import get_column_letter
 
 from app.core.order_number import order_number
 from app.core.signed_links import sign_order_action, verify_order_action
+from app.services.pricing import nearest_tier
 
 # What the printer charges per copy, in dollars, by page tier and format.
 # 150 pages is the most an album can have.
@@ -33,9 +34,9 @@ MONTHS = ["January", "February", "March", "April", "May", "June", "July", "Augus
 
 
 def printer_tier(pages: int) -> Optional[int]:
-    """The price tier of an album of `pages` pages: the smallest that holds
-    it (35 pages → the 50-page price). None past the largest tier."""
-    return next((t for t in PRINTER_PRICES if t >= max(1, int(pages or 0))), None)
+    """The price tier the printer bills an album of `pages` pages at: the
+    nearest one (15 → 24, 28 → 24, 40 → 50, 160 → 150), as for our prices."""
+    return nearest_tier(pages, list(PRINTER_PRICES))
 
 
 def printer_unit_price(size: str, pages: int) -> Optional[int]:

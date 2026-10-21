@@ -3,8 +3,10 @@ import pytest
 
 from app.core.signed_links import sign_order_action, verify_order_action
 from app.services.pricing import (
+    DIGITAL_PRICE_CENTS,
     ORDER_PRICE_CENTS,
-    OVERAGE_PER_PAGE_CENTS,
+    billed_tier,
+    compute_digital_price_cents,
     compute_order_price_cents,
 )
 
@@ -16,15 +18,23 @@ def test_tier_prices_are_used_as_is(size):
         assert compute_order_price_cents(size, pages) == cents
 
 
-def test_a_page_count_between_tiers_is_billed_as_the_next_tier():
-    assert compute_order_price_cents("A4", 15) == ORDER_PRICE_CENTS["A4"][24]  # 24 is the minimum
-    assert compute_order_price_cents("A4", 35) == ORDER_PRICE_CENTS["A4"][50]
-    assert compute_order_price_cents("A5", 51) == ORDER_PRICE_CENTS["A5"][100]
+def test_a_page_count_between_tiers_is_priced_at_the_nearest_tier():
+    # As the printer bills it: 15 → 24, 28 → 24, 40 → 50, 160 → 150.
+    assert compute_order_price_cents("A4", 15) == ORDER_PRICE_CENTS["A4"][24]
+    assert compute_order_price_cents("A4", 28) == ORDER_PRICE_CENTS["A4"][24]
+    assert compute_order_price_cents("A4", 40) == ORDER_PRICE_CENTS["A4"][50]
+    assert compute_order_price_cents("A5", 60) == ORDER_PRICE_CENTS["A5"][50]
+    assert compute_order_price_cents("A5", 80) == ORDER_PRICE_CENTS["A5"][100]
+    assert compute_order_price_cents("A4", 160) == ORDER_PRICE_CENTS["A4"][150]
 
 
-def test_past_the_largest_tier_each_page_is_added():
-    expected = ORDER_PRICE_CENTS["A4"][150] + 10 * OVERAGE_PER_PAGE_CENTS["A4"]
-    assert compute_order_price_cents("A4", 160) == expected
+def test_halfway_between_two_tiers_the_tier_above():
+    assert [billed_tier(p) for p in (36, 37, 74, 75, 124, 125)] == [24, 50, 50, 100, 100, 150]
+
+
+def test_the_pdf_has_one_price():
+    assert DIGITAL_PRICE_CENTS == 2200
+    assert compute_digital_price_cents("A5", 24) == compute_digital_price_cents("A4", 150) == 2200
 
 
 def test_the_price_list():

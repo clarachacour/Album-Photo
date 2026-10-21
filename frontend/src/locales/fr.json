@@ -151,7 +151,7 @@
       },
       {
         "q": "Combien coûte un album photo ?",
-        "a": "Un album imprimé A5 coûte 43 $ (jusqu'à 24 pages), 63 $ (50 pages), 83 $ (100 pages) ou 113 $ (150 pages). Un album imprimé A4 coûte 53 $ (24 pages), 73 $ (50 pages), 99 $ (100 pages) ou 129 $ (150 pages). La livraison au Liban coûte 5 $ par commande, quel que soit le nombre d'albums. L'album en PDF à télécharger coûte 25 $. Les prix sont en dollars américains, et l'album imprimé se paie en espèces à la livraison."
+        "a": "Un album imprimé A5 coûte 43 $ (24 pages), 63 $ (50 pages), 83 $ (100 pages) ou 113 $ (150 pages). Un album imprimé A4 coûte 53 $ (24 pages), 73 $ (50 pages), 99 $ (100 pages) ou 129 $ (150 pages). Un album dont le nombre de pages tombe entre deux de ces tailles est facturé à la plus proche : 28 pages au prix de 24 pages, 40 pages au prix de 50 pages. La livraison au Liban coûte 5 $ par commande, quel que soit le nombre d'albums. L'album en PDF à télécharger coûte 22 $, quels que soient son format et son nombre de pages ; commandé avec l'album imprimé, chacun garde son propre prix. Les prix sont en dollars américains, et l'album imprimé se paie en espèces à la livraison."
       },
       {
         "q": "Où livrez-vous, et en combien de temps ?",
@@ -409,8 +409,8 @@
       "perCopy": "par exemplaire",
       "pdfPrice": "ou {{price}} $ en PDF à télécharger",
       "gift": {
-        "offered": "Votre carte cadeau : un album {{size}} jusqu'à {{pages}} pages",
-        "offered_from": "Votre cadeau de {{from}} : un album {{size}} jusqu'à {{pages}} pages",
+        "offered": "Votre carte cadeau : un album {{size}} de {{pages}} pages",
+        "offered_from": "Votre cadeau de {{from}} : un album {{size}} de {{pages}} pages",
         "credit": "Votre avoir carte cadeau : {{amount}} $",
         "pay": "Cet album (livraison comprise) coûte {{diff}} $ de plus que votre cadeau : vous paierez la différence.",
         "left": "Couvert par votre cadeau — {{left}} $ resteront en avoir sur votre compte.",
@@ -716,7 +716,7 @@
     "madeIn": "Fabriqué au Liban"
   },
   "legal": {
-    "lastUpdated": "Dernière mise à jour : 16 octobre 2026",
+    "lastUpdated": "Dernière mise à jour : 21 octobre 2026",
     "terms": {
       "eyebrow": "Légal",
       "title": "Conditions générales de vente",
@@ -759,7 +759,7 @@
         },
         {
           "heading": "10. Prix",
-          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nL'album numérique coûte 25 USD, quels que soient son format et son nombre de pages, sans frais de livraison.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
+          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nLe prix de l'album imprimé dépend de son format et de son nombre de pages, par taille : 24, 50, 100 ou 150 pages. Un album dont le nombre de pages tombe entre deux tailles est facturé à la taille la plus proche (par exemple, un album de 28 pages est facturé comme un album de 24 pages, un album de 40 pages comme un album de 50 pages) ; exactement à mi-chemin entre deux tailles, il est facturé à la plus grande.\n\nL'album numérique coûte 22 USD, quels que soient son format et son nombre de pages, sans frais de livraison.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
         },
         {
           "heading": "11. Paiement",
@@ -775,7 +775,7 @@
         },
         {
           "heading": "13 bis. Album numérique (PDF)",
-          "body": "Le client peut commander son album sous forme numérique : un fichier PDF reprenant la couverture, les pages et la quatrième de couverture de l'album, en qualité adaptée à l'écran. Ce fichier n'est ni imprimé ni livré.\n\nLe fichier est mis à disposition dans l'espace client (« Mes commandes ») après confirmation du paiement ; le client en est informé par email. Il reste téléchargeable, autant de fois que souhaité, aussi longtemps que le compte du client existe. Il appartient au client d'en conserver une copie.\n\nLe client peut commander ultérieurement la version imprimée du même album ; le montant payé pour l'album numérique est alors déduit du prix de l'album imprimé."
+          "body": "Le client peut commander son album sous forme numérique : un fichier PDF reprenant la couverture, les pages et la quatrième de couverture de l'album, en qualité adaptée à l'écran. Ce fichier n'est ni imprimé ni livré.\n\nLe fichier est mis à disposition dans l'espace client (« Mes commandes ») après confirmation du paiement ; le client en est informé par email. Il reste téléchargeable, autant de fois que souhaité, aussi longtemps que le compte du client existe. Il appartient au client d'en conserver une copie.\n\nL'album numérique et l'album imprimé sont vendus séparément, chacun à son propre prix, qu'ils soient commandés ensemble ou l'un après l'autre ; aucun prix combiné ne s'applique."
         },
         {
           "heading": "14. Réception – Produit endommagé ou non conforme",
@@ -911,7 +911,7 @@
   "meta": {
     "landing": {
       "title": "Everbook — votre livre photo imprimé, mis en page pour vous",
-      "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban. À partir de 25 $."
+      "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban. À partir de 22 $."
     },
     "faq": {
       "title": "Questions fréquentes",
@@ -1067,8 +1067,8 @@
     "lowResolution_other": "{{count}} photos de votre album risquent d'être floues à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
     "tooDark_one": "{{count}} photo de votre album risque de sortir sombre à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
     "tooDark_other": "{{count}} photos de votre album risquent de sortir sombres à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
-    "billedMinimum": "Votre album compte {{count}} pages : il est facturé comme un album de 24 pages, le minimum. Vous pouvez encore ajouter des pages sans frais.",
-    "billedTier": "Votre album compte {{count}} pages : il est facturé comme un album de {{tier}} pages. Vous pouvez encore ajouter des pages sans frais jusqu'à {{tier}}.",
+    "billedMinimum": "Votre album compte {{count}} pages : il est facturé comme un album de 24 pages, le minimum. Il reste à ce prix jusqu'à {{max}} pages.",
+    "billedTier": "Votre album compte {{count}} pages : il est facturé comme un album de {{tier}} pages, la taille la plus proche. Il reste à ce prix jusqu'à {{max}} pages.",
     "kind": {
       "print": "Livre imprimé",
       "digital": "Album numérique (PDF)"
@@ -1282,7 +1282,7 @@
     "creditLeft": "{{amount}} d'avoir restent sur votre compte pour une prochaine commande.",
     "gift": {
       "title": "Carte cadeau pour {{name}}",
-      "detail": "Un album {{size}} jusqu'à {{pages}} pages · livraison incluse · PDF"
+      "detail": "Un album {{size}} de {{pages}} pages · livraison incluse · PDF"
     },
     "coveredByGift": "Couvert par votre carte cadeau : rien à payer.",
     "partlyCoveredByGift": "Votre carte cadeau en couvre une partie : {{amount}} $ restent à payer."
@@ -1306,7 +1306,7 @@
       "eyebrow": "CARTE CADEAU",
       "for": "Un album photo pour toi, {{name}}",
       "forAnonymous": "Un album photo pour toi",
-      "what": "Un album {{size}} jusqu'à {{pages}} pages · livraison au Liban incluse",
+      "what": "Un album {{size}} de {{pages}} pages · livraison au Liban incluse",
       "code": "TON CODE",
       "how": "Crée ton album sur everbook-album.com/gift et saisis ce code.",
       "valid": "Valable jusqu'au {{date}}"
@@ -1318,7 +1318,7 @@
       "use": "Utiliser ma carte",
       "done": "Votre carte cadeau est prête",
       "done_from": "Un cadeau de {{from}} !",
-      "doneBody": "Un album {{size}} jusqu'à {{pages}} pages, livraison incluse.",
+      "doneBody": "Un album {{size}} de {{pages}} pages, livraison incluse.",
       "create": "Créer mon album",
       "errors": {
         "not_found": "Ce code n'existe pas — vérifiez-le.",
