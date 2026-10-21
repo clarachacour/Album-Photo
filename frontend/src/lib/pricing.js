@@ -41,11 +41,13 @@ export const PRICE_TABLE = {
 };
 
 
-// The tier an album of pageCount pages is priced as (billed_tier in the
-// backend): the nearest one, as the printer bills it (15 → 24, 28 → 24,
-// 40 → 50, 160 → 150); halfway between two tiers, the one above.
-export function billedTier(pageCount) {
-  const pages = Math.max(1, Number(pageCount) || PAGE_TIERS[0]);
+// Past OVERAGE_FROM pages, an album pays its tier's price plus
+// OVERAGE_PER_PAGE dollars per page beyond it, whatever its format — keep in
+// sync with backend/app/services/pricing.py.
+export const OVERAGE_FROM = 100;
+export const OVERAGE_PER_PAGE = 0.45;
+
+function nearestTier(pages) {
   return PAGE_TIERS.reduce((best, t) => {
     const d = Math.abs(t - pages);
     const bd = Math.abs(best - pages);
@@ -53,16 +55,27 @@ export function billedTier(pageCount) {
   });
 }
 
-// The most pages an album can have and still be priced at `tier`.
-export function tierMaxPages(tier) {
-  const next = PAGE_TIERS[PAGE_TIERS.indexOf(tier) + 1];
-  return next ? Math.ceil((tier + next) / 2) - 1 : MAX_ALBUM_PAGES;
+// [tier, extra pages] an album of pageCount pages is priced as (priced_pages
+// in the backend). Up to OVERAGE_FROM pages, the nearest tier, as the
+// printer bills it (15 → 24, 28 → 24, 40 → 50; halfway, the one above);
+// past it, the largest tier it reaches plus the pages beyond it
+// (120 → 100 + 20, 160 → 150 + 10).
+export function pricedPages(pageCount) {
+  const pages = Math.max(1, Number(pageCount) || PAGE_TIERS[0]);
+  if (pages <= OVERAGE_FROM) return [nearestTier(pages), 0];
+  const base = Math.max(...PAGE_TIERS.filter((t) => t <= pages));
+  return [base, pages - base];
+}
+
+export function billedTier(pageCount) {
+  return pricedPages(pageCount)[0];
 }
 
 // The album's price (shown); freeTrial: what is due for it during the test week (0).
 export function computeUnitPrice(size, pageCount, freeTrial = false) {
   if (freeTrial) return 0;
-  return (PRICE_TABLE[size] || PRICE_TABLE.A4)[billedTier(pageCount)];
+  const [tier, extra] = pricedPages(pageCount);
+  return Math.round(((PRICE_TABLE[size] || PRICE_TABLE.A4)[tier] + extra * OVERAGE_PER_PAGE) * 100) / 100;
 }
 
 // Mirrors billed_page_count in backend/app/services/pricing.py: the album's

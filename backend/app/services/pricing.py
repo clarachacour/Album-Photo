@@ -31,7 +31,7 @@ def album_offered(order: dict) -> bool:
 
 # Price by format AND page tier, in cents — server-side only, the client
 # never gets to set its own price. An album between two tiers pays the
-# nearest one (see billed_tier).
+# nearest one, or past 100 pages a price per extra page (see priced_pages).
 # A3 removed — exceeds the printing office's max open (flat) hardcover size
 # (70×33cm) in both orientations, so it was never actually printable.
 ORDER_PRICE_CENTS = {
@@ -53,6 +53,13 @@ SHIPPING_PRICE_CENTS = 500
 # customer accepted; change both together when the terms change.
 TERMS_VERSION = "2026-10-21"
 
+# Past OVERAGE_FROM pages, an album pays its tier's price plus this much
+# per page beyond it, in cents, whatever its format (see priced_pages).
+# Keep in sync with OVERAGE_FROM / OVERAGE_PER_PAGE in
+# frontend/src/lib/pricing.js.
+OVERAGE_FROM = 100
+OVERAGE_PER_PAGE_CENTS = 45
+
 
 def billed_page_count(album: dict) -> int:
     """Pages the order is charged for: the album's real page count (the
@@ -69,17 +76,29 @@ def nearest_tier(page_count: int, tiers) -> int:
     return min(tiers, key=lambda t: (abs(t - pages), -t))
 
 
+def priced_pages(page_count: int, tiers=PAGE_TIERS) -> tuple:
+    """(tier, extra pages) an album of page_count pages is priced as. Up
+    to OVERAGE_FROM pages, the nearest tier (15 → 24, 28 → 24, 40 → 50),
+    with no extra page; past it, the largest tier it reaches, plus every
+    page beyond it (120 → 100 + 20, 150 → 150 + 0, 160 → 150 + 10)."""
+    pages = max(1, int(page_count or tiers[0]))
+    if pages <= OVERAGE_FROM:
+        return nearest_tier(pages, tiers), 0
+    base = max(t for t in tiers if t <= pages)
+    return base, pages - base
+
+
 def billed_tier(page_count: int) -> int:
-    """The tier an album of page_count pages is priced as: the nearest one
-    (15 → 24, 28 → 24, 40 → 50, 160 → 150)."""
-    return nearest_tier(page_count or PAGE_TIERS[0], PAGE_TIERS)
+    """The tier an album of page_count pages is priced from (see priced_pages)."""
+    return priced_pages(page_count)[0]
 
 
 def compute_order_price_cents(size: str, page_count: int) -> int:
     if FREE_TRIAL:
         return 0
     size = size if size in ORDER_PRICE_CENTS else "A4"
-    return ORDER_PRICE_CENTS[size][billed_tier(page_count)]
+    tier, extra = priced_pages(page_count)
+    return ORDER_PRICE_CENTS[size][tier] + extra * OVERAGE_PER_PAGE_CENTS
 
 
 def compute_digital_price_cents(size: str, page_count: int) -> int:

@@ -19,17 +19,24 @@ def test_tier_prices_are_used_as_is(size):
 
 
 def test_a_page_count_between_tiers_is_priced_at_the_nearest_tier():
-    # As the printer bills it: 15 → 24, 28 → 24, 40 → 50, 160 → 150.
+    # As the printer bills it, up to 100 pages: 15 → 24, 28 → 24, 40 → 50.
     assert compute_order_price_cents("A4", 15) == ORDER_PRICE_CENTS["A4"][24]
     assert compute_order_price_cents("A4", 28) == ORDER_PRICE_CENTS["A4"][24]
     assert compute_order_price_cents("A4", 40) == ORDER_PRICE_CENTS["A4"][50]
     assert compute_order_price_cents("A5", 60) == ORDER_PRICE_CENTS["A5"][50]
     assert compute_order_price_cents("A5", 80) == ORDER_PRICE_CENTS["A5"][100]
-    assert compute_order_price_cents("A4", 160) == ORDER_PRICE_CENTS["A4"][150]
+
+
+def test_past_100_pages_each_extra_page_is_45_cents():
+    assert compute_order_price_cents("A4", 120) == 9900 + 20 * 45
+    assert compute_order_price_cents("A5", 101) == 8300 + 45
+    assert compute_order_price_cents("A4", 149) == 9900 + 49 * 45
+    assert compute_order_price_cents("A4", 150) == 12900
+    assert compute_order_price_cents("A5", 160) == 11300 + 10 * 45
 
 
 def test_halfway_between_two_tiers_the_tier_above():
-    assert [billed_tier(p) for p in (36, 37, 74, 75, 124, 125)] == [24, 50, 50, 100, 100, 150]
+    assert [billed_tier(p) for p in (36, 37, 74, 75)] == [24, 50, 50, 100]
 
 
 def test_the_pdf_has_one_price():

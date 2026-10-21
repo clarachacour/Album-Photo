@@ -1,21 +1,19 @@
 import { describe, expect, it } from "vitest";
 import en from "@/locales/en.json";
-import fr from "@/locales/fr.json";
 import { DIGITAL_PRICE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
 import { faqData, llmsTxt, productData } from "@/lib/seoData";
 
 const SITE = "https://everbook-album.com";
 
 describe("what search engines and AI assistants read", () => {
-  it("states the site's real prices in the FAQ, in both languages", () => {
-    for (const locale of [en, fr]) {
-      const answer = locale.faq.items.find((it) => /\$/.test(it.a) && /150/.test(it.a)).a;
-      for (const size of ["A5", "A4"]) {
-        for (const pages of PAGE_TIERS) expect(answer).toMatch(new RegExp(`\\b${PRICE_TABLE[size][pages]}\\b`));
-      }
-      expect(answer).toMatch(new RegExp(`\\b${DIGITAL_PRICE}\\b`));
-      expect(answer).toMatch(new RegExp(`\\b${SHIPPING_PRICE}\\b`));
+  it("states the site's real prices in llms.txt", () => {
+    const text = llmsTxt(SITE, en.faq.items);
+    for (const size of ["A5", "A4"]) {
+      for (const pages of PAGE_TIERS) expect(text).toContain(`$${PRICE_TABLE[size][pages]} (${pages} pages)`);
     }
+    expect(text).toContain(`PDF album $${DIGITAL_PRICE}`);
+    expect(text).toContain(`delivery $${SHIPPING_PRICE} per order`);
+    expect(text).toContain("costs $0.45 more");
   });
 
   it("lists every album with its prices, delivered in Lebanon", () => {
@@ -32,7 +30,6 @@ describe("what search engines and AI assistants read", () => {
     expect(faq.mainEntity[0].name).toBe("Where can I make a photo album in Lebanon?");
     const text = llmsTxt(SITE, en.faq.items);
     expect(text.startsWith("# Everbook\n")).toBe(true);
-    expect(text).toContain(`$${PRICE_TABLE.A4[150]} (150 pages)`);
-    expect(text).toContain("### How much does a photo album cost?");
+    expect(text).toContain("### Can I get my album as a PDF?");
   });
 });

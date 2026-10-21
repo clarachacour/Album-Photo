@@ -150,10 +150,6 @@
         "a": "Sur Everbook (everbook-album.com), un service en ligne d'albums photo basé au Liban. Vous déposez toutes vos photos — même en vrac —, Everbook écarte les doublons et les photos floues, met le reste en ordre et compose votre album en quelques minutes. Vous le personnalisez dans l'éditeur, puis il est imprimé et livré chez vous partout au Liban. Tout se fait en ligne, depuis votre téléphone ou votre ordinateur."
       },
       {
-        "q": "Combien coûte un album photo ?",
-        "a": "Un album imprimé A5 coûte 43 $ (24 pages), 63 $ (50 pages), 83 $ (100 pages) ou 113 $ (150 pages). Un album imprimé A4 coûte 53 $ (24 pages), 73 $ (50 pages), 99 $ (100 pages) ou 129 $ (150 pages). Un album dont le nombre de pages tombe entre deux de ces tailles est facturé à la plus proche : 28 pages au prix de 24 pages, 40 pages au prix de 50 pages. La livraison au Liban coûte 5 $ par commande, quel que soit le nombre d'albums. L'album en PDF à télécharger coûte 22 $, quels que soient son format et son nombre de pages ; commandé avec l'album imprimé, chacun garde son propre prix. Les prix sont en dollars américains, et l'album imprimé se paie en espèces à la livraison."
-      },
-      {
         "q": "Où livrez-vous, et en combien de temps ?",
         "a": "Partout au Liban — Beyrouth, le Mont-Liban, Jounieh, Byblos, Tripoli, Saïda, Tyr, Zahlé et le reste du pays —, à domicile, par coursier. L'impression prend environ 3 jours, puis la livraison 2 à 3 jours. Plusieurs albums commandés ensemble arrivent dans un seul colis, avec une seule livraison à payer."
       },
@@ -759,7 +755,7 @@
         },
         {
           "heading": "10. Prix",
-          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nLe prix de l'album imprimé dépend de son format et de son nombre de pages, par taille : 24, 50, 100 ou 150 pages. Un album dont le nombre de pages tombe entre deux tailles est facturé à la taille la plus proche (par exemple, un album de 28 pages est facturé comme un album de 24 pages, un album de 40 pages comme un album de 50 pages) ; exactement à mi-chemin entre deux tailles, il est facturé à la plus grande.\n\nL'album numérique coûte 22 USD, quels que soient son format et son nombre de pages, sans frais de livraison.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
+          "body": "Les prix applicables sont ceux affichés sur le Site au moment de la commande.\n\nLes prix sont indiqués en USD, toutes taxes comprises.\n\nAvant la validation de la commande, le client est informé du prix total de son achat, comprenant le prix de l'album, les éventuelles options choisies, les taxes applicables et les frais de livraison. Les frais de livraison au Liban s'élèvent à 5 USD par commande.\n\nLe prix de l'album imprimé dépend de son format et de son nombre de pages, par taille : 24, 50, 100 ou 150 pages. Un album dont le nombre de pages tombe entre deux tailles est facturé à la taille la plus proche (par exemple, un album de 28 pages est facturé comme un album de 24 pages, un album de 40 pages comme un album de 50 pages) ; exactement à mi-chemin entre deux tailles, il est facturé à la plus grande. Au-delà de 100 pages, chaque page au-delà de la taille atteinte coûte 0,45 USD de plus (par exemple, un album de 120 pages coûte le prix de 100 pages plus 20 × 0,45 USD ; un album de 160 pages, le prix de 150 pages plus 10 × 0,45 USD).\n\nL'album numérique coûte 22 USD, quels que soient son format et son nombre de pages, sans frais de livraison.\n\nLa Société peut modifier ses prix à tout moment. Une modification ultérieure des prix n'affecte toutefois pas une commande déjà validée."
         },
         {
           "heading": "11. Paiement",
@@ -1067,8 +1063,6 @@
     "lowResolution_other": "{{count}} photos de votre album risquent d'être floues à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
     "tooDark_one": "{{count}} photo de votre album risque de sortir sombre à l'impression (signalée par ⚠ dans l'éditeur). Si vous la gardez, vous acceptez ce risque.",
     "tooDark_other": "{{count}} photos de votre album risquent de sortir sombres à l'impression (signalées par ⚠ dans l'éditeur). Si vous les gardez, vous acceptez ce risque.",
-    "billedMinimum": "Votre album compte {{count}} pages : il est facturé comme un album de 24 pages, le minimum. Il reste à ce prix jusqu'à {{max}} pages.",
-    "billedTier": "Votre album compte {{count}} pages : il est facturé comme un album de {{tier}} pages, la taille la plus proche. Il reste à ce prix jusqu'à {{max}} pages.",
     "kind": {
       "print": "Livre imprimé",
       "digital": "Album numérique (PDF)"

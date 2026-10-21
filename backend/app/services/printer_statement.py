@@ -13,16 +13,22 @@ from openpyxl.utils import get_column_letter
 
 from app.core.order_number import order_number
 from app.core.signed_links import sign_order_action, verify_order_action
-from app.services.pricing import nearest_tier
+from app.services.pricing import priced_pages
 
 # What the printer charges per copy, in dollars, by page tier and format.
-# 150 pages is the most an album can have.
+# Past 100 pages, the printer also bills each page beyond the tier (the same
+# rule as our prices, see priced_pages), at PRINTER_PER_PAGE dollars.
 PRINTER_PRICES = OrderedDict([
     (24, {"A5": 24, "A4": 27}),
     (50, {"A5": 30, "A4": 33}),
     (100, {"A5": 37, "A4": 40}),
     (150, {"A5": 45, "A4": 55}),
 ])
+
+# What the printer charges per page beyond the tier, past 100 pages, in
+# dollars. None until Bookstop gives the amount: such an album shows "to
+# check" in the statement, with no price.
+PRINTER_PER_PAGE = None
 
 # The envelope the printer packs each album in, in dollars, per album.
 ENVELOPE_PRICE = 0.5
@@ -34,16 +40,24 @@ MONTHS = ["January", "February", "March", "April", "May", "June", "July", "Augus
 
 
 def printer_tier(pages: int) -> Optional[int]:
-    """The price tier the printer bills an album of `pages` pages at: the
-    nearest one (15 → 24, 28 → 24, 40 → 50, 160 → 150), as for our prices."""
-    return nearest_tier(pages, list(PRINTER_PRICES))
+    """The price tier the printer bills an album of `pages` pages from: the
+    nearest one up to 100 pages (15 → 24, 28 → 24, 40 → 50), past it the
+    largest one it reaches, plus the pages beyond it (see priced_pages)."""
+    return priced_pages(pages, list(PRINTER_PRICES))[0]
 
 
-def printer_unit_price(size: str, pages: int) -> Optional[int]:
-    tier = printer_tier(pages)
-    if tier is None:
+def printer_extra_pages(pages: int) -> int:
+    return priced_pages(pages, list(PRINTER_PRICES))[1]
+
+
+def printer_unit_price(size: str, pages: int) -> Optional[float]:
+    tier, extra = priced_pages(pages, list(PRINTER_PRICES))
+    price = PRINTER_PRICES[tier].get(size if size in ("A4", "A5") else "A4")
+    if not extra:
+        return price
+    if PRINTER_PER_PAGE is None:
         return None
-    return PRINTER_PRICES[tier].get(size if size in ("A4", "A5") else "A4")
+    return round(price + extra * PRINTER_PER_PAGE, 2)
 
 
 def _history_time(order: dict, status: str) -> Optional[str]:
@@ -85,6 +99,7 @@ def statement_rows(orders: list, page_counts: dict) -> list:
             "format": f"{o.get('size', 'A4')} · {'landscape' if o.get('orientation') == 'landscape' else 'portrait'}",
             "pages": pages,
             "tier": printer_tier(pages),
+            "extra": printer_extra_pages(pages),
             "quantity": qty,
             "unit": unit,
             "envelope": ENVELOPE_PRICE * qty,
@@ -114,6 +129,11 @@ def _header(ws, titles, widths):
     ws.freeze_panes = "A2"
 
 
+def _priced_as(r: dict) -> str:
+    label = f"{r['tier']} pages" + (f" + {r['extra']}" if r.get("extra") else "")
+    return label if r["unit"] is not None else f"{label} (to check)"
+
+
 def build_statement_xlsx(rows: list) -> bytes:
     wb = Workbook()
 
@@ -125,7 +145,7 @@ def build_statement_xlsx(rows: list) -> bytes:
     for r in rows:
         status = "Paid" if r["paid"] else "To pay"
         ws.append([r["number"], r["sent"], r["ready"], r["format"], r["pages"],
-                   f"{r['tier']} pages" if r["tier"] else "to check", r["quantity"],
+                   _priced_as(r), r["quantity"],
                    r["unit"], r["envelope"], r["total"], status, r["paid_on"]])
         row = ws.max_row
         for col in (2, 3, 12):
@@ -177,7 +197,12 @@ def build_statement_xlsx(rows: list) -> bytes:
     for col in (2, 3):
         ts.cell(row=ts.max_row, column=col).number_format = MONEY_FMT
     ts.append([])
-    ts.append(["An album between two tiers is priced at the next tier up (e.g. 35 pages: the 50-page price)."])
+    ts.append(["Per page past 100 pages", PRINTER_PER_PAGE, PRINTER_PER_PAGE])
+    for col in (2, 3):
+        ts.cell(row=ts.max_row, column=col).number_format = MONEY_FMT
+    ts.append([])
+    ts.append(["Up to 100 pages, an album between two tiers is priced at the nearest one (28 pages: the 24-page price; 40 pages: the 50-page price; halfway: the tier above)."])
+    ts.append(["Past 100 pages, it is priced at the largest tier it reaches, plus each page beyond it (120 pages: the 100-page price + 20 pages)."])
 
     buf = BytesIO()
     wb.save(buf)

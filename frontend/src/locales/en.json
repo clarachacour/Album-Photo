@@ -150,10 +150,6 @@
         "a": "On Everbook (everbook-album.com), an online photo book service based in Lebanon. You upload all your photos — even unsorted — Everbook removes duplicates and blurry shots, puts the rest in order and lays out your album in minutes. You personalize it in the editor, then it's printed and delivered to your door anywhere in Lebanon. Everything is done online, from your phone or computer."
       },
       {
-        "q": "How much does a photo album cost?",
-        "a": "A printed A5 album costs $43 (24 pages), $63 (50 pages), $83 (100 pages) or $113 (150 pages). A printed A4 album costs $53 (24 pages), $73 (50 pages), $99 (100 pages) or $129 (150 pages). An album whose page count falls between two of these is priced at the nearest one: 28 pages is priced as 24 pages, 40 pages as 50 pages. Delivery in Lebanon is $5 per order, whatever the number of albums. The album as a PDF to download is $22, whatever its format and number of pages; ordered together with the printed album, each is at its own price. Prices are in US dollars, and the printed album is paid in cash on delivery."
-      },
-      {
         "q": "Where do you deliver, and how long does it take?",
         "a": "Everywhere in Lebanon — Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle and the rest of the country — to your door, by courier. Printing takes about 3 days, then delivery 2 to 3 days. Several albums ordered together arrive in one package, with the delivery paid once."
       },
@@ -759,7 +755,7 @@
         },
         {
           "heading": "10. Prices",
-          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe printed album's price depends on its format and on its number of pages, by size: 24, 50, 100 or 150 pages. An album whose number of pages falls between two sizes is priced at the nearest size (for example, a 28-page album is priced as a 24-page album, a 40-page album as a 50-page album); exactly halfway between two sizes, it is priced at the larger one.\n\nThe digital album costs USD 22, whatever its format and number of pages, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
+          "body": "The applicable prices are those shown on the Site at the time of ordering.\n\nPrices are shown in USD, all taxes included.\n\nBefore confirming the order, the customer is informed of the total price of their purchase, including the price of the album, any options chosen, applicable taxes and delivery costs. Delivery within Lebanon costs USD 5 per order.\n\nThe printed album's price depends on its format and on its number of pages, by size: 24, 50, 100 or 150 pages. An album whose number of pages falls between two sizes is priced at the nearest size (for example, a 28-page album is priced as a 24-page album, a 40-page album as a 50-page album); exactly halfway between two sizes, it is priced at the larger one. Beyond 100 pages, each page beyond the size reached costs USD 0.45 more (for example, a 120-page album costs the 100-page price plus 20 × USD 0.45; a 160-page album, the 150-page price plus 10 × USD 0.45).\n\nThe digital album costs USD 22, whatever its format and number of pages, with no delivery costs.\n\nThe Company may change its prices at any time. A later price change does not, however, affect an order already confirmed."
         },
         {
           "heading": "11. Payment",
@@ -1067,8 +1063,6 @@
     "lowResolution_other": "{{count}} photos in your album may print blurry (marked ⚠ in the editor). If you keep them, you accept that risk.",
     "tooDark_one": "{{count}} photo in your album may print dark (marked ⚠ in the editor). If you keep it, you accept this risk.",
     "tooDark_other": "{{count}} photos in your album may print dark (marked ⚠ in the editor). If you keep them, you accept this risk.",
-    "billedMinimum": "Your album has {{count}} pages: it's billed as a 24-page album, the minimum. It stays at this price up to {{max}} pages.",
-    "billedTier": "Your album has {{count}} pages: it's billed as a {{tier}}-page album, the nearest size. It stays at this price up to {{max}} pages.",
     "kind": {
       "print": "Printed book",
       "digital": "Digital album (PDF)"

@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
-import { FREE_TRIAL, PAGE_TIERS, SHIPPING_PRICE, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice, tierMaxPages } from "@/lib/pricing";
+import { FREE_TRIAL, SHIPPING_PRICE, billedPageCount, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 /**
@@ -73,7 +73,6 @@ export default function OrderCheckoutPage() {
   const lowResCount = album ? lowResolutionItems(album).length : 0;
   const darkCount = album ? darkPhotoItems(album).length : 0;
   const pageCount = album ? billedPageCount(album) : 0;
-  const tier = billedTier(pageCount);
   const printPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
   const digitalPrice = album ? computeDigitalPrice(album.size || "A4", pageCount) : 0;
   const subtotal = (kinds.print ? printPrice * quantity : 0) + (kinds.digital ? digitalPrice : 0);
@@ -179,12 +178,6 @@ export default function OrderCheckoutPage() {
                 <span className="text-[color:var(--muted)]">{t("checkout.pages")}</span>
                 <span>{pageCount}</span>
               </div>
-              {/* Billed as the nearest tier, as the printer bills it (see billedTier). */}
-              {tier !== pageCount && (
-                <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1" data-testid="checkout-billed-tier">
-                  {t(pageCount < PAGE_TIERS[0] ? "checkout.billedMinimum" : "checkout.billedTier", { count: pageCount, tier, max: tierMaxPages(tier) })}
-                </div>
-              )}
               {kinds.print && (
                 <>
                   <div className="text-xs text-[color:var(--muted)] bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-2 py-1.5 mb-3 mt-1">

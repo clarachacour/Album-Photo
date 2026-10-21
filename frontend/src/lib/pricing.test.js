@@ -1,26 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice, tierMaxPages } from "@/lib/pricing";
+import { PRICE_TABLE, amountDueCents, billedPageCount, billedTier, computeDigitalPrice, computeUnitPrice, pricedPages } from "@/lib/pricing";
 
 describe("pricing", () => {
-  it("bills an album as the nearest tier, as the printer does", () => {
+  it("bills an album as the nearest tier up to 100 pages, as the printer does", () => {
     expect(billedTier(15)).toBe(24); // 24 pages is the minimum
     expect(billedTier(24)).toBe(24);
     expect(billedTier(28)).toBe(24);
     expect(billedTier(40)).toBe(50);
     expect(billedTier(37)).toBe(50); // halfway: the tier above
-    expect(billedTier(120)).toBe(100);
-    expect(billedTier(160)).toBe(150);
+    expect(billedTier(75)).toBe(100);
     expect(computeUnitPrice("A4", 15, false)).toBe(PRICE_TABLE.A4[24]);
     expect(computeUnitPrice("A5", 28, false)).toBe(PRICE_TABLE.A5[24]);
-    expect(computeUnitPrice("A4", 160, false)).toBe(PRICE_TABLE.A4[150]);
+    expect(computeUnitPrice("A5", 90, false)).toBe(PRICE_TABLE.A5[100]);
   });
 
-  it("tells up to how many pages an album keeps its price", () => {
-    expect(tierMaxPages(24)).toBe(36);
-    expect(tierMaxPages(50)).toBe(74);
-    expect(tierMaxPages(100)).toBe(124);
-    expect(tierMaxPages(150)).toBe(160);
-    for (const tier of [24, 50, 100]) expect(billedTier(tierMaxPages(tier) + 1)).not.toBe(tier);
+  it("adds $0.45 per page past 100 pages, beyond the tier reached", () => {
+    expect(pricedPages(120)).toEqual([100, 20]);
+    expect(pricedPages(160)).toEqual([150, 10]);
+    expect(computeUnitPrice("A4", 120, false)).toBe(99 + 20 * 0.45);
+    expect(computeUnitPrice("A5", 101, false)).toBe(83.45);
+    expect(computeUnitPrice("A4", 150, false)).toBe(129);
+    expect(computeUnitPrice("A5", 160, false)).toBe(117.5);
   });
 
   it("uses the price list: 24/50/100/150 pages", () => {
