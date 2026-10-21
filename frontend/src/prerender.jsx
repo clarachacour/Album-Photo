@@ -7,6 +7,7 @@ import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router";
 import i18n from "@/lib/i18n";
 import { AppRoutes } from "@/App";
+import { faqData, llmsTxt, productData } from "@/lib/seoData";
 
 // Address → key of its title and description in the locale files (meta.<key>).
 export const PUBLIC_PAGES = {
@@ -37,4 +38,18 @@ export async function render(path) {
     title: page === "landing" ? title : `${title} — Everbook`,
     description: i18n.t(`meta.${page}.description`, { defaultValue: i18n.t("meta.landing.description") }),
   };
+}
+
+/** schema.org data of a public page, besides the brand's (scripts/prerender.mjs). */
+export async function structuredData(path, siteUrl) {
+  await i18n.changeLanguage("en");
+  if (path === "/") return productData(siteUrl);
+  if (path === "/faq") return [faqData(siteUrl, i18n.t("faq.items", { returnObjects: true }))];
+  return [];
+}
+
+/** llms.txt, in English. */
+export async function llms(siteUrl) {
+  await i18n.changeLanguage("en");
+  return llmsTxt(siteUrl, i18n.t("faq.items", { returnObjects: true }));
 }

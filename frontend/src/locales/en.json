@@ -146,6 +146,22 @@
     "getInTouch": "Get in touch",
     "items": [
       {
+        "q": "Where can I make a photo album in Lebanon?",
+        "a": "On Everbook (everbook-album.com), an online photo book service based in Lebanon. You upload all your photos — even unsorted — Everbook removes duplicates and blurry shots, puts the rest in order and lays out your album in minutes. You personalize it in the editor, then it's printed and delivered to your door anywhere in Lebanon. Everything is done online, from your phone or computer."
+      },
+      {
+        "q": "How much does a photo album cost?",
+        "a": "A printed A5 album costs $43 (up to 24 pages), $63 (50 pages), $83 (100 pages) or $113 (150 pages). A printed A4 album costs $53 (24 pages), $73 (50 pages), $99 (100 pages) or $129 (150 pages). Delivery in Lebanon is $5 per order, whatever the number of albums. The album as a PDF to download is $25. Prices are in US dollars, and the printed album is paid in cash on delivery."
+      },
+      {
+        "q": "Where do you deliver, and how long does it take?",
+        "a": "Everywhere in Lebanon — Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle and the rest of the country — to your door, by courier. Printing takes about 3 days, then delivery 2 to 3 days. Several albums ordered together arrive in one package, with the delivery paid once."
+      },
+      {
+        "q": "Can I give a photo album as a gift?",
+        "a": "Yes: with a gift card. Choose the format and number of pages, write a few words, and you receive the card as a PDF to print or send. The person who receives it enters the code on everbook-album.com, creates the album with their own photos, and it's delivered to them in Lebanon — delivery included."
+      },
+      {
         "q": "How long does it take to receive my album?",
         "a": "About 5 to 6 days in all: printing takes about 3 days, then delivery in Lebanon 2 to 3 days. You can follow every step from your Orders page."
       },

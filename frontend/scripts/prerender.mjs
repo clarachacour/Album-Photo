@@ -33,7 +33,7 @@ const memoryStorage = () => {
 globalThis.localStorage = memoryStorage();
 globalThis.sessionStorage = memoryStorage();
 
-const { render, PUBLIC_PAGES } = await import(pathToFileURL(join(ssrDir, "prerender.js")).href);
+const { render, structuredData, llms, PUBLIC_PAGES } = await import(pathToFileURL(join(ssrDir, "prerender.js")).href);
 const template = readFileSync(join(buildDir, "index.html"), "utf8");
 const { siteUrl } = siteInfo();
 
@@ -48,7 +48,7 @@ function setMeta(html, attr, name, content) {
   return html.replace(re, (_, start, end) => `${start}${escapeAttr(content)}${end}`);
 }
 
-function pageHtml(path, { html, title, description }) {
+function pageHtml(path, { html, title, description }, extraData = []) {
   let out = template;
   if (!out.includes('<div id="root"></div>')) throw new Error('index.html has no empty <div id="root"></div>');
   out = out.replace('<div id="root"></div>', `<div id="root">${html}</div>`);
@@ -64,12 +64,15 @@ function pageHtml(path, { html, title, description }) {
     out = out.replace("</head>", () => `  <link rel="canonical" href="${url}" />\n  </head>`);
     // The home page tells search engines who Everbook is (the brand shown
     // for a search on its name, with its logo).
-    if (path === "/") out = out.replace("</head>", () => `  <script type="application/ld+json">${JSON.stringify(brandData(siteUrl, description))}</script>\n  </head>`);
+    // Then the page's own: the albums and their prices (home), the
+    // questions and answers (FAQ).
+    const data = path === "/" ? brandData(siteUrl, description, extraData) : extraData[0];
+    if (data) out = out.replace("</head>", () => `  <script type="application/ld+json">${JSON.stringify(data).replaceAll("<", "\\u003c")}</script>\n  </head>`);
   }
   return out;
 }
 
-function brandData(siteUrl, description) {
+function brandData(siteUrl, description, products = []) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -97,6 +100,7 @@ function brandData(siteUrl, description) {
         inLanguage: ["en", "fr"],
         publisher: { "@id": `${siteUrl}/#organization` },
       },
+      ...products,
     ],
   };
 }
@@ -104,9 +108,14 @@ function brandData(siteUrl, description) {
 writeFileSync(join(buildDir, "app.html"), template);
 for (const path of Object.keys(PUBLIC_PAGES)) {
   const file = path === "/" ? "index.html" : `${path.slice(1)}.html`;
-  const out = pageHtml(path, await render(path));
+  const out = pageHtml(path, await render(path), siteUrl ? await structuredData(path, siteUrl) : []);
   mkdirSync(dirname(join(buildDir, file)), { recursive: true });
   writeFileSync(join(buildDir, file), out);
   console.log(`prerendered ${path} → build/${file}`);
+}
+// For AI assistants (llmstxt.org): what Everbook is, its prices, its pages.
+if (siteUrl) {
+  writeFileSync(join(buildDir, "llms.txt"), await llms(siteUrl));
+  console.log("wrote build/llms.txt");
 }
 rmSync(ssrDir, { recursive: true, force: true });

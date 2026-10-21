@@ -146,6 +146,22 @@
     "getInTouch": "Contactez-nous",
     "items": [
       {
+        "q": "Où faire un album photo au Liban ?",
+        "a": "Sur Everbook (everbook-album.com), un service en ligne d'albums photo basé au Liban. Vous déposez toutes vos photos — même en vrac —, Everbook écarte les doublons et les photos floues, met le reste en ordre et compose votre album en quelques minutes. Vous le personnalisez dans l'éditeur, puis il est imprimé et livré chez vous partout au Liban. Tout se fait en ligne, depuis votre téléphone ou votre ordinateur."
+      },
+      {
+        "q": "Combien coûte un album photo ?",
+        "a": "Un album imprimé A5 coûte 43 $ (jusqu'à 24 pages), 63 $ (50 pages), 83 $ (100 pages) ou 113 $ (150 pages). Un album imprimé A4 coûte 53 $ (24 pages), 73 $ (50 pages), 99 $ (100 pages) ou 129 $ (150 pages). La livraison au Liban coûte 5 $ par commande, quel que soit le nombre d'albums. L'album en PDF à télécharger coûte 25 $. Les prix sont en dollars américains, et l'album imprimé se paie en espèces à la livraison."
+      },
+      {
+        "q": "Où livrez-vous, et en combien de temps ?",
+        "a": "Partout au Liban — Beyrouth, le Mont-Liban, Jounieh, Byblos, Tripoli, Saïda, Tyr, Zahlé et le reste du pays —, à domicile, par coursier. L'impression prend environ 3 jours, puis la livraison 2 à 3 jours. Plusieurs albums commandés ensemble arrivent dans un seul colis, avec une seule livraison à payer."
+      },
+      {
+        "q": "Puis-je offrir un album photo ?",
+        "a": "Oui, avec une carte cadeau. Choisissez le format et le nombre de pages, écrivez quelques mots, et vous recevez la carte en PDF, à imprimer ou à envoyer. La personne qui la reçoit saisit le code sur everbook-album.com, crée l'album avec ses propres photos, et il lui est livré au Liban — livraison incluse."
+      },
+      {
         "q": "Combien de temps faut-il pour recevoir mon album ?",
         "a": "Environ 5 à 6 jours en tout : la fabrication prend environ 3 jours, puis la livraison au Liban 2 à 3 jours. Vous pouvez suivre chaque étape depuis votre page Commandes."
       },
