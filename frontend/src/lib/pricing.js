@@ -42,10 +42,11 @@ export const PRICE_TABLE = {
 
 
 // Past OVERAGE_FROM pages, an album pays its tier's price plus
-// OVERAGE_PER_PAGE dollars per page beyond it, whatever its format — keep in
-// sync with backend/app/services/pricing.py.
+// OVERAGE_PER_PAGE dollars per page beyond it, whatever its format: the
+// grid's own step from 100 to 150 pages — keep in sync with
+// backend/app/services/pricing.py.
 export const OVERAGE_FROM = 100;
-export const OVERAGE_PER_PAGE = 0.45;
+export const OVERAGE_PER_PAGE = 0.6;
 
 function nearestTier(pages) {
   return PAGE_TIERS.reduce((best, t) => {

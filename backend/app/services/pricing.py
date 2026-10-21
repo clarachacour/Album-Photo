@@ -54,11 +54,13 @@ SHIPPING_PRICE_CENTS = 500
 TERMS_VERSION = "2026-10-21"
 
 # Past OVERAGE_FROM pages, an album pays its tier's price plus this much
-# per page beyond it, in cents, whatever its format (see priced_pages).
+# per page beyond it, in cents, whatever its format (see priced_pages):
+# the grid's own step from 100 to 150 pages ($30 over 50 pages, in A4 and
+# A5), so a 150-page album costs its tier's price either way.
 # Keep in sync with OVERAGE_FROM / OVERAGE_PER_PAGE in
 # frontend/src/lib/pricing.js.
 OVERAGE_FROM = 100
-OVERAGE_PER_PAGE_CENTS = 45
+OVERAGE_PER_PAGE_CENTS = 60
 
 
 def billed_page_count(album: dict) -> int:

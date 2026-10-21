@@ -23,12 +23,15 @@ def test_price_tiers():
 def test_pages_past_100_are_priced_per_page(monkeypatch):
     from app.services import printer_statement as ps
 
-    # Until Bookstop gives its price per page: "to check".
+    # The step of the printer's own list from 100 to 150 pages.
+    assert ps.printer_unit_price("A4", 120) == 46
+    assert ps.printer_unit_price("A5", 160) == 46.6
+    assert ps.printer_unit_price("A4", 149) == 54.7
+    assert ps._priced_as({"tier": 100, "extra": 20, "unit": 46}) == "100 pages + 20"
+    # A format with no price per page: "to check".
+    monkeypatch.setattr(ps, "PRINTER_PER_PAGE", {"A5": 0.16})
     assert ps.printer_unit_price("A4", 120) is None
     assert ps._priced_as({"tier": 100, "extra": 20, "unit": None}) == "100 pages + 20 (to check)"
-    monkeypatch.setattr(ps, "PRINTER_PER_PAGE", 0.2)
-    assert ps.printer_unit_price("A4", 120) == 44
-    assert ps.printer_unit_price("A5", 160) == 47
 
 
 def _order(db, oid, status, size="A4", page_count=50, qty=1, **extra):

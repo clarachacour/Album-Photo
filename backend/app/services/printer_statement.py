@@ -26,9 +26,9 @@ PRINTER_PRICES = OrderedDict([
 ])
 
 # What the printer charges per page beyond the tier, past 100 pages, in
-# dollars. None until Bookstop gives the amount: such an album shows "to
-# check" in the statement, with no price.
-PRINTER_PER_PAGE = None
+# dollars: the step of its own price list from 100 to 150 pages (A4 $15,
+# A5 $8 over 50 pages). None for a format would show "to check".
+PRINTER_PER_PAGE = {"A5": 0.16, "A4": 0.30}
 
 # The envelope the printer packs each album in, in dollars, per album.
 ENVELOPE_PRICE = 0.5
@@ -52,12 +52,14 @@ def printer_extra_pages(pages: int) -> int:
 
 def printer_unit_price(size: str, pages: int) -> Optional[float]:
     tier, extra = priced_pages(pages, list(PRINTER_PRICES))
-    price = PRINTER_PRICES[tier].get(size if size in ("A4", "A5") else "A4")
+    size = size if size in ("A4", "A5") else "A4"
+    price = PRINTER_PRICES[tier][size]
     if not extra:
         return price
-    if PRINTER_PER_PAGE is None:
+    per_page = (PRINTER_PER_PAGE or {}).get(size)
+    if per_page is None:
         return None
-    return round(price + extra * PRINTER_PER_PAGE, 2)
+    return round(price + extra * per_page, 2)
 
 
 def _history_time(order: dict, status: str) -> Optional[str]:
@@ -197,7 +199,7 @@ def build_statement_xlsx(rows: list) -> bytes:
     for col in (2, 3):
         ts.cell(row=ts.max_row, column=col).number_format = MONEY_FMT
     ts.append([])
-    ts.append(["Per page past 100 pages", PRINTER_PER_PAGE, PRINTER_PER_PAGE])
+    ts.append(["Per page past 100 pages", PRINTER_PER_PAGE.get("A5"), PRINTER_PER_PAGE.get("A4")])
     for col in (2, 3):
         ts.cell(row=ts.max_row, column=col).number_format = MONEY_FMT
     ts.append([])

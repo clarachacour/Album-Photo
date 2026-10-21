@@ -14,13 +14,14 @@ describe("pricing", () => {
     expect(computeUnitPrice("A5", 90, false)).toBe(PRICE_TABLE.A5[100]);
   });
 
-  it("adds $0.45 per page past 100 pages, beyond the tier reached", () => {
+  it("adds $0.60 per page past 100 pages, beyond the tier reached", () => {
     expect(pricedPages(120)).toEqual([100, 20]);
     expect(pricedPages(160)).toEqual([150, 10]);
-    expect(computeUnitPrice("A4", 120, false)).toBe(99 + 20 * 0.45);
-    expect(computeUnitPrice("A5", 101, false)).toBe(83.45);
+    expect(computeUnitPrice("A4", 120, false)).toBe(111);
+    expect(computeUnitPrice("A5", 101, false)).toBe(83.6);
     expect(computeUnitPrice("A4", 150, false)).toBe(129);
-    expect(computeUnitPrice("A5", 160, false)).toBe(117.5);
+    expect(computeUnitPrice("A4", 149, false)).toBe(128.4);
+    expect(computeUnitPrice("A5", 160, false)).toBe(119);
   });
 
   it("uses the price list: 24/50/100/150 pages", () => {

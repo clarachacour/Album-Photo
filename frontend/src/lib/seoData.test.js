@@ -13,7 +13,7 @@ describe("what search engines and AI assistants read", () => {
     }
     expect(text).toContain(`PDF album $${DIGITAL_PRICE}`);
     expect(text).toContain(`delivery $${SHIPPING_PRICE} per order`);
-    expect(text).toContain("costs $0.45 more");
+    expect(text).toContain("costs $0.60 more");
   });
 
   it("lists every album with its prices, delivered in Lebanon", () => {

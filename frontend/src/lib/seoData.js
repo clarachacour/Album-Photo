@@ -81,7 +81,7 @@ export function llmsTxt(siteUrl, faqItems) {
     "- How: upload all your photos, even unsorted; Everbook removes duplicates and blurry shots, orders the rest by date and place and lays out the album; you personalize it (cover templates, layouts, text) in an online editor, on phone or computer.",
     "- Where: delivery everywhere in Lebanon (Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle…), to the door, by courier.",
     `- Prices (US dollars): A5 printed album ${price("A5")}; A4 printed album ${price("A4")}; PDF album $${DIGITAL_PRICE}, whatever its format and pages; delivery $${SHIPPING_PRICE} per order, whatever the number of albums.`,
-    `- Page count: up to ${OVERAGE_FROM} pages, an album between two sizes is priced at the nearest one (28 pages as 24, 40 pages as 50); beyond ${OVERAGE_FROM} pages, each page beyond the size reached costs $${OVERAGE_PER_PAGE} more. ${MAX_ALBUM_PAGES} pages at most.`,
+    `- Page count: up to ${OVERAGE_FROM} pages, an album between two sizes is priced at the nearest one (28 pages as 24, 40 pages as 50); beyond ${OVERAGE_FROM} pages, each page beyond the size reached costs $${OVERAGE_PER_PAGE.toFixed(2)} more. ${MAX_ALBUM_PAGES} pages at most.`,
     "- Timing: printing about 3 days, delivery 2 to 3 days.",
     "- Payment: printed albums are paid in cash on delivery.",
     "- Gift cards: offer an album (format and page count chosen), received as a PDF; the recipient creates their own album with the code, delivery included.",
