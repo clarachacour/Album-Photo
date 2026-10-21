@@ -333,3 +333,52 @@ def test_putting_an_order_back_doesnt_email_the_customer_again(client, db, couri
     asyncio.run(db.orders.update_one({"id": order_id}, {"$set": {"status": "paid"}}))
     client.patch(f"/api/admin/orders/{order_id}/status", json={"status": "printing"}, headers=admin)
     assert sent == ["printing"]  # forward: told, as before
+
+
+@pytest.fixture()
+def whatsapp_on(monkeypatch):
+    from app.services import whatsapp
+
+    posted = []
+    monkeypatch.setattr(whatsapp, "WHATSAPP_TOKEN", "wa-token")
+    monkeypatch.setattr(whatsapp, "WHATSAPP_PHONE_NUMBER_ID", "123")
+    monkeypatch.setattr(whatsapp, "WHATSAPP_PICKUP_TO", ["+961 3 111 222", "0096170333444"])
+    state = {"status": 200}
+
+    def post(url, json=None, headers=None, timeout=None):
+        posted.append((url, json, headers))
+        return _Res(state["status"], {"messages": [{"id": "wamid"}]} if state["status"] == 200 else {"error": {"message": "Template name does not exist"}})
+
+    monkeypatch.setattr(whatsapp.requests, "post", post)
+    return {"posted": posted, "state": state}
+
+
+def test_wakilnis_team_gets_a_whatsapp_with_the_order_number(client, db, courier, whatsapp_on):
+    order_id = courier["order"]["id"]
+    _ready(client, order_id)
+    posted = whatsapp_on["posted"]
+    assert [p[1]["to"] for p in posted] == ["9613111222", "96170333444"]
+    url, body, headers = posted[0]
+    assert url == "https://graph.facebook.com/v23.0/123/messages" and headers["Authorization"] == "Bearer wa-token"
+    assert body["type"] == "template" and body["template"]["name"] == "wakilni_pickup"
+    params = [p["text"] for p in body["template"]["components"][0]["parameters"]]
+    assert params == [str(courier["fake"].delivery_id), "1"]
+    assert _order(db, order_id)["delivery"]["whatsapp_at"]
+    _ready(client, order_id)  # a second click: no second message
+    assert len(posted) == 2
+
+
+def test_if_the_whatsapp_cant_be_sent_the_admin_is_told(client, db, courier, whatsapp_on):
+    whatsapp_on["state"]["status"] = 400
+    order_id = courier["order"]["id"]
+    assert _ready(client, order_id).status_code == 200  # the printer's click still works
+    assert any("WhatsApp" in p and "Template name does not exist" in p for p in courier["sent"]["problem"])
+    order = _order(db, order_id)
+    assert order["status"] == "ready_for_delivery" and len(order["delivery"]["whatsapp_failed"]) == 2
+
+
+def test_no_whatsapp_without_its_settings(client, db, courier, monkeypatch):
+    from app.services import whatsapp
+
+    monkeypatch.setattr(whatsapp.requests, "post", lambda *a, **k: pytest.fail("nothing should be sent"))
+    _ready(client, courier["order"]["id"])

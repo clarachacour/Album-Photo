@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from app.core.executors import run_blocking, run_email
 from app.db import db
-from app.services import wakilni
+from app.services import wakilni, whatsapp
 from app.services.print_groups import group_of
 from app.services.email import (
     send_delivery_pickup_email,
@@ -80,7 +80,25 @@ async def dispatch_delivery(order_id: str) -> dict:
         created["order_ids"] = ids
     await db.orders.update_many({"id": {"$in": ids}}, {"$set": {"delivery": created, "tracking_number": created.get("tracking_id")}})
     logger.info(f"Commande(s) {', '.join(ids)} : livraison Wakilni {created.get('delivery_id')} créée")
+    await _tell_wakilni_on_whatsapp(created, group)
     return await db.orders.find_one({"id": order_id}, {"_id": 0})
+
+
+async def _tell_wakilni_on_whatsapp(created: dict, group: list):
+    """Wakilni's team hears on WhatsApp that a pickup is waiting at the
+    printer, with its order number (once per delivery). If it can't be
+    sent, the admin is told: Wakilni still has the order in its system."""
+    if not whatsapp.configured():
+        return
+    albums = sum(int(o.get("quantity") or 1) for o in group)
+    failed = await run_blocking(whatsapp.send_pickup, created.get("delivery_id"), albums)
+    sent = {"delivery.whatsapp_at": _now()} if not failed else {"delivery.whatsapp_failed": failed}
+    await db.orders.update_many({"delivery.delivery_id": created.get("delivery_id")}, {"$set": sent})
+    if failed:
+        lead = await db.orders.find_one({"id": group[0]["id"]}, {"_id": 0})
+        await run_email(send_delivery_problem_email, lead,
+                        f"the WhatsApp message to Wakilni about the pickup (n° {created.get('delivery_id')}) couldn't be sent to "
+                        f"{'; '.join(failed)}. Wakilni has the order in its system; let them know if needed")
 
 
 async def sync_delivery(order_id: str) -> dict:

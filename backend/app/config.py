@@ -132,6 +132,22 @@ WAKILNI_PICKUP_FLOOR = int(os.environ.get("WAKILNI_PICKUP_FLOOR") or 0)
 WAKILNI_PICKUP_LATITUDE = float(os.environ.get("WAKILNI_PICKUP_LATITUDE") or 0) or None
 WAKILNI_PICKUP_LONGITUDE = float(os.environ.get("WAKILNI_PICKUP_LONGITUDE") or 0) or None
 
+# ---------- WhatsApp (Meta's Cloud API) ----------
+# When a Wakilni delivery is created (the book is ready at the printer),
+# Wakilni's team gets a WhatsApp message with Wakilni's order number, to
+# come and pick it up (see services/whatsapp.py). Sent from Everbook's own
+# WhatsApp Business number, with a message template approved by Meta.
+# Without a token, a number id and recipients, nothing is sent.
+WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID")
+# Wakilni's people, comma-separated, with the country code (961…).
+WHATSAPP_PICKUP_TO = [n for n in (os.environ.get("WHATSAPP_PICKUP_TO") or "").replace(";", ",").split(",") if n.strip()]
+# The template's name and language in Meta's WhatsApp Manager. Its text has
+# two variables: {{1}} Wakilni's order number, {{2}} the number of albums.
+WHATSAPP_PICKUP_TEMPLATE = os.environ.get("WHATSAPP_PICKUP_TEMPLATE", "wakilni_pickup")
+WHATSAPP_TEMPLATE_LANGUAGE = os.environ.get("WHATSAPP_TEMPLATE_LANGUAGE", "en")
+WHATSAPP_API_VERSION = os.environ.get("WHATSAPP_API_VERSION", "v23.0")
+
 # ---------- OAuth (Google / Apple) ----------
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID")  # Apple "Services ID"
