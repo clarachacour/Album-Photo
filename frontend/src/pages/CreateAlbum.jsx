@@ -473,7 +473,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
     <section className="animate-fade-up grid grid-cols-2 gap-x-4 gap-y-8 md:gap-x-16 md:gap-y-10">
       <div className="col-span-2 md:col-span-1 md:col-start-1">
         <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.format.title")}</h2>
-        <p className="text-[color:var(--ink)]/70">{t("createAlbum.format.subtitle")}</p>
+        <p className="text-ink/70">{t("createAlbum.format.subtitle")}</p>
       </div>
       <div className="col-start-1 min-w-0">
         <div className="mb-8 md:mb-10">
@@ -488,7 +488,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 className={`px-4 md:px-6 py-3 border ${
                   size === s
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
-                    : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
+                    : "border-ink/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
                 } transition-colors`}
               >
                 <span className="font-semibold tracking-widest text-sm">{s}</span>
@@ -511,7 +511,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 className={`px-3 md:px-6 py-3 border ${
                   orientation === o.v
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
-                    : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
+                    : "border-ink/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
                 } transition-colors`}
               >
                 <span className="font-semibold tracking-wider md:tracking-widest text-xs md:text-sm">{o.l}</span>
@@ -531,22 +531,22 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 className={`px-6 py-3 border ${
                   targetPages === tier
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
-                    : "border-[color:var(--ink)]/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
+                    : "border-ink/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
                 } transition-colors`}
               >
                 <span className="font-semibold tracking-widest text-sm block">{tier}p</span>
-                <span className={`text-xs block mt-0.5 ${targetPages === tier ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
+                <span className={`text-xs block mt-0.5 ${targetPages === tier ? "text-paper/70" : "text-ink/60"}`}>
                   ${computeUnitPrice(size, tier)}
                 </span>
               </button>
             ))}
           </div>
           {gift && <GiftDifference gift={gift} size={size} targetPages={targetPages} />}
-          <p className="text-sm text-[color:var(--ink)]/70 mt-5">
+          <p className="text-sm text-ink/70 mt-5">
             {size} · {t("createAlbum.format.pagesCount", { count: targetPages })}: <span className="font-semibold text-[color:var(--ink)]">${computeUnitPrice(size, targetPages)}</span>
-            <span className="text-[color:var(--ink)]/50"> {t("createAlbum.format.perCopy")}</span>
+            <span className="text-ink/60"> {t("createAlbum.format.perCopy")}</span>
             {/* The PDF version is chosen at checkout; it's told here already. */}
-            <span className="block text-[color:var(--ink)]/60 mt-1" data-testid="format-pdf-price">
+            <span className="block text-ink/60 mt-1" data-testid="format-pdf-price">
               {t("createAlbum.format.pdfPrice", { price: computeDigitalPrice(size, targetPages) })}
             </span>
           </p>
@@ -556,7 +556,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
         <div className="bg-[color:var(--editor-canvas)] p-3 md:p-8 transition-all duration-300 flex items-center justify-center w-full">
           <div className="w-full" style={sizeContainerStyle} data-testid="format-preview">
             {/* Width above the page, height beside it — the page's real size. */}
-            <div className="flex items-center gap-1.5 mb-1.5 pr-[22px] md:pr-[26px] text-[10px] md:text-xs text-[color:var(--ink)]/60 whitespace-nowrap">
+            <div className="flex items-center gap-1.5 mb-1.5 pr-[22px] md:pr-[26px] text-[10px] md:text-xs text-ink/60 whitespace-nowrap">
               <span className="h-px flex-1 bg-current opacity-50" />
               {cm(dims.w)} cm
               <span className="h-px flex-1 bg-current opacity-50" />
@@ -568,15 +568,15 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
               >
                 <div className="absolute inset-0 grain" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
-                  <span className="font-serif-display text-base md:text-2xl text-[color:var(--ink)]/60">
+                  <span className="font-serif-display text-base md:text-2xl text-ink/60">
                     {size} · {orientation === "landscape" ? t("createAlbum.format.landscapeLower") : t("createAlbum.format.portraitLower")}
                   </span>
-                  <span className="mt-1 text-[10px] md:text-sm text-[color:var(--ink)]/50" data-testid="format-dimensions">
+                  <span className="mt-1 text-[10px] md:text-sm text-ink/60" data-testid="format-dimensions">
                     {cm(dims.w)} × {cm(dims.h)} cm
                   </span>
                 </div>
               </div>
-              <div className="w-4 md:w-5 flex flex-col items-center gap-1.5 text-[10px] md:text-xs text-[color:var(--ink)]/60">
+              <div className="w-4 md:w-5 flex flex-col items-center gap-1.5 text-[10px] md:text-xs text-ink/60">
                 <span className="w-px flex-1 bg-current opacity-50" />
                 <span className="whitespace-nowrap" style={{ writingMode: "vertical-rl" }}>{cm(dims.h)} cm</span>
                 <span className="w-px flex-1 bg-current opacity-50" />
@@ -640,7 +640,7 @@ function StepEdit({
             <TourHelpButton onClick={tour.start} />
           </div>
         </div>
-        <p className="text-[color:var(--ink)]/70">
+        <p className="text-ink/70">
           {t("createAlbum.edit.subtitle")}
         </p>
       </div>
@@ -649,7 +649,7 @@ function StepEdit({
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] lg:grid-cols-[minmax(0,1fr)_320px] gap-6 lg:gap-10 items-start">
         <div
           data-tour="cover-spread"
-          className="grid w-full gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-[color:var(--ink)]/70"
+          className="grid w-full gap-[3px] rounded-sm overflow-hidden book-shadow max-w-3xl mx-auto bg-ink/70"
           style={{ gridTemplateColumns: `1fr ${spineFr}fr 1fr` }}
         >
           <CoverBackPage
@@ -732,7 +732,7 @@ function HistoryButton({ icon, label, title, onClick, disabled, tid }) {
       title={title}
       aria-label={label}
       data-testid={tid}
-      className="inline-flex items-center gap-1.5 border border-[color:var(--ink)]/20 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase text-[color:var(--ink)]/70 hover:border-[color:var(--ink)] hover:text-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+      className="inline-flex items-center gap-1.5 border border-ink/20 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase text-ink/70 hover:border-[color:var(--ink)] hover:text-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
     >
       {icon}
       <span className="hidden sm:inline">{label}</span>
@@ -757,14 +757,14 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
   return (
     <section className="animate-fade-up">
       <h2 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-3">{t("createAlbum.photos.title")}</h2>
-      <p className="text-[color:var(--ink)]/70 mb-4">
+      <p className="text-ink/70 mb-4">
         {t("createAlbum.photos.subtitle")}
       </p>
 
       {/* Before the first photo: just how many are needed. Then a count
           with a progress bar, until the minimum is reached. */}
       {uploaded === 0 ? (
-        <div className="text-sm border rounded px-4 py-3 mb-6 text-[color:var(--ink)]/80 bg-[color:var(--editor-canvas)] border-[color:var(--border-soft)]" data-testid="photos-minimum">
+        <div className="text-sm border rounded px-4 py-3 mb-6 text-ink/80 bg-[color:var(--editor-canvas)] border-[color:var(--border-soft)]" data-testid="photos-minimum">
           {t("createAlbum.photos.howMany", { minimum, targetPages })}
         </div>
       ) : (
@@ -772,7 +772,7 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
           data-testid="photos-minimum"
           className={`text-sm border rounded px-4 py-3 mb-6 ${
             belowMinimum
-              ? "text-[color:var(--ink)]/80 bg-[color:var(--editor-canvas)] border-[color:var(--border-soft)]"
+              ? "text-ink/80 bg-[color:var(--editor-canvas)] border-[color:var(--border-soft)]"
               : "text-emerald-700 bg-emerald-50 border-emerald-200"
           }`}
         >
@@ -780,7 +780,7 @@ function StepPhotos({ albumId, serverPhotos, onServerPhotosChange, targetPages, 
             ? t("createAlbum.photos.belowMinimum", { count: uploaded, minimum, remaining: minimum - uploaded })
             : t("createAlbum.photos.aboveMinimum", { count: uploaded })}
           {belowMinimum && (
-            <div className="mt-2 h-1.5 bg-[color:var(--ink)]/10 rounded-full overflow-hidden">
+            <div className="mt-2 h-1.5 bg-ink/10 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[color:var(--coral)] transition-all"
                 style={{ width: `${Math.min(100, (uploaded / Math.max(1, minimum)) * 100)}%` }}
@@ -829,13 +829,13 @@ function GiftDifference({ gift, size, targetPages }) {
   const offered = gift.offered;
   const diff = Math.round((price - credit) * 100) / 100;
   return (
-    <div className="mt-5 border border-[color:var(--coral)]/40 bg-[color:var(--coral)]/5 px-4 py-3 text-sm" data-testid="format-gift">
+    <div className="mt-5 border border-coral/40 bg-coral/5 px-4 py-3 text-sm" data-testid="format-gift">
       <p className="font-semibold mb-1">
         {offered
           ? t("createAlbum.format.gift.offered", { size: offered.size, pages: offered.page_tier, from: offered.from_name || "", context: offered.from_name ? "from" : undefined })
           : t("createAlbum.format.gift.credit", { amount: credit.toFixed(2) })}
       </p>
-      <p className="text-[color:var(--ink)]/75">
+      <p className="text-ink/75">
         {diff > 0
           ? t("createAlbum.format.gift.pay", { diff: diff.toFixed(2) })
           : diff < 0

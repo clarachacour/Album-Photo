@@ -13,12 +13,12 @@ export default function TermsPage() {
         <div className="eyebrow mb-3">{t("legal.terms.eyebrow")}</div>
         <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t("legal.terms.title")}</h1>
         <p className="text-sm text-[color:var(--muted)] mb-12">{t("legal.lastUpdated")}</p>
-        {intro && <p className="text-sm text-[color:var(--ink)]/70 leading-relaxed whitespace-pre-line mb-10">{intro}</p>}
+        {intro && <p className="text-sm text-ink/70 leading-relaxed whitespace-pre-line mb-10">{intro}</p>}
         <div className="space-y-8">
           {sections.map((s, i) => (
             <div key={i}>
               <h2 className="font-serif-display text-xl mb-2">{s.heading}</h2>
-              <p className="text-sm text-[color:var(--ink)]/70 leading-relaxed whitespace-pre-line">{s.body}</p>
+              <p className="text-sm text-ink/70 leading-relaxed whitespace-pre-line">{s.body}</p>
             </div>
           ))}
         </div>

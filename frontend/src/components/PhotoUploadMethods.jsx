@@ -235,7 +235,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   return (
     <div>
       {onAndroid && (
-        <p className="mb-4 text-sm text-[color:var(--ink)]/80 bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2" data-testid="android-upload-tip">
+        <p className="mb-4 text-sm text-ink/80 bg-[color:var(--editor-canvas)] border border-[color:var(--border-soft)] rounded px-3 py-2" data-testid="android-upload-tip">
           {t("photoUpload.androidTip")}
         </p>
       )}
@@ -253,7 +253,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         }}
         onClick={() => !uploading && fileInput.current?.click()}
         className={`border-2 border-dashed cursor-pointer p-16 text-center transition-colors ${
-          drag ? "border-[color:var(--coral)] bg-[color:var(--coral)]/5" : "border-[color:var(--ink)]/20 hover:border-[color:var(--ink)]/50"
+          drag ? "border-[color:var(--coral)] bg-coral/5" : "border-ink/20 hover:border-ink/50"
         }`}
       >
         <Upload size={32} className="mx-auto mb-4 text-[color:var(--muted)]" />
@@ -262,7 +262,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
         </p>
         {progress ? (
           <div className="max-w-sm mx-auto" data-testid="upload-progress">
-            <div className="h-1.5 bg-[color:var(--ink)]/10 overflow-hidden">
+            <div className="h-1.5 bg-ink/10 overflow-hidden">
               <div
                 className="h-full bg-[color:var(--coral)] transition-all duration-300"
                 style={{ width: `${progress.total ? ((progress.partial ?? progress.done) / progress.total) * 100 : 0}%` }}
@@ -309,7 +309,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
             onClick={startPhoneUpload}
             disabled={!albumId}
             data-testid="add-from-phone-button"
-            className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 border border-ink/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
           >
             <Smartphone size={16} />
             <span className="text-sm font-semibold tracking-widest uppercase">{t("photoUpload.fromPhone")}</span>

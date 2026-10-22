@@ -140,12 +140,12 @@ export default function OrderCheckoutPage() {
                     onClick={() => setKinds((k) => ({ ...k, [option.value]: !k[option.value] }))}
                     data-testid={`checkout-kind-${option.value}`}
                     className={`text-left border p-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                      chosen ? "border-[color:var(--ink)] bg-white" : "border-[color:var(--ink)]/20 hover:border-[color:var(--ink)]/50"
+                      chosen ? "border-[color:var(--ink)] bg-white" : "border-ink/20 hover:border-ink/50"
                     }`}
                   >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="inline-flex items-center gap-2 font-semibold">
-                        <span className={`inline-flex items-center justify-center w-4 h-4 border ${chosen ? "bg-[color:var(--ink)] border-[color:var(--ink)] text-[color:var(--paper)]" : "border-[color:var(--ink)]/40"}`}>
+                        <span className={`inline-flex items-center justify-center w-4 h-4 border ${chosen ? "bg-[color:var(--ink)] border-[color:var(--ink)] text-[color:var(--paper)]" : "border-ink/40"}`}>
                           {chosen && <Check size={12} strokeWidth={3} />}
                         </span>
                         {t(`checkout.kind.${option.value}`)}
@@ -158,7 +158,7 @@ export default function OrderCheckoutPage() {
               })}
             </div>
             {kinds.digital && (
-              <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed mb-4" data-testid="checkout-digital-note">
+              <p className="text-sm text-ink/80 leading-relaxed mb-4" data-testid="checkout-digital-note">
                 {t("checkout.digitalNote")}
               </p>
             )}
@@ -203,7 +203,7 @@ export default function OrderCheckoutPage() {
                       max={20}
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                      className="w-16 border border-[color:var(--ink)]/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
+                      className="w-16 border border-ink/20 p-1 text-sm text-center focus:border-[color:var(--ink)] focus:outline-none"
                       data-testid="checkout-quantity"
                     />
                   </div>

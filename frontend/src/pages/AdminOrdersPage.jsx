@@ -234,7 +234,7 @@ export default function AdminOrdersPage() {
       <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
         <div className="max-w-[600px] mx-auto text-center">
           <h1 className="font-serif-display text-3xl tracking-tight mb-3">Not available</h1>
-          <p className="text-[color:var(--ink)]/70">This page is only visible to the account running the business.</p>
+          <p className="text-ink/70">This page is only visible to the account running the business.</p>
         </div>
       </main>
     );
@@ -252,7 +252,7 @@ export default function AdminOrdersPage() {
               type="button"
               onClick={() => window.open(adminPrinterStatementUrl(), "_blank")}
               data-testid="admin-printer-statement"
-              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-3 py-2 hover:border-[color:var(--ink)] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs border border-ink/30 px-3 py-2 hover:border-[color:var(--ink)] transition-colors"
             >
               <FileSpreadsheet size={13} /> Printer statement (Excel)
             </button>
@@ -260,7 +260,7 @@ export default function AdminOrdersPage() {
               type="button"
               onClick={copyPrinterLink}
               data-testid="admin-printer-statement-link"
-              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-3 py-2 hover:border-[color:var(--ink)] transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs border border-ink/30 px-3 py-2 hover:border-[color:var(--ink)] transition-colors"
               title="A fixed link to send the printer once (WhatsApp): it always opens the statement as it is that day"
             >
               <Link2 size={13} /> Copy link for the printer
@@ -297,16 +297,16 @@ export default function AdminOrdersPage() {
                   const feedbackComment = o.feedback?.comment;
                   return (
                     <tr key={o.id} className="border-b border-[color:var(--border-soft)] align-top">
-                      <td className="p-3 whitespace-nowrap text-[color:var(--ink)]/70">
+                      <td className="p-3 whitespace-nowrap text-ink/70">
                         <div className="font-mono text-xs font-semibold text-[color:var(--ink)]" data-testid={`admin-order-number-${o.id}`}>{orderNumber(o)}</div>
                         {o.created_at ? parseDate(o.created_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-3">
                         <div className="font-medium">{addr.full_name || o.customer?.name || "—"}</div>
-                        <div className="text-xs text-[color:var(--ink)]/60">{addr.phone || ""}</div>
-                        {o.customer?.email && <div className="text-xs text-[color:var(--ink)]/60 break-all">{o.customer.email}</div>}
+                        <div className="text-xs text-ink/60">{addr.phone || ""}</div>
+                        {o.customer?.email && <div className="text-xs text-ink/60 break-all">{o.customer.email}</div>}
                       </td>
-                      <td className="p-3 text-[color:var(--ink)]/70">
+                      <td className="p-3 text-ink/70">
                         {editingAddressId === o.id ? (
                           <AddressEditor
                             address={addr}
@@ -460,7 +460,7 @@ export default function AdminOrdersPage() {
                           {o.pdf_ready ? (
                             <button
                               onClick={() => downloadPdf(o.id)}
-                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors"
+                              className="inline-flex items-center gap-1.5 text-xs border border-ink/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors"
                             >
                               <Download size={12} />
                               Download
@@ -472,7 +472,7 @@ export default function AdminOrdersPage() {
                               disabled={resendingId === o.id}
                               title="Send the printer email again (PDF download + Ready link)"
                               data-testid={`admin-resend-printer-${o.id}`}
-                              className="inline-flex items-center gap-1.5 text-xs border border-[color:var(--ink)]/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+                              className="inline-flex items-center gap-1.5 text-xs border border-ink/30 px-2.5 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
                             >
                               <Mail size={12} />
                               Printer
@@ -499,7 +499,7 @@ export default function AdminOrdersPage() {
                               className={`inline-flex items-center gap-1.5 text-xs border px-2.5 py-1.5 transition-colors disabled:opacity-60 ${
                                 o.album_changed_since_pdf
                                   ? "border-[color:var(--coral)] text-[color:var(--coral)] font-semibold"
-                                  : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+                                  : "border-ink/30 hover:border-[color:var(--ink)]"
                               }`}
                             >
                               <RefreshCw size={12} className={regeneratingId === o.id ? "animate-spin" : ""} />
@@ -528,7 +528,7 @@ export default function AdminOrdersPage() {
                       <td className="p-3 max-w-[220px]">
                         {feedbackComment ? (
                           <span
-                            className="text-xs text-[color:var(--ink)]/80 italic block"
+                            className="text-xs text-ink/80 italic block"
                             title={feedbackComment}
                           >
                             "{feedbackComment.length > 80 ? `${feedbackComment.slice(0, 80)}…` : feedbackComment}"
@@ -577,7 +577,7 @@ function SentryTestButton() {
       onClick={run}
       disabled={busy}
       data-testid="admin-sentry-test"
-      className="inline-flex items-center gap-2 border border-[color:var(--ink)]/30 px-4 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+      className="inline-flex items-center gap-2 border border-ink/30 px-4 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
     >
       <Bug size={14} />
       <span className="text-xs font-semibold tracking-widest uppercase">{busy ? "Testing…" : "Test Sentry"}</span>
@@ -621,11 +621,11 @@ function AddressEditor({ address, onSave, onCancel }) {
           onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
           placeholder={required ? `${label} *` : label}
           aria-label={label}
-          className="w-full border border-[color:var(--ink)]/20 px-2 py-1 text-xs bg-white focus:border-[color:var(--ink)] focus:outline-none"
+          className="w-full border border-ink/20 px-2 py-1 text-xs bg-white focus:border-[color:var(--ink)] focus:outline-none"
           data-testid={`admin-address-${key}`}
         />
       ))}
-      <input value="Lebanon" disabled readOnly aria-label="Country" className="w-full border border-[color:var(--ink)]/20 px-2 py-1 text-xs bg-[color:var(--paper)] opacity-70" />
+      <input value="Lebanon" disabled readOnly aria-label="Country" className="w-full border border-ink/20 px-2 py-1 text-xs bg-[color:var(--paper)] opacity-70" />
       {badPhone && <p className="text-xs text-red-600">Not a Lebanese number (e.g. 70 123 456)</p>}
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={saving || missing} className="text-xs bg-[color:var(--ink)] text-[color:var(--paper)] px-2.5 py-1 disabled:opacity-50" data-testid="admin-address-save">

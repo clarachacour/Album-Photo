@@ -236,7 +236,7 @@ export function AlbumPage({
                 {/* The photo is clipped to its frame; the handles aren't. */}
                 <div className="absolute inset-0 overflow-hidden">
                 {isEmpty ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[color:var(--editor-canvas)] border-2 border-dashed border-[color:var(--ink)]/20 pointer-events-none">
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[color:var(--editor-canvas)] border-2 border-dashed border-ink/20 pointer-events-none">
                     <ImagePlus size={22} className="text-[color:var(--muted)]" />
                     <span className="text-[10px] text-[color:var(--muted)] uppercase tracking-widest text-center px-2">Drop a photo here</span>
                   </div>

@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect } from "react";
 import "@/App.css"; 
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/lib/auth";
@@ -14,6 +15,8 @@ import { lazyPage } from "@/lib/lazyPage";
 import { showPendingFlash } from "@/lib/flash";
 import { leaveAppBrowser } from "@/lib/inAppBrowser";
 import { InAppBrowserBanner } from "@/components/OpenInBrowser";
+import { setLanguage } from "@/lib/i18n";
+import { isPublicPage, localePath, splitLocale } from "@/lib/localePath";
 // Public pages: part of the main code, not downloaded on demand. They are
 // also generated as HTML at build time (see prerender.jsx), and the page the
 // browser then draws is the same one, straight away, with no blank moment.
@@ -24,6 +27,7 @@ import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import ShippingPage from "@/pages/ShippingPage";
 import GiftPage from "@/pages/GiftPage";
+import OccasionPage from "@/pages/OccasionPage";
 const AuthPage = lazyPage(() => import("@/pages/AuthPage"));
 const Dashboard = lazyPage(() => import("@/pages/Dashboard"));
 const CreateAlbum = lazyPage(() => import("@/pages/CreateAlbum"));
@@ -51,6 +55,42 @@ const PrinterStatementRedirect = lazyPage(() =>
 );
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
+// The public pages' language follows their address: /fr/… is French. A
+// visitor reading in French who opens the English address of a public page
+// is taken to its French one (search engines, which read in English, stay).
+function LocaleSync() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  useEffect(() => {
+    const { lng, path } = splitLocale(location.pathname);
+    if (lng) {
+      if (i18n.resolvedLanguage !== lng) setLanguage(lng);
+    } else if (isPublicPage(path) && i18n.resolvedLanguage === "fr") {
+      navigate(localePath(path, "fr") + location.search + location.hash, { replace: true });
+    }
+    // Only when the address changes: the language switcher changes the
+    // language first, then the address (reacting to the language alone
+    // would switch it straight back).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+  return null;
+}
+
+// The public pages, each in English and, under /fr, in French.
+const PUBLIC_ROUTES = [
+  ["/", <Landing />],
+  ["/faq", <FAQPage />],
+  ["/gift", <GiftPage />],
+  ["/travel-photo-book", <OccasionPage occasion="travel" />],
+  ["/couple-photo-album", <OccasionPage occasion="couple" />],
+  ["/family-photo-album", <OccasionPage occasion="family" />],
+  ["/contact", <ContactPage />],
+  ["/terms", <TermsPage />],
+  ["/privacy", <PrivacyPage />],
+  ["/shipping", <ShippingPage />],
+];
+
 function AppChrome({ children }) {
   const location = useLocation();
   useEffect(() => {
@@ -77,6 +117,7 @@ function AppChrome({ children }) {
   }
   return (
     <>
+      <LocaleSync />
       <TopNav />
       <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
       <Footer />
@@ -110,10 +151,17 @@ export function AppRoutes() {
           {/* Each page's code is downloaded when it's first opened. */}
           <Suspense fallback={<div className="min-h-screen bg-[color:var(--paper)]" />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            {PUBLIC_ROUTES.flatMap(([path, element]) => [
+              <Route key={path} path={path} element={element} />,
+              <Route key={`fr${path}`} path={localePath(path, "fr")} element={element} />,
+            ])}
             <Route path="/auth" element={<AuthPage />} />
-
-            {/* 🆕 Nouvelles routes publiques pour le mot de passe */}
+            {/* Addresses people type by habit. */}
+            <Route path="/login" element={<Navigate to="/auth?mode=login" replace />} />
+            <Route path="/signin" element={<Navigate to="/auth?mode=login" replace />} />
+            <Route path="/signup" element={<Navigate to="/auth?mode=signup" replace />} />
+            <Route path="/register" element={<Navigate to="/auth?mode=signup" replace />} />
+            {/* Password reset (public) */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/mobile-upload/:token" element={<MobileUpload />} />
@@ -122,18 +170,12 @@ export function AppRoutes() {
             <Route path="/printer/:orderId" element={<PrinterOrderPage />} />
             <Route path="/printer/:orderId/download" element={<PrinterDownloadRedirect />} />
             <Route path="/everbook-statement" element={<PrinterStatementRedirect />} />
-            <Route path="/faq" element={<FAQPage />} />
-            <Route path="/gift" element={<GiftPage />} />
-            <Route path="/contact" element={<ContactPage />} />
             {/* Not wrapped in ProtectedRoute — it IS the destination
                 ProtectedRoute redirects an unverified account to, and
                 wrapping it would just redirect straight back here. The
                 page checks for a session itself and redirects to /auth
                 if there isn't one. */}
             <Route path="/verify-email" element={<VerifyEmailPending />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/shipping" element={<ShippingPage />} />
 
             <Route
               path="/account"

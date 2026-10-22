@@ -66,7 +66,7 @@ export default function AdminBrokenPhotosPage() {
       <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
         <div className="max-w-[600px] mx-auto text-center">
           <h1 className="font-serif-display text-3xl tracking-tight mb-3">Not available</h1>
-          <p className="text-[color:var(--ink)]/70">This page is only visible to the account running the business.</p>
+          <p className="text-ink/70">This page is only visible to the account running the business.</p>
         </div>
       </main>
     );
@@ -76,7 +76,7 @@ export default function AdminBrokenPhotosPage() {
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[900px] mx-auto">
         <h1 className="font-serif-display text-4xl tracking-tight mb-2">Missing photos</h1>
-        <p className="text-sm text-[color:var(--ink)]/60 mb-8">Paste an album id to see which of its photos need re-uploading.</p>
+        <p className="text-sm text-ink/60 mb-8">Paste an album id to see which of its photos need re-uploading.</p>
 
         <form onSubmit={check} className="flex gap-2 mb-10">
           <input
@@ -84,7 +84,7 @@ export default function AdminBrokenPhotosPage() {
             value={albumId}
             onChange={(e) => setAlbumId(e.target.value)}
             placeholder="Album id (from the editor's URL)"
-            className="flex-1 px-4 py-2.5 border border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] outline-none text-sm font-mono"
+            className="flex-1 px-4 py-2.5 border border-ink/30 focus:border-[color:var(--ink)] outline-none text-sm font-mono"
           />
           <button
             type="submit"
@@ -99,7 +99,7 @@ export default function AdminBrokenPhotosPage() {
         {result && (
           <div>
             <h2 className="font-serif-display text-2xl tracking-tight mb-1">{result.album_title}</h2>
-            <p className="text-sm text-[color:var(--ink)]/60 mb-6">{result.total_pages} pages checked</p>
+            <p className="text-sm text-ink/60 mb-6">{result.total_pages} pages checked</p>
 
             {result.broken.length === 0 ? (
               <p className="text-sm text-emerald-700">Nothing missing — every photo in this album is intact.</p>
@@ -119,7 +119,7 @@ export default function AdminBrokenPhotosPage() {
                         <tr key={i} className="border-b border-[color:var(--border-soft)] last:border-0">
                           <td className="p-3 whitespace-nowrap">Page {b.page_index + 1}</td>
                           <td className="p-3 font-mono">{b.original_filename || "— (no record at all)"}</td>
-                          <td className="p-3 text-[color:var(--ink)]/70">
+                          <td className="p-3 text-ink/70">
                             {b.taken_at ? parseDate(b.taken_at).toLocaleDateString() : "—"}
                           </td>
                         </tr>
@@ -128,14 +128,14 @@ export default function AdminBrokenPhotosPage() {
                   </table>
                 </div>
 
-                <p className="text-xs text-[color:var(--ink)]/60 mb-3">
+                <p className="text-xs text-ink/60 mb-3">
                   Once you've re-uploaded the matching files into this same album (through the normal "Add photos" uploader,
                   keeping their original filenames), click below to put them back in the exact page slots they came from.
                 </p>
                 <button
                   onClick={repair}
                   disabled={repairing}
-                  className="inline-flex items-center gap-2 border border-[color:var(--ink)]/30 px-5 py-2.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60 text-sm font-semibold uppercase tracking-widest"
+                  className="inline-flex items-center gap-2 border border-ink/30 px-5 py-2.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60 text-sm font-semibold uppercase tracking-widest"
                 >
                   <Wrench size={14} />
                   {repairing ? "Matching…" : "Match re-uploaded photos back into place"}
@@ -147,7 +147,7 @@ export default function AdminBrokenPhotosPage() {
                       <p key={i} className="text-emerald-700">✓ Page {f.page_index + 1} — {f.original_filename} put back in place</p>
                     ))}
                     {repairResult.still_missing.map((m, i) => (
-                      <p key={i} className="text-[color:var(--ink)]/50">Page {m.page_index + 1} — {m.original_filename || "(no filename on record)"} not found among re-uploads yet</p>
+                      <p key={i} className="text-ink/60">Page {m.page_index + 1} — {m.original_filename || "(no filename on record)"} not found among re-uploads yet</p>
                     ))}
                   </div>
                 )}

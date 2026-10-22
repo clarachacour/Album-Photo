@@ -53,13 +53,13 @@ export function ConfirmProvider({ children }) {
           <AlertDialogFooter className="gap-2 sm:space-x-0">
             <AlertDialogCancel
               onClick={() => answer(false)}
-              className="rounded-none border-[color:var(--ink)]/30 text-xs font-semibold tracking-widest uppercase mt-0"
+              className="rounded-none border-ink/30 text-xs font-semibold tracking-widest uppercase mt-0"
             >
               {t("common.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => answer(true)}
-              className="rounded-none bg-[color:var(--ink)] text-[color:var(--paper)] hover:bg-[color:var(--ink)]/90 text-xs font-semibold tracking-widest uppercase"
+              className="rounded-none bg-[color:var(--ink)] text-[color:var(--paper)] hover:bg-ink/90 text-xs font-semibold tracking-widest uppercase"
             >
               {request?.confirmLabel || t("common.delete")}
             </AlertDialogAction>

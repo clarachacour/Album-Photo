@@ -92,7 +92,7 @@ export function FontPicker({ value, onChange, tid, dark = false, preferUp = fals
         className={
           dark
             ? "w-full inline-flex items-center justify-between gap-1 bg-transparent text-[color:var(--paper)] text-xs border border-white/30 rounded-sm px-1.5 py-1"
-            : "w-full inline-flex items-center justify-between gap-1 border border-[color:var(--ink)]/20 px-2 py-1.5 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
+            : "w-full inline-flex items-center justify-between gap-1 border border-ink/20 px-2 py-1.5 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none"
         }
       >
         <span className="truncate" style={{ fontFamily: current }}>{fontName(current)}</span>
@@ -104,7 +104,7 @@ export function FontPicker({ value, onChange, tid, dark = false, preferUp = fals
           aria-label={t("coverPanel.font")}
           onMouseLeave={() => show(committedRef.current)}
           style={{ maxHeight }}
-          className={`absolute left-0 ${up ? "bottom-full mb-1" : "top-full mt-1"} z-50 min-w-full w-max max-w-[260px] overflow-y-auto bg-white text-[color:var(--ink)] border border-[color:var(--ink)]/20 shadow-lg py-1`}
+          className={`absolute left-0 ${up ? "bottom-full mb-1" : "top-full mt-1"} z-50 min-w-full w-max max-w-[260px] overflow-y-auto bg-white text-[color:var(--ink)] border border-ink/20 shadow-lg py-1`}
           data-testid={tid ? `${tid}-list` : undefined}
         >
           {FONTS.map((f) => (

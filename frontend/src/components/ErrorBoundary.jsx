@@ -33,7 +33,7 @@ class ErrorBoundaryInner extends React.Component {
       <main className="min-h-[70vh] flex items-center justify-center p-8 bg-[color:var(--paper)]" data-testid="error-boundary">
         <div className="w-full max-w-md text-center">
           <h1 className="font-serif-display text-4xl tracking-tight mb-3">{t("errorBoundary.title")}</h1>
-          <p className="text-[color:var(--ink)]/70 mb-8">{t("errorBoundary.body")}</p>
+          <p className="text-ink/70 mb-8">{t("errorBoundary.body")}</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={() => window.location.reload()}
@@ -43,7 +43,7 @@ class ErrorBoundaryInner extends React.Component {
             </button>
             <a
               href="/dashboard"
-              className="inline-flex items-center justify-center border border-[color:var(--ink)]/30 px-8 py-3 hover:border-[color:var(--ink)] transition-colors"
+              className="inline-flex items-center justify-center border border-ink/30 px-8 py-3 hover:border-[color:var(--ink)] transition-colors"
             >
               <span className="text-sm font-semibold tracking-widest uppercase">{t("errorBoundary.myAlbums")}</span>
             </a>

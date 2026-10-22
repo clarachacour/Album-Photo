@@ -11,7 +11,8 @@
     "closeMenu": "Close menu",
     "cart_one": "Cart ({{count}} item)",
     "cart_other": "Cart ({{count}} items)",
-    "gift": "Gift an album"
+    "gift": "Gift an album",
+    "giftShort": "Gift"
   },
   "landing": {
     "hero": {
@@ -81,8 +82,7 @@
         "family": "Family",
         "celebrations": "Celebrations"
       },
-      "useThis": "Use this template",
-      "useTemplate": "Create an album with the {{name}} template"
+      "useThis": "Use this template"
     },
     "footer": {
       "title_line1": "Your best memories",
@@ -159,7 +159,7 @@
       },
       {
         "q": "How long does it take to receive my album?",
-        "a": "About 5 to 6 days in all: printing takes about 3 days, then delivery in Lebanon 2 to 3 days. You can follow every step from your Orders page."
+        "a": "About a week in all: printing takes about 3 days, then delivery in Lebanon 2 to 3 days. You can follow every step from your Orders page."
       },
       {
         "q": "What formats are available?",
@@ -709,7 +709,8 @@
     "legalName": "EFFET DESIGN - EVERBOOK",
     "email": "orders@everbook-album.com",
     "rightsReserved": "All rights reserved.",
-    "madeIn": "Made in Lebanon"
+    "madeIn": "Made in Lebanon",
+    "albums": "Albums"
   },
   "legal": {
     "lastUpdated": "Last updated: October 21, 2026",
@@ -906,7 +907,7 @@
   },
   "meta": {
     "landing": {
-      "title": "Everbook — your printed photo book, laid out for you",
+      "title": "Everbook — Photo Book & Photo Album, Laid Out for You",
       "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon. From $22."
     },
     "faq": {
@@ -915,15 +916,15 @@
     },
     "contact": {
       "title": "Contact us",
-      "description": "A question about your photo book or your order? Write to the Everbook team."
+      "description": "A question about your photo book, your order or a gift card? Write to the Everbook team, by the contact form or by email."
     },
     "terms": {
       "title": "Terms of sale",
-      "description": "Everbook's terms and conditions of sale."
+      "description": "Everbook's terms of sale: ordering a photo book, prices, delivery, the PDF album, gift cards, and what to do if something goes wrong."
     },
     "privacy": {
       "title": "Privacy policy",
-      "description": "How Everbook handles your photos and personal data."
+      "description": "How Everbook handles your photos and personal data: what is stored, why, for how long, who can see it, and how to delete your account."
     },
     "shipping": {
       "title": "Shipping",
@@ -960,6 +961,18 @@
     "gift": {
       "title": "Gift an album",
       "description": "Give someone a photo album to create: choose the format, write a few words, and send them a gift card."
+    },
+    "occasion_travel": {
+      "title": "Travel Photo Book from Your Trip Photos",
+      "description": "Turn your trip photos into a printed travel photo book: drop them all in, Everbook orders them by day and place and lays out the album. Travel covers included."
+    },
+    "occasion_couple": {
+      "title": "Couple & Wedding Photo Album",
+      "description": "A photo album of your story together, from the first trip to the wedding: Everbook keeps the best photos, orders them by date and lays out the pages."
+    },
+    "occasion_family": {
+      "title": "Family Photo Album",
+      "description": "A family photo album from every phone's photos: Everbook keeps the best ones, orders them by date and lays out a hardcover book to print."
     }
   },
   "coverPanel": {
@@ -1322,6 +1335,77 @@
         "not_paid": "This gift card can't be used yet.",
         "other": "This code can't be used. Please try again."
       }
+    }
+  },
+  "occasions": {
+    "howTitle": "How it works",
+    "giftLine": "Making it for someone else? Offer them the album with a gift card:",
+    "moreLabel": "Other albums",
+    "travel": {
+      "eyebrow": "Travel photo book",
+      "linkLabel": "Travel photo book",
+      "title": "Your trip, as a photo book.",
+      "intro": "Hundreds of photos from your trip, still on your phone? Drop them all in: Everbook sets aside the duplicates and blurry shots, puts the rest in order day by day and place by place, and lays out your travel album in minutes.",
+      "coversLabel": "Travel cover templates",
+      "coverAlt": "Travel photo book cover: {{name}}",
+      "points": [
+        {
+          "title": "Day by day, place by place",
+          "text": "Your photos follow the course of your trip, using the date and place each one was taken. Nothing to sort beforehand."
+        },
+        {
+          "title": "Covers made for travel",
+          "text": "Sicily, Paros, Morocco, Hawaii, Beirut…: start from a travel cover, then change its title, colors and photos."
+        },
+        {
+          "title": "Printed, or as a PDF",
+          "text": "A hardcover book in A5 or A4, delivered to your door, or the same album as a PDF to keep and share."
+        }
+      ]
+    },
+    "couple": {
+      "eyebrow": "Couple photo album",
+      "linkLabel": "Couple & wedding album",
+      "title": "Your story together, in one album.",
+      "intro": "The first trip, the engagement, the wedding, the years since: put all your photos together in one album. Everbook keeps the best shots, orders them by date and lays out the pages — you add your own words.",
+      "coversLabel": "Couple cover templates",
+      "coverAlt": "Couple photo album cover: {{name}}",
+      "points": [
+        {
+          "title": "Your story in order",
+          "text": "Photos from different phones and years fall into place by date, from the first meeting to today."
+        },
+        {
+          "title": "Covers for two",
+          "text": "Notre Rencontre, Notre Histoire, Forever Journey: covers made for a couple, with your names, dates and photos."
+        },
+        {
+          "title": "For an anniversary or a wedding",
+          "text": "A gift that lasts for an anniversary, Valentine's Day or after the wedding — to give printed, or to offer with a gift card."
+        }
+      ]
+    },
+    "family": {
+      "eyebrow": "Family photo album",
+      "linkLabel": "Family photo album",
+      "title": "The family's year, in a book.",
+      "intro": "Birthdays, first steps, holidays, everyday moments: the family's photos are spread across every phone. Drop them all in — Everbook keeps the best ones, orders them by date and lays out an album the whole family can leaf through.",
+      "coversLabel": "Family cover templates",
+      "coverAlt": "Family photo album cover: {{name}}",
+      "points": [
+        {
+          "title": "Every phone, one album",
+          "text": "Upload from your computer, your phone or Google Photos: duplicates between phones are spotted and set aside."
+        },
+        {
+          "title": "For Mom, for Dad, for the year",
+          "text": "Covers for Mother's Day, Father's Day or the family's year, to personalize with names, dates and photos."
+        },
+        {
+          "title": "Made to be handled",
+          "text": "A hardcover book in A5 or A4, printed and delivered to your door — order several copies, for the grandparents too."
+        }
+      ]
     }
   }
 }

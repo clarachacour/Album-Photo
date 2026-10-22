@@ -36,7 +36,7 @@ export default function VerifyEmailPending() {
       <div className="w-full max-w-md text-center">
         <MailCheck size={32} className="mx-auto mb-6 text-[color:var(--coral)]" />
         <h1 className="font-serif-display text-4xl tracking-tight mb-3">{t("verifyEmail.title")}</h1>
-        <p className="text-[color:var(--ink)]/70 mb-2">
+        <p className="text-ink/70 mb-2">
           {t("verifyEmail.instructions")}
         </p>
         <p className="font-medium mb-8">{user.email}</p>

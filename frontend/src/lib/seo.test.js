@@ -21,5 +21,9 @@ describe("search engines", () => {
     expect(sitemap).toContain("<loc>https://everbook.fr/</loc>");
     expect(sitemap).toContain("<loc>https://everbook.fr/faq</loc>");
     expect(sitemap).not.toContain("/dashboard");
+    // Each page in French too, each version pointing to the other.
+    expect(sitemap).toContain("<loc>https://everbook.fr/fr</loc>");
+    expect(sitemap).toContain("<loc>https://everbook.fr/fr/travel-photo-book</loc>");
+    expect(sitemap).toContain('<xhtml:link rel="alternate" hreflang="fr" href="https://everbook.fr/fr/faq"/>');
   });
 });

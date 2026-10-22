@@ -1002,7 +1002,7 @@ export default function AlbumEditor() {
             </div>
           )}
           {swapSource && (
-            <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[color:var(--ink)] bg-[color:var(--coral)]/10 border border-[color:var(--coral)]/40 rounded px-3 py-2" role="status" data-testid="editor-swap-banner">
+            <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[color:var(--ink)] bg-coral/10 border border-coral/40 rounded px-3 py-2" role="status" data-testid="editor-swap-banner">
               <span>{t("albumEditor.swapBanner")}</span>
               <button
                 type="button"
@@ -1167,7 +1167,7 @@ export default function AlbumEditor() {
             <button
               data-testid="editor-first"
               onClick={() => bookRef.current?.goTo(0)}
-              className="flex flex-col items-center gap-1 px-3 py-2 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              className="flex flex-col items-center gap-1 px-3 py-2 border border-ink/20 hover:bg-white transition-colors"
               aria-label={t("albumEditor.firstPage")}
               title={t("albumEditor.firstPage")}
             >
@@ -1177,7 +1177,7 @@ export default function AlbumEditor() {
             <button
               data-testid={TID.editorPrev}
               onClick={() => bookRef.current?.pageFlip()?.flipPrev()}
-              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              className="p-3 border border-ink/20 hover:bg-white transition-colors"
               aria-label={t("albumEditor.previousPage")}
             >
               <ChevronLeft size={16} />
@@ -1186,7 +1186,7 @@ export default function AlbumEditor() {
             <button
               data-testid={TID.editorNext}
               onClick={() => bookRef.current?.pageFlip()?.flipNext()}
-              className="p-3 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              className="p-3 border border-ink/20 hover:bg-white transition-colors"
               aria-label={t("albumEditor.nextPage")}
             >
               <ChevronRight size={16} />
@@ -1194,7 +1194,7 @@ export default function AlbumEditor() {
             <button
               data-testid="editor-last"
               onClick={() => bookRef.current?.goTo(Number.MAX_SAFE_INTEGER)}
-              className="flex flex-col items-center gap-1 px-3 py-2 border border-[color:var(--ink)]/20 hover:bg-white transition-colors"
+              className="flex flex-col items-center gap-1 px-3 py-2 border border-ink/20 hover:bg-white transition-colors"
               aria-label={t("albumEditor.lastPage")}
               title={t("albumEditor.lastPage")}
             >
@@ -1283,7 +1283,7 @@ export default function AlbumEditor() {
                 onClick={() => albumHistory.undo()}
                 disabled={!albumHistory.canUndo()}
                 data-testid="editor-undo"
-                className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-2 border border-ink/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
                 title={t("albumEditor.undoTitle")}
               >
                 <Undo2 size={14} />
@@ -1293,7 +1293,7 @@ export default function AlbumEditor() {
                 onClick={() => albumHistory.redo()}
                 disabled={!albumHistory.canRedo()}
                 data-testid="editor-redo"
-                className="inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-2 border border-ink/30 py-2 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40"
                 title={t("albumEditor.redoTitle")}
               >
                 <Redo2 size={14} />
@@ -1340,7 +1340,7 @@ export default function AlbumEditor() {
               className={`w-full inline-flex items-center justify-center gap-2 border py-2 transition-colors ${
                 placingText
                   ? "bg-[color:var(--coral)] text-[color:var(--paper)] border-[color:var(--coral)]"
-                  : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+                  : "border-ink/30 hover:border-[color:var(--ink)]"
               }`}
             >
               <Type size={14} />
@@ -1366,7 +1366,7 @@ export default function AlbumEditor() {
                       title={p.name}
                       aria-label={p.name}
                       aria-pressed={current}
-                      className={`w-7 h-7 border transition-shadow ${current ? "ring-2 ring-offset-1 ring-[color:var(--ink)]" : "border-[color:var(--ink)]/20 hover:ring-1 hover:ring-[color:var(--ink)]/40"}`}
+                      className={`w-7 h-7 border transition-shadow ${current ? "ring-2 ring-offset-1 ring-[color:var(--ink)]" : "border-ink/20 hover:ring-1 hover:ring-ink/40"}`}
                       style={{ background: p.bg_color }}
                     />
                   );
@@ -1412,7 +1412,7 @@ export default function AlbumEditor() {
 
           <div className="border-t border-[color:var(--border-soft)] pt-6 mt-6">
             <div className="eyebrow mb-3">{t("albumEditor.about")}</div>
-            <div className="text-sm text-[color:var(--ink)]/70 space-y-1">
+            <div className="text-sm text-ink/70 space-y-1">
               <div>{t("albumEditor.pagesCount", { count: album.pages?.length || 0 })}</div>
               <div>{t("albumEditor.photosUsed", { count: new Set((album.pages || []).flatMap((pg) => (pg.items || []).filter((it) => it.type === "photo" && it.photo_id).map((it) => it.photo_id))).size })}</div>
               <div>{t("albumEditor.formatLine", { size: album.size, orientation: albumOrientation })}</div>

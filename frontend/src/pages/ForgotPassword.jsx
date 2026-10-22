@@ -33,10 +33,10 @@ export default function ForgotPassword() {
           ← {t("auth.backToSignIn")}
         </Link>
         <h1 className="font-serif-display text-5xl tracking-tight mb-3">{t("auth.forgot.title")}</h1>
-        <p className="text-[color:var(--ink)]/70 mb-10">{t("auth.forgot.subtitle")}</p>
+        <p className="text-ink/70 mb-10">{t("auth.forgot.subtitle")}</p>
 
         {sent ? (
-          <div className="border border-[color:var(--border-soft)] p-6 text-sm text-[color:var(--ink)]/80">
+          <div className="border border-[color:var(--border-soft)] p-6 text-sm text-ink/80">
             <Trans i18nKey="auth.forgot.sentMessage" values={{ email }} components={{ 1: <strong /> }} />
           </div>
         ) : (
@@ -51,7 +51,7 @@ export default function ForgotPassword() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
+                className="w-full bg-transparent border-0 border-b border-ink/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
               />
             </div>
             <button

@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           {sections.map((s, i) => (
             <div key={i}>
               <h2 className="font-serif-display text-xl mb-2">{s.heading}</h2>
-              <p className="text-sm text-[color:var(--ink)]/70 leading-relaxed whitespace-pre-line">{s.body}</p>
+              <p className="text-sm text-ink/70 leading-relaxed whitespace-pre-line">{s.body}</p>
             </div>
           ))}
         </div>

@@ -116,7 +116,7 @@ export default function OrdersPage() {
         )}
 
         {credit?.balance_cents > 0 && (
-          <section className="mt-16 border border-[color:var(--coral)]/40 bg-[color:var(--coral)]/5 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-testid="orders-credit">
+          <section className="mt-16 border border-coral/40 bg-coral/5 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-testid="orders-credit">
             <div>
               <div className="eyebrow mb-1">{t("orders.credit.title")}</div>
               <p className="text-2xl font-medium">{formatPrice(credit.balance_cents)}</p>

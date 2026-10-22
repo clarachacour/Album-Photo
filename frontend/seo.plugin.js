@@ -8,8 +8,10 @@
 // preview sites, a local build) tells search engines to stay away, so they
 // never compete with the real site in search results.
 
-// Public pages listed in the sitemap.
-const PUBLIC_PATHS = ["/", "/gift", "/faq", "/contact", "/terms", "/privacy", "/shipping"];
+import { PUBLIC_PAGES, localePath } from "./src/lib/localePath.js";
+
+// Public pages listed in the sitemap: each in English and in French.
+const LANGUAGES = ["en", "fr"];
 // Pages behind a login or for machines: never worth indexing.
 const PRIVATE_PATHS = ["/dashboard", "/editor/", "/create", "/choose-template", "/order/", "/orders", "/cart", "/account", "/admin/", "/print/", "/mobile-upload/", "/everbook-statement", "/printer/", "/verify-email", "/reset-password", "/forgot-password"];
 
@@ -26,8 +28,15 @@ export function robotsTxt({ siteUrl, indexable }) {
 }
 
 export function sitemapXml({ siteUrl }) {
-  const urls = PUBLIC_PATHS.map((p) => `  <url><loc>${siteUrl}${p}</loc></url>`).join("\n");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+  const address = (p, lng) => siteUrl + localePath(p, lng);
+  // Each address with its other-language versions (hreflang), as on the pages.
+  const urls = PUBLIC_PAGES.flatMap((p) =>
+    LANGUAGES.map((lng) => {
+      const alternates = LANGUAGES.map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${address(p, l)}"/>`).join("");
+      return `  <url><loc>${address(p, lng)}</loc>${alternates}</url>`;
+    })
+  ).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`;
 }
 
 export default function seoPlugin() {

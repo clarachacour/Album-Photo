@@ -29,7 +29,7 @@ export default function ContactPage() {
   };
 
   const inputClass =
-    "w-full border border-[color:var(--ink)]/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
+    "w-full border border-ink/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">

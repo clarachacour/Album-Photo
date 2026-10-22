@@ -194,7 +194,7 @@ function TourStep({ step, contextRef, prefix, index, count, onPrev, onNext, onCl
             <X size={16} />
           </button>
         </div>
-        <p className="text-sm text-[color:var(--ink)]/80 leading-relaxed mb-5">{t(isTouchScreen() && i18n.exists(`${key}.bodyTouch`) ? `${key}.bodyTouch` : `${key}.body`)}</p>
+        <p className="text-sm text-ink/80 leading-relaxed mb-5">{t(isTouchScreen() && i18n.exists(`${key}.bodyTouch`) ? `${key}.bodyTouch` : `${key}.body`)}</p>
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-[color:var(--muted)]" data-testid="tour-progress">
             {index + 1} / {count}
@@ -233,7 +233,7 @@ export function TourHelpButton({ onClick, className = "" }) {
       onClick={onClick}
       data-tour="tour-help"
       data-testid="tour-help"
-      className={`inline-flex items-center gap-1.5 border border-[color:var(--ink)]/20 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase text-[color:var(--ink)]/70 hover:border-[color:var(--ink)] hover:text-[color:var(--ink)] transition-colors ${className}`}
+      className={`inline-flex items-center gap-1.5 border border-ink/20 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase text-ink/70 hover:border-[color:var(--ink)] hover:text-[color:var(--ink)] transition-colors ${className}`}
     >
       <span aria-hidden="true" className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-current text-[10px] leading-none">?</span>
       {t("tour.help")}

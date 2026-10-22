@@ -92,7 +92,7 @@ export function BookRenderer({
           gap already used in the "Make it yours" flat-spread layout — makes
           it clear these are two separate, distinct pieces. */}
       <div
-        className="absolute top-0 h-full bg-[color:var(--ink)]/70"
+        className="absolute top-0 h-full bg-ink/70"
         style={{ width: "3px", right: "100%" }}
       />
       <div className="h-full w-full">

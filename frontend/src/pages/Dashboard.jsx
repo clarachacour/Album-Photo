@@ -97,9 +97,9 @@ export default function Dashboard() {
             ))}
           </div>
         ) : albums.length === 0 ? (
-          <div className="border border-dashed border-[color:var(--ink)]/20 py-24 px-8 text-center">
+          <div className="border border-dashed border-ink/20 py-24 px-8 text-center">
             <p className="font-serif-display text-3xl mb-4">{t("dashboard.empty.title")}</p>
-            <p className="text-[color:var(--ink)]/70 mb-8">{t("dashboard.empty.subtitle")}</p>
+            <p className="text-ink/70 mb-8">{t("dashboard.empty.subtitle")}</p>
             <button
               onClick={() => nav("/choose-template")}
               className="bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 text-sm font-semibold tracking-widest uppercase hover:bg-[color:var(--coral)] transition-colors"
@@ -130,7 +130,7 @@ export default function Dashboard() {
                       <ArrowUpRight className="text-white" size={32} />
                     </div>
                     {/* Touch screens (no hover): a small "open" badge instead. */}
-                    <div className="touch-only absolute right-2 bottom-2 bg-[color:var(--ink)]/80 text-white rounded-full p-1.5">
+                    <div className="touch-only absolute right-2 bottom-2 bg-ink/80 text-white rounded-full p-1.5">
                       <ArrowUpRight size={16} />
                     </div>
                   </Link>

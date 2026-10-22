@@ -53,12 +53,12 @@ export function productData(siteUrl) {
   return [...printed, digital];
 }
 
-/** The FAQ page's questions and answers. */
-export function faqData(siteUrl, items) {
+/** The FAQ page's questions and answers (pageUrl: its English or French address). */
+export function faqData(siteUrl, items, pageUrl = `${siteUrl}/faq`) {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": `${siteUrl}/faq#faq`,
+    "@id": `${pageUrl}#faq`,
     mainEntity: items.map((it) => ({
       "@type": "Question",
       name: it.q,
@@ -82,7 +82,7 @@ export function llmsTxt(siteUrl, faqItems) {
     "- Where: delivery everywhere in Lebanon (Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle…), to the door, by courier.",
     `- Prices (US dollars): A5 printed album ${price("A5")}; A4 printed album ${price("A4")}; PDF album $${DIGITAL_PRICE}, whatever its format and pages; delivery $${SHIPPING_PRICE} per order, whatever the number of albums.`,
     `- Page count: up to ${OVERAGE_FROM} pages, an album between two sizes is priced at the nearest one (28 pages as 24, 40 pages as 50); beyond ${OVERAGE_FROM} pages, each page beyond the size reached costs $${OVERAGE_PER_PAGE.toFixed(2)} more. ${MAX_ALBUM_PAGES} pages at most.`,
-    "- Timing: printing about 3 days, delivery 2 to 3 days.",
+    "- Timing: about a week in all — printing about 3 days, then delivery 2 to 3 days.",
     "- Payment: printed albums are paid in cash on delivery.",
     "- Gift cards: offer an album (format and page count chosen), received as a PDF; the recipient creates their own album with the code, delivery included.",
     "- Languages: English and French.",
@@ -93,6 +93,8 @@ export function llmsTxt(siteUrl, faqItems) {
     `- [Home — create your album](${siteUrl}/): how it works, templates, prices`,
     `- [Gift an album](${siteUrl}/gift): gift cards`,
     `- [FAQ](${siteUrl}/faq): formats, prices, delivery, PDF, gifts`,
+    `- [Travel photo book](${siteUrl}/travel-photo-book), [Couple & wedding album](${siteUrl}/couple-photo-album), [Family photo album](${siteUrl}/family-photo-album)`,
+    `- French version of every page: ${siteUrl}/fr`,
     `- [Shipping](${siteUrl}/shipping): delivery in Lebanon`,
     `- [Terms of sale](${siteUrl}/terms)`,
     `- [Contact](${siteUrl}/contact)`,

@@ -144,7 +144,7 @@ export default function MobileUpload() {
   if (error) {
     return (
       <main className="min-h-screen flex items-center justify-center p-8 bg-[color:var(--paper)] text-center">
-        <p className="text-[color:var(--ink)]/70">{error}</p>
+        <p className="text-ink/70">{error}</p>
       </main>
     );
   }
@@ -156,14 +156,14 @@ export default function MobileUpload() {
           {info ? info.album_title : t("mobileUpload.loading")}
         </div>
         <h1 className="font-serif-display text-4xl tracking-tight mb-3">{t("mobileUpload.title")}</h1>
-        <p className="text-[color:var(--ink)]/70 mb-10">
+        <p className="text-ink/70 mb-10">
           {t("mobileUpload.intro")}
         </p>
 
         <button
           onClick={() => fileInput.current?.click()}
           disabled={uploading || googleImporting || !info}
-          className="w-full inline-flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[color:var(--ink)]/30 py-12 hover:border-[color:var(--ink)]/60 transition-colors disabled:opacity-60"
+          className="w-full inline-flex flex-col items-center justify-center gap-3 border-2 border-dashed border-ink/30 py-12 hover:border-ink/60 transition-colors disabled:opacity-60"
         >
           {uploading ? <Loader2 size={28} className="animate-spin" /> : <Upload size={28} />}
           <span className="text-sm font-semibold tracking-widest uppercase">
@@ -172,7 +172,7 @@ export default function MobileUpload() {
         </button>
         {progress && (
           <div className="mt-4" data-testid="upload-progress">
-            <div className="h-1.5 bg-[color:var(--ink)]/10 overflow-hidden">
+            <div className="h-1.5 bg-ink/10 overflow-hidden">
               <div
                 className="h-full bg-[color:var(--coral)] transition-all duration-300"
                 style={{ width: `${progress.total ? ((progress.partial ?? progress.done) / progress.total) * 100 : 0}%` }}
@@ -225,7 +225,7 @@ export default function MobileUpload() {
         ))}
 
         {addedCount > 0 && (
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-[color:var(--ink)]/80">
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-ink/80">
             <Check size={16} className="text-green-600" />
             {t("mobileUpload.added", { count: addedCount })}
           </div>

@@ -15,6 +15,11 @@ export default {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        // Everbook's colors, usable with an opacity (text-ink/70): the
+        // channels are in index.css, next to the colors themselves.
+        ink: 'rgb(var(--ink-rgb) / <alpha-value>)',
+        paper: 'rgb(var(--paper-rgb) / <alpha-value>)',
+        coral: 'rgb(var(--coral-rgb) / <alpha-value>)',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

@@ -119,7 +119,7 @@ export function CoverEditorPanel({
     };
   })();
 
-  const field = "w-full border border-[color:var(--ink)]/20 px-2 py-1.5 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
+  const field = "w-full border border-ink/20 px-2 py-1.5 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
   const section = "border-t border-[color:var(--border-soft)] pt-2.5 space-y-2";
 
   return (
@@ -421,7 +421,7 @@ export function CoverEditorPanel({
               data-testid="cover-item-fill"
               value={selectedItem.fill_color || "#E56B55"}
               onChange={(e) => updateCoverItem(selectedItem.id, { fill_color: e.target.value }, side)}
-              className="w-full h-8 border border-[color:var(--ink)]/20 cursor-pointer p-0"
+              className="w-full h-8 border border-ink/20 cursor-pointer p-0"
             />
           )}
 
@@ -435,7 +435,7 @@ export function CoverEditorPanel({
               <button
                 data-testid="cover-item-replace-image"
                 onClick={() => replaceImageInput.current?.click()}
-                className="flex-1 inline-flex items-center justify-center gap-2 border border-[color:var(--ink)]/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 border border-ink/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
               >
                 <ImageIcon size={14} />
                 <span className="text-xs font-semibold tracking-wider uppercase">{t("coverPanel.replaceImage")}</span>
@@ -536,7 +536,7 @@ function AddButton({ icon, label, onClick, disabled, title, tid }) {
       onClick={onClick}
       disabled={disabled}
       title={title || label}
-      className="inline-flex flex-col items-center justify-center gap-1 border border-[color:var(--ink)]/30 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:hover:border-[color:var(--ink)]/30"
+      className="inline-flex flex-col items-center justify-center gap-1 border border-ink/30 py-1.5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-40 disabled:hover:border-ink/30"
     >
       {icon}
       <span className="text-[10px] font-semibold tracking-wider uppercase">{label}</span>
@@ -558,7 +558,7 @@ function BoldToggle({ tid, weight, onToggle }) {
       className={`shrink-0 inline-flex items-center justify-center w-8 h-8 border transition-colors ${
         bold
           ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
-          : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"
+          : "border-ink/30 hover:border-[color:var(--ink)]"
       }`}
       title={t("coverPanel.bold")}
     >
@@ -589,7 +589,7 @@ function RestoreButton({ label, onClick, tid }) {
       type="button"
       onClick={onClick}
       data-testid={tid}
-      className="w-full inline-flex items-center justify-center gap-1.5 border border-[color:var(--ink)]/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
+      className="w-full inline-flex items-center justify-center gap-1.5 border border-ink/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
     >
       <Undo2 size={13} />
       <span className="text-[11px] font-semibold tracking-wider uppercase">{label}</span>
@@ -603,7 +603,7 @@ function ResetPositionButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 border border-[color:var(--ink)]/30 text-[11px] font-semibold tracking-wider uppercase hover:border-[color:var(--ink)] transition-colors"
+      className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 border border-ink/30 text-[11px] font-semibold tracking-wider uppercase hover:border-[color:var(--ink)] transition-colors"
       title={t("coverPanel.resetPosition")}
     >
       <RotateCcw size={12} />
@@ -634,14 +634,14 @@ export function ColorField({ label, value, onChange, tid, onReset }) {
           type="color"
           value={value || "#FFFFFF"}
           onChange={(e) => onChange(e.target.value)}
-          className="w-8 h-8 shrink-0 border border-[color:var(--ink)]/20 cursor-pointer p-0"
+          className="w-8 h-8 shrink-0 border border-ink/20 cursor-pointer p-0"
         />
         <input
           type="text"
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={t("coverPanel.default")}
-          className="w-full min-w-0 border border-[color:var(--ink)]/20 px-1.5 py-1.5 text-xs font-mono focus:border-[color:var(--ink)] focus:outline-none"
+          className="w-full min-w-0 border border-ink/20 px-1.5 py-1.5 text-xs font-mono focus:border-[color:var(--ink)] focus:outline-none"
         />
       </div>
     </div>

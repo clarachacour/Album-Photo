@@ -12,6 +12,10 @@
     --sand: #D5C9B3;
     --forest: #2C402E;
     --border-soft: #E2DFD8;
+    /* The same colors as channels, for Tailwind's opacity (text-ink/70). */
+    --ink-rgb: 26 26 23;
+    --paper-rgb: 249 248 246;
+    --coral-rgb: 229 107 85;
 }
 
 /* iPhone Safari zooms into any field whose text is under 16px when it's
@@ -40,14 +44,18 @@ body {
     font-family: 'Manrope', sans-serif;
 }
 
-/* Editorial spacing / vertical rhythm */
-.eyebrow {
-    font-family: 'Manrope', sans-serif;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--muted);
+/* Editorial spacing / vertical rhythm. In the components layer, so a
+   color class next to it (text-…) wins over its gray: on a dark background
+   the gray was too pale to read. */
+@layer components {
+    .eyebrow {
+        font-family: 'Manrope', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
 }
 
 /* Book shadow for 3D flip preview */

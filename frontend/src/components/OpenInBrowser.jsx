@@ -34,7 +34,7 @@ function OpenButtons({ platform, className = "" }) {
       <button
         type="button"
         onClick={copy}
-        className="border border-[color:var(--ink)]/40 px-4 py-2 text-xs font-semibold tracking-widest uppercase"
+        className="border border-ink/40 px-4 py-2 text-xs font-semibold tracking-widest uppercase"
       >
         {t("inApp.copyLink")}
       </button>
@@ -65,7 +65,7 @@ export function InAppBrowserBanner() {
     }
   };
   return (
-    <div data-testid="in-app-banner" className="fixed bottom-0 inset-x-0 z-50 bg-[color:var(--paper)] border-t border-[color:var(--ink)]/15 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] px-4 py-3">
+    <div data-testid="in-app-banner" className="fixed bottom-0 inset-x-0 z-50 bg-[color:var(--paper)] border-t border-ink/15 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] px-4 py-3">
       <div className="max-w-xl mx-auto flex items-start gap-3">
         <div className="flex-1">
           <p className="text-sm text-[color:var(--ink)]">{t("inApp.banner")}</p>
@@ -84,7 +84,7 @@ export function InAppBrowserBanner() {
 export function InAppSignInNotice({ platform }) {
   const { t } = useTranslation();
   return (
-    <div data-testid="in-app-signin-notice" className="border border-[color:var(--ink)]/15 bg-white/60 p-4">
+    <div data-testid="in-app-signin-notice" className="border border-ink/15 bg-white/60 p-4">
       <p className="text-sm text-[color:var(--ink)]">{t("inApp.signIn")}</p>
       <p className="text-xs text-[color:var(--muted)] mt-1">{t(platform === "ios" ? "inApp.howIos" : "inApp.howAndroid")}</p>
       <OpenButtons platform={platform} className="mt-3" />

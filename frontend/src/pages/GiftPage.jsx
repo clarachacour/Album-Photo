@@ -96,9 +96,9 @@ export default function GiftPage() {
     }
   };
 
-  const inputClass = "w-full border border-[color:var(--ink)]/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
+  const inputClass = "w-full border border-ink/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
   const choice = (on) =>
-    `px-5 py-3 border transition-colors ${on ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]" : "border-[color:var(--ink)]/30 hover:border-[color:var(--ink)]"}`;
+    `px-5 py-3 border transition-colors ${on ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]" : "border-ink/30 hover:border-[color:var(--ink)]"}`;
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
@@ -106,8 +106,8 @@ export default function GiftPage() {
         <div className="mb-12 max-w-2xl">
           <div className="eyebrow mb-3">{t("gift.eyebrow")}</div>
           <h1 className="font-serif-display text-4xl md:text-6xl tracking-tight mb-4">{t("gift.title")}</h1>
-          <p className="text-[color:var(--ink)]/70">{t("gift.subtitle")}</p>
-          <a href="#redeem" className="inline-block mt-4 text-sm underline text-[color:var(--ink)]/80 hover:text-[color:var(--coral)]">{t("gift.haveCode")}</a>
+          <p className="text-ink/70">{t("gift.subtitle")}</p>
+          <a href="#redeem" className="inline-block mt-4 text-sm underline text-ink/80 hover:text-[color:var(--coral)]">{t("gift.haveCode")}</a>
         </div>
 
         <div className="grid md:grid-cols-2 gap-12 mb-24">
@@ -125,7 +125,7 @@ export default function GiftPage() {
               {PAGE_TIERS.map((tier) => (
                 <button key={tier} type="button" onClick={() => set({ page_tier: tier })} className={choice(gift.page_tier === tier)} data-testid={`gift-pages-${tier}`}>
                   <span className="font-semibold tracking-widest text-sm block">{tier}p</span>
-                  <span className={`text-xs block mt-0.5 ${gift.page_tier === tier ? "text-[color:var(--paper)]/70" : "text-[color:var(--ink)]/50"}`}>
+                  <span className={`text-xs block mt-0.5 ${gift.page_tier === tier ? "text-paper/80" : "text-ink/75"}`}>
                     ${giftValue(gift.size, tier)}
                   </span>
                 </button>
@@ -135,17 +135,17 @@ export default function GiftPage() {
 
             <div className="space-y-4 mb-8">
               <div>
-                <label className="eyebrow block mb-2">{t("gift.recipient")}</label>
-                <input className={inputClass} maxLength={60} value={gift.recipient_name} onChange={(e) => set({ recipient_name: e.target.value })} placeholder={t("gift.recipientPlaceholder")} data-testid="gift-recipient" />
+                <label htmlFor="gift-recipient" className="eyebrow block mb-2">{t("gift.recipient")}</label>
+                <input className={inputClass} maxLength={60} value={gift.recipient_name} onChange={(e) => set({ recipient_name: e.target.value })} placeholder={t("gift.recipientPlaceholder")} id="gift-recipient" data-testid="gift-recipient" />
               </div>
               <div>
-                <label className="eyebrow block mb-2">{t("gift.message")}</label>
-                <textarea className={`${inputClass} h-24 resize-none`} maxLength={300} value={gift.message} onChange={(e) => set({ message: e.target.value })} placeholder={t("gift.messagePlaceholder")} data-testid="gift-message" />
+                <label htmlFor="gift-message" className="eyebrow block mb-2">{t("gift.message")}</label>
+                <textarea className={`${inputClass} h-24 resize-none`} maxLength={300} value={gift.message} onChange={(e) => set({ message: e.target.value })} placeholder={t("gift.messagePlaceholder")} id="gift-message" data-testid="gift-message" />
                 <p className="text-[11px] text-[color:var(--muted)] text-right">{gift.message.length}/300</p>
               </div>
               <div>
-                <label className="eyebrow block mb-2">{t("gift.from")}</label>
-                <input className={inputClass} maxLength={60} value={gift.from_name} onChange={(e) => set({ from_name: e.target.value })} data-testid="gift-from" />
+                <label htmlFor="gift-from" className="eyebrow block mb-2">{t("gift.from")}</label>
+                <input className={inputClass} maxLength={60} value={gift.from_name} onChange={(e) => set({ from_name: e.target.value })} id="gift-from" data-testid="gift-from" />
               </div>
             </div>
 
@@ -176,11 +176,11 @@ export default function GiftPage() {
         <section id="redeem" className="border-t border-[color:var(--border-soft)] pt-16 max-w-xl scroll-mt-24">
           <div className="eyebrow mb-3">{t("gift.redeem.eyebrow")}</div>
           <h2 className="font-serif-display text-3xl md:text-4xl tracking-tight mb-3">{t("gift.redeem.title")}</h2>
-          <p className="text-[color:var(--ink)]/70 mb-6">{t("gift.redeem.subtitle")}</p>
+          <p className="text-ink/70 mb-6">{t("gift.redeem.subtitle")}</p>
           {redeemed ? (
             <div className="border border-[color:var(--ink)] bg-white p-6" data-testid="gift-redeemed">
               <p className="font-serif-display text-2xl mb-2">{t("gift.redeem.done", { from: redeemed.gift_card.from_name, context: redeemed.gift_card.from_name ? "from" : undefined })}</p>
-              <p className="text-sm text-[color:var(--ink)]/75 mb-5">
+              <p className="text-sm text-ink/75 mb-5">
                 {t("gift.redeem.doneBody", {
                   size: redeemed.gift_card.size,
                   pages: redeemed.gift_card.page_tier,
@@ -227,7 +227,7 @@ export function GiftCardPreview({ gift, lang, code = "EVER-XXXX-XXXX" }) {
     <div className="relative bg-[#F7F3EB] shadow-md aspect-[148/105] w-full overflow-hidden" style={{ containerType: "inline-size" }} data-testid="gift-preview">
       <div className="absolute inset-y-0 left-0 w-[2.4%] bg-[color:var(--coral)]" />
       {/* The four albums of the home page, on the right. */}
-      <img src="/hero-shelf.webp" alt="" className="absolute right-[5.2%] top-[7.4%] h-[85.2%] w-auto" />
+      <img src="/hero-shelf-380.webp" alt="" width={380} height={512} className="absolute right-[5.2%] top-[7.4%] h-[85.2%] w-auto" />
       <div className="absolute left-[6.7%] w-[39.5%] top-[6%] bottom-[7%] flex flex-col">
         <span className="font-serif-display font-semibold leading-none" style={{ fontSize: "4.8cqw" }}>Everbook</span>
         <span className="font-semibold text-[color:var(--coral)] tracking-wider mt-[2%]" style={{ fontSize: "1.7cqw" }}>{tl("gift.card.eyebrow")}</span>

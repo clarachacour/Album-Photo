@@ -49,7 +49,7 @@ export default function LayoutPicker({ onChoose, onClose, orientation = "portrai
             <X size={18} />
           </button>
         </div>
-        <p className="text-sm text-[color:var(--ink)]/70 mb-6">
+        <p className="text-sm text-ink/70 mb-6">
           {t("layoutPicker.instructions")}
         </p>
         {layoutGroups(orientation).map((group) => (
@@ -66,7 +66,7 @@ export default function LayoutPicker({ onChoose, onClose, orientation = "portrai
                   <div className={`w-full ${thumbAspect}`}>
                     <LayoutThumb slots={templates[name].slots} />
                   </div>
-                  <span className="text-xs text-[color:var(--ink)]/70">{templateLabel(templates[name], i18n.language)}</span>
+                  <span className="text-xs text-ink/70">{templateLabel(templates[name], i18n.language)}</span>
                 </button>
               ))}
             </div>

@@ -23,7 +23,7 @@ export default function MobileUploadQR({ session, onClose }) {
         </button>
         <Smartphone size={22} className="mx-auto mb-4 text-[color:var(--muted)]" />
         <h3 className="font-serif-display text-2xl tracking-tight mb-2">{t("mobileQr.title")}</h3>
-        <p className="text-sm text-[color:var(--ink)]/70 mb-6">
+        <p className="text-sm text-ink/70 mb-6">
           {t("mobileQr.instructions")}
         </p>
         {session ? (

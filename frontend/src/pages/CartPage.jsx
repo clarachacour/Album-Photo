@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
+import { useLocalePath } from "@/components/LocalLink";
 import { toast } from "sonner";
 import { CreditCard, Gift, Loader2, Plus, Trash2 } from "lucide-react";
 import { api, coverImageUrl } from "@/lib/api";
@@ -23,6 +24,7 @@ const money = (cents) => `$${(cents / 100).toFixed(2)}`;
 export default function CartPage() {
   usePageMeta("cart");
   const { t } = useTranslation();
+  const lp = useLocalePath();
   const nav = useNavigate();
   const { user } = useAuth();
   const { cart, refresh, setQuantity, remove, setCart } = useCart();
@@ -122,7 +124,7 @@ export default function CartPage() {
   };
 
   const inputClass =
-    "w-full border border-[color:var(--ink)]/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
+    "w-full border border-ink/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
 
   if (placing) {
     return (
@@ -130,7 +132,7 @@ export default function CartPage() {
         <div className="max-w-[500px] mx-auto text-center animate-fade-up">
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-6 text-[color:var(--muted)]" />
           <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t("checkout.placedTitle")}</h1>
-          <p className="text-[color:var(--ink)]/70">{t("cart.placing")}</p>
+          <p className="text-ink/70">{t("cart.placing")}</p>
         </div>
       </main>
     );
@@ -147,7 +149,7 @@ export default function CartPage() {
         {!cart ? (
           <p className="text-sm text-[color:var(--muted)]">{t("checkout.loading")}</p>
         ) : items.length === 0 ? (
-          <div className="border border-dashed border-[color:var(--ink)]/20 py-20 px-8 text-center" data-testid="cart-empty">
+          <div className="border border-dashed border-ink/20 py-20 px-8 text-center" data-testid="cart-empty">
             <p className="font-serif-display text-3xl mb-4">{t("cart.empty")}</p>
             <Link to="/dashboard" className="inline-block bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 text-sm font-semibold tracking-widest uppercase hover:bg-[color:var(--coral)] transition-colors">
               {t("cart.toAlbums")}
@@ -165,7 +167,7 @@ export default function CartPage() {
                   )
                 )}
               </ul>
-              <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-[color:var(--ink)]/80 hover:text-[color:var(--coral)] mb-12" data-testid="cart-add-another">
+              <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-ink/80 hover:text-[color:var(--coral)] mb-12" data-testid="cart-add-another">
                 <Plus size={14} /> {t("cart.addAnother")}
               </Link>
 
@@ -242,7 +244,7 @@ export default function CartPage() {
               {hasGift && (
                 <div className={`${hasPrint ? "mt-12" : ""}`} data-testid="cart-payment">
                   <div className="eyebrow mb-2">{t("cart.payment.title")}</div>
-                  <div className="border border-dashed border-[color:var(--ink)]/25 bg-white px-5 py-4 flex items-start gap-3">
+                  <div className="border border-dashed border-ink/25 bg-white px-5 py-4 flex items-start gap-3">
                     <CreditCard size={18} className="mt-0.5 text-[color:var(--muted)] shrink-0" />
                     <div className="text-sm">
                       <p className="font-medium">{t("cart.payment.amount", { amount: money(cart.pay_now_cents) })}</p>
@@ -294,7 +296,7 @@ export default function CartPage() {
               {cart.credit_balance_cents > cart.credit_applied_cents && cart.credit_applied_cents > 0 && (
                 <p className="text-xs text-[color:var(--muted)] -mt-3 mb-6">{t("cart.creditLeft", { amount: money(cart.credit_balance_cents - cart.credit_applied_cents) })}</p>
               )}
-              <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-[color:var(--ink)]/80"}`}>
+              <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-ink/80"}`}>
                 <input
                   type="checkbox"
                   checked={acceptedTerms}
@@ -309,7 +311,7 @@ export default function CartPage() {
                 <span>
                   <Trans
                     i18nKey="checkout.acceptTerms"
-                    components={{ terms: <Link to="/terms" target="_blank" rel="noopener" className="underline hover:text-[color:var(--coral)]" /> }}
+                    components={{ terms: <Link to={lp("/terms")} target="_blank" rel="noopener" className="underline hover:text-[color:var(--coral)]" /> }}
                   />
                 </span>
               </label>
@@ -378,12 +380,12 @@ function CartLine({ item, onQuantity, onRemove }) {
                   e.target.value = q;
                   if (q !== item.quantity) onQuantity(q);
                 }}
-                className="w-14 border border-[color:var(--ink)]/20 p-1 text-sm text-center text-[color:var(--ink)] focus:border-[color:var(--ink)] focus:outline-none"
+                className="w-14 border border-ink/20 p-1 text-sm text-center text-[color:var(--ink)] focus:border-[color:var(--ink)] focus:outline-none"
                 data-testid={`cart-quantity-${item.album_id}`}
               />
             </label>
           )}
-          <Link to={`/order/${item.album_id}`} className="text-xs underline text-[color:var(--ink)]/70 hover:text-[color:var(--ink)]">
+          <Link to={`/order/${item.album_id}`} className="text-xs underline text-ink/70 hover:text-[color:var(--ink)]">
             {t("cart.change")}
           </Link>
           <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-[color:var(--muted)] hover:text-red-700" data-testid={`cart-remove-${item.kind}-${item.album_id}`}>

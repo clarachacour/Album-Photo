@@ -135,7 +135,7 @@ export default function SocialAuthButtons() {
   return (
     <div className="space-y-3">
       {signingIn && (
-        <div role="status" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[color:var(--paper)]/90">
+        <div role="status" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-paper/90">
           <Loader2 className="w-6 h-6 animate-spin" />
           <span className="eyebrow">{t("auth.social.signingIn")}</span>
         </div>

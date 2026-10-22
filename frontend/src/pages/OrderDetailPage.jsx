@@ -71,13 +71,13 @@ export default function OrderDetailPage() {
         </div>
 
         {order.status === "pending_payment" && order.unit_price_cents > 0 && (
-          <div className="border border-[color:var(--coral)]/40 bg-[color:var(--coral)]/5 p-5 mb-10 text-sm">
+          <div className="border border-coral/40 bg-coral/5 p-5 mb-10 text-sm">
             {t(digital ? "orderDetail.paymentNoticeDigital" : "orderDetail.paymentNotice")}
           </div>
         )}
 
         {digital && order.status === "available" && (
-          <div className="border border-[color:var(--ink)]/15 bg-white p-5 mb-10 flex flex-wrap items-center justify-between gap-4" data-testid="order-download">
+          <div className="border border-ink/15 bg-white p-5 mb-10 flex flex-wrap items-center justify-between gap-4" data-testid="order-download">
             <p className="text-sm">{t("orderDetail.digitalReady")}</p>
             <button
               type="button"
@@ -103,13 +103,13 @@ export default function OrderDetailPage() {
                   <div className="flex flex-col items-center">
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                        step.done ? "bg-[color:var(--ink)] text-[color:var(--paper)]" : "border border-[color:var(--ink)]/25 text-transparent"
+                        step.done ? "bg-[color:var(--ink)] text-[color:var(--paper)]" : "border border-ink/25 text-transparent"
                       }`}
                     >
                       <Check size={13} />
                     </div>
                     {i < order.timeline.length - 1 && (
-                      <div className={`w-px flex-1 min-h-[28px] ${step.done ? "bg-[color:var(--ink)]" : "bg-[color:var(--ink)]/15"}`} />
+                      <div className={`w-px flex-1 min-h-[28px] ${step.done ? "bg-[color:var(--ink)]" : "bg-ink/15"}`} />
                     )}
                   </div>
                   <div className={`pb-7 text-sm ${step.done ? "font-medium text-[color:var(--ink)]" : "text-[color:var(--muted)]"}`}>
@@ -140,7 +140,7 @@ export default function OrderDetailPage() {
         <div className="grid md:grid-cols-2 gap-12 border-t border-[color:var(--border-soft)] pt-10">
           <div>
             <div className="eyebrow mb-4">{t("orderDetail.orderDetails")}</div>
-            <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
+            <div className="text-sm space-y-1 text-ink/80">
               <div>{t(`checkout.kind.${digital ? "digital" : "print"}`)}</div>
               <div>{t("orderDetail.format")}: {order.size} · {order.orientation}</div>
               {!digital && <div>{t("orderDetail.quantity")}: {order.quantity}</div>}
@@ -180,7 +180,7 @@ export default function OrderDetailPage() {
           {!digital && (
           <div>
             <div className="eyebrow mb-4">{t("orderDetail.shippingTo")}</div>
-            <div className="text-sm space-y-1 text-[color:var(--ink)]/80">
+            <div className="text-sm space-y-1 text-ink/80">
               <div>{addr.full_name}</div>
               <div>{addr.street}{addr.building && `, ${addr.building}`}</div>
               <div>{addr.city}{addr.area && ` · ${addr.area}`}</div>

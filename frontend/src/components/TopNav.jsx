@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLocalePath } from "@/components/LocalLink";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { TID } from "@/constants/testIds";
@@ -11,6 +12,7 @@ export default function TopNav() {
   const { user, logout } = useAuth();
   const { count: cartCount } = useCart();
   const { t } = useTranslation();
+  const lp = useLocalePath();
   const nav = useNavigate();
   const loc = useLocation();
   const isEditor = loc.pathname.includes("/editor");
@@ -34,12 +36,12 @@ export default function TopNav() {
     logout();
     nav("/");
   };
-  const mobileLink = "flex items-center gap-3 px-6 py-3 text-sm font-medium text-[color:var(--ink)]/80 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)]";
+  const mobileLink = "flex items-center gap-3 px-6 py-3 text-sm font-medium text-ink/80 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)]";
 
   return (
     <header className={`absolute top-0 inset-x-0 z-40 ${isEditor ? "bg-white/80 backdrop-blur-xl border-b border-[color:var(--border-soft)]" : "bg-transparent"}`}>
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
-        <Link to="/" data-testid={TID.navBrand} className="group">
+        <Link to={lp("/")} data-testid={TID.navBrand} className="group">
           <div className="flex items-baseline gap-2">
             <span className="font-serif-display text-xl sm:text-2xl font-medium tracking-tight text-[color:var(--ink)]">Everbook</span>
           </div>
@@ -49,26 +51,26 @@ export default function TopNav() {
             <Link
               to="/dashboard"
               data-testid={TID.navDashboard}
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
               <LayoutGrid size={14} /> {t("nav.myAlbums")}
             </Link>
             <Link
               to="/orders"
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
               <Package size={14} /> {t("nav.orders")}
             </Link>
             <Link
-              to="/gift"
-              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              to={lp("/gift")}
+              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
               data-testid="nav-gift"
             >
               <Gift size={14} /> {t("nav.gift")}
             </Link>
             <Link
-              to="/faq"
-              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              to={lp("/faq")}
+              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
               <HelpCircle size={14} /> {t("nav.faq")}
             </Link>
@@ -82,7 +84,7 @@ export default function TopNav() {
             )}
             <Link
               to="/account"
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
             >
               <User size={14} />
               <span className="hidden md:inline">{user.name}</span>
@@ -90,7 +92,7 @@ export default function TopNav() {
             <button
               data-testid={TID.navLogout}
               onClick={logoutAndLeave}
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--coral)] px-3 py-2 transition-colors"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--coral)] px-3 py-2 transition-colors"
             >
               <LogOut size={14} /> {t("nav.logout")}
             </button>
@@ -100,7 +102,7 @@ export default function TopNav() {
               aria-label={t("nav.cart", { count: cartCount })}
               title={t("nav.cart", { count: cartCount })}
               data-testid="nav-cart"
-              className="relative inline-flex items-center justify-center w-10 h-10 text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors"
+              className="relative inline-flex items-center justify-center w-10 h-10 text-ink/70 hover:text-[color:var(--ink)] transition-colors"
             >
               <ShoppingBag size={18} />
               {cartCount > 0 && (
@@ -125,8 +127,8 @@ export default function TopNav() {
                 <div className="absolute top-16 inset-x-0 bg-white border-y border-[color:var(--border-soft)] shadow-lg py-2" data-testid="nav-mobile-panel">
                   <Link to="/dashboard" className={mobileLink}><LayoutGrid size={16} /> {t("nav.myAlbums")}</Link>
                   <Link to="/orders" className={mobileLink}><Package size={16} /> {t("nav.orders")}</Link>
-                  <Link to="/gift" className={mobileLink}><Gift size={16} /> {t("nav.gift")}</Link>
-                  <Link to="/faq" className={mobileLink}><HelpCircle size={16} /> {t("nav.faq")}</Link>
+                  <Link to={lp("/gift")} className={mobileLink}><Gift size={16} /> {t("nav.gift")}</Link>
+                  <Link to={lp("/faq")} className={mobileLink}><HelpCircle size={16} /> {t("nav.faq")}</Link>
                   {user.is_admin && (
                     <Link to="/admin/orders" className={`${mobileLink} text-[color:var(--coral)]`}><Shield size={16} /> {t("nav.admin")}</Link>
                   )}
@@ -141,10 +143,13 @@ export default function TopNav() {
         )}
         {!user && (
           <nav className="flex items-center gap-4">
-            <Link to="/gift" className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
-              <Gift size={14} /> {t("nav.gift")}
+            <Link to={lp("/gift")} className="inline-flex items-center gap-1.5 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] transition-colors" data-testid="nav-gift-visitor">
+              <Gift size={14} />
+              {/* A short word on phones, where the full one doesn't fit. */}
+              <span className="sm:hidden">{t("nav.giftShort")}</span>
+              <span className="hidden sm:inline">{t("nav.gift")}</span>
             </Link>
-            <Link to="/auth?mode=login" className="text-sm font-medium text-[color:var(--ink)]/70 hover:text-[color:var(--ink)] transition-colors">
+            <Link to="/auth?mode=login" className="text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] transition-colors">
               {t("nav.signIn")}
             </Link>
             <LanguageSwitcher />

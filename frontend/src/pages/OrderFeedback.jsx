@@ -65,13 +65,13 @@ export default function OrderFeedback() {
         <div className="mb-10">
           <div className="eyebrow mb-3">{order.album_title}</div>
           <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight">{t("orderFeedback.title")}</h1>
-          <p className="text-[color:var(--ink)]/70 mt-3">{t("orderFeedback.subtitle")}</p>
+          <p className="text-ink/70 mt-3">{t("orderFeedback.subtitle")}</p>
         </div>
 
         {sent ? (
           <div className="border border-[color:var(--border-soft)] p-8">
             <p className="font-serif-display text-2xl tracking-tight mb-2">{t("orderFeedback.thanks")}</p>
-            <p className="text-sm text-[color:var(--ink)]/70 whitespace-pre-wrap">{comment}</p>
+            <p className="text-sm text-ink/70 whitespace-pre-wrap">{comment}</p>
           </div>
         ) : (
           <form onSubmit={submit}>
@@ -81,7 +81,7 @@ export default function OrderFeedback() {
               onChange={(e) => setComment(e.target.value)}
               placeholder={t("orderFeedback.placeholder")}
               required
-              className="w-full border border-[color:var(--ink)]/20 p-4 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none resize-none mb-6"
+              className="w-full border border-ink/20 p-4 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none resize-none mb-6"
             />
             <button
               type="submit"

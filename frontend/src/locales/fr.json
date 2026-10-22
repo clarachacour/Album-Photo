@@ -11,7 +11,8 @@
     "closeMenu": "Fermer le menu",
     "cart_one": "Panier ({{count}} article)",
     "cart_other": "Panier ({{count}} articles)",
-    "gift": "Offrir un album"
+    "gift": "Offrir un album",
+    "giftShort": "Offrir"
   },
   "landing": {
     "hero": {
@@ -81,8 +82,7 @@
         "family": "Famille",
         "celebrations": "Célébrations"
       },
-      "useThis": "Utiliser ce modèle",
-      "useTemplate": "Créer un album avec le modèle {{name}}"
+      "useThis": "Utiliser ce modèle"
     },
     "footer": {
       "title_line1": "Vos plus beaux souvenirs",
@@ -159,7 +159,7 @@
       },
       {
         "q": "Combien de temps faut-il pour recevoir mon album ?",
-        "a": "Environ 5 à 6 jours en tout : la fabrication prend environ 3 jours, puis la livraison au Liban 2 à 3 jours. Vous pouvez suivre chaque étape depuis votre page Commandes."
+        "a": "Environ une semaine en tout : la fabrication prend environ 3 jours, puis la livraison au Liban 2 à 3 jours. Vous pouvez suivre chaque étape depuis votre page Commandes."
       },
       {
         "q": "Quels formats sont disponibles ?",
@@ -709,7 +709,8 @@
     "legalName": "EFFET DESIGN - EVERBOOK",
     "email": "orders@everbook-album.com",
     "rightsReserved": "Tous droits réservés.",
-    "madeIn": "Fabriqué au Liban"
+    "madeIn": "Fabriqué au Liban",
+    "albums": "Albums"
   },
   "legal": {
     "lastUpdated": "Dernière mise à jour : 21 octobre 2026",
@@ -906,7 +907,7 @@
   },
   "meta": {
     "landing": {
-      "title": "Everbook — votre livre photo imprimé, mis en page pour vous",
+      "title": "Everbook — Livre photo et album photo, mis en page pour vous",
       "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban. À partir de 22 $."
     },
     "faq": {
@@ -915,15 +916,15 @@
     },
     "contact": {
       "title": "Nous contacter",
-      "description": "Une question sur votre livre photo ou votre commande ? Écrivez à l'équipe Everbook."
+      "description": "Une question sur votre livre photo, votre commande ou une carte cadeau ? Écrivez à l'équipe Everbook, par le formulaire ou par email."
     },
     "terms": {
       "title": "Conditions générales de vente",
-      "description": "Les conditions générales de vente d'Everbook."
+      "description": "Les conditions générales de vente d'Everbook : commande d'un livre photo, prix, livraison, album en PDF, cartes cadeaux et que faire en cas de problème."
     },
     "privacy": {
       "title": "Politique de confidentialité",
-      "description": "Comment Everbook traite vos photos et vos données personnelles."
+      "description": "Comment Everbook traite vos photos et vos données personnelles : ce qui est conservé, pourquoi, combien de temps, qui y a accès, et comment supprimer votre compte."
     },
     "shipping": {
       "title": "Livraison",
@@ -960,6 +961,18 @@
     "gift": {
       "title": "Offrir un album",
       "description": "Offrez un album photo à créer : choisissez le format, écrivez quelques mots, et envoyez une carte cadeau."
+    },
+    "occasion_travel": {
+      "title": "Livre photo de voyage avec vos photos",
+      "description": "Transformez vos photos de voyage en livre photo imprimé : déposez-les toutes, Everbook les range par jour et par lieu et met l'album en page."
+    },
+    "occasion_couple": {
+      "title": "Album photo de couple et de mariage",
+      "description": "Un album photo de votre histoire à deux, du premier voyage au mariage : Everbook garde les meilleures photos, les range par date et met les pages en forme."
+    },
+    "occasion_family": {
+      "title": "Album photo de famille",
+      "description": "Un album photo de famille avec les photos de tous les téléphones : Everbook garde les meilleures, les range par date et met en page un livre à imprimer."
     }
   },
   "coverPanel": {
@@ -1322,6 +1335,77 @@
         "not_paid": "Cette carte cadeau ne peut pas encore être utilisée.",
         "other": "Ce code ne peut pas être utilisé. Veuillez réessayer."
       }
+    }
+  },
+  "occasions": {
+    "howTitle": "Comment ça marche",
+    "giftLine": "C'est pour quelqu'un d'autre ? Offrez-lui l'album avec une carte cadeau :",
+    "moreLabel": "Autres albums",
+    "travel": {
+      "eyebrow": "Livre photo de voyage",
+      "linkLabel": "Livre photo de voyage",
+      "title": "Votre voyage, en livre photo.",
+      "intro": "Des centaines de photos de voyage encore dans votre téléphone ? Déposez-les toutes : Everbook met de côté les doublons et les photos floues, range le reste jour après jour, lieu après lieu, et met votre album de voyage en page en quelques minutes.",
+      "coversLabel": "Modèles de couverture voyage",
+      "coverAlt": "Couverture de livre photo de voyage : {{name}}",
+      "points": [
+        {
+          "title": "Jour après jour, lieu après lieu",
+          "text": "Vos photos suivent le fil de votre voyage, grâce à la date et au lieu de chacune. Rien à trier avant."
+        },
+        {
+          "title": "Des couvertures pensées pour le voyage",
+          "text": "Sicile, Paros, Maroc, Hawaï, Beyrouth… : partez d'une couverture de voyage, puis changez son titre, ses couleurs et ses photos."
+        },
+        {
+          "title": "Imprimé, ou en PDF",
+          "text": "Un livre à couverture rigide en A5 ou A4, livré chez vous, ou le même album en PDF à garder et à partager."
+        }
+      ]
+    },
+    "couple": {
+      "eyebrow": "Album photo de couple",
+      "linkLabel": "Album de couple et de mariage",
+      "title": "Votre histoire à deux, dans un album.",
+      "intro": "Le premier voyage, les fiançailles, le mariage, les années depuis : réunissez toutes vos photos dans un même album. Everbook garde les meilleures, les range par date et met les pages en forme — vous ajoutez vos mots.",
+      "coversLabel": "Modèles de couverture couple",
+      "coverAlt": "Couverture d'album photo de couple : {{name}}",
+      "points": [
+        {
+          "title": "Votre histoire dans l'ordre",
+          "text": "Les photos de plusieurs téléphones et de plusieurs années se rangent par date, de la rencontre à aujourd'hui."
+        },
+        {
+          "title": "Des couvertures pour deux",
+          "text": "Notre Rencontre, Notre Histoire, Forever Journey : des couvertures pensées pour un couple, avec vos prénoms, vos dates et vos photos."
+        },
+        {
+          "title": "Pour un anniversaire ou un mariage",
+          "text": "Un cadeau qui dure pour un anniversaire de rencontre, la Saint-Valentin ou après le mariage — à offrir imprimé, ou avec une carte cadeau."
+        }
+      ]
+    },
+    "family": {
+      "eyebrow": "Album photo de famille",
+      "linkLabel": "Album photo de famille",
+      "title": "L'année de la famille, dans un livre.",
+      "intro": "Anniversaires, premiers pas, vacances, moments du quotidien : les photos de la famille sont éparpillées dans tous les téléphones. Déposez-les toutes — Everbook garde les meilleures, les range par date et met en page un album que toute la famille pourra feuilleter.",
+      "coversLabel": "Modèles de couverture famille",
+      "coverAlt": "Couverture d'album photo de famille : {{name}}",
+      "points": [
+        {
+          "title": "Tous les téléphones, un seul album",
+          "text": "Importez depuis votre ordinateur, votre téléphone ou Google Photos : les doublons d'un téléphone à l'autre sont repérés et mis de côté."
+        },
+        {
+          "title": "Pour maman, pour papa, pour l'année",
+          "text": "Des couvertures pour la fête des mères, la fête des pères ou l'année de la famille, à personnaliser avec prénoms, dates et photos."
+        },
+        {
+          "title": "Fait pour être feuilleté",
+          "text": "Un livre à couverture rigide en A5 ou A4, imprimé et livré chez vous — commandez-en plusieurs exemplaires, pour les grands-parents aussi."
+        }
+      ]
     }
   }
 }

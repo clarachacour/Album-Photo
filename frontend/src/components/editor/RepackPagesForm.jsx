@@ -42,7 +42,7 @@ export function RepackPagesForm({ currentPageCount, currentTargetPages, busy, on
             max={MAX_ALBUM_PAGES}
             value={targetPages}
             onChange={(e) => setTargetPages(Math.min(MAX_ALBUM_PAGES, Math.max(1, parseInt(e.target.value, 10) || 1)))}
-            className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
+            className="w-full px-2 py-1.5 border border-ink/30 text-sm"
           />
         </div>
         <div className="flex flex-col justify-between">
@@ -52,14 +52,14 @@ export function RepackPagesForm({ currentPageCount, currentTargetPages, busy, on
             min={1}
             value={keepUpToSpread}
             onChange={(e) => setKeepUpToSpread(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            className="w-full px-2 py-1.5 border border-[color:var(--ink)]/30 text-sm"
+            className="w-full px-2 py-1.5 border border-ink/30 text-sm"
           />
         </div>
       </div>
       <p className="text-xs text-[color:var(--muted)] mb-4">
         <Trans
           i18nKey="albumEditor.repack.explanation"
-          components={{ 1: <span className="font-medium text-[color:var(--ink)]/80" /> }}
+          components={{ 1: <span className="font-medium text-ink/80" /> }}
         />
       </p>
       <div className="flex gap-2">

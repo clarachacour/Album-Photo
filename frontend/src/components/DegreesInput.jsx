@@ -25,7 +25,7 @@ export function DegreesInput({ value, onChange, tid, dark = false }) {
       className={`flex items-center border ${
         dark
           ? "border-white/25 bg-white/10 focus-within:border-white/60"
-          : "border-[color:var(--ink)]/20 bg-white focus-within:border-[color:var(--ink)]"
+          : "border-ink/20 bg-white focus-within:border-[color:var(--ink)]"
       }`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}

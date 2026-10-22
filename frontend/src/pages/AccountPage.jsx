@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { isLebanesePhone } from "@/lib/phone";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLocalePath } from "@/components/LocalLink";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ export default function AccountPage() {
   usePageMeta("account");
   const { user, updateUser } = useAuth();
   const { t } = useTranslation();
+  const lp = useLocalePath();
   const [form, setForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
@@ -67,7 +69,7 @@ export default function AccountPage() {
   };
 
   const inputClass =
-    "w-full border border-[color:var(--ink)]/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
+    "w-full border border-ink/20 p-3 text-sm bg-white focus:border-[color:var(--ink)] focus:outline-none";
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
@@ -80,13 +82,13 @@ export default function AccountPage() {
         <div className="flex gap-4 mb-16">
           <Link
             to="/orders"
-            className="inline-flex items-center gap-2 border border-[color:var(--ink)]/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
+            className="inline-flex items-center gap-2 border border-ink/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
           >
             <Package size={15} /> {t("account.myOrders")}
           </Link>
           <Link
-            to="/contact"
-            className="inline-flex items-center gap-2 border border-[color:var(--ink)]/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
+            to={lp("/contact")}
+            className="inline-flex items-center gap-2 border border-ink/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
           >
             <LifeBuoy size={15} /> {t("account.contactSupport")}
           </Link>
@@ -210,7 +212,7 @@ function DeleteAccountSection({ user, inputClass }) {
   return (
     <section className="mt-16 pt-10 border-t border-[color:var(--border-soft)]" data-testid="delete-account">
       <div className="eyebrow mb-3 text-red-700">{t("account.deleteSection")}</div>
-      <p className="text-sm text-[color:var(--ink)]/70 max-w-xl mb-6">{t("account.deleteIntro")}</p>
+      <p className="text-sm text-ink/70 max-w-xl mb-6">{t("account.deleteIntro")}</p>
       {!open ? (
         <button
           type="button"

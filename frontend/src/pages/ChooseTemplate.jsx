@@ -18,17 +18,17 @@ export default function ChooseTemplate() {
           <ArrowLeft size={14} /> {t("chooseTemplate.back")}
         </button>
         <h1 className="font-serif-display text-4xl md:text-6xl tracking-tight mb-4">{t("chooseTemplate.title")}</h1>
-        <p className="text-[color:var(--ink)]/70 mb-12 max-w-xl">
+        <p className="text-ink/70 mb-12 max-w-xl">
           {t("chooseTemplate.subtitle")}
         </p>
         <button
           onClick={() => nav("/create")}
           data-testid="template-blank"
-          className="w-full flex items-center justify-between border border-[color:var(--ink)]/20 hover:border-[color:var(--ink)] transition-colors p-6 mb-14"
+          className="w-full flex items-center justify-between border border-ink/20 hover:border-[color:var(--ink)] transition-colors p-6 mb-14"
         >
           <div className="text-left">
             <div className="font-serif-display text-xl mb-1">{t("chooseTemplate.scratch_title")}</div>
-            <div className="text-sm text-[color:var(--ink)]/60">{t("chooseTemplate.scratch_subtitle")}</div>
+            <div className="text-sm text-ink/60">{t("chooseTemplate.scratch_subtitle")}</div>
           </div>
           <ArrowRight size={18} />
         </button>
@@ -46,7 +46,7 @@ export default function ChooseTemplate() {
                   <div className="aspect-[3/4] overflow-hidden book-shadow rounded-sm group-hover:opacity-90 transition-opacity">
                     <img src={tpl.landingImage} alt={tpl.name} width={480} height={640} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
-                  <p className="mt-2 text-xs text-[color:var(--ink)]/70 group-hover:text-[color:var(--ink)]">{tpl.name}</p>
+                  <p className="mt-2 text-xs text-ink/70 group-hover:text-[color:var(--ink)]">{tpl.name}</p>
                 </button>
               ))}
             </div>

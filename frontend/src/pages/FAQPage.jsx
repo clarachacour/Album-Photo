@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useLocalePath } from "@/components/LocalLink";
 import { ChevronDown } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
@@ -8,6 +9,7 @@ export default function FAQPage() {
   usePageMeta("faq");
   const [openIdx, setOpenIdx] = useState(null);
   const { t } = useTranslation();
+  const lp = useLocalePath();
   const faqs = t("faq.items", { returnObjects: true });
 
   return (
@@ -18,7 +20,7 @@ export default function FAQPage() {
           <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight mb-4">{t("faq.title")}</h1>
           <p className="text-sm text-[color:var(--muted)]">
             {t("faq.cantFind")}{" "}
-            <Link to="/contact" className="underline text-[color:var(--ink)]">
+            <Link to={lp("/contact")} className="underline text-[color:var(--ink)]">
               {t("faq.getInTouch")}
             </Link>
             .
@@ -42,7 +44,7 @@ export default function FAQPage() {
                 />
               </button>
               {/* Always in the page (hidden until opened): search engines read the answers too. */}
-              <p id={`faq-answer-${i}`} hidden={openIdx !== i} className="text-sm text-[color:var(--ink)]/70 leading-relaxed pb-6 pr-8">
+              <p id={`faq-answer-${i}`} hidden={openIdx !== i} className="text-sm text-ink/70 leading-relaxed pb-6 pr-8">
                 {item.a}
               </p>
             </div>

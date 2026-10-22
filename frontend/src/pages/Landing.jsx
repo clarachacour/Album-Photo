@@ -53,7 +53,7 @@ export default function Landing() {
               <br />
               <span className="italic text-[color:var(--coral)]">{t("landing.hero.title_highlight")}</span> {t("landing.hero.title_line2")}
             </h1>
-            <p className="mt-8 text-lg md:text-xl text-[color:var(--ink)]/70 max-w-xl leading-relaxed font-sans">
+            <p className="mt-8 text-lg md:text-xl text-ink/70 max-w-xl leading-relaxed font-sans">
               {t("landing.hero.subtitle")}
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -66,7 +66,7 @@ export default function Landing() {
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
-            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[color:var(--ink)]/70" data-testid="landing-perks">
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/70" data-testid="landing-perks">
               {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE }).map((perk) => (
                 <li key={perk} className="inline-flex items-center gap-1.5">
                   <Check size={14} className="text-[color:var(--coral)]" />
@@ -82,6 +82,9 @@ export default function Landing() {
             <div className="max-w-md mx-auto md:ml-auto">
               <img
                 src="/hero-shelf.webp"
+                // Smaller copies for phones: the same photo, a third of the weight.
+                srcSet="/hero-shelf-380.webp 380w, /hero-shelf-560.webp 560w, /hero-shelf.webp 760w"
+                sizes="(min-width: 768px) 448px, calc(100vw - 48px)"
                 alt={t("landing.hero.image_alt")}
                 width={760}
                 height={1024}
@@ -102,9 +105,9 @@ export default function Landing() {
               <div>
                 <div className="flex items-center gap-2 text-[color:var(--ink)] mb-2">
                   {processIcons[i]}
-                  <h3 className="font-serif-display text-2xl">{s.title}</h3>
+                  <h2 className="font-serif-display text-2xl">{s.title}</h2>
                 </div>
-                <p className="text-[color:var(--ink)]/70 leading-relaxed">{s.body}</p>
+                <p className="text-ink/70 leading-relaxed">{s.body}</p>
               </div>
             </div>
           ))}
@@ -120,7 +123,7 @@ export default function Landing() {
               {t("landing.sorting.title_line1")}<br />
               <em className="not-italic text-[color:var(--muted)]">{t("landing.sorting.title_highlight")}</em>
             </h2>
-            <p className="text-[color:var(--ink)]/70 leading-relaxed">
+            <p className="text-ink/70 leading-relaxed">
               {t("landing.sorting.intro")}
             </p>
           </div>
@@ -131,7 +134,7 @@ export default function Landing() {
                 <div className="mt-0.5 text-[color:var(--coral)] shrink-0">{sortingIcons[i]}</div>
                 <div>
                   <h3 className="font-serif-display text-lg mb-1">{s.title}</h3>
-                  <p className="text-[color:var(--ink)]/70 leading-relaxed text-sm">{s.body}</p>
+                  <p className="text-ink/70 leading-relaxed text-sm">{s.body}</p>
                 </div>
               </div>
             ))}
@@ -148,7 +151,7 @@ export default function Landing() {
               {t("landing.templates.title_line1")}<br />
               <em className="not-italic text-[color:var(--muted)]">{t("landing.templates.title_highlight")}</em>
             </h2>
-            <p className="text-[color:var(--ink)]/70">
+            <p className="text-ink/70">
               {t("landing.templates.intro")}
             </p>
           </div>

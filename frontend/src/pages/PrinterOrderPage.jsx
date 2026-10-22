@@ -73,9 +73,9 @@ export default function PrinterOrderPage() {
                 {/* Our reference, small: the number written on the package
                     is Wakilni's, shown once the books are marked ready. */}
                 <p className="text-xs text-[color:var(--muted)] mb-3">{t("printer.reference", { number: info.order_number })}</p>
-                <p className="text-sm text-[color:var(--ink)]/70 mb-6">{t(info.ready ? "printer.groupHintReady" : "printer.groupHint")}</p>
+                <p className="text-sm text-ink/70 mb-6">{t(info.ready ? "printer.groupHintReady" : "printer.groupHint")}</p>
                 {/* Each album with its own PDF. */}
-                <ol className="text-left mb-8 divide-y divide-[color:var(--ink)]/10 border-y border-[color:var(--ink)]/10" data-testid="printer-group">
+                <ol className="text-left mb-8 divide-y divide-ink/10 border-y border-ink/10" data-testid="printer-group">
                   {info.albums.map((a, i) => (
                     <li key={a.order_id} className="py-3 flex items-center justify-between gap-4">
                       <div className="min-w-0">
@@ -125,7 +125,7 @@ export default function PrinterOrderPage() {
                     </p>
                   </div>
                 )}
-                <p className="text-sm text-[color:var(--ink)]/80" data-testid="printer-ready-done">
+                <p className="text-sm text-ink/80" data-testid="printer-ready-done">
                   {info.justMarked ? t(group ? "printer.allMarked" : "printer.marked") : t(group ? "printer.allAlreadyReady" : "printer.alreadyReady")}
                 </p>
               </>

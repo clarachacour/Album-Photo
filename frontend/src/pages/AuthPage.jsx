@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useLocalePath } from "@/components/LocalLink";
 import { useAuth, hasSignedInBefore } from "@/lib/auth";
 import { TID } from "@/constants/testIds";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
@@ -29,6 +30,7 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
   const { login, signup } = useAuth();
   const { t } = useTranslation();
+  const lp = useLocalePath();
   const nav = useNavigate();
 
   useEffect(() => {
@@ -76,13 +78,13 @@ export default function AuthPage() {
       {/* Left: form (pt-24: clear of the menu bar when it's taller than the screen) */}
       <div className="flex items-center justify-center px-8 pt-24 pb-8 md:p-16 bg-[color:var(--paper)]">
         <div className="w-full max-w-md">
-          <Link to="/" className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
+          <Link to={lp("/")} className="eyebrow inline-block mb-8 text-[color:var(--muted)] hover:text-[color:var(--ink)] transition-colors">
             ← {t("auth.back")}
           </Link>
           <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight mb-3">
             {mode === "login" ? t("auth.login.title") : t("auth.signup.title")}
           </h1>
-          <p className="text-[color:var(--ink)]/70 mb-8">
+          <p className="text-ink/70 mb-8">
             {mode === "login" ? t("auth.login.subtitle") : t("auth.signup.subtitle")}
           </p>
 
@@ -99,7 +101,7 @@ export default function AuthPage() {
                   onChange={(e) => setName(e.target.value)}
                   required
                   autoComplete="name"
-                  className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
+                  className="w-full bg-transparent border-0 border-b border-ink/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
                 />
               </div>
             )}
@@ -112,7 +114,7 @@ export default function AuthPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="username"
-                className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
+                className="w-full bg-transparent border-0 border-b border-ink/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
               />
             </div>
             <div>
@@ -125,14 +127,14 @@ export default function AuthPage() {
                 minLength={6}
                 maxLength={72}
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                className="w-full bg-transparent border-0 border-b border-[color:var(--ink)]/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
+                className="w-full bg-transparent border-0 border-b border-ink/30 focus:border-[color:var(--ink)] focus:outline-none py-3 text-lg font-serif-display"
               />
             </div>
 
             {/* Remember Me & Forgot Password */}
             {mode === "login" && (
               <div className="flex items-center justify-between text-sm pt-2">
-                <label className="flex items-center gap-2 cursor-pointer text-[color:var(--ink)]/80">
+                <label className="flex items-center gap-2 cursor-pointer text-ink/80">
                   <input
                     type="checkbox"
                     checked={rememberMe}
