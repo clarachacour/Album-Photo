@@ -167,10 +167,10 @@ class AlbumCreate(BaseModel):
     orientation: str = Field(default="portrait", max_length=20)  # portrait or landscape
     target_pages: int = Field(default=50, ge=1, le=MAX_ALBUM_PAGES)  # one of PAGE_TIERS
     # The site's current UI language (see i18n.js on the frontend) at the
-    # moment of creation — used only to pick which language the title
-    # page's pre-filled hint text is written in (see make_title_page).
-    # Never stored anywhere or used again after that; the person can still
-    # freely edit or delete the hint afterward regardless of language.
+    # moment of creation: the language of the title page's pre-filled hint
+    # (see make_title_page) and of the reminder emails about this album
+    # (see services/reminders.py). The person can still freely edit or
+    # delete the hint afterward regardless of language.
     lang: str = Field(default="en", max_length=10)
 
 class AlbumUpdate(BaseModel):

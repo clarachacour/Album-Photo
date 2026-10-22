@@ -4,24 +4,18 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Header, HTTPException
 
 from app.config import (
-    ALBUM_EXPIRING_WARNING_DAYS_BEFORE,
     CLEANUP_SECRET,
     DRAFT_ALBUM_RETENTION_DAYS,
     PDF_TASK_MAX_ATTEMPTS,
-    UNFINISHED_ALBUM_REMINDER_DAYS,
 )
 from app.db import db
 from app.services.processing import resume_layout
 from app.services.orders import generate_order_pdf, purge_stale_pdf_generation_slots
-from app.services.email import (
-    send_album_expiring_soon_email,
-    send_unfinished_album_reminder_email,
-)
 from app.services.backup import backup_database
 from app.services.delivery import sync_all_deliveries
 from app.services.print_groups import flush_printer_queue
+from app.services.reminders import send_reminders
 from app.services.storage import delete_object
-from app.core.executors import run_email
 
 router = APIRouter()
 
@@ -78,72 +72,14 @@ async def internal_album_layout(album_id: str, x_cleanup_secret: str = Header(No
 # ---------- Maintenance ----------
 @router.post("/internal/remind-unfinished-albums")
 async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
-    """Two-stage nudge for albums someone started and never finished,
-    meant to run daily on the same Cloud Scheduler job pattern as
-    /internal/cleanup-expired-albums (same secret, same "not reachable by
-    end users" shape) — ideally scheduled to run just before it, so a
-    freshly-sent final warning and the purge that makes it true stay a
-    predictable few days apart rather than landing the same day.
-
-    Stage 1 (reminder_stage 0 -> 1): album untouched for
-    UNFINISHED_ALBUM_REMINDER_DAYS, never reminded — a gentle "come finish
-    this" nudge.
-    Stage 2 (reminder_stage 1 -> 2): album now within
-    ALBUM_EXPIRING_WARNING_DAYS_BEFORE days of the purge cutoff, already
-    got stage 1 but not stage 2 yet — a stronger "this is about to be
-    deleted" warning. An album already at stage 1 is skipped for stage 2
-    until it's actually that close, so nobody gets both emails on the same
-    day.
-    Ordered albums are never touched here, matching the purge job.
-    """
+    """Every reminder email due (see services/reminders.py). The same runs
+    every 30 minutes with /internal/sync-deliveries; this one stays for a
+    daily job, if there is one."""
     if not CLEANUP_SECRET:
         raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
     if x_cleanup_secret != CLEANUP_SECRET:
         raise HTTPException(status_code=401, detail="Not authorized")
-
-    now = datetime.now(timezone.utc)
-    ordered_album_ids = set(await db.orders.distinct("album_id"))
-
-    stage1_cutoff = (now - timedelta(days=UNFINISHED_ALBUM_REMINDER_DAYS)).isoformat()
-    stage1_candidates = await db.albums.find(
-        # updated_at, not created_at — someone actively working on an album
-        # created a while ago but touched yesterday shouldn't get a "finish
-        # this" nudge; the purge cutoff (stage 2) is deliberately different,
-        # since that one has to match the purge job's own created_at basis
-        # exactly for "days_left" to be accurate.
-        {"is_deleted": {"$ne": True}, "updated_at": {"$lt": stage1_cutoff}, "reminder_stage": {"$exists": False}},
-        {"_id": 0},
-    ).to_list(2000)
-
-    stage2_cutoff = (now - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS - ALBUM_EXPIRING_WARNING_DAYS_BEFORE)).isoformat()
-    stage2_candidates = await db.albums.find(
-        {"is_deleted": {"$ne": True}, "created_at": {"$lt": stage2_cutoff}, "reminder_stage": 1},
-        {"_id": 0},
-    ).to_list(2000)
-
-    stage1_sent = 0
-    for album in stage1_candidates:
-        if album["id"] in ordered_album_ids:
-            continue
-        user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0})
-        if user and user.get("email"):
-            await run_email(send_unfinished_album_reminder_email, user["email"], user.get("name"), album)
-        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 1}})
-        stage1_sent += 1
-
-    stage2_sent = 0
-    for album in stage2_candidates:
-        if album["id"] in ordered_album_ids:
-            continue
-        purge_at = datetime.fromisoformat(album["created_at"]) + timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)
-        days_left = max(1, (purge_at - now).days)
-        user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0})
-        if user and user.get("email"):
-            await run_email(send_album_expiring_soon_email, user["email"], user.get("name"), album, days_left)
-        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 2}})
-        stage2_sent += 1
-
-    return {"stage1_sent": stage1_sent, "stage2_sent": stage2_sent}
+    return await send_reminders()
 
 @router.post("/internal/cleanup-expired-albums")
 async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
@@ -213,4 +149,6 @@ async def internal_sync_deliveries(x_cleanup_secret: str = Header(None)):
         raise HTTPException(status_code=401, detail="Not authorized")
     # The printer's emails waiting to group a customer's albums go first.
     printer_emails = await flush_printer_queue()
-    return {**(await sync_all_deliveries()), "printer_emails": printer_emails}
+    result = {**(await sync_all_deliveries()), "printer_emails": printer_emails}
+    # The customers' reminders (cart, album not ordered), when due.
+    return {**result, **(await send_reminders())}

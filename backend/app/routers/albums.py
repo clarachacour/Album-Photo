@@ -71,6 +71,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
         "id": album_id,
         "user_id": user["id"],
         "title": data.title,
+        "lang": "fr" if str(data.lang).lower().startswith("fr") else "en",
         "country": data.country,
         "year": data.year,
         "cover_template_id": data.cover_template_id,

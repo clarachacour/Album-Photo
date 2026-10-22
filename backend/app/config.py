@@ -93,6 +93,9 @@ BACKUP_RETENTION_DAYS = int(os.environ.get("BACKUP_RETENTION_DAYS", "30"))
 # deletes it (see /internal/remind-unfinished-albums).
 UNFINISHED_ALBUM_REMINDER_DAYS = int(os.environ.get("UNFINISHED_ALBUM_REMINDER_DAYS", "3"))
 ALBUM_EXPIRING_WARNING_DAYS_BEFORE = int(os.environ.get("ALBUM_EXPIRING_WARNING_DAYS_BEFORE", "5"))
+# A cart left with albums in it, untouched for this many hours: one
+# reminder email (again only if the cart changes afterwards).
+CART_REMINDER_HOURS = int(os.environ.get("CART_REMINDER_HOURS", "24"))
 
 # ---------- Email (password reset) ----------
 SMTP_HOST = os.environ.get("SMTP_HOST")

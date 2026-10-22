@@ -5,7 +5,8 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pymongo.errors import DuplicateKeyError
 
 from app.core.auth import get_current_user
@@ -14,7 +15,8 @@ from app.db import db
 from app.routers.albums import _slim_stored_cover
 from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput
 from app.services.checkout import build_order_doc, unit_price_cents
-from app.services import gift_cards
+from app.config import FRONTEND_URL
+from app.services import gift_cards, reminders
 from app.services.email import send_checkout_confirmation_email, send_gift_cards_email, send_order_confirmation_email
 from app.services.payments import collect_payment
 from app.services.orders import start_order_pdf_generation
@@ -261,3 +263,19 @@ async def _apply_credit(user: dict, orders: list):
         await db.orders.update_one(
             {"id": o["id"]}, {"$set": {"gift_credit_cents": take, "total_price_cents": o["total_price_cents"] - take}}
         )
+
+
+# ---------- Stopping the reminder emails (link in each one) ----------
+@router.get("/reminders/stop", response_class=HTMLResponse)
+async def stop_reminders(user: str = Query(...), token: str = Query(None)):
+    """The link at the bottom of each reminder email: no more reminders
+    for this account (no login needed, the link is signed)."""
+    if not reminders.verify_stop(user, token):
+        raise HTTPException(status_code=403, detail="Invalid link")
+    await db.users.update_one({"id": user}, {"$set": {"reminders_off": True}})
+    return HTMLResponse(f"""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Everbook</title></head>
+<body style="margin:0;background:#F9F8F6;color:#1A1A17;font-family:Helvetica,Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box">
+<div><p style="font-family:Georgia,serif;font-size:28px;margin:0 0 16px">Everbook</p>
+<p>You won't receive reminders anymore.<br>Vous ne recevrez plus de rappels.</p>
+<p><a href="{FRONTEND_URL}" style="color:#E56B55">{FRONTEND_URL.replace("https://", "")}</a></p></div></body></html>""")

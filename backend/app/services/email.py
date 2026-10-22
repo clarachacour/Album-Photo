@@ -100,7 +100,7 @@ _EMAIL_BORDER = "#E2DFD8"
 _EMAIL_SERIF = "Georgia, 'Times New Roman', serif"
 _EMAIL_SANS = "Helvetica, Arial, sans-serif"
 
-def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = None, cta_url: str = None) -> str:
+def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = None, cta_url: str = None, footer_html: str = "") -> str:
     """Wraps any email's content in Everbook's branded shell — the same
     wordmark, paper background, ink text, and coral call-to-action button
     used across every automated email (welcome, verification, password,
@@ -147,6 +147,7 @@ def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = 
         </td></tr>
         <tr><td style="padding: 22px 40px; border-top:1px solid {_EMAIL_BORDER}; text-align:center;">
           <p style="font-family:{_EMAIL_SANS}; font-size:12px; color:{_EMAIL_MUTED}; margin:0;">Everbook · <a href="{FRONTEND_URL}" style="color:{_EMAIL_MUTED};">{FRONTEND_URL.replace("https://", "").replace("http://", "")}</a></p>
+          {f'<p style="font-family:{_EMAIL_SANS}; font-size:12px; color:{_EMAIL_MUTED}; margin:10px 0 0;">{footer_html}</p>' if footer_html else ""}
         </td></tr>
       </table>
     </td></tr>
@@ -630,27 +631,87 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict, g
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict):
+# Reminders (see services/reminders.py), in the customer's language, each
+# with a link to stop them.
+_REMINDER_TEXT = {
+    "en": {
+        "hi": "Hi {name},",
+        "stop": "Don't want these reminders? <a href=\"{url}\" style=\"color:inherit;\">Stop them</a>.",
+        "stop_plain": "Don't want these reminders? Stop them: {url}",
+        "album_subject": "Finish your Everbook album — {title}",
+        "album_title": "Finish your album.",
+        "album_body": "You started \"{title}\" but haven't ordered it yet. It's saved just as you left it: a few minutes are enough to finish it and order your printed book.",
+        "album_cta": "Pick up where you left off",
+        "cart_subject": "Your album is waiting in your cart",
+        "cart_title": "Your cart is waiting.",
+        "cart_body": "You left this in your cart:",
+        "cart_after": "Everything is saved: you can order whenever you like.",
+        "cart_cta": "See my cart",
+        "print": "printed album", "digital": "PDF album", "gift": "gift card",
+    },
+    "fr": {
+        "hi": "Bonjour {name},",
+        "stop": "Vous ne voulez plus ces rappels ? <a href=\"{url}\" style=\"color:inherit;\">Arrêter</a>.",
+        "stop_plain": "Vous ne voulez plus ces rappels ? Arrêter : {url}",
+        "album_subject": "Terminez votre album Everbook — {title}",
+        "album_title": "Terminez votre album.",
+        "album_body": "Vous avez commencé « {title} » mais ne l'avez pas encore commandé. Il est enregistré tel que vous l'avez laissé : quelques minutes suffisent pour le terminer et commander votre livre imprimé.",
+        "album_cta": "Reprendre mon album",
+        "cart_subject": "Votre album vous attend dans votre panier",
+        "cart_title": "Votre panier vous attend.",
+        "cart_body": "Vous avez laissé dans votre panier :",
+        "cart_after": "Tout est enregistré : vous pouvez commander quand vous voulez.",
+        "cart_cta": "Voir mon panier",
+        "print": "album imprimé", "digital": "album en PDF", "gift": "carte cadeau",
+    },
+}
+
+
+def _reminder_text(lang: str) -> dict:
+    return _REMINDER_TEXT["fr" if lang == "fr" else "en"]
+
+
+def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict, stop_url: str = None):
+    t = _reminder_text(album.get("lang"))
     album_url = f"{FRONTEND_URL}/editor/{album['id']}"
-    subject = f"Finish your Everbook album — {album.get('title', 'your album')}"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"You started \"{album.get('title', 'an album')}\" but haven't finished it yet.\n\n"
-        f"Pick up right where you left off:\n{album_url}\n\n"
-        f"It only takes a few minutes to finish laying it out and order your printed copy."
-    )
+    title = album.get("title") or "Album"
+    hi = t["hi"].format(name=name or "").replace(" ,", ",")
+    body = f"{hi}\n\n{t['album_body'].format(title=title)}\n\n{album_url}"
+    if stop_url:
+        body += "\n\n" + t["stop_plain"].format(url=stop_url)
     html_body = _email_wrapper(
-        preheader=f"You started \"{_h(album.get('title', 'an album'))}\" but haven't finished it yet.",
-        title="Finish your album.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>You started \"{_h(album.get('title', 'an album'))}\" but haven't finished it yet.</p>"
-            f"<p>It only takes a few minutes to finish laying it out and order your printed copy.</p>"
-        ),
-        cta_label="Pick up where you left off",
+        preheader=_h(t["album_body"].format(title=title)),
+        title=t["album_title"],
+        body_html=f"<p>{_h(hi)}</p><p>{_h(t['album_body'].format(title=title))}</p>",
+        cta_label=t["album_cta"],
         cta_url=album_url,
+        footer_html=t["stop"].format(url=stop_url) if stop_url else "",
     )
-    send_email(to_email, subject, body, html_body=html_body)
+    send_email(to_email, t["album_subject"].format(title=title), body, html_body=html_body)
+
+
+def send_cart_reminder_email(to_email: str, name: str, lines: list, lang: str, stop_url: str = None):
+    """lines: [(title, kind)] — what's in the cart (kind: print, digital, gift)."""
+    t = _reminder_text(lang)
+    cart_url = f"{FRONTEND_URL}/cart"
+    hi = t["hi"].format(name=name or "").replace(" ,", ",")
+    listed = [f"{title} — {t.get(kind, kind)}" for title, kind in lines]
+    body = f"{hi}\n\n{t['cart_body']}\n" + "\n".join(f"• {line}" for line in listed) + f"\n\n{t['cart_after']}\n\n{cart_url}"
+    if stop_url:
+        body += "\n\n" + t["stop_plain"].format(url=stop_url)
+    html_body = _email_wrapper(
+        preheader=_h(t["cart_body"] + " " + ", ".join(listed)),
+        title=t["cart_title"],
+        body_html=(
+            f"<p>{_h(hi)}</p><p>{_h(t['cart_body'])}</p>"
+            "<ul style=\"padding-left:20px;\">" + "".join(f"<li>{_h(line)}</li>" for line in listed) + "</ul>"
+            f"<p>{_h(t['cart_after'])}</p>"
+        ),
+        cta_label=t["cart_cta"],
+        cta_url=cart_url,
+        footer_html=t["stop"].format(url=stop_url) if stop_url else "",
+    )
+    send_email(to_email, t["cart_subject"], body, html_body=html_body)
 
 def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_left: int):
     album_url = f"{FRONTEND_URL}/editor/{album['id']}"
