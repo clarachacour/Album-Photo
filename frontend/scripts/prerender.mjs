@@ -16,6 +16,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { siteInfo } from "../seo.plugin.js";
+import { indexNowKey, notifyIndexNow } from "./indexnow.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const buildDir = join(root, "build");
@@ -36,7 +37,7 @@ globalThis.sessionStorage = memoryStorage();
 
 const { render, structuredData, llms, PUBLIC_PAGES, LANGUAGES, localePath } = await import(pathToFileURL(join(ssrDir, "prerender.js")).href);
 const template = readFileSync(join(buildDir, "index.html"), "utf8");
-const { siteUrl } = siteInfo();
+const { siteUrl, indexable } = siteInfo();
 
 const escapeAttr = (s) => s.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
 const escapeText = (s) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
@@ -126,6 +127,7 @@ function brandData(siteUrl, description, products = []) {
 }
 
 writeFileSync(join(buildDir, "app.html"), template);
+const built = [];
 for (const lng of LANGUAGES) {
   for (const path of Object.keys(PUBLIC_PAGES)) {
     const address = localePath(path, lng);
@@ -134,6 +136,7 @@ for (const lng of LANGUAGES) {
     mkdirSync(dirname(join(buildDir, file)), { recursive: true });
     writeFileSync(join(buildDir, file), out);
     console.log(`prerendered ${address} → build/${file}`);
+    if (siteUrl) built.push({ url: siteUrl + address, html: out });
   }
 }
 // For AI assistants (llmstxt.org): what Everbook is, its prices, its pages.
@@ -141,4 +144,6 @@ if (siteUrl) {
   writeFileSync(join(buildDir, "llms.txt"), await llms(siteUrl));
   console.log("wrote build/llms.txt");
 }
+// The production site only: tell search engines which pages changed.
+if (indexable) await notifyIndexNow({ siteUrl, key: indexNowKey(join(root, "public")), pages: built });
 rmSync(ssrDir, { recursive: true, force: true });
