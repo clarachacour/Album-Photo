@@ -79,8 +79,9 @@ async def remind_carts(now: datetime) -> int:
 
 async def remind_unfinished_albums(now: datetime) -> dict:
     """Two stages for albums started and never ordered:
-    1. untouched for UNFINISHED_ALBUM_REMINDER_DAYS: "come finish it" (not
-       for an album in the cart: the cart's reminder speaks of it);
+    1. untouched for UNFINISHED_ALBUM_REMINDER_DAYS (and less than two
+       weeks): "come finish it" (not for an album in the cart: the cart's
+       reminder speaks of it);
     2. ALBUM_EXPIRING_WARNING_DAYS_BEFORE days before the purge
        (/internal/cleanup-expired-albums): it will be deleted.
     An ordered album is never touched, matching the purge."""
@@ -88,10 +89,14 @@ async def remind_unfinished_albums(now: datetime) -> dict:
     in_carts = set(await db.carts.distinct("items.album_id"))
 
     stage1_cutoff = (now - timedelta(days=UNFINISHED_ALBUM_REMINDER_DAYS)).isoformat()
+    # Left aside for long already: too late for a "come finish it" (and no
+    # wave of emails about old albums the first time this runs).
+    stage1_too_old = (now - timedelta(days=UNFINISHED_ALBUM_REMINDER_DAYS + 11)).isoformat()
     # updated_at, not created_at: an album worked on yesterday gets no nudge.
     # The deletion warning goes by created_at, as the purge does.
     stage1 = await db.albums.find(
-        {"is_deleted": {"$ne": True}, "updated_at": {"$lt": stage1_cutoff}, "reminder_stage": {"$exists": False}}, {"_id": 0}
+        {"is_deleted": {"$ne": True}, "updated_at": {"$lt": stage1_cutoff, "$gte": stage1_too_old}, "reminder_stage": {"$exists": False}},
+        {"_id": 0},
     ).to_list(2000)
     stage2_cutoff = (now - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS - ALBUM_EXPIRING_WARNING_DAYS_BEFORE)).isoformat()
     stage2 = await db.albums.find(

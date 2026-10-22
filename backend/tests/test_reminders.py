@@ -68,6 +68,13 @@ def test_an_album_never_ordered_gets_one_reminder(client, db, mails):
     assert [(m[0], m[2], m[3]) for m in mine] == [("album", album_id, "en")]
 
 
+def test_no_reminder_for_an_album_left_long_ago(client, db, mails):
+    email, headers, album_id, user_id = _customer(client, db)
+    _age(db, "albums", {"id": album_id}, 24 * 20)
+    _run()
+    assert not [m for m in mails if m[1] == email]
+
+
 def test_nothing_is_sent_at_night(client, db, mails):
     email, headers, album_id, user_id = _customer(client, db)
     _age(db, "albums", {"id": album_id}, 24 * 4)
