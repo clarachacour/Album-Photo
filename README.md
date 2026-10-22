@@ -19,7 +19,6 @@ flipbook, then exports a print-ready PDF and sends the order to the printer.
 ```
 backend/    API — see backend/README.md for where each feature lives
 frontend/   React app (pages in src/pages, reusable pieces in src/components)
-memory/     Original product notes (PRD)
 .github/    Automatic checks run by GitHub on every push
 ```
 
@@ -61,7 +60,9 @@ They also run automatically on GitHub for every push to `dev` and `main`
 ## Branches and deployment
 
 - `dev` — day-to-day work, deployed to the dev environment.
-- `main` — production. Changes arrive from `dev` through a pull request.
+- `main` — production. Once `dev` is checked, `main` is moved forward to the
+  same commit (`git push origin origin/dev:refs/heads/main`): Vercel deploys
+  the site and Cloud Build the backend.
 
 Secrets (database, R2, SMTP, JWT…) are never committed: they are set as
 environment variables on Cloud Run and Vercel. The full list, with

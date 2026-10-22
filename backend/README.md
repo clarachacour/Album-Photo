@@ -20,14 +20,19 @@ backend/
       signed_links.py  Signed links in the printer & delivery emails
       executors.py     Thread pools for blocking work (R2, photos, PDF)
     routers/         HTTP endpoints only: read the request, call services, answer
-      auth.py  albums.py  photos.py  covers.py  mobile_upload.py
-      orders.py  admin.py  contact.py  internal.py  health.py
+      auth.py  albums.py  photos.py  covers.py  mobile_upload.py  cart.py
+      gift_cards.py  orders.py  admin.py  contact.py  internal.py  health.py
     services/        The actual work, reusable by several routers
       storage.py       R2 files          email.py        Every email sent
       photos.py        Upload & resizing curation.py     Duplicates, sharpness, faces
       layout.py        Page layouts      processing.py   Curation + layout pipeline
-      pdf.py           Browser PDF export pdf_legacy.py  ReportLab fallback export
+      pdf.py           Browser PDF export, the site's fonts
       orders.py        Statuses, order PDF generation    pricing.py  Prices
+      checkout.py      Orders from the cart              payments.py Online payment (to come)
+      gift_cards.py    Gift cards, credit                print_groups.py  Albums sent to print together
+      delivery.py      Wakilni deliveries wakilni.py     Wakilni's API
+      whatsapp.py      WhatsApp to Wakilni printer_statement.py  The printer's Excel statement
+      reminders.py     Reminder emails (cart, album not ordered)
       google_photos.py Google Photos import              albums.py   Shared album rules
     assets/          Fonts and images embedded in code (generated, do not edit by hand)
   tests/

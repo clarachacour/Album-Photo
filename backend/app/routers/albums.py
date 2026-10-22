@@ -39,7 +39,6 @@ from app.services.layout import (
 )
 from app.core.executors import pdf_render_executor
 from app.services.pdf import render_album_pdf_sync
-from app.services.pdf_legacy import export_pdf_reportlab_legacy
 from app.services.cover_art import slim_cover
 from app.services import signed_urls
 from app.services.photos import measure_missing_brightness_later, store_many_photos
@@ -429,9 +428,8 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
     it — this is the exact same React/CSS rendering the flipbook uses, so
     the PDF is guaranteed to match it, instead of a hand-written parallel
     drawing implementation that has to be kept in sync by hand.
-    Falls back to the old manual reportlab renderer if the browser export
-    fails for any reason (e.g. the headless browser isn't installed), so a
-    deploy issue here doesn't take down PDF export entirely."""
+    If the browser export fails, the customer is asked to try again (no
+    PDF that would look different from the album)."""
     token = None
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1]
@@ -461,5 +459,5 @@ async def export_pdf(album_id: str, auth: str = Query(None), authorization: str 
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
-        logger.error(f"Browser-based PDF export failed, falling back to reportlab: {e}")
-        return await export_pdf_reportlab_legacy(album_id=album_id, auth=auth, authorization=authorization)
+        logger.error(f"Export PDF de l'album {album_id} impossible : {e}")
+        raise HTTPException(status_code=503, detail="The PDF couldn't be made right now. Please try again in a few minutes.")

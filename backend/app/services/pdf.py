@@ -1,16 +1,13 @@
-"""PDF rendering: fonts and the headless-browser export."""
-import base64
+"""PDF rendering: the site's fonts (also used by the gift card PDF) and
+the headless-browser export."""
 import logging
 import os
 import time as _time
-from urllib.parse import urlsplit
 from io import BytesIO
+from urllib.parse import urlsplit
 
 import psutil
 from playwright.sync_api import sync_playwright
-from reportlab.lib import colors as rl_colors
-from reportlab.lib.pagesizes import A4, A5, landscape, portrait
-from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -46,75 +43,6 @@ for _font_name, _font_bytes in _WEB_FONTS.items():
             _fh.write(_font_bytes)
         _os.replace(_tmp_path, _font_path)
     pdfmetrics.registerFont(TTFont(_font_name, _font_path))
-
-# The web editor renders a single book page at roughly this many CSS pixels
-# wide — font sizes chosen in the editor (title_font_size, item font_size)
-# are stored as raw px calibrated against that width. PDF pages are measured
-# in points at their real print size, so a size stored as "48" needs scaling
-# by (actual page width in points / this reference) to look the same
-# proportion of the page as it did in the editor, not the same raw number.
-REFERENCE_PAGE_PX = 430
-
-def resolve_pdf_font(css_font: str, weight: str = "normal") -> str:
-    """Maps a CSS font-family string (as stored on cover/text items) to the
-    matching registered PDF font, falling back to Manrope if unrecognized."""
-    css_font = (css_font or "").lower()
-    is_bold = str(weight).lower() in ("bold", "600", "700", "800", "900") or (
-        str(weight).isdigit() and int(weight) >= 600
-    )
-    if "baloo" in css_font:
-        return "Baloo2-ExtraBold"  # only the extra-bold cut was bundled — it's the only weight used by the app
-    if "cormorant" in css_font:
-        return "CormorantGaramond-Bold" if is_bold else "CormorantGaramond-Regular"
-    if "courier" in css_font:
-        return "Courier-Bold" if is_bold else "Courier"
-    if "georgia" in css_font or "helvetica" in css_font or "arial" in css_font:
-        return "Helvetica-Bold" if is_bold else "Helvetica"
-    # Manrope (the app's default sans-serif) and anything unrecognized
-    return "Manrope-Bold" if is_bold else "Manrope-Regular"
-
-# ---------- PDF Export ----------
-def get_page_size(size: str, orientation: str):
-    sizes = {"A4": A4, "A5": A5}
-    base = sizes.get(size.upper(), A4)
-    if orientation == "landscape":
-        return landscape(base)
-    return portrait(base)
-
-def hex_to_rl_color(hex_color: str):
-    try:
-        return rl_colors.HexColor(hex_color)
-    except Exception:
-        return rl_colors.black
-
-def decode_data_uri_image(data_uri: str):
-    """Decode a `data:image/...;base64,...` string (our custom cover logos —
-    heart, rings, compass — are stored this way) into an ImageReader.
-    Returns None for anything else (SVG data URIs, external URLs, etc.) so
-    callers can just skip drawing rather than crash.
-
-    Also takes the address of one of those logos now served as a file by the
-    site ("/cover-art/…", see app/services/cover_art.py)."""
-    try:
-        if isinstance(data_uri, str) and data_uri.startswith("/cover-art/") and not data_uri.endswith(".svg"):
-            import requests
-            from app.config import FRONTEND_URL
-
-            res = requests.get(FRONTEND_URL.rstrip("/") + data_uri, timeout=15)
-            res.raise_for_status()
-            return ImageReader(BytesIO(res.content))
-        if not data_uri or not data_uri.startswith("data:image/"):
-            return None
-        header, _, encoded = data_uri.partition(",")
-        if "base64" not in header:
-            return None
-        if "svg" in header:
-            return None  # SVG needs a separate renderer we don't have wired up
-        raw = base64.b64decode(encoded)
-        return ImageReader(BytesIO(raw))
-    except Exception as e:
-        logger.error(f"decode_data_uri_image failed: {e}")
-        return None
 
 def _render_pdf_with_page(page, print_url: str) -> bytes:
     """The actual per-URL render, taking an already-open Playwright Page —
