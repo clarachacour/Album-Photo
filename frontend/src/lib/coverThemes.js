@@ -130,8 +130,9 @@ export const COVER_THEMES = [
           title_font_weight: "800",
           title_font_size: 66,
           // Bali is a short word: a narrower box keeps it the size Honolulu was
-          // (the title fills its box's width), above the subtitle on the right.
-          title_x: 0.52, title_y: 0.04, title_w: 0.42, title_h: 0.18,
+          // (the title fills its box's width), on the left like the others,
+          // with the subtitle right under it.
+          title_x: 0.05, title_y: 0.04, title_w: 0.46, title_h: 0.18,
           spine_subtitle: "Indonesia",
           spine_subtitle_color: "#D96A54",
           spine_subtitle_font: BALOO,
@@ -140,7 +141,7 @@ export const COVER_THEMES = [
           spine_title_font: BALOO,
           extra_items: [
             iconItem(TRAVEL_HAWAII_ICON, "travel_hawaii", { x: 0.16, y: 0.405, w: 0.72, h: 0.5 }),
-            textItem("subtitle", "Indonesia", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#D96A54", text_align: "right" }),
+            textItem("subtitle", "Indonesia", { role: "subtitle", x: 0.05, y: 0.21, w: 0.7, h: 0.1, font: BALOO, font_weight: "700", font_size: 48, color: "#D96A54", text_align: "left" }),
           ],
         },
       },
