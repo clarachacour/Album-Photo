@@ -131,7 +131,7 @@ export const COVER_THEMES = [
           title_font_size: 66,
           // Laid out like the other travel covers: the title on the left (a
           // narrower box for the short word Bali: the title fills its box's
-          // width), the subtitle under it, ending where the title ends.
+          // width), the subtitle under it, against the right edge.
           title_x: 0.05, title_y: 0.04, title_w: 0.62, title_h: 0.18,
           spine_subtitle: "Indonesia",
           spine_subtitle_color: "#D96A54",
@@ -141,7 +141,7 @@ export const COVER_THEMES = [
           spine_title_font: BALOO,
           extra_items: [
             iconItem(TRAVEL_HAWAII_ICON, "travel_hawaii", { x: 0.16, y: 0.405, w: 0.72, h: 0.5 }),
-            textItem("subtitle", "Indonesia", { role: "subtitle", x: 0.12, y: 0.22, w: 0.55, h: 0.09, font: BALOO, font_weight: "700", font_size: 40, color: "#D96A54", text_align: "right" }),
+            textItem("subtitle", "Indonesia", { role: "subtitle", x: 0.39, y: 0.22, w: 0.55, h: 0.09, font: BALOO, font_weight: "700", font_size: 40, color: "#D96A54", text_align: "right" }),
           ],
         },
       },
