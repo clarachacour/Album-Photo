@@ -5,11 +5,11 @@ import { useLocalePath } from "@/components/LocalLink";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { TID } from "@/constants/testIds";
-import { LogOut, LayoutGrid, User, Package, HelpCircle, Shield, Menu, X, ShoppingBag, Gift } from "lucide-react";
+import { LayoutGrid, User, Package, Shield, Menu, X, ShoppingBag, Gift } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function TopNav() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { count: cartCount } = useCart();
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -32,10 +32,6 @@ export default function TopNav() {
       document.removeEventListener("keydown", close);
     };
   }, [menuOpen]);
-  const logoutAndLeave = () => {
-    logout();
-    nav("/");
-  };
   const mobileLink = "flex items-center gap-3 px-6 py-3 text-sm font-medium text-ink/80 hover:bg-[color:var(--paper)] hover:text-[color:var(--ink)]";
 
   return (
@@ -68,12 +64,6 @@ export default function TopNav() {
             >
               <Gift size={14} /> {t("nav.gift")}
             </Link>
-            <Link
-              to={lp("/faq")}
-              className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--ink)] px-3 py-2 transition-colors"
-            >
-              <HelpCircle size={14} /> {t("nav.faq")}
-            </Link>
             {user.is_admin && (
               <Link
                 to="/admin/orders"
@@ -89,13 +79,6 @@ export default function TopNav() {
               <User size={14} />
               <span className="hidden md:inline">{user.name}</span>
             </Link>
-            <button
-              data-testid={TID.navLogout}
-              onClick={logoutAndLeave}
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-ink/70 hover:text-[color:var(--coral)] px-3 py-2 transition-colors"
-            >
-              <LogOut size={14} /> {t("nav.logout")}
-            </button>
             {/* The cart, with how many albums are waiting in it. */}
             <Link
               to="/cart"
@@ -128,14 +111,10 @@ export default function TopNav() {
                   <Link to="/dashboard" className={mobileLink}><LayoutGrid size={16} /> {t("nav.myAlbums")}</Link>
                   <Link to="/orders" className={mobileLink}><Package size={16} /> {t("nav.orders")}</Link>
                   <Link to={lp("/gift")} className={mobileLink}><Gift size={16} /> {t("nav.gift")}</Link>
-                  <Link to={lp("/faq")} className={mobileLink}><HelpCircle size={16} /> {t("nav.faq")}</Link>
                   {user.is_admin && (
                     <Link to="/admin/orders" className={`${mobileLink} text-[color:var(--coral)]`}><Shield size={16} /> {t("nav.admin")}</Link>
                   )}
                   <Link to="/account" className={mobileLink}><User size={16} /> {t("nav.account")}</Link>
-                  <button type="button" onClick={logoutAndLeave} className={`${mobileLink} w-full text-left border-t border-[color:var(--border-soft)] mt-2 pt-4`}>
-                    <LogOut size={16} /> {t("nav.logout")}
-                  </button>
                 </div>
               )}
             </div>

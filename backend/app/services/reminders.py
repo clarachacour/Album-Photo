@@ -77,13 +77,42 @@ async def remind_carts(now: datetime) -> int:
     return sent
 
 
+def _when(iso):
+    try:
+        return datetime.fromisoformat(iso) if iso else None
+    except (TypeError, ValueError):
+        return None
+
+
+def last_activity(album: dict):
+    """When the person last changed the album (created, if never since)."""
+    return _when(album.get("updated_at")) or _when(album.get("created_at"))
+
+
+def deletion_at(album: dict, now: datetime, can_warn: bool = True) -> datetime:
+    """When an album never ordered is deleted (/internal/cleanup-expired-
+    albums): DRAFT_ALBUM_RETENTION_DAYS after its last change — and never
+    before its owner was warned by email ALBUM_EXPIRING_WARNING_DAYS_BEFORE
+    days earlier (a change after the warning starts the count again).
+    can_warn: False for an account without an email, which can't be warned."""
+    base = last_activity(album) + timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)
+    if not can_warn:
+        return base
+    warned = _when(album.get("deletion_warned_at"))
+    if warned and warned < last_activity(album):
+        warned = None  # warned about an earlier state of the album
+    earliest = (warned or now) + timedelta(days=ALBUM_EXPIRING_WARNING_DAYS_BEFORE)
+    return max(base, earliest)
+
+
 async def remind_unfinished_albums(now: datetime) -> dict:
-    """Two stages for albums started and never ordered:
+    """For albums started and never ordered:
     1. untouched for UNFINISHED_ALBUM_REMINDER_DAYS (and less than two
        weeks): "come finish it" (not for an album in the cart: the cart's
        reminder speaks of it);
-    2. ALBUM_EXPIRING_WARNING_DAYS_BEFORE days before the purge
-       (/internal/cleanup-expired-albums): it will be deleted.
+    2. ALBUM_EXPIRING_WARNING_DAYS_BEFORE days before its deletion (see
+       deletion_at): it will be deleted — sent even to an account that
+       stopped the reminders: it's about their photos.
     An ordered album is never touched, matching the purge."""
     ordered = set(await db.orders.distinct("album_id"))
     in_carts = set(await db.carts.distinct("items.album_id"))
@@ -93,14 +122,14 @@ async def remind_unfinished_albums(now: datetime) -> dict:
     # wave of emails about old albums the first time this runs).
     stage1_too_old = (now - timedelta(days=UNFINISHED_ALBUM_REMINDER_DAYS + 11)).isoformat()
     # updated_at, not created_at: an album worked on yesterday gets no nudge.
-    # The deletion warning goes by created_at, as the purge does.
     stage1 = await db.albums.find(
         {"is_deleted": {"$ne": True}, "updated_at": {"$lt": stage1_cutoff, "$gte": stage1_too_old}, "reminder_stage": {"$exists": False}},
         {"_id": 0},
     ).to_list(2000)
-    stage2_cutoff = (now - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS - ALBUM_EXPIRING_WARNING_DAYS_BEFORE)).isoformat()
+    # Due for deletion within the warning's days.
+    warn_cutoff = (now - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS - ALBUM_EXPIRING_WARNING_DAYS_BEFORE)).isoformat()
     stage2 = await db.albums.find(
-        {"is_deleted": {"$ne": True}, "created_at": {"$lt": stage2_cutoff}, "reminder_stage": 1}, {"_id": 0}
+        {"is_deleted": {"$ne": True}, "updated_at": {"$lt": warn_cutoff}}, {"_id": 0, "pages": 0, "curation_stats": 0}
     ).to_list(2000)
 
     stage1_sent = 0
@@ -119,13 +148,16 @@ async def remind_unfinished_albums(now: datetime) -> dict:
     for album in stage2:
         if album["id"] in ordered:
             continue
-        purge_at = datetime.fromisoformat(album["created_at"]) + timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)
-        days_left = max(1, (purge_at - now).days)
-        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 2}})
+        warned = _when(album.get("deletion_warned_at"))
+        if warned and warned >= last_activity(album):
+            continue  # already warned about the album as it is
         user = await db.users.find_one({"id": album["user_id"]}, {"_id": 0, "email": 1, "name": 1})
-        if user and user.get("email"):
-            await run_email(send_album_expiring_soon_email, user["email"], user.get("name"), album, days_left)
-            stage2_sent += 1
+        if not user or not user.get("email"):
+            continue
+        days_left = max(1, round((deletion_at(album, now) - now).total_seconds() / 86400))
+        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 2, "deletion_warned_at": now.isoformat()}})
+        await run_email(send_album_expiring_soon_email, user["email"], user.get("name"), album, days_left)
+        stage2_sent += 1
 
     return {"stage1_sent": stage1_sent, "stage2_sent": stage2_sent}
 

@@ -102,7 +102,7 @@ export const SHIPPING_PRICE = 5;
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
 // TERMS_VERSION in backend/app/services/pricing.py.
-export const TERMS_VERSION = "2026-10-21";
+export const TERMS_VERSION = "2026-10-27";
 
 // What the customer pays for an order, in cents: its total — but only the
 // delivery when the album is offered (same as cash_due in

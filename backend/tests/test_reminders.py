@@ -124,3 +124,54 @@ def test_the_emails_read_well_in_both_languages(monkeypatch):
     email.send_unfinished_album_reminder_email("a@b.c", "", {"id": "x1", "title": "Paros", "lang": "en"}, "https://api/stop")
     subject, body, html = out[-1]
     assert subject == "Finish your Everbook album — Paros" and body.startswith("Hi,") and "/editor/x1" in html
+
+
+def test_an_album_is_deleted_only_after_its_owner_was_warned(client, db, mails, monkeypatch):
+    from app.routers import internal
+    from app.services import reminders
+
+    email, headers, album_id, user_id = _customer(client, db, lang="fr")
+    # Untouched for 40 days, never warned (this hadn't run before).
+    _age(db, "albums", {"id": album_id}, 24 * 40)
+    monkeypatch.setattr(internal, "CLEANUP_SECRET", "s3cret")
+    monkeypatch.setattr(internal, "delete_object", lambda *a: None)
+
+    def purge():
+        return client.post("/api/internal/cleanup-expired-albums", headers={"x-cleanup-secret": "s3cret"})
+
+    purge()
+    assert not asyncio.run(db.albums.find_one({"id": album_id})).get("is_deleted")  # not warned: kept
+    _run()
+    assert [(m[0], m[3]) for m in mails if m[1] == email] == [("expiring", 5)]  # 5 days' notice
+    _run()
+    assert len([m for m in mails if m[1] == email]) == 1  # once
+    purge()
+    assert not asyncio.run(db.albums.find_one({"id": album_id})).get("is_deleted")  # the 5 days aren't over
+    # 5 days later.
+    album = asyncio.run(db.albums.find_one({"id": album_id}, {"_id": 0}))
+    later = NOON + timedelta(days=5, hours=1)
+    assert reminders.deletion_at(album, later) <= later
+    asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"deletion_warned_at": (NOON - timedelta(days=6)).isoformat()}}))
+    purge()
+    assert asyncio.run(db.albums.find_one({"id": album_id})).get("is_deleted") is True
+
+
+def test_a_change_after_the_warning_keeps_the_album(client, db, mails):
+    from app.services.reminders import deletion_at
+
+    email, headers, album_id, user_id = _customer(client, db)
+    album = {"updated_at": NOON.isoformat(), "deletion_warned_at": (NOON - timedelta(days=3)).isoformat()}
+    # Changed after the warning: 30 days from that change.
+    assert deletion_at(album, NOON) == NOON + timedelta(days=30)
+
+
+def test_the_deletion_warning_reads_well(monkeypatch):
+    from app.services import email
+
+    out = []
+    monkeypatch.setattr(email, "send_email", lambda to, subject, body, html_body=None, **k: out.append((subject, body)))
+    email.send_album_expiring_soon_email("a@b.c", "Rita", {"id": "x1", "title": "Paros", "lang": "fr"}, 5)
+    assert out[-1][0] == "« Paros » sera supprimé dans 5 jours"
+    assert "Il sera supprimé dans 5 jours" in out[-1][1]
+    email.send_album_expiring_soon_email("a@b.c", "Rita", {"id": "x1", "title": "Paros"}, 1)
+    assert out[-1][0] == '"Paros" will be deleted in 1 day'

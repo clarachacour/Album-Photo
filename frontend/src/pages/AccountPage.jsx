@@ -1,21 +1,23 @@
 import React, { useState } from "react";
 import { isLebanesePhone } from "@/lib/phone";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLocalePath } from "@/components/LocalLink";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import PasswordInput from "@/components/PasswordInput";
-import { Package, LifeBuoy, Trash2 } from "lucide-react";
+import { Package, LifeBuoy, LogOut, Trash2 } from "lucide-react";
+import { TID } from "@/constants/testIds";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { showAfterReload } from "@/lib/flash";
 
 export default function AccountPage() {
   usePageMeta("account");
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
@@ -79,7 +81,7 @@ export default function AccountPage() {
           <h1 className="font-serif-display text-5xl md:text-6xl tracking-tight">{t("account.title")}</h1>
         </div>
 
-        <div className="flex gap-4 mb-16">
+        <div className="flex flex-wrap gap-4 mb-16">
           <Link
             to="/orders"
             className="inline-flex items-center gap-2 border border-ink/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--ink)] transition-colors"
@@ -92,6 +94,18 @@ export default function AccountPage() {
           >
             <LifeBuoy size={15} /> {t("account.contactSupport")}
           </Link>
+          {/* Signing out lives here (not in the top bar). */}
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
+            className="inline-flex items-center gap-2 border border-ink/20 px-5 py-3 text-sm font-medium hover:border-[color:var(--coral)] hover:text-[color:var(--coral)] transition-colors"
+            data-testid={TID.navLogout}
+          >
+            <LogOut size={15} /> {t("nav.logout")}
+          </button>
         </div>
 
         <form onSubmit={saveProfile} className="mb-20">

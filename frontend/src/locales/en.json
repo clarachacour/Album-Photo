@@ -709,11 +709,10 @@
     "legalName": "EFFET DESIGN - EVERBOOK",
     "email": "orders@everbook-album.com",
     "rightsReserved": "All rights reserved.",
-    "madeIn": "Made in Lebanon",
-    "albums": "Albums"
+    "madeIn": "Made in Lebanon"
   },
   "legal": {
-    "lastUpdated": "Last updated: October 21, 2026",
+    "lastUpdated": "Last updated: October 27, 2026",
     "terms": {
       "eyebrow": "Legal",
       "title": "Terms of sale",
@@ -788,7 +787,7 @@
         },
         {
           "heading": "17. Retention and deletion of photographs",
-          "body": "Uploaded photographs are kept according to the following rules:\n• album not ordered: it is automatically deleted, with its photographs, 30 days after it was created;\n• unused photographs: photographs uploaded but not included in the final layout of an ordered album are deleted once the order's print file has been generated;\n• ordered album: the album, its photographs and the order history are kept for as long as the customer's account exists, to allow a reprint, to let the customer find their album again, or to handle any complaint.\n\nThe PDF file of a digital album is kept for as long as the customer's account exists.\n\nThe customer can delete their account at any time from their account page (\"Delete my account\"): their account, albums and photographs are then permanently deleted. Information about past orders (amount, delivery address) is kept for accounting purposes, without any photograph. Deletion is not possible while an order is being manufactured or delivered.\n\nThe customer may also ask for their photographs to be deleted earlier once keeping them is no longer necessary to fulfil the order or to handle an ongoing complaint, as described in the Privacy Policy."
+          "body": "Uploaded photographs are kept according to the following rules:\n• album not ordered: it is automatically deleted, with its photographs, 30 days after it was last changed; the customer is warned by email a few days beforehand, and the album is never deleted before that warning;\n• unused photographs: photographs uploaded but not included in the final layout of an ordered album are deleted once the order's print file has been generated;\n• ordered album: the album, its photographs and the order history are kept for as long as the customer's account exists, to allow a reprint, to let the customer find their album again, or to handle any complaint.\n\nThe PDF file of a digital album is kept for as long as the customer's account exists.\n\nThe customer can delete their account at any time from their account page (\"Delete my account\"): their account, albums and photographs are then permanently deleted. Information about past orders (amount, delivery address) is kept for accounting purposes, without any photograph. Deletion is not possible while an order is being manufactured or delivered.\n\nThe customer may also ask for their photographs to be deleted earlier once keeping them is no longer necessary to fulfil the order or to handle an ongoing complaint, as described in the Privacy Policy."
         },
         {
           "heading": "18. Intellectual property of the Site",
@@ -843,7 +842,7 @@
         },
         {
           "heading": "5. How long we keep your information",
-          "body": "Albums in progress: an album you have not ordered is automatically deleted, together with its photos, 30 days after it was created.\n\nUnused photos: photos you uploaded that were not included in the final layout of an ordered album are deleted once your order's print file has been generated.\n\nOrdered albums: once you place an order, we keep the album, its photos and the order history for as long as your account exists, so that you can find your album again or ask for a reprint, and so that we can handle any after-sales question.\n\nAccount information: kept for as long as your account exists. You can delete your account at any time from your account page (\"Delete my account\"): your account, albums and photos are then permanently deleted. The basic information of your past orders (date, amount, product ordered, delivery address, status) is kept for as long as our legal, accounting and tax obligations require, without any photo. Deletion is not possible while an order is being produced or delivered.\n\nContact and feedback messages: kept for as long as reasonably necessary to handle your request and keep a history of exchanges with our support."
+          "body": "Albums in progress: an album you have not ordered is automatically deleted, together with its photos, 30 days after you last changed it. We warn you by email a few days beforehand, and it is never deleted before that warning.\n\nUnused photos: photos you uploaded that were not included in the final layout of an ordered album are deleted once your order's print file has been generated.\n\nOrdered albums: once you place an order, we keep the album, its photos and the order history for as long as your account exists, so that you can find your album again or ask for a reprint, and so that we can handle any after-sales question.\n\nAccount information: kept for as long as your account exists. You can delete your account at any time from your account page (\"Delete my account\"): your account, albums and photos are then permanently deleted. The basic information of your past orders (date, amount, product ordered, delivery address, status) is kept for as long as our legal, accounting and tax obligations require, without any photo. Deletion is not possible while an order is being produced or delivered.\n\nContact and feedback messages: kept for as long as reasonably necessary to handle your request and keep a history of exchanges with our support."
         },
         {
           "heading": "6. Who we share your information with",

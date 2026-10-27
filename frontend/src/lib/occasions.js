@@ -1,6 +1,9 @@
 // One page per occasion (travel, couple, family), for the searches people
 // make ("travel photo book", "album photo de famille"…): its text in the
 // locale files (occasions.<occasion>), its covers from the templates.
+// Not linked from the site's menus or footer: they're there for search
+// engines (sitemap, llms.txt), and lead visitors who arrive on them into
+// the site.
 export const OCCASIONS = {
   travel: {
     path: "/travel-photo-book",

@@ -3,7 +3,7 @@ import asyncio
 import logging
 import math
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import (
@@ -18,7 +18,7 @@ from fastapi import (
 )
 from fastapi.responses import Response
 
-from app.config import DRAFT_ALBUM_RETENTION_DAYS, FRONTEND_URL
+from app.config import FRONTEND_URL
 from app.core.auth import (
     album_scope,
     create_print_token,
@@ -49,6 +49,7 @@ from app.services.processing import (
     start_full_layout,
     trim_pages_to_target,
 )
+from app.services.reminders import deletion_at, last_activity
 from app.services.storage import delete_object
 
 logger = logging.getLogger(__name__)
@@ -102,13 +103,8 @@ async def list_albums(user: dict = Depends(get_current_user)):
         await _slim_stored_cover(a)
         a["is_ordered"] = a["id"] in ordered_ids
         a["days_until_deletion"] = None
-        if not a["is_ordered"] and a.get("created_at"):
-            try:
-                created = datetime.fromisoformat(a["created_at"])
-                deadline = created + timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)
-                a["days_until_deletion"] = max(0, (deadline - now).days)
-            except (ValueError, TypeError):
-                pass
+        if not a["is_ordered"] and last_activity(a):
+            a["days_until_deletion"] = max(0, (deletion_at(a, now) - now).days)
     return albums
 
 async def _slim_stored_cover(album: dict):

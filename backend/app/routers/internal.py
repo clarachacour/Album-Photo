@@ -14,7 +14,7 @@ from app.services.orders import generate_order_pdf, purge_stale_pdf_generation_s
 from app.services.backup import backup_database
 from app.services.delivery import sync_all_deliveries
 from app.services.print_groups import flush_printer_queue
-from app.services.reminders import send_reminders
+from app.services.reminders import deletion_at, send_reminders
 from app.services.storage import delete_object
 
 router = APIRouter()
@@ -83,8 +83,9 @@ async def remind_unfinished_albums(x_cleanup_secret: str = Header(None)):
 
 @router.post("/internal/cleanup-expired-albums")
 async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
-    """Deletes albums that were never ordered and are older than
-    DRAFT_ALBUM_RETENTION_DAYS (default 30) — their photos on R2, cover
+    """Deletes albums that were never ordered, untouched for
+    DRAFT_ALBUM_RETENTION_DAYS (default 30) and whose owner was warned by
+    email a few days before (see deletion_at) — their photos on R2, cover
     image, and the album document itself. An ordered album is never touched
     here regardless of age (see _delete_unselected_photos for what happens
     to its unselected photos, at order time instead).
@@ -98,17 +99,24 @@ async def cleanup_expired_albums(x_cleanup_secret: str = Header(None)):
     if x_cleanup_secret != CLEANUP_SECRET:
         raise HTTPException(status_code=401, detail="Not authorized")
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)).isoformat()
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=DRAFT_ALBUM_RETENTION_DAYS)).isoformat()
     ordered_album_ids = set(await db.orders.distinct("album_id"))
 
+    # Untouched for the retention period (by last change: an album worked
+    # on lately stays).
     candidates = await db.albums.find(
-        {"is_deleted": {"$ne": True}, "created_at": {"$lt": cutoff}}, {"_id": 0}
+        {"is_deleted": {"$ne": True}, "updated_at": {"$lt": cutoff}}, {"_id": 0, "pages": 0, "curation_stats": 0}
     ).to_list(2000)
 
     deleted_count = 0
     for album in candidates:
         if album["id"] in ordered_album_ids:
             continue  # ever ordered, however long ago — never auto-purged
+        # Never before its owner was warned by email, a few days ahead.
+        owner = await db.users.find_one({"id": album["user_id"]}, {"_id": 0, "email": 1})
+        if deletion_at(album, now, can_warn=bool(owner and owner.get("email"))) > now:
+            continue
         photos = await db.photos.find({"album_id": album["id"]}, {"_id": 0}).to_list(5000)
         for p in photos:
             delete_object(p.get("storage_path"))

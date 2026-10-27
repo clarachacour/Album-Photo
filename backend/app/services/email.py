@@ -11,6 +11,7 @@ from app.config import (
     ADMIN_EMAIL,
     BACKEND_URL,
     DELIVERY_EMAIL,
+    ALBUM_EXPIRING_WARNING_DAYS_BEFORE,
     DRAFT_ALBUM_RETENTION_DAYS,
     FRONTEND_URL,
     ORDERS_EMAIL,
@@ -713,30 +714,47 @@ def send_cart_reminder_email(to_email: str, name: str, lines: list, lang: str, s
     )
     send_email(to_email, t["cart_subject"], body, html_body=html_body)
 
+_EXPIRING_TEXT = {
+    "en": {
+        "subject": "\"{title}\" will be deleted in {days}",
+        "title": "Your album will be deleted soon.",
+        "body": "\"{title}\" hasn't been ordered or changed for {retention} days or more. To free up space, albums that are never ordered are then deleted, with their photos.",
+        "when": "It will be deleted in {days}. To keep it, open it and make a change (or order it) before then. If you don't need it anymore, there's nothing to do.",
+        "cta": "Open my album",
+        "day": "1 day", "days": "{n} days",
+    },
+    "fr": {
+        "subject": "« {title} » sera supprimé dans {days}",
+        "title": "Votre album sera bientôt supprimé.",
+        "body": "« {title} » n'a été ni commandé ni modifié depuis {retention} jours ou plus. Pour libérer de la place, les albums jamais commandés sont alors supprimés, avec leurs photos.",
+        "when": "Il sera supprimé dans {days}. Pour le garder, ouvrez-le et faites une modification (ou commandez-le) d'ici là. Si vous n'en avez plus besoin, vous n'avez rien à faire.",
+        "cta": "Ouvrir mon album",
+        "day": "1 jour", "days": "{n} jours",
+    },
+}
+
+
 def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_left: int):
+    """The warning a few days before an album never ordered is deleted (see
+    deletion_at in services/reminders.py), in the album's language."""
+    t = _EXPIRING_TEXT["fr" if album.get("lang") == "fr" else "en"]
+    hi = _reminder_text(album.get("lang"))["hi"].format(name=name or "").replace(" ,", ",")
     album_url = f"{FRONTEND_URL}/editor/{album['id']}"
-    subject = f"\"{album.get('title', 'Your album')}\" will be deleted in {days_left} days"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"\"{album.get('title', 'Your album')}\" hasn't been touched in a while, and unfinished albums are "
-        f"automatically removed after {DRAFT_ALBUM_RETENTION_DAYS} days to free up space.\n\n"
-        f"It'll be deleted in {days_left} days unless you open it again before then:\n{album_url}\n\n"
-        f"If you're not planning to finish it, no action is needed."
-    )
+    title = album.get("title") or "Album"
+    days = t["day"] if days_left == 1 else t["days"].format(n=days_left)
+    retention = DRAFT_ALBUM_RETENTION_DAYS - ALBUM_EXPIRING_WARNING_DAYS_BEFORE
+    paragraph1 = t["body"].format(title=title, retention=retention)
+    paragraph2 = t["when"].format(days=days)
+    body = f"{hi}\n\n{paragraph1}\n\n{paragraph2}\n\n{album_url}"
     html_body = _email_wrapper(
-        preheader=f"\"{_h(album.get('title', 'Your album'))}\" will be deleted in {days_left} days unless you open it again.",
-        title="Your album will be deleted soon.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>\"{_h(album.get('title', 'Your album'))}\" hasn't been touched in a while, and unfinished albums "
-            f"are automatically removed after {DRAFT_ALBUM_RETENTION_DAYS} days to free up space.</p>"
-            f"<p>It'll be deleted in {days_left} day{'s' if days_left != 1 else ''} unless you open it again before then. "
-            f"If you're not planning to finish it, no action is needed.</p>"
-        ),
-        cta_label="Open my album",
+        preheader=_h(paragraph2),
+        title=t["title"],
+        body_html=f"<p>{_h(hi)}</p><p>{_h(paragraph1)}</p><p>{_h(paragraph2)}</p>",
+        cta_label=t["cta"],
         cta_url=album_url,
     )
-    send_email(to_email, subject, body, html_body=html_body)
+    send_email(to_email, t["subject"].format(title=title, days=days), body, html_body=html_body)
+
 
 def printer_download_url(order_id: str, token: str) -> str:
     return f"{FRONTEND_URL}/printer/{order_id}/download?token={token}"

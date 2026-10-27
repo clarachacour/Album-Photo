@@ -51,7 +51,7 @@ SHIPPING_PRICE_CENTS = 500
 # The version of the terms of sale the site shows (the "last updated" date
 # of legal.terms in the locale files). An order records the one the
 # customer accepted; change both together when the terms change.
-TERMS_VERSION = "2026-10-21"
+TERMS_VERSION = "2026-10-27"
 
 # Past OVERAGE_FROM pages, an album pays its tier's price plus this much
 # per page beyond it, in cents, whatever its format (see priced_pages):
