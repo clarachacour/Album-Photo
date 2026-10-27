@@ -55,10 +55,6 @@ export function photoImageUrl(photoId, variant = "thumb") {
   return `${API}/photos/${photoId}/image?auth=${encodeURIComponent(t || "")}&variant=${variant}`;
 }
 
-export function pdfExportUrl(albumId) {
-  const t = getToken();
-  return `${API}/albums/${albumId}/export?auth=${encodeURIComponent(t || "")}`;
-}
 
 export function coverImageUrl(albumId, version = 0, variant = "thumb") {
   const t = getToken();

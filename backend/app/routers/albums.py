@@ -1,5 +1,4 @@
-"""Album routes: CRUD, processing, page repacking, PDF export."""
-import asyncio
+"""Album routes: CRUD, processing, page repacking."""
 import logging
 import math
 import uuid
@@ -11,22 +10,15 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
-    Header,
     HTTPException,
-    Query,
     UploadFile,
 )
-from fastapi.responses import Response
 
-from app.config import FRONTEND_URL
 from app.core.auth import (
     album_scope,
-    create_print_token,
-    decode_token,
     get_current_user,
     get_current_user_for_album,
     is_admin,
-    is_admin_id,
 )
 from app.db import db
 from app.schemas import MAX_ALBUM_PAGES, AlbumCreate, AlbumUpdate, RepackPagesInput
@@ -37,8 +29,6 @@ from app.services.layout import (
     deterministic_layout,
     make_title_page,
 )
-from app.core.executors import pdf_render_executor
-from app.services.pdf import render_album_pdf_sync
 from app.services.cover_art import slim_cover
 from app.services import signed_urls
 from app.services.photos import measure_missing_brightness_later, store_many_photos
@@ -418,43 +408,3 @@ async def add_more_photos(
     fresh = await db.albums.find_one({"id": album_id}, {"_id": 0, "status": 1})
     return {"status": fresh.get("status", "ready") if fresh else "ready", "added": len(uploaded), "limit_reached": limit_reached}
 
-@router.get("/albums/{album_id}/export")
-async def export_pdf(album_id: str, auth: str = Query(None), authorization: str = Header(None)):
-    """Generates the PDF by opening the album's dedicated print page
-    (frontend/src/pages/PrintAlbum.jsx) in a headless browser and printing
-    it — this is the exact same React/CSS rendering the flipbook uses, so
-    the PDF is guaranteed to match it, instead of a hand-written parallel
-    drawing implementation that has to be kept in sync by hand.
-    If the browser export fails, the customer is asked to try again (no
-    PDF that would look different from the album)."""
-    token = None
-    if authorization and authorization.lower().startswith("bearer "):
-        token = authorization.split(" ", 1)[1]
-    elif auth:
-        token = auth
-    user_id = decode_token(token) if token else None
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    scope = {} if await is_admin_id(user_id) else {"user_id": user_id}
-    album = await db.albums.find_one({"id": album_id, **scope}, {"_id": 0})
-    if not album:
-        raise HTTPException(status_code=404, detail="Album not found")
-
-    try:
-        # The print page opens the album as its owner (the admin may be
-        # previewing a customer's album).
-        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={create_print_token(album['user_id'], album_id)}"
-        loop = asyncio.get_event_loop()
-        pdf_bytes = await loop.run_in_executor(
-            pdf_render_executor, render_album_pdf_sync, print_url, len(album.get("pages") or []), f"Export {album_id} :"
-        )
-        filename = f"{album.get('title', 'album').replace(' ', '_')}.pdf"
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
-    except Exception as e:
-        logger.error(f"Export PDF de l'album {album_id} impossible : {e}")
-        raise HTTPException(status_code=503, detail="The PDF couldn't be made right now. Please try again in a few minutes.")

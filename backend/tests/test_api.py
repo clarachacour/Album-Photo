@@ -189,3 +189,11 @@ def test_a_photo_sent_twice_is_stored_once(client, db, monkeypatch):
     asyncio.run(db.photos.update_many({"album_id": album_id}, {"$set": {"is_deleted": True}}))
     assert send([("a.jpg", first)]).json()["uploaded"] == 1
     assert asyncio.run(db.photos.count_documents({"album_id": album_id, "is_deleted": False})) == 1
+
+
+def test_an_album_pdf_cant_be_downloaded_without_an_order(client, db):
+    # The old /export address made an album's PDF for free: removed (the PDF
+    # is sold, and made at order time).
+    _, headers = _signup(client, db=db)
+    album_id = client.post("/api/albums", json={"title": "Byblos"}, headers=headers).json()["id"]
+    assert client.get(f"/api/albums/{album_id}/export", headers=headers).status_code in (404, 405)
