@@ -7,6 +7,7 @@ import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { AlbumPage } from "@/components/book/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
 import { coverSpreadLayout, pageDimsMm, printerCoverTemplate, spineWidthMm } from "@/lib/printDims";
+import { withoutPlaceholders } from "@/lib/placeholderText";
 
 /**
  * Renders the whole album — front cover + spine, interior pages, back cover
@@ -59,7 +60,9 @@ export default function PrintAlbum() {
     (async () => {
       try {
         const { data } = await api.get(`/albums/${id}`);
-        setAlbum(data);
+        // The generic texts the customer left as is ("This is your first
+        // page…", "Your caption"…) aren't printed.
+        setAlbum(withoutPlaceholders(data));
       } catch (e) {
         setError(e?.response?.data?.detail || "Failed to load album");
       }
