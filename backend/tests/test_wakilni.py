@@ -128,9 +128,10 @@ def test_the_printers_click_creates_the_wakilni_delivery(client, db, courier):
     assert sent["packages"][0]["type_id"] == 59  # A5: small box
     order = _order(db, order_id)
     assert order["status"] == "ready_for_delivery" and order["delivery"]["tracking_url"] == "https://track.wakilni.com/WK123"
-    assert courier["sent"]["courier"] == []  # Wakilni, not the email
+    assert courier["sent"]["courier"] == [order_id]  # Wakilni's team is emailed too
     _ready(client, order_id)  # a second click doesn't create a second delivery
     assert sum("start_bulk" in p for _, p, _ in courier["fake"].calls) == 1
+    assert courier["sent"]["courier"] == [order_id]  # nor a second email
 
 
 def test_a_paid_order_has_nothing_to_collect():
@@ -382,3 +383,16 @@ def test_no_whatsapp_without_its_settings(client, db, courier, monkeypatch):
 
     monkeypatch.setattr(whatsapp.requests, "post", lambda *a, **k: pytest.fail("nothing should be sent"))
     _ready(client, courier["order"]["id"])
+
+
+def test_the_pickup_email_gives_wakilnis_order_number(monkeypatch):
+    from app.services import email
+
+    out = []
+    monkeypatch.setattr(email, "DELIVERY_EMAIL", "ops@wakilni.test")
+    monkeypatch.setattr(email, "send_email", lambda to, subject, body, html_body=None, **k: out.append((to, subject, body)))
+    order = {"id": "abcdef12-0000", "album_title": "Byblos", "quantity": 2, "shipping_address": ADDRESS, "delivery": {"delivery_id": 9123}}
+    email.send_delivery_pickup_email(order)
+    to, subject, body = out[-1]
+    assert to == "ops@wakilni.test" and subject == "Ready for pickup at Bookstop — Wakilni order 9123"
+    assert "Wakilni order 9123 (written on the package)" in body and "Quantity: 2" in body

@@ -8,7 +8,9 @@ import pytest
 
 from tests.test_api import _signup
 
-NOON = datetime(2026, 10, 22, 10, 0, tzinfo=timezone.utc)  # 12:00/13:00 in Beirut
+# Today at 10:00 UTC (12:00/13:00 in Beirut): the deletion job reads the real
+# clock, so the tests' "now" is today.
+NOON = datetime.now(timezone.utc).replace(hour=10, minute=0, second=0, microsecond=0)
 
 
 @pytest.fixture()
