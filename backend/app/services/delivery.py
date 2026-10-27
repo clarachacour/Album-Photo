@@ -80,10 +80,6 @@ async def dispatch_delivery(order_id: str) -> dict:
         created["order_ids"] = ids
     await db.orders.update_many({"id": {"$in": ids}}, {"$set": {"delivery": created, "tracking_number": created.get("tracking_id")}})
     logger.info(f"Commande(s) {', '.join(ids)} : livraison Wakilni {created.get('delivery_id')} créée")
-    # Wakilni's team hears about the pickup by email (DELIVERY_EMAIL, if
-    # set), with its order number — and on WhatsApp if that's set up.
-    fresh = await db.orders.find_one({"id": lead["id"]}, {"_id": 0})
-    await run_email(send_delivery_pickup_email, fresh or lead, group)
     await _tell_wakilni_on_whatsapp(created, group)
     return await db.orders.find_one({"id": order_id}, {"_id": 0})
 

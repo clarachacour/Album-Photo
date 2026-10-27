@@ -148,6 +148,11 @@ WHATSAPP_PICKUP_TO = [n for n in (os.environ.get("WHATSAPP_PICKUP_TO") or "").re
 # The template's name and language in Meta's WhatsApp Manager. Its text has
 # two variables: {{1}} Wakilni's order number, {{2}} the number of albums.
 WHATSAPP_PICKUP_TEMPLATE = os.environ.get("WHATSAPP_PICKUP_TEMPLATE", "wakilni_pickup")
+# Bookstop's people, the same way: told on WhatsApp when an order is sent
+# to print (the files stay in their email). Template variables: {{1}} the
+# order number(s), {{2}} the number of albums.
+WHATSAPP_PRINTER_TO = [n for n in (os.environ.get("WHATSAPP_PRINTER_TO") or "").replace(";", ",").split(",") if n.strip()]
+WHATSAPP_PRINTER_TEMPLATE = os.environ.get("WHATSAPP_PRINTER_TEMPLATE", "bookstop_new_order")
 WHATSAPP_TEMPLATE_LANGUAGE = os.environ.get("WHATSAPP_TEMPLATE_LANGUAGE", "en")
 WHATSAPP_API_VERSION = os.environ.get("WHATSAPP_API_VERSION", "v23.0")
 

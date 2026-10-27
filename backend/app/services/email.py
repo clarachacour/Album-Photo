@@ -885,13 +885,10 @@ def send_delivery_pickup_email(order: dict, group: list = None):
     addr = order.get("shipping_address") or {}
     # Albums ordered together (see services/print_groups.py): one package.
     quantity = sum(int(o.get("quantity") or 1) for o in (group or [order]))
-    # With Wakilni, its own order number is the one on the package.
-    wakilni_id = (order.get("delivery") or {}).get("delivery_id")
-    number = f"Wakilni order {wakilni_id}" if wakilni_id else order_number(order)
-    subject = f"Ready for pickup at Bookstop — {number}"
+    subject = f"Ready for pickup — {order.get('album_title', 'Album')} ({order_number(order)})"
     body = (
-        f"A book is ready for pickup at Bookstop (Gharios Center, Furn el-Chebbak) and delivery.\n\n"
-        f"Order number: {number} (written on the package)\n\n"
+        f"A book is ready for pickup and delivery.\n\n"
+        f"Order number: {order_number(order)} (written on the package)\n\n"
         f"Deliver to:\n"
         f"{addr.get('full_name', '')}\n"
         f"{addr.get('street', '')}"
@@ -902,11 +899,11 @@ def send_delivery_pickup_email(order: dict, group: list = None):
         + f"\nQuantity: {quantity}"
     )
     html_body = _email_wrapper(
-        preheader=f"Ready for pickup at Bookstop — {_h(number)}",
+        preheader=f"Ready for pickup — {_h(order.get('album_title', 'Album'))}",
         title="Ready for pickup.",
         body_html=(
-            f"<p>A book is ready for pickup at Bookstop (Gharios Center, Furn el-Chebbak) and delivery.</p>"
-            f"<p><strong>Order number:</strong> {_h(number)} (written on the package)</p>"
+            f"<p>A book is ready for pickup and delivery.</p>"
+            f"<p><strong>Order number:</strong> {order_number(order)} (written on the package)</p>"
             f"<p><strong>Deliver to:</strong><br>"
             f"{_h(addr.get('full_name', ''))}<br>"
             f"{_h(addr.get('street', ''))}" + (f", {_h(addr.get('building'))}" if addr.get("building") else "") + f"<br>"

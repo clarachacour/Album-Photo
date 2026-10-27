@@ -15,9 +15,11 @@ import logging
 import unicodedata
 from datetime import datetime, timedelta, timezone
 
-from app.core.executors import run_email
+from app.core.executors import run_blocking, run_email
+from app.core.order_number import order_number
 from app.db import db
-from app.services.email import send_order_in_production_email, send_printer_order_email
+from app.services import whatsapp
+from app.services.email import send_delivery_problem_email, send_order_in_production_email, send_printer_order_email
 from app.services.gift_cards import GIFT_VALIDITY_DAYS, add_credit
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,20 @@ async def _cart_still_making(orders: list) -> bool:
     return waiting is not None
 
 
+async def _tell_printer_on_whatsapp(members: list):
+    """Bookstop's team hears on WhatsApp that an order is waiting to be
+    printed. If it can't be sent, the admin is told: the email went out."""
+    if not whatsapp.configured("printer"):
+        return
+    numbers = ", ".join(order_number(o) for o in members)
+    albums = sum(int(o.get("quantity") or 1) for o in members)
+    failed = await run_blocking(whatsapp.send_print_order, numbers, albums)
+    if failed:
+        await run_email(send_delivery_problem_email, members[0],
+                        f"the WhatsApp message to Bookstop about order {numbers} couldn't be sent to "
+                        f"{'; '.join(failed)}. They still got the email with the files")
+
+
 async def flush_printer_queue(force_order_id: str = None) -> int:
     """Sends the printer one email per group whose wait is over (or the
     group of force_order_id, at once). Returns the number of emails."""
@@ -119,6 +135,8 @@ async def flush_printer_queue(force_order_id: str = None) -> int:
             await db.orders.update_one({"id": o["id"]}, {"$set": update, "$unset": {"printer_pending_at": ""}})
         members = await group_of({**lead, "print_group": lead["id"]})
         await run_email(send_printer_order_email, members[0], members)
+        # …and on WhatsApp, if set up (the files stay in the email).
+        await _tell_printer_on_whatsapp(members)
         # …and the customer, once for all of them: their albums are being printed.
         customer = await db.users.find_one({"id": lead.get("user_id")}, {"_id": 0, "email": 1, "name": 1})
         if customer and customer.get("email"):

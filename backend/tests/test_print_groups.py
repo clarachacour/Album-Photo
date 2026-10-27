@@ -141,3 +141,29 @@ def test_the_customer_gets_one_being_printed_email_for_albums_sent_together(clie
     assert told == []  # not when the PDFs are made: when the printer gets them
     asyncio.run(flush_printer_queue(force_order_id=first["id"]))
     assert told == [[first["id"], second["id"]]]
+
+
+def test_bookstop_gets_a_whatsapp_for_each_order_to_print(client, db, courier, monkeypatch):  # noqa: F811
+    from app.core.order_number import order_number
+    from app.services import whatsapp
+    from app.services.print_groups import flush_printer_queue
+
+    posted = []
+    monkeypatch.setattr(whatsapp, "WHATSAPP_TOKEN", "wa-token")
+    monkeypatch.setattr(whatsapp, "WHATSAPP_PHONE_NUMBER_ID", "123")
+    monkeypatch.setattr(whatsapp, "WHATSAPP_PRINTER_TO", ["+961 1 222 333"])
+    monkeypatch.setattr(whatsapp, "WHATSAPP_PICKUP_TO", [])
+    monkeypatch.setattr(whatsapp.requests, "post", lambda url, json=None, headers=None, timeout=None: (posted.append(json), type("R", (), {"status_code": 200})())[1])
+
+    asyncio.run(db.orders.update_many({"id": {"$ne": courier["order"]["id"]}, "printer_pending_at": {"$exists": True}}, {"$unset": {"printer_pending_at": ""}}))
+    first = courier["order"]
+    second = _second_order(client, db, courier["customer"])
+    _wait_over(db, first["id"], second["id"])
+    asyncio.run(flush_printer_queue())
+    # One message for the two albums printed together, still with the email.
+    assert len(posted) == 1 and posted[0]["to"] == "9611222333"
+    assert posted[0]["template"]["name"] == "bookstop_new_order"
+    params = [p["text"] for p in posted[0]["template"]["components"][0]["parameters"]]
+    numbers = {order_number(_order(db, first["id"])), order_number(_order(db, second["id"]))}
+    assert set(params[0].split(", ")) == numbers and params[1] == "2"
+    assert len(courier["sent"]["printer"]) == 1
