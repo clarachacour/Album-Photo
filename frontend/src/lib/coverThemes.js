@@ -115,10 +115,13 @@ export const COVER_THEMES = [
         },
       },
       {
+        // Was "Honolulu, Hawaii": same cover (the surfer), now Bali — a
+        // trip far more of our customers have made. The id stays, for the
+        // albums already made from it.
         id: "travel-hawaii",
-        name: "Honolulu, Hawaii",
+        name: "Bali, Indonesia",
         landingImage: "/theme-covers/travel-hawaii.webp",
-        title: "Honolulu",
+        title: "Bali",
         cover: {
           bg_color: "#D9ACA8",
           accent_color: "#D96A54",
@@ -126,8 +129,10 @@ export const COVER_THEMES = [
           title_font: BALOO,
           title_font_weight: "800",
           title_font_size: 66,
-          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-          spine_subtitle: "Hawaii",
+          // Bali is a short word: a narrower box keeps it the size Honolulu was
+          // (the title fills its box's width), above the subtitle on the right.
+          title_x: 0.52, title_y: 0.04, title_w: 0.42, title_h: 0.18,
+          spine_subtitle: "Indonesia",
           spine_subtitle_color: "#D96A54",
           spine_subtitle_font: BALOO,
           spine_subtitle_weight: "700",
@@ -135,7 +140,7 @@ export const COVER_THEMES = [
           spine_title_font: BALOO,
           extra_items: [
             iconItem(TRAVEL_HAWAII_ICON, "travel_hawaii", { x: 0.16, y: 0.405, w: 0.72, h: 0.5 }),
-            textItem("subtitle", "Hawaii", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#D96A54", text_align: "right" }),
+            textItem("subtitle", "Indonesia", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#D96A54", text_align: "right" }),
           ],
         },
       },

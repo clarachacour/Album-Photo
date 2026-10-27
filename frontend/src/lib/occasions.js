@@ -11,7 +11,7 @@ export const OCCASIONS = {
       ["/theme-covers/travel-sicily.webp", "Sicily"],
       ["/theme-covers/travel-paros.webp", "Paros"],
       ["/theme-covers/travel-morocco.webp", "Morocco"],
-      ["/theme-covers/travel-beirut.webp", "Beirut"],
+      ["/theme-covers/travel-hawaii.webp", "Bali"],
     ],
   },
   couple: {
