@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Two intertwined wedding rings, the front one with a small stone (Ivory & Gold template) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160" viewBox="0 0 120 80" fill="none" stroke="#B08D57" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+  <circle cx="46" cy="49" r="26"/>
+  <circle cx="74" cy="49" r="26"/>
+  <path d="M67 20 L74 12 L81 20 L74 26 Z" stroke-width="1.8"/>
+  <path d="M67 20 H81 M70.5 16 L74 20 L77.5 16" stroke-width="1.1"/>
+</svg>

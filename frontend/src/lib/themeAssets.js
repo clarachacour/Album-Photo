@@ -11,3 +11,5 @@ export const TRAVEL_BEIRUT_ICON = "/cover-art/travel-beirut-v2.svg";
 export const TRAVEL_DUBAI_ICON = "/cover-art/travel-dubai-v3.svg";
 export const TRAVEL_CAIRO_ICON = "/cover-art/travel-cairo-v4.svg";
 export const TRAVEL_CYPRUS_ICON = "/cover-art/travel-cyprus-v1.svg";
+export const WEDDING_RINGS_ICON = "/cover-art/wedding-rings-v1.svg";
+export const BAPTISM_DOVE_ICON = "/cover-art/baptism-dove-v1.svg";

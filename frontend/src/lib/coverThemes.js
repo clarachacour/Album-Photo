@@ -15,6 +15,8 @@ import {
   TRAVEL_DUBAI_ICON,
   TRAVEL_CAIRO_ICON,
   TRAVEL_CYPRUS_ICON,
+  WEDDING_RINGS_ICON,
+  BAPTISM_DOVE_ICON,
 } from "@/lib/themeAssets";
 
 // Spine logos, files in public/cover-art (see coverAssets.js).
@@ -60,8 +62,8 @@ function photoGridItem(index, box) {
   return { id: `photo-grid-${photoGridCounter}`, type: "image", is_photo: true, image_url: null, ...box };
 }
 
-function lineItem(box, color) {
-  return { id: `line-${box.x}-${box.y}`, type: "shape", shape_type: "rect", fill_color: color, ...box };
+function lineItem(box, color, id = `line-${box.x}-${box.y}`) {
+  return { id, type: "shape", shape_type: "rect", fill_color: color, ...box };
 }
 
 function textItem(id, content, opts = {}) {
@@ -83,6 +85,8 @@ function textItem(id, content, opts = {}) {
     // A subtitle's size follows the title's (see CoverFrontPage): this
     // shrinks it (0.4–1).
     ...(opts.font_scale != null ? { font_scale: opts.font_scale } : {}),
+    // Space between letters, in em (spaced capitals).
+    ...(opts.letter_spacing != null ? { letter_spacing: opts.letter_spacing } : {}),
   };
 }
 
@@ -396,6 +400,47 @@ export const COVER_THEMES = [
     label: "Couple",
     templates: [
       {
+        // Ivory and gold: a double gold frame, intertwined rings, the
+        // couple's names in script, the date and the place in spaced
+        // capitals.
+        id: "couple-wedding-ivory",
+        name: "Ivory & Gold",
+        landingImage: "/theme-covers/couple-wedding-ivory.webp",
+        title: "Maya & Karim",
+        cover: {
+          bg_color: "#F6F1E7",
+          accent_color: "#B08D57",
+          text_color: "#5A4A33",
+          title_font: SCRIPT,
+          title_font_weight: "400",
+          title_single_line: true,
+          title_uppercase: false,
+          title_text_align: "center",
+          title_font_size: 40,
+          title_fit_height: true,
+          title_x: 0.1, title_y: 0.48, title_w: 0.8, title_h: 0.115,
+          spine_title_font: CORMORANT,
+          spine_title_size: 24,
+          spine_title_weight: "600",
+          spine_logo_image: WEDDING_RINGS_ICON,
+          spine_logo_x: 0.1, spine_logo_y: 0.86, spine_logo_w: 0.8, spine_logo_h: 0.08,
+          extra_items: [
+            lineItem({ x: 0.053, y: 0.038, w: 0.894, h: 0.0024 }, "#B08D57", "frame-top"),
+            lineItem({ x: 0.053, y: 0.9596, w: 0.894, h: 0.0024 }, "#B08D57", "frame-bottom"),
+            lineItem({ x: 0.053, y: 0.038, w: 0.0033, h: 0.924 }, "#B08D57", "frame-left"),
+            lineItem({ x: 0.9437, y: 0.038, w: 0.0033, h: 0.924 }, "#B08D57", "frame-right"),
+            lineItem({ x: 0.07, y: 0.05, w: 0.86, h: 0.0024 }, "#CDB487", "frame-inner-top"),
+            lineItem({ x: 0.07, y: 0.9476, w: 0.86, h: 0.0024 }, "#CDB487", "frame-inner-bottom"),
+            lineItem({ x: 0.07, y: 0.05, w: 0.0033, h: 0.9 }, "#CDB487", "frame-inner-left"),
+            lineItem({ x: 0.9267, y: 0.05, w: 0.0033, h: 0.9 }, "#CDB487", "frame-inner-right"),
+            textItem("occasion", "OUR WEDDING", { x: 0.1, y: 0.14, w: 0.8, h: 0.05, font: CORMORANT, font_weight: "600", font_size: 21, letter_spacing: 0.42, color: "#B08D57", text_align: "center" }),
+            iconItem(WEDDING_RINGS_ICON, "wedding_rings", { x: 0.31, y: 0.25, w: 0.38, h: 0.175 }),
+            textItem("date", "12 · 09 · 2026", { x: 0.1, y: 0.655, w: 0.8, h: 0.045, font: CORMORANT, font_weight: "500", font_size: 18.5, letter_spacing: 0.35, color: "#8A7350", text_align: "center" }),
+            textItem("place", "BEIRUT", { x: 0.1, y: 0.79, w: 0.8, h: 0.045, font: CORMORANT, font_weight: "500", font_size: 17, letter_spacing: 0.3, color: "#B08D57", text_align: "center" }),
+          ],
+        },
+      },
+      {
         id: "couple-notre-rencontre",
         name: "Notre Rencontre",
         landingImage: "/theme-covers/couple-notre-rencontre.webp",
@@ -492,6 +537,37 @@ export const COVER_THEMES = [
     // Format already chosen on the Format step for these templates (still changeable there).
     format: { size: "A5", orientation: "portrait" },
     templates: [
+      {
+        // Pale blue, a dove with an olive branch drawn in a fine line, the
+        // child's first name large in script.
+        id: "family-baptism-dove",
+        name: "Baptism · The dove",
+        landingImage: "/theme-covers/family-baptism-dove.webp",
+        title: "Elie",
+        cover: {
+          bg_color: "#DCE6EF",
+          accent_color: "#3E5C7A",
+          text_color: "#2E4A66",
+          title_font: SCRIPT,
+          title_font_weight: "400",
+          title_single_line: true,
+          title_uppercase: false,
+          title_text_align: "center",
+          title_font_size: 60,
+          title_fit_height: true,
+          title_x: 0.15, title_y: 0.515, title_w: 0.7, title_h: 0.2,
+          spine_title_font: CORMORANT,
+          spine_title_size: 24,
+          spine_title_weight: "600",
+          spine_logo_image: BAPTISM_DOVE_ICON,
+          spine_logo_x: 0.1, spine_logo_y: 0.86, spine_logo_w: 0.8, spine_logo_h: 0.08,
+          extra_items: [
+            iconItem(BAPTISM_DOVE_ICON, "baptism_dove", { x: 0.283, y: 0.13, w: 0.433, h: 0.26 }),
+            textItem("occasion", "MY BAPTISM", { x: 0.1, y: 0.465, w: 0.8, h: 0.05, font: CORMORANT, font_weight: "600", font_size: 20, letter_spacing: 0.42, color: "#3E5C7A", text_align: "center" }),
+            textItem("date", "14 JUNE 2026", { x: 0.1, y: 0.76, w: 0.8, h: 0.045, font: CORMORANT, font_weight: "500", font_size: 17, letter_spacing: 0.32, color: "#3E5C7A", text_align: "center" }),
+          ],
+        },
+      },
       {
         id: "family-plain",
         name: "family.",

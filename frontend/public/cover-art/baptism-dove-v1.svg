@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A dove carrying an olive branch, drawn in a fine line (baptism template) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="220" viewBox="0 0 130 110" fill="none" stroke="#3E5C7A" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M14 70 C26 62 40 60 52 62 C58 48 70 30 92 18 C104 12 116 10 124 10 C112 20 102 34 96 50 C104 50 110 54 114 60 L124 60 L114 66 C110 74 100 80 86 82 C70 92 46 94 26 86 C34 84 42 80 46 76 C34 76 22 74 14 70 Z"/>
+  <path d="M58 62 C66 60 76 56 84 50" stroke-width="1.5"/>
+  <circle cx="106" cy="58" r="1.6" fill="#3E5C7A" stroke="none"/>
+  <path d="M118 63 C122 72 120 84 112 92" stroke-width="1.5"/>
+  <g fill="#3E5C7A" stroke="none">
+    <ellipse cx="118" cy="76" rx="5.5" ry="2.2" transform="rotate(-60 118 76)"/>
+    <ellipse cx="113" cy="88" rx="5.5" ry="2.2" transform="rotate(-30 113 88)"/>
+    <ellipse cx="123" cy="84" rx="5" ry="2" transform="rotate(30 123 84)"/>
+  </g>
+</svg>

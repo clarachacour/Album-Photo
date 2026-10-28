@@ -17,7 +17,7 @@ import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
  * prediction — it's the actual measurement of what's actually on screen,
  * whatever font metrics or loading timing produced it.
  */
-export function AutoFitText({ baseFontSize, content }) {
+export function AutoFitText({ baseFontSize, content, letterSpacing }) {
   const ref = useRef(null);
   const [scale, setScale] = useState(1);
   const attemptsRef = useRef(0);
@@ -79,7 +79,13 @@ export function AutoFitText({ baseFontSize, content }) {
     <span
       ref={ref}
       className="whitespace-pre-wrap block w-full h-full pointer-events-none select-none"
-      style={{ fontSize: `${(((baseFontSize * scale) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw` }}
+      style={{
+        fontSize: `${(((baseFontSize * scale) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
+        // Spaced capitals ("O U R  W E D D I N G"), in em of this size. The
+        // space also comes after the last letter: the same space on the
+        // left keeps a centred line centred.
+        ...(letterSpacing ? { letterSpacing: `${letterSpacing}em`, paddingLeft: `${letterSpacing}em` } : {}),
+      }}
     >
       {content}
     </span>

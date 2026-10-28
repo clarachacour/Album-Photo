@@ -420,11 +420,12 @@ export function CoverFrontPage({
                     // uppercase look it has everywhere else.
                     textTransform: item.role === "subtitle" ? "uppercase" : "none",
                     fontSize: `${(((renderItem.font_size || 20) / REFERENCE_PAGE_PX) * 100).toFixed(2)}cqw`,
+                    letterSpacing: item.letter_spacing ? `${item.letter_spacing}em` : undefined,
                   }}
                   data-testid={`cover-extra-input-${item.id}`}
                 />
               ) : (
-                <AutoFitText key={`${item.id}-${item.content}`} baseFontSize={renderItem.font_size || 20} content={item.content} />
+                <AutoFitText key={`${item.id}-${item.content}`} baseFontSize={renderItem.font_size || 20} content={item.content} letterSpacing={item.letter_spacing} />
               )}
             </DraggableItem>
           );
