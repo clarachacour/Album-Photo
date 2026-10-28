@@ -306,8 +306,9 @@ export const COVER_THEMES = [
         },
       },
       {
-        // Burj Al Arab, drawn as vectors after Clara's mock-up (sharp at
-        // any print size); "Dubai" in Arabic under the title.
+        // Dubai's skyline (Museum of the Future, Dubai Frame, Burj
+        // Khalifa…), traced as vectors from Clara's mock-up (sharp at any
+        // print size); "Dubai" in Arabic under the title.
         id: "travel-dubai",
         name: "Dubai",
         landingImage: "/theme-covers/travel-dubai.webp",
@@ -327,7 +328,7 @@ export const COVER_THEMES = [
           spine_title_size: 32,
           spine_title_font: BALOO,
           extra_items: [
-            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.286, y: 0.36, w: 0.428, h: 0.55 }),
+            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.05, y: 0.37, w: 0.9, h: 0.559 }),
             textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
           ],
         },
