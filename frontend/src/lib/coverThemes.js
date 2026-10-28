@@ -79,6 +79,9 @@ function textItem(id, content, opts = {}) {
     font_style: opts.font_style,
     text_align: opts.text_align,
     role: opts.role,
+    // A subtitle's size follows the title's (see CoverFrontPage): this
+    // shrinks it (0.4–1).
+    ...(opts.font_scale != null ? { font_scale: opts.font_scale } : {}),
   };
 }
 
@@ -268,6 +271,37 @@ export const COVER_THEMES = [
           extra_items: [
             iconItem(TRAVEL_BARCELONA_ICON, "travel_barcelona", { x: 0.201, y: 0.44, w: 0.599, h: 0.5 }),
             textItem("subtitle", "Catalonia", { role: "subtitle", x: 0.34, y: 0.22, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 26, color: "#D9764A", text_align: "right" }),
+          ],
+        },
+      },
+      {
+        // After Clara's mock-up: a cream cover, the title in burgundy
+        // capitals with serifs, centred, "Liban" under it, and Beirut's
+        // triple arched window with its stained glass (drawn as vectors,
+        // sharp at any print size).
+        id: "travel-beirut",
+        name: "Beirut, Lebanon",
+        landingImage: "/theme-covers/travel-beirut.webp",
+        title: "Beirut",
+        cover: {
+          bg_color: "#F3EED9",
+          accent_color: "#6B1E2A",
+          text_color: "#6B1E2A",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_font_size: 66,
+          title_text_align: "center",
+          title_x: 0.12, title_y: 0.06, title_w: 0.76, title_h: 0.13,
+          spine_subtitle: "Liban",
+          spine_subtitle_color: "#6B1E2A",
+          spine_subtitle_font: CORMORANT,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: CORMORANT,
+          spine_title_weight: "700",
+          extra_items: [
+            iconItem(TRAVEL_BEIRUT_ICON, "travel_beirut", { x: 0.1, y: 0.36, w: 0.8, h: 0.32 }),
+            textItem("subtitle", "LIBAN", { role: "subtitle", x: 0.25, y: 0.195, w: 0.5, h: 0.06, font: CORMORANT, font_weight: "600", font_size: 24, font_scale: 0.7, color: "#6B1E2A", text_align: "center" }),
           ],
         },
       },
@@ -574,33 +608,9 @@ export function findTemplate(templateId) {
 
 // Travel covers for travellers from Lebanon, kept out of the template list
 // until their illustrations are redone from high-resolution images: add
-// them back to the "travel" templates above to offer them again.
+// them back to the "travel" templates above to offer them again (as done
+// for Beirut).
 export const PENDING_TRAVEL_TEMPLATES = [
-  {
-    id: "travel-beirut",
-    name: "Beirut, Lebanon",
-    landingImage: "/theme-covers/travel-beirut.webp",
-    title: "Beirut",
-    cover: {
-      bg_color: "#F4EFDB",
-      accent_color: "#B3342F",
-      text_color: "#6B1E2A",
-      title_font: BALOO,
-      title_font_weight: "800",
-      title_font_size: 66,
-      title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-      spine_subtitle: "Liban",
-      spine_subtitle_color: "#B3342F",
-      spine_subtitle_font: BALOO,
-      spine_subtitle_weight: "700",
-      spine_title_size: 32,
-      spine_title_font: BALOO,
-      extra_items: [
-        iconItem(TRAVEL_BEIRUT_ICON, "travel_beirut", { x: 0.1, y: 0.4, w: 0.8, h: 0.442 }),
-        textItem("subtitle", "Liban", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#B3342F", text_align: "right" }),
-      ],
-    },
-  },
   {
     id: "travel-dubai",
     name: "Dubai",
