@@ -77,7 +77,7 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
     page.evaluate("document.fonts.ready")
     page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
     sheets = page.evaluate(
-        "() => [...document.querySelectorAll('.print-page')].map((e) => { const r = e.getBoundingClientRect(); return [r.width * 0.75, r.height * 0.75]; })"
+        "() => [...document.querySelectorAll('.print-page')].map((e) => { const r = e.getBoundingClientRect(); return [(Math.floor(r.width) - 1) * 0.75, (Math.floor(r.height) - 1) * 0.75]; })"
     )
     return trim_to_sheets(page.pdf(print_background=True, prefer_css_page_size=True), sheets)
 
@@ -86,8 +86,10 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
 # (419.5 pt) came out 420 pt wide, and every page had a white hairline on
 # its right (portrait) or bottom (landscape) edge, where the drawing
 # stopped. No CSS can paint there, and the rounding depends on the size.
-# Each page is cut back to its sheet's real size instead (the drawing
-# starts at the top-left corner): exact A5/A4 sheets for the printer.
+# Each page is cut back to its sheet's size instead (the drawing starts at
+# the top-left corner) — to the whole pixel, less one: the browser paints
+# boxes on whole pixels (a 559.37 px A5 cover is painted 559 px wide), so
+# at most about 0.4 mm of the edge goes.
 TRIM_AT_MOST_PT = 2
 
 
