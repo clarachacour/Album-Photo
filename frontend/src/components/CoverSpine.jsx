@@ -205,12 +205,24 @@ export function CoverSpine({ title, templateId, template, cover = {}, editable =
   // size. They were previously much tighter (0.6/0.4) and that was
   // actively clipping legitimately long words (e.g. "Southeast Asia",
   // "Africa") instead of just guarding against edge cases.
-  const defaultTitleH = titleMeasuredRef
+  const neededTitleH = titleMeasuredRef
     ? Math.min(0.75, (scaledTitleMaxFontPx * titleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
     : 0.3;
-  const defaultSubtitleH = subtitleMeasuredRef
+  const neededSubtitleH = subtitleMeasuredRef
     ? Math.min(0.55, (scaledSubtitleMaxFontPx * SUBTITLE_TO_TITLE_RATIO * subtitleMeasuredRef / REF_PX / SPINE_SAFETY) / containerHeight)
     : 0.18;
+  // Each box above is sized for its own text alone; on a short spine (A5
+  // landscape) the two together ran past the bottom edge ("SOUTHEAS…" in
+  // the PDF). When they don't fit between the title's top and the bottom
+  // margin, both shrink in proportion (their text is fitted to the box).
+  const stackTop = cover.spine_title_y ?? 0.05;
+  const stackRoom = 0.95 - stackTop - SPINE_TITLE_SUBTITLE_GAP;
+  const stackScale =
+    subtitleText && cover.spine_title_h == null && cover.spine_subtitle_h == null && neededTitleH + neededSubtitleH > stackRoom
+      ? stackRoom / (neededTitleH + neededSubtitleH)
+      : 1;
+  const defaultTitleH = neededTitleH * stackScale;
+  const defaultSubtitleH = neededSubtitleH * stackScale;
 
   const titleItem = {
     id: "spine-title",

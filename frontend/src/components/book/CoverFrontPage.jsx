@@ -266,8 +266,13 @@ export function CoverFrontPage({
         </DraggableItem>
       ) : (
         <h1
-          className="absolute leading-[0.95] tracking-tight overflow-hidden"
+          className="absolute leading-[0.95] tracking-tight"
           style={{
+            // Cut at the box's sides only: a script font's swashes (the
+            // "J" of Our Forever Journey) rise above its tight line height
+            // and were cut flat in the PDF.
+            overflowX: "clip",
+            overflowY: "visible",
             left: `${titleX * 100}%`,
             top: `${titleY * 100}%`,
             width: `${titleW * 100}%`,
