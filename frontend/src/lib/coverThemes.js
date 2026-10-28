@@ -276,7 +276,7 @@ export const COVER_THEMES = [
       },
       {
         // After Clara's mock-up: a cream cover, the title in burgundy
-        // capitals with serifs, centred, "Liban" under it, and Beirut's
+        // capitals with serifs, centred, "Lebanon" under it, and Beirut's
         // triple arched window with its stained glass (drawn as vectors,
         // sharp at any print size).
         id: "travel-beirut",
@@ -292,7 +292,7 @@ export const COVER_THEMES = [
           title_font_size: 66,
           title_text_align: "center",
           title_x: 0.12, title_y: 0.06, title_w: 0.76, title_h: 0.13,
-          spine_subtitle: "Liban",
+          spine_subtitle: "Lebanon",
           spine_subtitle_color: "#6B1E2A",
           spine_subtitle_font: CORMORANT,
           spine_subtitle_weight: "700",
@@ -301,7 +301,7 @@ export const COVER_THEMES = [
           spine_title_weight: "700",
           extra_items: [
             iconItem(TRAVEL_BEIRUT_ICON, "travel_beirut", { x: 0.1, y: 0.36, w: 0.8, h: 0.32 }),
-            textItem("subtitle", "LIBAN", { role: "subtitle", x: 0.25, y: 0.195, w: 0.5, h: 0.06, font: CORMORANT, font_weight: "600", font_size: 24, font_scale: 0.7, color: "#6B1E2A", text_align: "center" }),
+            textItem("subtitle", "LEBANON", { role: "subtitle", x: 0.25, y: 0.195, w: 0.5, h: 0.06, font: CORMORANT, font_weight: "600", font_size: 24, font_scale: 0.7, color: "#6B1E2A", text_align: "center" }),
           ],
         },
       },
