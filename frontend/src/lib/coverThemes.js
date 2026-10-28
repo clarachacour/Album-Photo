@@ -384,8 +384,8 @@ export const COVER_THEMES = [
           spine_title_size: 32,
           spine_title_font: BALOO,
           extra_items: [
-            iconItem(TRAVEL_CYPRUS_ICON, "travel_cyprus", { x: 0.06, y: 0.33, w: 0.88, h: 0.605 }),
-            textItem("subtitle", "LIMASSOL", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: CORMORANT, font_weight: "600", font_size: 28, color: "#344860", text_align: "right" }),
+            iconItem(TRAVEL_CYPRUS_ICON, "travel_cyprus", { x: 0.07, y: 0.35, w: 0.86, h: 0.59 }),
+            textItem("subtitle", "LIMASSOL", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: CORMORANT, font_weight: "600", font_size: 28, font_scale: 0.7, color: "#344860", text_align: "right" }),
           ],
         },
       },
