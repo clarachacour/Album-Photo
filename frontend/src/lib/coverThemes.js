@@ -332,6 +332,33 @@ export const COVER_THEMES = [
           ],
         },
       },
+      {
+        // The pyramids of Giza and the Sphinx, drawn as vectors after
+        // Clara's mock-up (sharp at any print size).
+        id: "travel-cairo",
+        name: "Cairo, Egypt",
+        landingImage: "/theme-covers/travel-cairo.webp",
+        title: "Cairo",
+        cover: {
+          bg_color: "#B78242",
+          accent_color: "#6E2E12",
+          text_color: "#F4E9D3",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "Egypt",
+          spine_subtitle_color: "#6E2E12",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.42, w: 0.84, h: 0.42 }),
+            textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
+          ],
+        },
+      },
     ],
   },
   {
@@ -632,35 +659,3 @@ export function findTemplate(templateId) {
   }
   return null;
 }
-
-// Travel covers for travellers from Lebanon, kept out of the template list
-// until their illustrations are redone from high-resolution images: add
-// them back to the "travel" templates above to offer them again (as done
-// for Beirut and Dubai).
-export const PENDING_TRAVEL_TEMPLATES = [
-  {
-    id: "travel-cairo",
-    name: "Cairo, Egypt",
-    landingImage: "/theme-covers/travel-cairo.webp",
-    title: "Cairo",
-    cover: {
-      bg_color: "#B78242",
-      accent_color: "#6E2E12",
-      text_color: "#F4E9D3",
-      title_font: BALOO,
-      title_font_weight: "800",
-      title_font_size: 66,
-      title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-      spine_subtitle: "Egypt",
-      spine_subtitle_color: "#6E2E12",
-      spine_subtitle_font: BALOO,
-      spine_subtitle_weight: "700",
-      spine_title_size: 32,
-      spine_title_font: BALOO,
-      extra_items: [
-        iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.45, w: 0.84, h: 0.4 }),
-        textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
-      ],
-    },
-  },
-];

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Drawn as vectors (Everbook), after the Cairo cover mock-up: sharp at any print size -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 580" width="820" height="580">
+<g stroke-linejoin="round">
+<!-- Great pyramid -->
+<path d="M448,22 L246,452 L330,456 Z" fill="#5E2A12"/>
+<path d="M448,22 L792,456 L330,456 Z" fill="#8A4524"/>
+<path d="M448,22 L330,456" stroke="#D4A06A" stroke-width="7" fill="none"/>
+<!-- Second pyramid, in front -->
+<path d="M432,206 L292,392 L332,466 Z" fill="#5E2A12"/>
+<path d="M432,206 L636,466 L332,466 Z" fill="#8F4A27"/>
+<path d="M432,206 L332,466 M432,206 L636,466 M292,392 L432,206" stroke="#D4A06A" stroke-width="6" fill="none"/>
+<!-- Sphinx -->
+<path d="M44,512 L60,470 L74,420 C110,398 160,390 206,388 L206,512 Z" fill="#A86F3C"/>
+<path d="M74,420 C110,398 160,390 206,388 L206,402 C160,404 112,412 70,432 Z" fill="#C99A62"/>
+<path d="M66,446 L206,438 L206,450 L64,460 Z" fill="#C99A62"/>
+<path d="M62,470 L206,464 L206,476 L60,484 Z" fill="#C99A62"/>
+<path d="M82,486 C84,470 104,462 122,464 C140,466 150,480 150,512 L82,512 Z" fill="#5E2A12"/>
+<path d="M200,346 L294,346 L304,470 L196,470 Z" fill="#B88550"/>
+<path d="M200,346 L232,346 L226,470 L196,470 Z" fill="#9A6234"/>
+<path d="M186,346 L196,292 C202,272 222,260 246,260 C270,260 290,272 296,292 L306,346 L286,352 L278,302 L214,302 L206,352 Z" fill="#A86F3C"/>
+<path d="M186,346 L196,292 C202,272 222,260 246,260 L246,272 C226,274 212,284 208,300 L206,352 Z" fill="#8E5A2E"/>
+<path d="M216,282 L276,282 L274,346 L248,362 L220,346 Z" fill="#D2A46C"/>
+<path d="M216,282 L240,282 L238,356 L220,346 Z" fill="#B88550"/>
+<path d="M230,310 L242,308 M254,308 L266,310 M246,334 L254,334" stroke="#6E3E1C" stroke-width="4" stroke-linecap="round" fill="none"/>
+<path d="M30,512 L176,512 L184,546 L30,546 Z" fill="#C99A62"/>
+<path d="M176,470 L430,470 L446,500 L176,500 Z" fill="#C99A62"/>
+<path d="M196,502 L440,502 L458,532 L196,532 Z" fill="#D2A46C"/>
+<path d="M392,474 L398,498 M410,474 L416,498 M428,474 L434,498 M402,506 L408,530 M420,506 L426,530 M438,506 L444,530" stroke="#6E3E1C" stroke-width="5" stroke-linecap="round"/>
+<path d="M30,546 L458,546 L458,552 L30,552 Z" fill="#6E3E1C" opacity=".45"/>
+</g>
+</svg>
