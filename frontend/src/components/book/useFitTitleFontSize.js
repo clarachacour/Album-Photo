@@ -95,7 +95,12 @@ export function useFitTitleFontSize({ containerWidth, boxWidthFraction, boxHeigh
       // would otherwise grow down onto that text.
       if (boxHeightFraction && (lineCount > 1 || fitHeight)) {
         const boxHeightPx = boxHeightFraction * containerWidth * pageAspect; // height = width * (page height / page width)
-        const maxByHeight = (boxHeightPx / lineCount) * 0.92;
+        // A one-line title in capitals has no letters going down below the
+        // line, and its capitals are only ~3/4 of the font size: in
+        // landscape (where this cap applies to the travel covers) it can be
+        // set larger and still fill, not overflow, its box.
+        const capitalsOnly = lineCount === 1 && uppercase && pageAspect < 1;
+        const maxByHeight = (boxHeightPx / lineCount) * (capitalsOnly ? 1.18 : 0.92);
         fitted = Math.min(fitted, maxByHeight);
       }
 
