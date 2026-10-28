@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
 import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
+import { ShapeInner, shapeStyle } from "@/components/book/CoverShape";
 import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
 import { coverItemImageSrc } from "@/lib/api";
 import { CoverPhotoItem, isCoverPhoto } from "@/components/book/CoverPhotoItem";
@@ -132,12 +133,9 @@ export function CoverBackPage({
               editable={editable}
               tid={`cover-back-shape-${item.id}`}
               onDragStateChange={(d) => setDraggingId(d ? item.id : null)}
-              extraStyle={{
-                background: item.fill_color || accent,
-                borderRadius: item.shape_type === "circle" ? "9999px" : "0",
-              }}
+              extraStyle={shapeStyle(item, accent)}
             >
-              <div className="w-full h-full pointer-events-none" />
+              <ShapeInner item={item} accent={accent} />
             </DraggableItem>
           );
         }

@@ -66,6 +66,11 @@ function lineItem(box, color, id = `line-${box.x}-${box.y}`) {
   return { id, type: "shape", shape_type: "rect", fill_color: color, ...box };
 }
 
+// A double-line frame, one element (see CoverShape.jsx).
+function frameItem(box, color) {
+  return { id: "frame", type: "shape", shape_type: "frame", fill_color: color, ...box };
+}
+
 function textItem(id, content, opts = {}) {
   return {
     id,
@@ -425,14 +430,7 @@ export const COVER_THEMES = [
           spine_logo_image: WEDDING_RINGS_ICON,
           spine_logo_x: 0.1, spine_logo_y: 0.86, spine_logo_w: 0.8, spine_logo_h: 0.08,
           extra_items: [
-            lineItem({ x: 0.053, y: 0.038, w: 0.894, h: 0.0024 }, "#B08D57", "frame-top"),
-            lineItem({ x: 0.053, y: 0.9596, w: 0.894, h: 0.0024 }, "#B08D57", "frame-bottom"),
-            lineItem({ x: 0.053, y: 0.038, w: 0.0033, h: 0.924 }, "#B08D57", "frame-left"),
-            lineItem({ x: 0.9437, y: 0.038, w: 0.0033, h: 0.924 }, "#B08D57", "frame-right"),
-            lineItem({ x: 0.07, y: 0.05, w: 0.86, h: 0.0024 }, "#CDB487", "frame-inner-top"),
-            lineItem({ x: 0.07, y: 0.9476, w: 0.86, h: 0.0024 }, "#CDB487", "frame-inner-bottom"),
-            lineItem({ x: 0.07, y: 0.05, w: 0.0033, h: 0.9 }, "#CDB487", "frame-inner-left"),
-            lineItem({ x: 0.9267, y: 0.05, w: 0.0033, h: 0.9 }, "#CDB487", "frame-inner-right"),
+            frameItem({ x: 0.053, y: 0.038, w: 0.894, h: 0.924 }, "#B08D57"),
             textItem("occasion", "OUR WEDDING", { x: 0.1, y: 0.14, w: 0.8, h: 0.05, font: CORMORANT, font_weight: "600", font_size: 21, letter_spacing: 0.42, color: "#B08D57", text_align: "center" }),
             iconItem(WEDDING_RINGS_ICON, "wedding_rings", { x: 0.31, y: 0.25, w: 0.38, h: 0.175 }),
             textItem("date", "12 · 09 · 2026", { x: 0.1, y: 0.655, w: 0.8, h: 0.045, font: CORMORANT, font_weight: "500", font_size: 18.5, letter_spacing: 0.35, color: "#8A7350", text_align: "center" }),
