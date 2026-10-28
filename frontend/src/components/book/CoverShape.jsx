@@ -1,7 +1,7 @@
 import React from "react";
 
 // A cover shape: a filled rectangle or circle, or a frame — a double line
-// around a box (the Ivory & Gold wedding cover), one element to move,
+// around a box (the Our Wedding cover), one element to move,
 // resize or recolour as a whole. Its colour is fill_color, like the others.
 // Line widths are in cqw (share of the cover's width), so they print the
 // same at any size. A frame catches clicks only along its lines: its

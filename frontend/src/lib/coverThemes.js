@@ -138,7 +138,7 @@ export const COVER_THEMES = [
         // Khalifa…), traced as vectors from Clara's mock-up (sharp at any
         // print size); "Dubai" in Arabic under the title.
         id: "travel-dubai",
-        name: "Dubai",
+        name: "Dubai, UAE",
         landingImage: "/theme-covers/travel-dubai.webp",
         title: "Dubai",
         cover: {
@@ -166,7 +166,7 @@ export const COVER_THEMES = [
         // Limassol), traced as vectors from Clara's mock-up (sharp at any
         // print size); "Limassol" in serif capitals under the title.
         id: "travel-cyprus",
-        name: "Cyprus",
+        name: "Cyprus, Limassol",
         landingImage: "/theme-covers/travel-cyprus.webp",
         title: "Cyprus",
         cover: {
@@ -218,7 +218,7 @@ export const COVER_THEMES = [
       },
       {
         id: "travel-sicily",
-        name: "Sicily",
+        name: "Sicily, Italy",
         landingImage: "/theme-covers/travel-sicily.webp",
         title: "Sicily",
         cover: {
@@ -274,7 +274,7 @@ export const COVER_THEMES = [
       },
       {
         id: "travel-thailand",
-        name: "Thailand",
+        name: "Thailand, Southeast Asia",
         landingImage: "/theme-covers/travel-thailand.webp",
         title: "Thailand",
         cover: {
@@ -349,7 +349,7 @@ export const COVER_THEMES = [
       },
       {
         id: "travel-australia",
-        name: "Australia",
+        name: "Australia, Oceania",
         landingImage: "/theme-covers/travel-australia.webp",
         title: "Australia",
         cover: {
@@ -409,7 +409,7 @@ export const COVER_THEMES = [
         // couple's names in script, the date and the place in spaced
         // capitals.
         id: "couple-wedding-ivory",
-        name: "Ivory & Gold",
+        name: "Our Wedding",
         landingImage: "/theme-covers/couple-wedding-ivory.webp",
         title: "Maya & Karim",
         cover: {
