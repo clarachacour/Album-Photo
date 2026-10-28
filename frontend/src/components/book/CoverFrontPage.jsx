@@ -128,8 +128,13 @@ export function CoverFrontPage({
     singleLine: titleSingleLine,
     scale: cover.title_scale ?? 1,
     // Albums made before this setting existed don't carry it: read it from
-    // their template.
-    fitHeight: cover.title_fit_height ?? !!findTemplate(templateId)?.cover?.title_fit_height,
+    // their template. In landscape, a title with a subtitle right under it
+    // (the travel covers) also stays within its box's height: filling the
+    // wider cover's width, it grew down onto the subtitle.
+    fitHeight:
+      cover.title_fit_height ??
+      (!!findTemplate(templateId)?.cover?.title_fit_height ||
+        (orientation === "landscape" && extras.some((it) => it.role === "subtitle"))),
   });
   const titleFontSizeStyle = containerWidth ? `${fittedTitleFontSizePx}px` : "clamp(18px, 9cqw, 56px)";
 
