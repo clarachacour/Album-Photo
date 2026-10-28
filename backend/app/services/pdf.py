@@ -76,7 +76,50 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
         raise RuntimeError(f"print page reported an error: {error_text}")
     page.evaluate("document.fonts.ready")
     page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
-    return page.pdf(print_background=True, prefer_css_page_size=True)
+    sheets = page.evaluate(
+        "() => [...document.querySelectorAll('.print-page')].map((e) => { const r = e.getBoundingClientRect(); return [r.width * 0.75, r.height * 0.75]; })"
+    )
+    return trim_to_sheets(page.pdf(print_background=True, prefer_css_page_size=True), sheets)
+
+
+# Chromium rounds a PDF page's size to a grid of about 1 pt: A5's 148 mm
+# (419.5 pt) came out 420 pt wide, and every page had a white hairline on
+# its right (portrait) or bottom (landscape) edge, where the drawing
+# stopped. No CSS can paint there, and the rounding depends on the size.
+# Each page is cut back to its sheet's real size instead (the drawing
+# starts at the top-left corner): exact A5/A4 sheets for the printer.
+TRIM_AT_MOST_PT = 2
+
+
+def trim_to_sheets(pdf: bytes, sheets) -> bytes:
+    """pdf with each page cut to sheets[i] = (width, height) in points, when
+    it is a little larger than that; left as is otherwise (or when the page
+    count doesn't match)."""
+    from pypdf import PdfReader, PdfWriter
+    from pypdf.generic import RectangleObject
+
+    reader = PdfReader(BytesIO(pdf))
+    if not sheets or len(reader.pages) != len(sheets):
+        return pdf
+    writer = PdfWriter()
+    changed = False
+    for pdf_page, (w, h) in zip(reader.pages, sheets):
+        box = pdf_page.mediabox
+        left, top = float(box.left), float(box.top)
+        width, height = float(box.width), float(box.height)
+        new_w = w if 0 < width - w <= TRIM_AT_MOST_PT else width
+        new_h = h if 0 < height - h <= TRIM_AT_MOST_PT else height
+        if (new_w, new_h) != (width, height):
+            rect = RectangleObject([left, top - new_h, left + new_w, top])
+            pdf_page.mediabox = rect
+            pdf_page.cropbox = rect
+            changed = True
+        writer.add_page(pdf_page)
+    if not changed:
+        return pdf
+    out = BytesIO()
+    writer.write(out)
+    return out.getvalue()
 
 def _describe_page(page) -> str:
     """What the browser is actually showing, for error messages: a login or
