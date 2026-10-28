@@ -227,7 +227,7 @@ export function GiftCardPreview({ gift, lang, code = "EVER-XXXX-XXXX" }) {
     <div className="relative bg-[#F7F3EB] shadow-md aspect-[148/105] w-full overflow-hidden" style={{ containerType: "inline-size" }} data-testid="gift-preview">
       <div className="absolute inset-y-0 left-0 w-[2.4%] bg-[color:var(--coral)]" />
       {/* The four albums of the home page, on the right. */}
-      <img src="/hero-shelf-380.webp" alt="" width={380} height={512} className="absolute right-[5.2%] top-[7.4%] h-[85.2%] w-auto" />
+      <img src="/hero-shelf-v2-380.webp" alt="" width={380} height={512} className="absolute right-[5.2%] top-[7.4%] h-[85.2%] w-auto" />
       <div className="absolute left-[6.7%] w-[39.5%] top-[6%] bottom-[7%] flex flex-col">
         <span className="font-serif-display font-semibold leading-none" style={{ fontSize: "4.8cqw" }}>Everbook</span>
         <span className="font-semibold text-[color:var(--coral)] tracking-wider mt-[2%]" style={{ fontSize: "1.7cqw" }}>{tl("gift.card.eyebrow")}</span>

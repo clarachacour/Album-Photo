@@ -81,9 +81,9 @@ export default function Landing() {
           <div className="md:col-span-5">
             <div className="max-w-md mx-auto md:ml-auto">
               <img
-                src="/hero-shelf.webp"
+                src="/hero-shelf-v2.webp"
                 // Smaller copies for phones: the same photo, a third of the weight.
-                srcSet="/hero-shelf-380.webp 380w, /hero-shelf-560.webp 560w, /hero-shelf.webp 760w"
+                srcSet="/hero-shelf-v2-380.webp 380w, /hero-shelf-v2-560.webp 560w, /hero-shelf-v2.webp 760w"
                 sizes="(min-width: 768px) 448px, calc(100vw - 48px)"
                 alt={t("landing.hero.image_alt")}
                 width={760}

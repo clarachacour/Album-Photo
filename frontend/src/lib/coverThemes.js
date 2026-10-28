@@ -94,6 +94,120 @@ export const COVER_THEMES = [
     spineCentred: false,
     templates: [
       {
+        // After Clara's mock-up: a cream cover, the title in burgundy
+        // capitals with serifs, centred, "Lebanon" under it, and Beirut's
+        // triple arched window with its stained glass (drawn as vectors,
+        // sharp at any print size).
+        id: "travel-beirut",
+        name: "Beirut, Lebanon",
+        landingImage: "/theme-covers/travel-beirut.webp",
+        title: "Beirut",
+        cover: {
+          bg_color: "#F3EED9",
+          accent_color: "#6B1E2A",
+          text_color: "#6B1E2A",
+          title_font: CORMORANT,
+          title_font_weight: "700",
+          title_font_size: 66,
+          title_text_align: "center",
+          title_x: 0.12, title_y: 0.06, title_w: 0.76, title_h: 0.13,
+          spine_subtitle: "Lebanon",
+          spine_subtitle_color: "#6B1E2A",
+          spine_subtitle_font: CORMORANT,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: CORMORANT,
+          spine_title_weight: "700",
+          extra_items: [
+            iconItem(TRAVEL_BEIRUT_ICON, "travel_beirut", { x: 0.1, y: 0.36, w: 0.8, h: 0.32 }),
+            textItem("subtitle", "LEBANON", { role: "subtitle", x: 0.25, y: 0.195, w: 0.5, h: 0.06, font: CORMORANT, font_weight: "600", font_size: 24, font_scale: 0.7, color: "#6B1E2A", text_align: "center" }),
+          ],
+        },
+      },
+      {
+        // Dubai's skyline (Museum of the Future, Dubai Frame, Burj
+        // Khalifa…), traced as vectors from Clara's mock-up (sharp at any
+        // print size); "Dubai" in Arabic under the title.
+        id: "travel-dubai",
+        name: "Dubai",
+        landingImage: "/theme-covers/travel-dubai.webp",
+        title: "Dubai",
+        cover: {
+          bg_color: "#027C80",
+          accent_color: "#0E2A4F",
+          text_color: "#FFFFFF",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "دبي",
+          spine_subtitle_color: "#0E2A4F",
+          spine_subtitle_font: ARABIC,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.05, y: 0.37, w: 0.9, h: 0.559 }),
+            textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
+          ],
+        },
+      },
+      {
+        // A Roman colonnade with its arch and mosaic floor (Kourion, near
+        // Limassol), traced as vectors from Clara's mock-up (sharp at any
+        // print size); "Limassol" in serif capitals under the title.
+        id: "travel-cyprus",
+        name: "Cyprus",
+        landingImage: "/theme-covers/travel-cyprus.webp",
+        title: "Cyprus",
+        cover: {
+          bg_color: "#EADFC6",
+          accent_color: "#344860",
+          text_color: "#344860",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "Limassol",
+          spine_subtitle_color: "#344860",
+          spine_subtitle_font: CORMORANT,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_CYPRUS_ICON, "travel_cyprus", { x: 0.07, y: 0.35, w: 0.86, h: 0.59 }),
+            textItem("subtitle", "LIMASSOL", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: CORMORANT, font_weight: "600", font_size: 28, font_scale: 0.7, color: "#344860", text_align: "right" }),
+          ],
+        },
+      },
+      {
+        // The Sphinx and the pyramids of Giza, traced as vectors from
+        // Clara's picture (sharp at any print size).
+        id: "travel-cairo",
+        name: "Cairo, Egypt",
+        landingImage: "/theme-covers/travel-cairo.webp",
+        title: "Cairo",
+        cover: {
+          bg_color: "#B78242",
+          accent_color: "#6E2E12",
+          text_color: "#F4E9D3",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "Egypt",
+          spine_subtitle_color: "#6E2E12",
+          spine_subtitle_font: BALOO,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.4, w: 0.84, h: 0.417 }),
+            textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
+          ],
+        },
+      },
+      {
         id: "travel-sicily",
         name: "Sicily",
         landingImage: "/theme-covers/travel-sicily.webp",
@@ -272,120 +386,6 @@ export const COVER_THEMES = [
           extra_items: [
             iconItem(TRAVEL_BARCELONA_ICON, "travel_barcelona", { x: 0.201, y: 0.44, w: 0.599, h: 0.5 }),
             textItem("subtitle", "Catalonia", { role: "subtitle", x: 0.34, y: 0.22, w: 0.6, h: 0.07, font: BALOO, font_weight: "700", font_size: 26, color: "#D9764A", text_align: "right" }),
-          ],
-        },
-      },
-      {
-        // After Clara's mock-up: a cream cover, the title in burgundy
-        // capitals with serifs, centred, "Lebanon" under it, and Beirut's
-        // triple arched window with its stained glass (drawn as vectors,
-        // sharp at any print size).
-        id: "travel-beirut",
-        name: "Beirut, Lebanon",
-        landingImage: "/theme-covers/travel-beirut.webp",
-        title: "Beirut",
-        cover: {
-          bg_color: "#F3EED9",
-          accent_color: "#6B1E2A",
-          text_color: "#6B1E2A",
-          title_font: CORMORANT,
-          title_font_weight: "700",
-          title_font_size: 66,
-          title_text_align: "center",
-          title_x: 0.12, title_y: 0.06, title_w: 0.76, title_h: 0.13,
-          spine_subtitle: "Lebanon",
-          spine_subtitle_color: "#6B1E2A",
-          spine_subtitle_font: CORMORANT,
-          spine_subtitle_weight: "700",
-          spine_title_size: 32,
-          spine_title_font: CORMORANT,
-          spine_title_weight: "700",
-          extra_items: [
-            iconItem(TRAVEL_BEIRUT_ICON, "travel_beirut", { x: 0.1, y: 0.36, w: 0.8, h: 0.32 }),
-            textItem("subtitle", "LEBANON", { role: "subtitle", x: 0.25, y: 0.195, w: 0.5, h: 0.06, font: CORMORANT, font_weight: "600", font_size: 24, font_scale: 0.7, color: "#6B1E2A", text_align: "center" }),
-          ],
-        },
-      },
-      {
-        // Dubai's skyline (Museum of the Future, Dubai Frame, Burj
-        // Khalifa…), traced as vectors from Clara's mock-up (sharp at any
-        // print size); "Dubai" in Arabic under the title.
-        id: "travel-dubai",
-        name: "Dubai",
-        landingImage: "/theme-covers/travel-dubai.webp",
-        title: "Dubai",
-        cover: {
-          bg_color: "#027C80",
-          accent_color: "#0E2A4F",
-          text_color: "#FFFFFF",
-          title_font: BALOO,
-          title_font_weight: "800",
-          title_font_size: 66,
-          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-          spine_subtitle: "دبي",
-          spine_subtitle_color: "#0E2A4F",
-          spine_subtitle_font: ARABIC,
-          spine_subtitle_weight: "700",
-          spine_title_size: 32,
-          spine_title_font: BALOO,
-          extra_items: [
-            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.05, y: 0.37, w: 0.9, h: 0.559 }),
-            textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
-          ],
-        },
-      },
-      {
-        // The Sphinx and the pyramids of Giza, traced as vectors from
-        // Clara's picture (sharp at any print size).
-        id: "travel-cairo",
-        name: "Cairo, Egypt",
-        landingImage: "/theme-covers/travel-cairo.webp",
-        title: "Cairo",
-        cover: {
-          bg_color: "#B78242",
-          accent_color: "#6E2E12",
-          text_color: "#F4E9D3",
-          title_font: BALOO,
-          title_font_weight: "800",
-          title_font_size: 66,
-          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-          spine_subtitle: "Egypt",
-          spine_subtitle_color: "#6E2E12",
-          spine_subtitle_font: BALOO,
-          spine_subtitle_weight: "700",
-          spine_title_size: 32,
-          spine_title_font: BALOO,
-          extra_items: [
-            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.4, w: 0.84, h: 0.417 }),
-            textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
-          ],
-        },
-      },
-      {
-        // A Roman colonnade with its arch and mosaic floor (Kourion, near
-        // Limassol), traced as vectors from Clara's mock-up (sharp at any
-        // print size); "Limassol" in serif capitals under the title.
-        id: "travel-cyprus",
-        name: "Cyprus",
-        landingImage: "/theme-covers/travel-cyprus.webp",
-        title: "Cyprus",
-        cover: {
-          bg_color: "#EADFC6",
-          accent_color: "#344860",
-          text_color: "#344860",
-          title_font: BALOO,
-          title_font_weight: "800",
-          title_font_size: 66,
-          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-          spine_subtitle: "Limassol",
-          spine_subtitle_color: "#344860",
-          spine_subtitle_font: CORMORANT,
-          spine_subtitle_weight: "700",
-          spine_title_size: 32,
-          spine_title_font: BALOO,
-          extra_items: [
-            iconItem(TRAVEL_CYPRUS_ICON, "travel_cyprus", { x: 0.07, y: 0.35, w: 0.86, h: 0.59 }),
-            textItem("subtitle", "LIMASSOL", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: CORMORANT, font_weight: "600", font_size: 28, font_scale: 0.7, color: "#344860", text_align: "right" }),
           ],
         },
       },
