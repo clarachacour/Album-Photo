@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Drawn as vectors (Everbook), after the Dubai cover mock-up: sharp at any print size -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 780" width="440" height="780">
+<g stroke-linejoin="round">
+<path d="M104,742 L104,118 C196,160 258,236 296,300 C330,400 344,560 334,742 Z" fill="#1E2A6A"/>
+<path d="M262,300 C318,384 338,562 320,742 L300,742 C314,560 296,404 262,334 Z" fill="#3D6C9C"/>
+<path d="M120,118 C214,168 274,330 270,742 L250,742 C252,342 200,194 120,146 Z" fill="#3D6C9C"/>
+<rect x="112" y="118" width="28" height="624" fill="#3D6C9C"/>
+<g stroke="#3D6C9C" stroke-width="13" stroke-linecap="round" fill="none">
+<line x1="140" y1="300" x2="222" y2="300"/>
+<line x1="140" y1="445" x2="244" y2="445"/>
+<line x1="140" y1="600" x2="252" y2="600"/>
+<line x1="146" y1="440" x2="220" y2="306"/>
+<line x1="146" y1="596" x2="240" y2="450"/>
+<line x1="148" y1="738" x2="250" y2="606"/>
+<line x1="146" y1="170" x2="196" y2="250"/>
+</g>
+<path d="M117,14 L125,14 L129,742 L113,742 Z" fill="#1E2A6A"/>
+<path d="M56,293 C78,280 112,282 140,290 L140,304 C112,308 80,306 56,299 Z" fill="#1E2A6A"/>
+<path d="M226,264 C258,250 292,250 306,261 C294,274 264,278 236,278 Z" fill="#1E2A6A"/>
+<path d="M30,762 L58,742 L384,742 L412,762 Z" fill="#1E2A6A"/>
+</g>
+</svg>

@@ -305,6 +305,33 @@ export const COVER_THEMES = [
           ],
         },
       },
+      {
+        // Burj Al Arab, drawn as vectors after Clara's mock-up (sharp at
+        // any print size); "Dubai" in Arabic under the title.
+        id: "travel-dubai",
+        name: "Dubai",
+        landingImage: "/theme-covers/travel-dubai.webp",
+        title: "Dubai",
+        cover: {
+          bg_color: "#027C80",
+          accent_color: "#0E2A4F",
+          text_color: "#FFFFFF",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "دبي",
+          spine_subtitle_color: "#0E2A4F",
+          spine_subtitle_font: ARABIC,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.286, y: 0.36, w: 0.428, h: 0.55 }),
+            textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
+          ],
+        },
+      },
     ],
   },
   {
@@ -609,33 +636,8 @@ export function findTemplate(templateId) {
 // Travel covers for travellers from Lebanon, kept out of the template list
 // until their illustrations are redone from high-resolution images: add
 // them back to the "travel" templates above to offer them again (as done
-// for Beirut).
+// for Beirut and Dubai).
 export const PENDING_TRAVEL_TEMPLATES = [
-  {
-    id: "travel-dubai",
-    name: "Dubai",
-    landingImage: "/theme-covers/travel-dubai.webp",
-    title: "Dubai",
-    cover: {
-      bg_color: "#027C80",
-      accent_color: "#0E2A4F",
-      text_color: "#FFFFFF",
-      title_font: BALOO,
-      title_font_weight: "800",
-      title_font_size: 66,
-      title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
-      spine_subtitle: "دبي",
-      spine_subtitle_color: "#0E2A4F",
-      spine_subtitle_font: ARABIC,
-      spine_subtitle_weight: "700",
-      spine_title_size: 32,
-      spine_title_font: BALOO,
-      extra_items: [
-        iconItem(TRAVEL_DUBAI_ICON, "travel_dubai", { x: 0.286, y: 0.36, w: 0.428, h: 0.55 }),
-        textItem("subtitle", "دبي", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: ARABIC, font_weight: "700", font_size: 34, color: "#0E2A4F", text_align: "right" }),
-      ],
-    },
-  },
   {
     id: "travel-cairo",
     name: "Cairo, Egypt",
