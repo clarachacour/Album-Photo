@@ -341,7 +341,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
       {editable && selected && (
         <div
           // after: a larger invisible area around the small square, easy to catch with a finger
-          className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-[color:var(--coral)] cursor-nwse-resize z-10 rounded-sm touch-none after:content-[''] after:absolute after:-inset-3"
+          className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-[color:var(--coral)] cursor-nwse-resize z-10 rounded-sm touch-none pointer-events-auto after:content-[''] after:absolute after:-inset-3"
           onPointerDown={onResizePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -355,7 +355,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
         EDGE_HANDLES.map((hd) => (
           <div
             key={hd.name}
-            className={`absolute ${hd.cls} bg-[color:var(--coral)] z-10 rounded-sm touch-none after:content-[''] after:absolute after:-inset-2.5`}
+            className={`absolute ${hd.cls} bg-[color:var(--coral)] z-10 rounded-sm touch-none pointer-events-auto after:content-[''] after:absolute after:-inset-2.5`}
             onPointerDown={(e) => onResizePointerDown(e, hd.hx, hd.hy)}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -370,7 +370,7 @@ export function DraggableItem({ item, onChange, onSelect, selected, containerRef
         // whatever its turn (down when the frame touches the top of the
         // page, where it would be cut off).
         <div
-          className={`absolute z-10 w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${handleInside ? "bottom-2 left-1/2 -translate-x-1/2" : HANDLE_SIDE_CLASS[handleSide(rotation, rotateHandleBelow || item.y < 0.08)]}`}
+          className={`absolute z-10 pointer-events-auto w-6 h-6 rounded-full bg-[color:var(--coral)] text-white flex items-center justify-center cursor-grab touch-none shadow after:content-[''] after:absolute after:-inset-2 ${handleInside ? "bottom-2 left-1/2 -translate-x-1/2" : HANDLE_SIDE_CLASS[handleSide(rotation, rotateHandleBelow || item.y < 0.08)]}`}
           onPointerDown={onRotatePointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
