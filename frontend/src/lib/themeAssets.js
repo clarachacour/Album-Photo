@@ -10,3 +10,4 @@ export const TRAVEL_BARCELONA_ICON = "/cover-art/travel-barcelona-v2.svg";
 export const TRAVEL_BEIRUT_ICON = "/cover-art/travel-beirut-v2.svg";
 export const TRAVEL_DUBAI_ICON = "/cover-art/travel-dubai-v3.svg";
 export const TRAVEL_CAIRO_ICON = "/cover-art/travel-cairo-v4.svg";
+export const TRAVEL_CYPRUS_ICON = "/cover-art/travel-cyprus-v1.svg";

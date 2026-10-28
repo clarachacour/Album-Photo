@@ -14,6 +14,7 @@ import {
   TRAVEL_BEIRUT_ICON,
   TRAVEL_DUBAI_ICON,
   TRAVEL_CAIRO_ICON,
+  TRAVEL_CYPRUS_ICON,
 } from "@/lib/themeAssets";
 
 // Spine logos, files in public/cover-art (see coverAssets.js).
@@ -357,6 +358,34 @@ export const COVER_THEMES = [
           extra_items: [
             iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.4, w: 0.84, h: 0.417 }),
             textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
+          ],
+        },
+      },
+      {
+        // A Roman colonnade with its arch and mosaic floor (Kourion, near
+        // Limassol), traced as vectors from Clara's mock-up (sharp at any
+        // print size); "Limassol" in serif capitals under the title.
+        id: "travel-cyprus",
+        name: "Cyprus",
+        landingImage: "/theme-covers/travel-cyprus.webp",
+        title: "Cyprus",
+        cover: {
+          bg_color: "#EADFC6",
+          accent_color: "#344860",
+          text_color: "#344860",
+          title_font: BALOO,
+          title_font_weight: "800",
+          title_font_size: 66,
+          title_x: 0.05, title_y: 0.04, title_w: 0.89, title_h: 0.18,
+          spine_subtitle: "Limassol",
+          spine_subtitle_color: "#344860",
+          spine_subtitle_font: CORMORANT,
+          spine_subtitle_weight: "700",
+          spine_title_size: 32,
+          spine_title_font: BALOO,
+          extra_items: [
+            iconItem(TRAVEL_CYPRUS_ICON, "travel_cyprus", { x: 0.06, y: 0.33, w: 0.88, h: 0.605 }),
+            textItem("subtitle", "LIMASSOL", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: CORMORANT, font_weight: "600", font_size: 28, color: "#344860", text_align: "right" }),
           ],
         },
       },
