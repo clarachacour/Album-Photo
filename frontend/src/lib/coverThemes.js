@@ -333,8 +333,8 @@ export const COVER_THEMES = [
         },
       },
       {
-        // The pyramids of Giza and the Sphinx, drawn as vectors after
-        // Clara's mock-up (sharp at any print size).
+        // The pyramids of Giza, drawn as vectors after Clara's mock-up
+        // (sharp at any print size).
         id: "travel-cairo",
         name: "Cairo, Egypt",
         landingImage: "/theme-covers/travel-cairo.webp",
@@ -354,7 +354,7 @@ export const COVER_THEMES = [
           spine_title_size: 32,
           spine_title_font: BALOO,
           extra_items: [
-            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.42, w: 0.84, h: 0.42 }),
+            iconItem(TRAVEL_CAIRO_ICON, "travel_cairo", { x: 0.08, y: 0.44, w: 0.84, h: 0.375 }),
             textItem("subtitle", "Egypt", { role: "subtitle", x: 0.44, y: 0.22, w: 0.5, h: 0.08, font: BALOO, font_weight: "700", font_size: 28, color: "#6E2E12", text_align: "right" }),
           ],
         },

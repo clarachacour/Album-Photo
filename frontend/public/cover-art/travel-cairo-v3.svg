@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Drawn as vectors (Everbook), after the Cairo cover mock-up: the pyramids of Giza, sharp at any print size -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 0 760 480" width="760" height="480">
+<g stroke-linejoin="round">
+<!-- Third pyramid, small, on the left -->
+<path d="M208,300 L92,456 L132,462 Z" fill="#5E2A12"/>
+<path d="M208,300 L330,462 L132,462 Z" fill="#8F4A27"/>
+<path d="M208,300 L132,462 M208,300 L330,462" stroke="#D4A06A" stroke-width="5" fill="none"/>
+<!-- Great pyramid -->
+<path d="M448,22 L246,452 L330,456 Z" fill="#5E2A12"/>
+<path d="M448,22 L792,456 L330,456 Z" fill="#8A4524"/>
+<path d="M448,22 L330,456" stroke="#D4A06A" stroke-width="7" fill="none"/>
+<!-- Second pyramid, in front -->
+<path d="M432,206 L292,392 L332,466 Z" fill="#5E2A12"/>
+<path d="M432,206 L636,466 L332,466 Z" fill="#8F4A27"/>
+<path d="M432,206 L332,466 M432,206 L636,466" stroke="#D4A06A" stroke-width="6" fill="none"/>
+</g>
+</svg>
