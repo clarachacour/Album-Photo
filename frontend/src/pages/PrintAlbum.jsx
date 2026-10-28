@@ -162,6 +162,11 @@ export default function PrintAlbum() {
   const chunkTo = toParam != null ? parseInt(toParam, 10) : allPages.length - 1;
   const includeCover = fromParam == null || chunkFrom <= 0;
   const includeBackCover = toParam == null || chunkTo >= allPages.length - 1;
+  // The browser rounds a PDF page's size (A5's 148 mm becomes 420 pt, not
+  // 419.5): the covers stopped half a point short of the page's edge, a
+  // white hairline on the right (portrait) or at the bottom (landscape).
+  // An outline in the cover's color fills it, without changing the layout.
+  const coverEdge = `2px solid ${cover.bg_color || template.bg}`;
   const chunkPages = allPages
     .map((page, i) => ({ page, i }))
     .filter(({ i }) => i >= chunkFrom && i <= chunkTo);
@@ -210,7 +215,7 @@ export default function PrintAlbum() {
       )}
 
       {includeCover && digital && (
-        <div className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+        <div className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm`, outline: coverEdge }}>
           <CoverFrontPage
             imageVariant={variant}
             template={template}
@@ -225,7 +230,7 @@ export default function PrintAlbum() {
       )}
 
       {includeCover && !spread && !digital && (
-        <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex" }}>
+        <div className="print-page cover-sheet" style={{ width: `${pw + spineMm + seamMm}mm`, height: `${ph}mm`, display: "flex", outline: coverEdge }}>
           <div style={{ width: `${spineMm}mm`, height: `${ph}mm`, flexShrink: 0 }}>
             <CoverSpine title={album.title} templateId={album.cover_template_id} template={template} cover={cover} editable={false} />
           </div>
@@ -258,7 +263,7 @@ export default function PrintAlbum() {
       {/* Back cover — only the chunk that reaches the real end of the album,
           and only when it isn't already on the printer's cover sheet. */}
       {includeBackCover && !spread && (
-        <div className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+        <div className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm`, outline: coverEdge }}>
           <CoverBackPage
             imageVariant={variant}
             template={template}
