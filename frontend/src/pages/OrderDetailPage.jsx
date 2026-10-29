@@ -164,6 +164,7 @@ export default function OrderDetailPage() {
                   {order.shipping_waived_cents > 0 ? t("orderDetail.shippingShared") : formatPrice(order.shipping_price_cents, order.currency)}
                 </div>
               )}
+              {order.promo_discount_cents > 0 && <div className="text-[color:var(--coral)]">{t("orderDetail.promo", { code: order.promo_code })}: −{formatPrice(order.promo_discount_cents, order.currency)}</div>}
               {order.gift_credit_cents > 0 && <div className="text-[color:var(--coral)]">{t("cart.credit")}: −{formatPrice(order.gift_credit_cents, order.currency)}</div>}
               {order.credit_cents > 0 && !albumOffered(order) && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
               {/* A printed album is paid in cash to the courier (only the

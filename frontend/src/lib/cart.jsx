@@ -49,8 +49,20 @@ export function CartProvider({ children }) {
     return data;
   };
 
+  // A promo code: kept on the cart (the server says why when it can't be used).
+  const applyPromo = async (code) => {
+    const { data } = await api.post("/cart/promo", { code });
+    setCart(data);
+    return data;
+  };
+  const removePromo = async () => {
+    const { data } = await api.delete("/cart/promo");
+    setCart(data);
+    return data;
+  };
+
   return (
-    <CartContext.Provider value={{ cart, count: cart?.count || 0, refresh, add, addGift, setQuantity, remove, setCart }}>
+    <CartContext.Provider value={{ cart, count: cart?.count || 0, refresh, add, addGift, setQuantity, remove, applyPromo, removePromo, setCart }}>
       {children}
     </CartContext.Provider>
   );

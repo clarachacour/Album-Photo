@@ -300,7 +300,8 @@
     "digitalReady": "Votre album est prêt. Téléchargez-le autant de fois que vous voulez.",
     "downloadPdf": "Télécharger le PDF",
     "downloadError": "Impossible de télécharger l'album, réessayez.",
-    "followCourier": "Suivre le livreur →"
+    "followCourier": "Suivre le livreur →",
+    "promo": "Code promo {{code}}"
   },
   "account": {
     "eyebrow": "Compte",
@@ -1302,7 +1303,18 @@
       "detail": "Un album {{size}} de {{pages}} pages · livraison incluse · PDF"
     },
     "coveredByGift": "Couvert par votre carte cadeau : rien à payer.",
-    "partlyCoveredByGift": "Votre carte cadeau en couvre une partie : {{amount}} $ restent à payer."
+    "partlyCoveredByGift": "Votre carte cadeau en couvre une partie : {{amount}} $ restent à payer.",
+    "promo": {
+      "label": "Code promo",
+      "apply": "Appliquer",
+      "line": "Code {{code}} (−{{percent}} %)",
+      "errors": {
+        "unknown": "Ce code n'existe pas.",
+        "inactive": "Ce code n'est plus actif.",
+        "expired": "Ce code a expiré.",
+        "used": "Vous avez déjà utilisé ce code."
+      }
+    }
   },
   "gift": {
     "eyebrow": "Carte cadeau",

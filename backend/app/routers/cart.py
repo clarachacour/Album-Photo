@@ -13,10 +13,10 @@ from app.core.auth import get_current_user
 from app.core.executors import run_email
 from app.db import db
 from app.routers.albums import _slim_stored_cover
-from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput
+from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput, PromoApplyInput
 from app.services.checkout import build_order_doc, unit_price_cents
 from app.config import FRONTEND_URL
-from app.services import gift_cards, reminders
+from app.services import gift_cards, promo_codes, reminders
 from app.services.email import send_checkout_confirmation_email, send_gift_cards_email, send_order_confirmation_email
 from app.services import payments
 from app.services.payments import NEEDS_ONLINE_PAYMENT, collect_payment
@@ -63,21 +63,36 @@ def _gift_line(item: dict) -> dict:
             "problem": None if payments.ONLINE_PAYMENT else "payment_soon"}
 
 
+def _due(line: dict) -> int:
+    return line["line_total_cents"] - line.get("discount_cents", 0)
+
+
 def plan_credit(lines: list, shipping: int, balance: int) -> dict:
-    """How the customer's credit (gift cards) is used on the albums: the
-    printed ones and their delivery first (less for the courier to
-    collect), then the PDFs. Not on gift cards bought."""
-    prints = sum(line["line_total_cents"] for line in lines if line["kind"] == "print") + shipping
-    digitals = sum(line["line_total_cents"] for line in lines if line["kind"] == "digital")
+    """How the customer's credit (gift cards) is used on the albums, after
+    any promo code: the printed ones and their delivery first (less for
+    the courier to collect), then the PDFs. Not on gift cards bought."""
+    prints = sum(_due(line) for line in lines if line["kind"] == "print") + shipping
+    digitals = sum(_due(line) for line in lines if line["kind"] == "digital")
     on_prints = min(balance, prints)
     on_digitals = min(balance - on_prints, digitals)
     return {"applied": on_prints + on_digitals, "cash": prints - on_prints}
 
 
+async def _promo(user: dict):
+    """The promo code entered in the cart: ({"code", "percent", "problem"},
+    the percent to take off — 0 when it can't be used), or (None, 0)."""
+    cart = await db.carts.find_one({"user_id": user["id"]}, {"_id": 0, "promo_code": 1}) or {}
+    if not cart.get("promo_code"):
+        return None, 0
+    promo, problem = await promo_codes.check(cart["promo_code"], user["id"])
+    percent = promo["percent"] if promo and not problem else 0
+    return {"code": cart["promo_code"], "percent": promo["percent"] if promo else None, "problem": problem}, percent
+
+
 async def _view(user: dict) -> dict:
     """The cart as the site shows it: each line priced on the server, the
-    delivery once for all the printed albums, the credit taken off, the
-    total."""
+    delivery once for all the printed albums, the promo code and the
+    credit taken off, the total."""
     lines, kept = [], []
     for item in await _items(user):
         if item["kind"] == "gift":
@@ -105,12 +120,19 @@ async def _view(user: dict) -> dict:
     valid = [line for line in lines if not line["problem"]]
     shipping = SHIPPING_PRICE_CENTS if any(line["kind"] == "print" for line in valid) else 0
     subtotal = sum(line["line_total_cents"] for line in valid)
+    # A promo code: a percentage off each album (not the delivery, not gift cards).
+    promo, percent = await _promo(user)
+    for line in valid:
+        if line["kind"] != "gift":
+            line["discount_cents"] = promo_codes.discount_cents(line["line_total_cents"], percent)
+    discount = sum(line.get("discount_cents", 0) for line in valid)
     balance = await gift_cards.credit_balance(user["id"])
     credit = plan_credit(valid, shipping, balance)
     gifts = sum(line["line_total_cents"] for line in valid if line["kind"] == "gift")
     return {"items": lines, "count": len(lines), "subtotal_cents": subtotal, "shipping_cents": shipping,
+            "promo": promo, "discount_cents": discount,
             "credit_balance_cents": balance, "credit_applied_cents": credit["applied"],
-            "total_cents": subtotal + shipping - credit["applied"],
+            "total_cents": subtotal + shipping - discount - credit["applied"],
             # What's paid through the payment step (gift cards), and what the
             # courier collects in cash (the printed albums).
             "pay_now_cents": gifts, "cash_cents": credit["cash"], "currency": "usd"}
@@ -186,6 +208,23 @@ async def remove_from_cart(item_id: str, user: dict = Depends(get_current_user))
     return await _view(user)
 
 
+@router.post("/cart/promo")
+async def apply_promo_code(data: PromoApplyInput, user: dict = Depends(get_current_user)):
+    """The promo code typed in the cart: kept on the cart when this customer
+    can use it; otherwise 400 with why ("promo_unknown", "promo_expired"…)."""
+    promo, problem = await promo_codes.check(data.code, user["id"])
+    if problem:
+        raise HTTPException(status_code=400, detail=f"promo_{problem}")
+    await db.carts.update_one({"user_id": user["id"]}, {"$set": {"promo_code": promo["code"]}}, upsert=True)
+    return await _view(user)
+
+
+@router.delete("/cart/promo")
+async def remove_promo_code(user: dict = Depends(get_current_user)):
+    await db.carts.update_one({"user_id": user["id"]}, {"$unset": {"promo_code": ""}})
+    return await _view(user)
+
+
 @router.post("/cart/checkout")
 async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     """Orders everything in the cart at once: one order per album and
@@ -203,6 +242,11 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="A delivery address is needed for a printed album")
     if data.accepted_terms_version != TERMS_VERSION:
         raise HTTPException(status_code=400, detail="Please accept the current terms of sale to place your order")
+    # A code that stopped working meanwhile (last day passed, switched off,
+    # used in another tab): the customer sees why and removes it.
+    if view["promo"] and view["promo"]["problem"]:
+        raise HTTPException(status_code=409, detail="Your promo code can't be used any more — please remove it")
+    promo = view["promo"]
     checkout_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     gift_lines = [line for line in view["items"] if line["kind"] == "gift"]
@@ -222,7 +266,8 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         shipping = 0
         if line["kind"] == "print" and not shipping_paid:
             shipping, shipping_paid = SHIPPING_PRICE_CENTS, True
-        doc = await build_order_doc(user, album, line["kind"], line["quantity"], address, shipping, checkout_id, now)
+        doc = await build_order_doc(user, album, line["kind"], line["quantity"], address, shipping, checkout_id, now,
+                                    promo_code=promo["code"] if promo else None, promo_percent=promo["percent"] if promo else 0)
         try:
             await db.orders.insert_one(doc)
         except DuplicateKeyError:
@@ -239,6 +284,8 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     ordered = {(o["album_id"], o["kind"]) for o in orders}
     gift_ids = {line["id"] for line in gift_lines}
     await _save(user, [i for i in await _items(user) if (i.get("album_id"), i["kind"]) not in ordered and i["id"] not in gift_ids])
+    if promo and orders:
+        await db.carts.update_one({"user_id": user["id"]}, {"$unset": {"promo_code": ""}})
     if orders:
         orders = await db.orders.find({"checkout_id": checkout_id}, {"_id": 0}).to_list(50)
         if len(orders) == 1:

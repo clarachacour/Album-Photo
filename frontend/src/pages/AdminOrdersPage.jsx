@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail, FileSpreadsheet, Link2 } from "lucide-react";
 import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
+import PromoCodesPanel from "@/components/admin/PromoCodesPanel";
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -269,6 +270,8 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
+        <PromoCodesPanel />
+
         {loading ? (
           <p className="text-sm text-[color:var(--muted)]">Loading…</p>
         ) : orders.length === 0 ? (
@@ -349,7 +352,10 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="p-3 whitespace-nowrap">{o.size} · {o.orientation}</td>
                       <td className="p-3">{o.quantity}</td>
-                      <td className="p-3 whitespace-nowrap">{formatPrice(o.total_price_cents, o.currency)}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        {formatPrice(o.total_price_cents, o.currency)}
+                        {o.promo_code && <div className="text-[11px] text-[color:var(--coral)]">{o.promo_code} −{formatPrice(o.promo_discount_cents, o.currency)}</div>}
+                      </td>
                       <td className="p-3">
                         <select
                           value={o.status}

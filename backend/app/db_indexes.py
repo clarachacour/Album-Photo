@@ -34,6 +34,8 @@ INDEXES = [
     ("gift_cards", "id", {"unique": True}),
     ("gift_cards", "code", {"unique": True}),
     ("gift_cards", "buyer_user_id", {}),
+    ("promo_codes", "code", {"unique": True}),
+    ("orders", "promo_code", {}),
     ("credits", "id", {"unique": True}),
     ("credits", "user_id", {}),
     ("pdf_generation_slots", "order_id", {"unique": True}),

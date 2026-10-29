@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useLocalePath } from "@/components/LocalLink";
 import { toast } from "sonner";
-import { Banknote, CreditCard, Gift, Loader2, Plus, Smartphone, Trash2 } from "lucide-react";
+import { Banknote, CreditCard, Gift, Loader2, Plus, Smartphone, Tag, Trash2 } from "lucide-react";
 import { api, coverImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -278,6 +278,12 @@ export default function CartPage() {
                   </div>
                 )}
                 {hasPrint && <p className="text-xs text-[color:var(--muted)] pt-1">{t("cart.deliveredTogether")}</p>}
+                {cart.discount_cents > 0 && (
+                  <div className="flex justify-between text-[color:var(--coral)] pt-1" data-testid="cart-discount">
+                    <span>{t("cart.promo.line", { code: cart.promo.code, percent: cart.promo.percent })}</span>
+                    <span>−{money(cart.discount_cents)}</span>
+                  </div>
+                )}
                 {/* Gift card credit on the account, taken off the albums. */}
                 {cart.credit_applied_cents > 0 && (
                   <div className="flex justify-between text-[color:var(--coral)] pt-1" data-testid="cart-credit">
@@ -305,6 +311,7 @@ export default function CartPage() {
               {cart.credit_balance_cents > cart.credit_applied_cents && cart.credit_applied_cents > 0 && (
                 <p className="text-xs text-[color:var(--muted)] -mt-3 mb-6">{t("cart.creditLeft", { amount: money(cart.credit_balance_cents - cart.credit_applied_cents) })}</p>
               )}
+              <PromoBox cart={cart} />
               <label className={`flex items-start gap-2 text-xs leading-relaxed mb-4 cursor-pointer ${termsError ? "text-red-700" : "text-ink/80"}`}>
                 <input
                   type="checkbox"
@@ -341,6 +348,79 @@ export default function CartPage() {
         )}
       </div>
     </main>
+  );
+}
+
+// The promo code: typed and applied, or shown with a way to remove it (and,
+// when it stopped working meanwhile, why).
+function PromoBox({ cart }) {
+  const { t } = useTranslation();
+  const { applyPromo, removePromo } = useCart();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const promo = cart.promo;
+
+  const apply = async () => {
+    if (!code.trim() || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await applyPromo(code.trim());
+      setCode("");
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(t(`cart.promo.errors.${typeof detail === "string" ? detail.replace("promo_", "") : "unknown"}`, { defaultValue: t("cart.promo.errors.unknown") }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (promo) {
+    return (
+      <div className="mb-5 text-xs" data-testid="cart-promo-applied">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 font-semibold tracking-wider"><Tag size={12} className="text-[color:var(--coral)]" /> {promo.code}</span>
+          <button type="button" onClick={() => removePromo()} className="text-[color:var(--muted)] underline hover:text-red-700" data-testid="cart-promo-remove">
+            {t("cart.remove")}
+          </button>
+        </div>
+        {promo.problem && <p className="text-red-700 mt-1" data-testid="cart-promo-problem">{t(`cart.promo.errors.${promo.problem}`)}</p>}
+      </div>
+    );
+  }
+  return (
+    <div className="mb-5">
+      <label className="eyebrow block mb-2" htmlFor="promo-code">{t("cart.promo.label")}</label>
+      <div className="flex gap-2">
+        <input
+          id="promo-code"
+          className="flex-1 min-w-0 border border-ink/20 px-3 py-2 text-sm uppercase bg-white focus:border-[color:var(--ink)] focus:outline-none"
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setError("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              apply();
+            }
+          }}
+          data-testid="cart-promo-input"
+        />
+        <button
+          type="button"
+          onClick={apply}
+          disabled={!code.trim() || busy}
+          className="shrink-0 border border-[color:var(--ink)] px-3 text-xs font-semibold tracking-widest uppercase hover:bg-[color:var(--ink)] hover:text-[color:var(--paper)] transition-colors disabled:opacity-40"
+          data-testid="cart-promo-apply"
+        >
+          {busy ? <Loader2 size={12} className="animate-spin" /> : t("cart.promo.apply")}
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-700 mt-1.5" data-testid="cart-promo-error">{error}</p>}
+    </div>
   );
 }
 

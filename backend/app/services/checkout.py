@@ -11,6 +11,7 @@ from app.services.pricing import (
     compute_digital_price_cents,
     compute_order_price_cents,
 )
+from app.services.promo_codes import discount_cents
 
 
 def unit_price_cents(album: dict, kind: str) -> int:
@@ -27,15 +28,20 @@ async def build_order_doc(
     shipping: int,
     checkout_id: Optional[str] = None,
     now: Optional[str] = None,
+    promo_code: Optional[str] = None,
+    promo_percent: int = 0,
 ) -> dict:
     """A new order, priced on the server. `shipping`: what this order pays
-    for delivery (a cart's printed albums pay it once, on the first)."""
+    for delivery (a cart's printed albums pay it once, on the first).
+    `promo_percent`: a promo code's percentage off the album (not the
+    delivery)."""
     digital = kind == "digital"
     unit_price = unit_price_cents(album, kind)
     quantity = 1 if digital else quantity
     # No combined price: the PDF and the printed book of the same album are
     # each at their own price.
     credit = 0
+    discount = discount_cents(unit_price * quantity, promo_percent) if promo_code else 0
     now = now or datetime.now(timezone.utc).isoformat()
     doc = {
         "id": str(uuid.uuid4()),
@@ -49,7 +55,7 @@ async def build_order_doc(
         "unit_price_cents": unit_price,
         "shipping_price_cents": shipping,
         "credit_cents": credit,
-        "total_price_cents": unit_price * quantity + shipping - credit,
+        "total_price_cents": unit_price * quantity + shipping - credit - discount,
         "terms_version": TERMS_VERSION,
         "terms_accepted_at": now,
         "currency": "usd",
@@ -70,4 +76,7 @@ async def build_order_doc(
     }
     if checkout_id:
         doc["checkout_id"] = checkout_id
+    if promo_code:
+        doc["promo_code"] = promo_code
+        doc["promo_discount_cents"] = discount
     return doc

@@ -134,6 +134,19 @@ class GiftCardInput(BaseModel):
 class GiftCodeInput(BaseModel):
     code: str = Field(min_length=4, max_length=40)
 
+class PromoCodeInput(BaseModel):
+    code: str = Field(min_length=3, max_length=30)
+    percent: int = Field(ge=1, le=100)
+    # The last day it works (in Lebanon), "YYYY-MM-DD"; none: no end.
+    ends_on: Optional[str] = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
+
+class PromoCodeUpdate(BaseModel):
+    active: Optional[bool] = None
+    ends_on: Optional[str] = Field(default=None, pattern=r"^(\d{4}-\d{2}-\d{2})?$")
+
+class PromoApplyInput(BaseModel):
+    code: str = Field(min_length=1, max_length=40)
+
 class CheckoutInput(BaseModel):
     # Needed when the cart holds a printed album.
     shipping_address: Optional[ShippingAddress] = None

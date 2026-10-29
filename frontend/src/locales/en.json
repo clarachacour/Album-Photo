@@ -300,7 +300,8 @@
     "digitalReady": "Your album is ready. Download it as many times as you like.",
     "downloadPdf": "Download PDF",
     "downloadError": "Couldn't download the album, please try again.",
-    "followCourier": "Follow the courier →"
+    "followCourier": "Follow the courier →",
+    "promo": "Promo code {{code}}"
   },
   "account": {
     "eyebrow": "Account",
@@ -1302,7 +1303,18 @@
       "detail": "A {{pages}}-page {{size}} album · delivery included · PDF"
     },
     "coveredByGift": "Covered by your gift card: nothing to pay.",
-    "partlyCoveredByGift": "Your gift card covers part of it: ${{amount}} left to pay."
+    "partlyCoveredByGift": "Your gift card covers part of it: ${{amount}} left to pay.",
+    "promo": {
+      "label": "Promo code",
+      "apply": "Apply",
+      "line": "Code {{code}} (−{{percent}}%)",
+      "errors": {
+        "unknown": "This code doesn't exist.",
+        "inactive": "This code is no longer active.",
+        "expired": "This code has expired.",
+        "used": "You've already used this code."
+      }
+    }
   },
   "gift": {
     "eyebrow": "Gift card",
