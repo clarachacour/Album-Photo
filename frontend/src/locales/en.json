@@ -1313,7 +1313,8 @@
         "inactive": "This code is no longer active.",
         "expired": "This code has expired.",
         "used": "You've already used this code."
-      }
+      },
+      "noCredit": "A promo code and gift card credit can't be combined: your credit ({{amount}}) stays on your account. Remove the code to use it."
     },
     "nothingToPay": "Nothing to pay."
   },

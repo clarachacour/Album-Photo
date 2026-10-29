@@ -386,6 +386,11 @@ function PromoBox({ cart }) {
           </button>
         </div>
         {promo.problem && <p className="text-red-700 mt-1" data-testid="cart-promo-problem">{t(`cart.promo.errors.${promo.problem}`)}</p>}
+        {!promo.problem && cart.credit_balance_cents > 0 && (
+          <p className="text-[color:var(--muted)] mt-1.5 leading-relaxed" data-testid="cart-promo-no-credit">
+            {t("cart.promo.noCredit", { amount: money(cart.credit_balance_cents) })}
+          </p>
+        )}
       </div>
     );
   }

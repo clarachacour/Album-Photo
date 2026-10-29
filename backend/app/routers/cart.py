@@ -127,7 +127,9 @@ async def _view(user: dict) -> dict:
             line["discount_cents"] = promo_codes.discount_cents(line["line_total_cents"], percent)
     discount = sum(line.get("discount_cents", 0) for line in valid)
     balance = await gift_cards.credit_balance(user["id"])
-    credit = plan_credit(valid, shipping, balance)
+    # A promo code and gift card credit don't add up: with a code, the
+    # credit isn't used (it stays on the account for a next order).
+    credit = plan_credit(valid, shipping, 0 if percent else balance)
     gifts = sum(line["line_total_cents"] for line in valid if line["kind"] == "gift")
     return {"items": lines, "count": len(lines), "subtotal_cents": subtotal, "shipping_cents": shipping,
             "promo": promo, "discount_cents": discount,
@@ -279,7 +281,8 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         orders.append(doc)
     if album_lines and not orders and not gift_lines:
         raise HTTPException(status_code=409, detail="An order already exists for these albums")
-    await _apply_credit(user, orders)
+    if not promo:
+        await _apply_credit(user, orders)
     cards = [await gift_cards.create_gift_card(user, line, checkout_id, payment) for line in gift_lines]
     ordered = {(o["album_id"], o["kind"]) for o in orders}
     gift_ids = {line["id"] for line in gift_lines}

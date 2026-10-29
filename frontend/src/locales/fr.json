@@ -1313,7 +1313,8 @@
         "inactive": "Ce code n'est plus actif.",
         "expired": "Ce code a expiré.",
         "used": "Vous avez déjà utilisé ce code."
-      }
+      },
+      "noCredit": "Un code promo et l'avoir d'une carte cadeau ne se cumulent pas : votre avoir ({{amount}}) reste sur votre compte. Retirez le code pour l'utiliser."
     },
     "nothingToPay": "Rien à payer."
   },

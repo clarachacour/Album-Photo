@@ -85,3 +85,21 @@ def test_the_courier_collects_the_lower_total(client, db, shop, welcome):
     client.post("/api/cart/promo", json={"code": "WELCOME10"}, headers=shop["headers"])
     order = _checkout(client, shop).json()["orders"][0]
     assert wakilni.cash_due(order) == PRICE + SHIPPING_PRICE_CENTS - round(PRICE * 0.10)
+
+
+def test_a_promo_code_and_gift_card_credit_dont_add_up(client, db, shop, welcome):
+    from app.services import gift_cards
+
+    album = shop["album"]("Zahle")
+    client.post("/api/cart/items", json={"album_id": album, "kind": "print", "quantity": 1}, headers=shop["headers"])
+    user_id = asyncio.run(db.albums.find_one({"id": album}))["user_id"]
+    asyncio.run(db.credits.insert_one({"id": "cr-promo", "user_id": user_id, "remaining_cents": 5800, "expires_at": "2099-01-01T00:00:00+00:00"}))
+    before = asyncio.run(gift_cards.credit_balance(user_id))
+    assert before >= 5800
+    # Without a code, the credit is used.
+    assert client.get("/api/cart", headers=shop["headers"]).json()["credit_applied_cents"] > 0
+    cart = client.post("/api/cart/promo", json={"code": "WELCOME10"}, headers=shop["headers"]).json()
+    assert cart["credit_applied_cents"] == 0 and cart["discount_cents"] > 0
+    order = _checkout(client, shop).json()["orders"][0]
+    assert not order.get("gift_credit_cents")
+    assert asyncio.run(gift_cards.credit_balance(user_id)) == before
