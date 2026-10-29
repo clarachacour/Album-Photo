@@ -8,6 +8,7 @@ import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail, FileSpreadsheet, 
 import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 import PromoCodesPanel from "@/components/admin/PromoCodesPanel";
+import SetupCheckPanel from "@/components/admin/SetupCheckPanel";
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -270,6 +271,7 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
+        <SetupCheckPanel />
         <PromoCodesPanel />
 
         {loading ? (

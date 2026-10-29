@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLocalePath } from "@/components/LocalLink";
 import { useAuth } from "@/lib/auth";
@@ -13,7 +13,6 @@ export default function TopNav() {
   const { count: cartCount } = useCart();
   const { t } = useTranslation();
   const lp = useLocalePath();
-  const nav = useNavigate();
   const loc = useLocation();
   const isEditor = loc.pathname.includes("/editor");
   // Phone-sized screens: the links don't fit in the bar, they go in a menu.

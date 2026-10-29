@@ -78,7 +78,7 @@ export function llmsTxt(siteUrl, faqItems) {
     "",
     "## Key facts",
     "",
-    "- What: printed hardcover photo albums (photo books) made from your own photos, and the same album as a PDF.",
+    `- What: printed hardcover photo albums (photo books) made from your own photos, and the same album as a PDF${ONLINE_PAYMENT ? "" : " (coming soon)"}.`,
     "- How: upload all your photos, even unsorted; Everbook removes duplicates and blurry shots, orders the rest by date and place and lays out the album; you personalize it (cover templates, layouts, text) in an online editor, on phone or computer.",
     "- Where: delivery everywhere in Lebanon (Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle…), to the door, by courier.",
     `- Prices (US dollars): A5 printed album ${price("A5")}; A4 printed album ${price("A4")}; PDF album $${DIGITAL_PRICE}, whatever its format and pages${ONLINE_PAYMENT ? "" : " (coming soon)"}; delivery $${SHIPPING_PRICE} per order, whatever the number of albums.`,

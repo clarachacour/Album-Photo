@@ -42,6 +42,43 @@ async def admin_sentry_test(user: dict = Depends(get_current_user)):
     return {"configured": event_id is not None, "event_id": event_id}
 
 
+@router.get("/admin/setup-check")
+async def admin_setup_check(user: dict = Depends(get_current_user)):
+    """What's set up on this server, for the admin to check before going
+    live — whether each setting is there, never its value."""
+    require_admin(user)
+    import os
+
+    from app import config
+    from app.services import whatsapp
+
+    def item(key, ok, label, hint=""):
+        return {"key": key, "ok": bool(ok), "label": label, "hint": hint}
+
+    live_wakilni = wakilni.configured() and "api-dev" not in config.WAKILNI_URL
+    return [
+        item("smtp", config.SMTP_HOST and config.SMTP_USER and config.SMTP_PASSWORD, "Emails can be sent (SMTP)",
+             "SMTP_HOST, SMTP_USER, SMTP_PASSWORD"),
+        item("smtp_from", config.SMTP_FROM and not config.SMTP_FROM.endswith(".local"), "Sender address (SMTP_FROM)"),
+        item("orders_email", config.ORDERS_EMAIL, f"Order inbox: {config.ORDERS_EMAIL}", "ORDERS_EMAIL"),
+        item("admin_email", config.ADMIN_EMAIL, "Admin alerts (ADMIN_EMAIL)"),
+        item("support_email", os.environ.get("SUPPORT_EMAIL"), "Contact form inbox (SUPPORT_EMAIL, optional)", "Otherwise the order inbox"),
+        item("printer_email", config.PRINTER_EMAIL, "Bookstop gets the orders by email (PRINTER_EMAIL)"),
+        item("delivery_email", config.DELIVERY_EMAIL, "Wakilni gets the pickups by email (DELIVERY_EMAIL)"),
+        item("wakilni", wakilni.configured(), "Wakilni connected (WAKILNI_KEY, WAKILNI_SECRET)"),
+        item("wakilni_live", live_wakilni, "Wakilni: real deliveries, not the test system",
+             f"WAKILNI_URL is {config.WAKILNI_URL}" if "api-dev" in config.WAKILNI_URL else ""),
+        item("whatsapp_printer", whatsapp.configured("printer"), "WhatsApp to Bookstop (optional)"),
+        item("whatsapp_pickup", whatsapp.configured("pickup"), "WhatsApp to Wakilni (optional)"),
+        item("storage", config.R2_ACCOUNT_ID and config.R2_ACCESS_KEY_ID and config.R2_SECRET_ACCESS_KEY, "Photo storage (R2)"),
+        item("scheduler", config.CLEANUP_SECRET, "Scheduled jobs allowed (CLEANUP_SECRET)"),
+        item("pdf_queue", config.PDF_TASKS_QUEUE, "PDFs made in the background (PDF_TASKS_QUEUE)"),
+        item("gemini", config.GEMINI_API_KEY, "AI photo sorting (GEMINI_API_KEY)"),
+        item("sentry", os.environ.get("SENTRY_DSN"), "Error reports (SENTRY_DSN, optional)"),
+        item("frontend_url", config.FRONTEND_URL.startswith("https://"), f"Site address: {config.FRONTEND_URL}", "FRONTEND_URL"),
+    ]
+
+
 @router.get("/admin/orders")
 async def admin_list_orders(user: dict = Depends(get_current_user)):
     """Every order across every customer, newest first — the shipping

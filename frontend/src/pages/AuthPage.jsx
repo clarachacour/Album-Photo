@@ -65,7 +65,8 @@ export default function AuthPage() {
       // confirmed, which goes to the "check your inbox" screen (via /dashboard).
       nav(signedIn?.email_verified === false ? "/dashboard" : takeAfterLogin("/"));
     } catch (err) {
-      toast.error(apiErrorMessage(err, t));
+      // A wrong email or password: said in the site's language.
+      toast.error(mode !== "signup" && err?.response?.status === 401 ? t("auth.wrongCredentials") : apiErrorMessage(err, t));
       // Server answers are in its own logs; anything else only shows up here.
       if (!err?.response) reportError(err, { where: "auth", mode, code: err?.code, url: err?.config?.url, baseURL: err?.config?.baseURL });
     } finally {

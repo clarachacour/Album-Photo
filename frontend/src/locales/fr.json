@@ -19,7 +19,7 @@
       "title_line1": "Un album photo",
       "title_highlight": "signé",
       "title_line2": "par vos souvenirs.",
-      "subtitle": "Déposez toutes vos photos, même en vrac. Everbook enlève les doublons et les photos floues, les range par date et par lieu, et met votre album en page en quelques minutes. Vous ajustez ce que vous voulez — on l'imprime et on vous le livre, ou vous le téléchargez en PDF.",
+      "subtitle": "Déposez toutes vos photos, même en vrac. Everbook enlève les doublons et les photos floues, les range par date et par lieu, et met votre album en page en quelques minutes. Vous ajustez ce que vous voulez — on l'imprime et on vous le livre chez vous.",
       "cta": "Créer mon album",
       "image_alt": "Albums photo imprimés Everbook",
       "perks": [
@@ -137,7 +137,10 @@
       "continueWithApple": "Continuer avec Apple",
       "or": "ou",
       "signingIn": "Connexion…"
-    }
+    },
+    "invalidEmail": "Vérifiez votre adresse email (par exemple nom@gmail.com).",
+    "invalidPassword": "Votre mot de passe doit contenir au moins 6 caractères.",
+    "wrongCredentials": "Email ou mot de passe incorrect."
   },
   "faq": {
     "eyebrow": "Support",
@@ -504,7 +507,7 @@
     "coverImageRemoveError": "Impossible de supprimer l'image de couverture",
     "loadingAlbum": "Chargement de l'album…",
     "adminBanner": "Mode admin : vous modifiez l'album d'une cliente. Vos changements s'enregistrent dans son album ; il reste verrouillé de son côté. Une fois terminé, régénérez le PDF de la commande depuis l'admin.",
-    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande. Vous pouvez encore commander l'autre version (livre imprimé ou PDF) avec « Ajouter au panier ».",
+    "orderedBanner": "Cet album a déjà été commandé et ne peut plus être modifié — le texte, les photos et la couverture sont verrouillés exactement tels qu'ils étaient lors de la commande.",
     "previewQualityNote": "Cet aperçu est affiché en qualité réduite pour un chargement rapide — votre livre imprimé sera exporté en pleine résolution d'impression.",
     "previousPage": "Page précédente",
     "nextPage": "Page suivante",

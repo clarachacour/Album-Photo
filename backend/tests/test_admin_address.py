@@ -49,3 +49,19 @@ def test_the_country_is_lebanon_and_nothing_else(client, db, admin):
     assert res.json()["shipping_address"]["country"] == "Lebanon"
     _order(db, "addr-5")
     assert client.patch("/api/admin/orders/addr-5/shipping-address", json={**NEW, "country": "France"}, headers=admin).status_code == 422
+
+
+def test_the_setup_check_says_what_is_set_never_the_values(client, admin, monkeypatch):
+    from app import config
+
+    monkeypatch.setattr(config, "WAKILNI_URL", "https://api-dev.wakilni.com")
+    rows = client.get("/api/admin/setup-check", headers=admin).json()
+    by_key = {r["key"]: r for r in rows}
+    assert by_key["wakilni_live"]["ok"] is False and "api-dev" in by_key["wakilni_live"]["hint"]
+    assert all(set(r) == {"key", "ok", "label", "hint"} for r in rows)
+    assert "e2e-" not in str(rows) and "secret" not in str(rows).lower().replace("cleanup_secret", "").replace("wakilni_secret", "")
+
+
+def test_the_setup_check_is_for_the_admin_only(client, db):
+    _, headers = _signup(client, db=db)
+    assert client.get("/api/admin/setup-check", headers=headers).status_code == 403

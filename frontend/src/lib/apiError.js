@@ -15,7 +15,14 @@ export function apiErrorMessage(err, t) {
   }
   const detail = res.data?.detail;
   if (typeof detail === "string" && detail) return detail;
-  // Form checks (422) come as a list: the first problem, in words.
-  if (Array.isArray(detail) && detail[0]?.msg) return String(detail[0].msg).replace(/^Value error, /, "");
+  // Form checks (422) come as a list: the first problem — said in the
+  // site's language for the fields people type (the server's own words are
+  // technical and in English: "value is not a valid email address…").
+  if (Array.isArray(detail) && detail[0]?.msg) {
+    const field = (detail[0].loc || []).slice(-1)[0];
+    if (field === "email") return t("auth.invalidEmail");
+    if (field === "password") return t("auth.invalidPassword");
+    return String(detail[0].msg).replace(/^Value error, /, "");
+  }
   return `${t("auth.genericError")} (${res.status})`;
 }

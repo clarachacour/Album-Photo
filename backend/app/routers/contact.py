@@ -9,6 +9,7 @@ from app.core.rate_limit import CONTACT_LIMIT_PER_IP, rate_limiter
 from app.core.security import client_ip
 from app.db import db
 from app.schemas import ContactInput
+from app.config import ORDERS_EMAIL
 from app.services.email import _h, send_email
 from app.core.executors import run_email
 
@@ -32,7 +33,8 @@ async def submit_contact(data: ContactInput, request: Request):
     await db.contact_messages.insert_one(doc)
     # Notify the team inbox if one is configured; never fails the request if
     # email sending isn't set up (already logged by send_email in that case).
-    support_email = os.environ.get("SUPPORT_EMAIL")
+    # Without SUPPORT_EMAIL, the team's order inbox: a message is never left unread.
+    support_email = os.environ.get("SUPPORT_EMAIL") or ORDERS_EMAIL
     if support_email:
         # The sender's address written out in full (not as <address>, which
         # some mail apps hide as if it were markup) and set as Reply-To, so

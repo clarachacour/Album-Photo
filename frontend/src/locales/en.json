@@ -19,7 +19,7 @@
       "title_line1": "A photo book",
       "title_highlight": "signed",
       "title_line2": "by your memories.",
-      "subtitle": "Drop in all your photos, even unsorted. Everbook removes duplicates and blurry shots, puts the rest in order by date and place, and lays out your album in minutes. Adjust anything you like — we print it and deliver it to you, or you download it as a PDF.",
+      "subtitle": "Drop in all your photos, even unsorted. Everbook removes duplicates and blurry shots, puts the rest in order by date and place, and lays out your album in minutes. Adjust anything you like — we print it and deliver it to your door.",
       "cta": "Create my album",
       "image_alt": "Printed Everbook photo albums",
       "perks": [
@@ -137,7 +137,10 @@
       "continueWithApple": "Continue with Apple",
       "or": "or",
       "signingIn": "Signing in…"
-    }
+    },
+    "invalidEmail": "Please check your email address (for example name@gmail.com).",
+    "invalidPassword": "Your password must have at least 6 characters.",
+    "wrongCredentials": "Incorrect email or password."
   },
   "faq": {
     "eyebrow": "Support",
@@ -504,7 +507,7 @@
     "coverImageRemoveError": "Failed to remove cover image",
     "loadingAlbum": "Loading album…",
     "adminBanner": "Admin mode: you're editing a customer's album. Your changes are saved to their album; it stays locked on their side. When you're done, regenerate the order's PDF from the admin page.",
-    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order. You can still order the other version (printed book or PDF) with \"Add to cart\".",
+    "orderedBanner": "This album has already been ordered and can no longer be edited — text, photos, and the cover are locked exactly as they were when you placed the order.",
     "previewQualityNote": "This preview is shown at reduced quality for fast loading — your printed book will be exported at full print resolution.",
     "previousPage": "Previous page",
     "nextPage": "Next page",

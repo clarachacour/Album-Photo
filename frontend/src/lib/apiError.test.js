@@ -22,3 +22,12 @@ describe("apiErrorMessage", () => {
     expect(apiErrorMessage({ response: { status: 503, data: "Service Unavailable" } }, t)).toBe("GENERIC (503)");
   });
 });
+
+describe("form checks", () => {
+  const t = (key) => key;
+  it("says an invalid email or password in the site's words", () => {
+    const res = (loc) => ({ response: { status: 422, data: { detail: [{ loc, msg: "value is not a valid email address: The part after the @-sign is not valid." }] } } });
+    expect(apiErrorMessage(res(["body", "email"]), t)).toBe("auth.invalidEmail");
+    expect(apiErrorMessage(res(["body", "password"]), t)).toBe("auth.invalidPassword");
+  });
+});

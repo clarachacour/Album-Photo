@@ -107,7 +107,7 @@ async def login(data: LoginInput, request: Request):
     ])
     user = await db.users.find_one({"email": data.email.lower()})
     if not user or not user.get("password_hash") or not verify_password(data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
     token = create_token(user["id"])
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL, email_verified=user.get("email_verified", True)))
 
