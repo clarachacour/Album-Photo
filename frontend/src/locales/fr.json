@@ -43,7 +43,7 @@
         },
         {
           "title": "On imprime et on livre",
-          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban. Vous le préférez en numérique ? Recevez-le en PDF à télécharger."
+          "body": "Fabrication en ~3 jours, livraison en 2 à 3 jours chez vous au Liban. Vous le préférez en numérique ? Le PDF à télécharger arrive bientôt."
         }
       ]
     },
@@ -154,8 +154,12 @@
         "a": "Partout au Liban — Beyrouth, le Mont-Liban, Jounieh, Byblos, Tripoli, Saïda, Tyr, Zahlé et le reste du pays —, à domicile, par coursier. L'impression prend environ 3 jours, puis la livraison 2 à 3 jours. Plusieurs albums commandés ensemble arrivent dans un seul colis, avec une seule livraison à payer."
       },
       {
+        "q": "Comment payer ?",
+        "a": "À la livraison : vous réglez le livreur en espèces à la réception de votre album, livraison comprise. Whish Pay et le paiement par carte arrivent bientôt."
+      },
+      {
         "q": "Puis-je offrir un album photo ?",
-        "a": "Oui, avec une carte cadeau. Choisissez le format et le nombre de pages, écrivez quelques mots, et vous recevez la carte en PDF, à imprimer ou à envoyer. La personne qui la reçoit saisit le code sur everbook-album.com, crée l'album avec ses propres photos, et il lui est livré au Liban — livraison incluse."
+        "a": "Oui, avec une carte cadeau. Choisissez le format et le nombre de pages, écrivez quelques mots, et vous recevez la carte en PDF, à imprimer ou à envoyer. La personne qui la reçoit saisit le code sur everbook-album.com, crée l'album avec ses propres photos, et il lui est livré au Liban — livraison incluse. Bientôt disponible, avec Whish Pay et le paiement par carte."
       },
       {
         "q": "Combien de temps faut-il pour recevoir mon album ?",
@@ -179,7 +183,7 @@
       },
       {
         "q": "Puis-je recevoir mon album en PDF ?",
-        "a": "Oui : choisissez « Album numérique (PDF) » en ajoutant votre album au panier — seul, ou avec le livre imprimé. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » quelques minutes après la commande."
+        "a": "Oui : choisissez « Album numérique (PDF) » en ajoutant votre album au panier — seul, ou avec le livre imprimé. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » quelques minutes après la commande. Bientôt disponible, avec Whish Pay et le paiement par carte."
       },
       {
         "q": "Que faire si quelque chose arrive endommagé ou incorrect ?",
@@ -279,7 +283,7 @@
     "loadError": "Impossible de charger cette commande",
     "back": "Retour à vos commandes",
     "orderNumber": "Commande {{id}}",
-    "paymentNotice": "Le paiement n'est pas encore configuré de notre côté — nous avons enregistré votre commande et commencé à préparer votre album. Nous vous recontacterons directement pour finaliser le paiement.",
+    "paymentNotice": "Paiement à la livraison : vous réglez le livreur à la réception de votre album.",
     "status": "Statut",
     "cancelled": "Cette commande a été annulée.",
     "trackingNumber": "Numéro de suivi :",
@@ -403,7 +407,7 @@
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "par exemplaire",
-      "pdfPrice": "ou {{price}} $ en PDF à télécharger",
+      "pdfPrice": "ou {{price}} $ en PDF à télécharger (bientôt disponible)",
       "gift": {
         "offered": "Votre carte cadeau : un album {{size}} de {{pages}} pages",
         "offered_from": "Votre cadeau de {{from}} : un album {{size}} de {{pages}} pages",
@@ -712,7 +716,7 @@
     "madeIn": "Fabriqué au Liban"
   },
   "legal": {
-    "lastUpdated": "Dernière mise à jour : 27 octobre 2026",
+    "lastUpdated": "Dernière mise à jour : 29 octobre 2026",
     "terms": {
       "eyebrow": "Légal",
       "title": "Conditions générales de vente",
@@ -759,11 +763,11 @@
         },
         {
           "heading": "11. Paiement",
-          "body": "Le paiement est effectué en espèces ou par carte bancaire, selon les modes de paiement indiqués sur le Site au moment de la commande.\n\nLe paiement peut être traité par un prestataire de paiement tiers. La Société n'a pas vocation à conserver les données bancaires complètes du client lorsque le paiement est directement traité par ce prestataire.\n\nLa commande peut être suspendue ou annulée en cas de refus ou d'échec du paiement."
+          "body": "Le paiement s'effectue en espèces à la livraison : le client règle le livreur à la réception de l'album. D'autres modes de paiement, notamment Whish Pay et la carte bancaire, seront proposés ultérieurement sur le Site ; les modes disponibles sont ceux indiqués sur le Site au moment de la commande.\n\nUne fois proposé, le paiement en ligne pourra être traité par un prestataire de paiement tiers. La Société n'a pas vocation à conserver les données bancaires complètes du client lorsque le paiement est directement traité par ce prestataire.\n\nLa commande peut être suspendue ou annulée en cas de refus ou d'échec du paiement, notamment si le client refuse de régler le livreur à la livraison."
         },
         {
           "heading": "12. Fabrication",
-          "body": "Les albums étant personnalisés à partir des choix et photographies du client, leur fabrication commence après validation de la commande et confirmation du paiement.\n\nLa Société peut confier l'impression et la fabrication de l'album à une imprimerie partenaire située au Liban.\n\nLe recours à un prestataire pour l'impression ne modifie pas les droits du consommateur à l'égard de la Société dans les cas où celle-ci agit comme vendeur contractuel de l'album."
+          "body": "Les albums étant personnalisés à partir des choix et photographies du client, leur fabrication commence après validation de la commande (et après confirmation du paiement, lorsque celui-ci est exigé à la commande).\n\nLa Société peut confier l'impression et la fabrication de l'album à une imprimerie partenaire située au Liban.\n\nLe recours à un prestataire pour l'impression ne modifie pas les droits du consommateur à l'égard de la Société dans les cas où celle-ci agit comme vendeur contractuel de l'album."
         },
         {
           "heading": "13. Livraison",
@@ -1066,7 +1070,7 @@
     "placeOrder": "Commander",
     "freeTrialPrint": "Votre album est offert : seule la livraison ({{price}} $) est à payer, en espèces, au livreur.",
     "freeTrialDigital": "Votre album numérique est offert : vous pourrez télécharger votre PDF dès qu'il est prêt, en quelques minutes.",
-    "noPayment": "Le paiement en ligne n'est pas encore en place : le total, livraison comprise, se paie en espèces au livreur à la réception de votre album.",
+    "noPayment": "Paiement à la livraison : le total, livraison comprise, se règle au livreur à la réception de votre album.",
     "shipping": "Livraison (Liban)",
     "deliveryTime": "Fabrication : 3 jours · Livraison : 2 à 3 jours",
     "acceptTerms": "J'ai lu et j'accepte les <terms>Conditions générales de vente</terms>.",
@@ -1094,7 +1098,8 @@
     "area": "Zone",
     "areaRequired": "Zone *",
     "areaPlaceholder": "Ex. Hamra, Achrafieh, Jounieh…",
-    "areaFromList": "Choisissez votre zone dans la liste proposée, pour que le livreur trouve votre adresse."
+    "areaFromList": "Choisissez votre zone dans la liste proposée, pour que le livreur trouve votre adresse.",
+    "kindDigitalSoon": "Bientôt disponible, avec Whish Pay et le paiement par carte."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",
@@ -1277,12 +1282,18 @@
     "placing": "Nous enregistrons votre commande — vous retrouverez chaque album dans vos commandes dans un instant.",
     "problem": {
       "already_ordered": "Déjà commandé dans cette version : retirez-le.",
-      "no_pages": "Cet album n'a pas encore de pages : terminez-le ou retirez-le."
+      "no_pages": "Cet album n'a pas encore de pages : terminez-le ou retirez-le.",
+      "payment_soon": "Bientôt disponible, avec Whish Pay et le paiement par carte — retirez-le pour passer commande."
     },
     "payment": {
       "title": "Paiement",
       "amount": "À payer maintenant : {{amount}}",
-      "notYet": "Le paiement en ligne n'est pas encore en place : votre carte cadeau est activée sans paiement pour l'instant."
+      "notYet": "Le paiement en ligne n'est pas encore en place : votre carte cadeau est activée sans paiement pour l'instant.",
+      "cod": "Paiement à la livraison",
+      "codHint": "Vous réglez le livreur en espèces à la réception de votre album.",
+      "whish": "Whish Pay",
+      "card": "Paiement par carte",
+      "soon": "Bientôt disponible"
     },
     "credit": "Avoir carte cadeau",
     "creditLeft": "{{amount}} d'avoir restent sur votre compte pour une prochaine commande.",
@@ -1334,11 +1345,12 @@
         "not_paid": "Cette carte cadeau ne peut pas encore être utilisée.",
         "other": "Ce code ne peut pas être utilisé. Veuillez réessayer."
       }
-    }
+    },
+    "soon": "Les cartes cadeaux arrivent bientôt, avec Whish Pay et le paiement par carte."
   },
   "occasions": {
     "howTitle": "Comment ça marche",
-    "giftLine": "C'est pour quelqu'un d'autre ? Offrez-lui l'album avec une carte cadeau :",
+    "giftLine": "C'est pour quelqu'un d'autre ? Les cartes cadeaux arrivent bientôt :",
     "moreLabel": "Autres albums",
     "travel": {
       "eyebrow": "Livre photo de voyage",
@@ -1358,7 +1370,7 @@
         },
         {
           "title": "Imprimé, ou en PDF",
-          "text": "Un livre à couverture rigide en A5 ou A4, livré chez vous, ou le même album en PDF à garder et à partager."
+          "text": "Un livre à couverture rigide en A5 ou A4, livré chez vous, ou, bientôt, le même album en PDF à garder et à partager."
         }
       ]
     },

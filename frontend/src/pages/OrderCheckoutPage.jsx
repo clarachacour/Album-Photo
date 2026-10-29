@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
-import { FREE_TRIAL, SHIPPING_PRICE, billedPageCount, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
+import { FREE_TRIAL, ONLINE_PAYMENT, SHIPPING_PRICE, billedPageCount, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
 import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
 
 /**
@@ -23,7 +23,12 @@ export default function OrderCheckoutPage() {
   const [album, setAlbum] = useState(null);
   // What's chosen: { print: bool, digital: bool }. One order of each per
   // album: a version already ordered can't be chosen again.
-  const [kinds, setKinds] = useState({ print: searchParams.get("kind") !== "digital", digital: searchParams.get("kind") === "digital" });
+  // The PDF can't be ordered before online payment (ONLINE_PAYMENT).
+  const pdfOpen = ONLINE_PAYMENT;
+  const [kinds, setKinds] = useState({
+    print: !pdfOpen || searchParams.get("kind") !== "digital",
+    digital: pdfOpen && searchParams.get("kind") === "digital",
+  });
   const [orderedKinds, setOrderedKinds] = useState({});
   const [quantity, setQuantity] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -49,7 +54,7 @@ export default function OrderCheckoutPage() {
               return;
             }
             setOrderedKinds(byKind);
-            setKinds({ print: !byKind.print, digital: !!byKind.print });
+            setKinds({ print: !byKind.print, digital: pdfOpen && !!byKind.print });
           } catch {
             /* the server refuses a version already ordered anyway */
           }
@@ -61,7 +66,7 @@ export default function OrderCheckoutPage() {
       const current = await refresh();
       const mineInCart = (current?.items || []).filter((i) => i.album_id === albumId);
       if (mineInCart.length) {
-        setKinds({ print: mineInCart.some((i) => i.kind === "print"), digital: mineInCart.some((i) => i.kind === "digital") });
+        setKinds({ print: mineInCart.some((i) => i.kind === "print") || !pdfOpen, digital: pdfOpen && mineInCart.some((i) => i.kind === "digital") });
         const printed = mineInCart.find((i) => i.kind === "print");
         if (printed) setQuantity(printed.quantity);
       }
@@ -122,21 +127,22 @@ export default function OrderCheckoutPage() {
         <div className="grid md:grid-cols-[1fr_320px] gap-12">
           <div>
             <div className="eyebrow mb-1">{t("checkout.kindTitle")}</div>
-            <p className="text-xs text-[color:var(--muted)] mb-4">{t("cart.chooseBoth")}</p>
+            <p className="text-xs text-[color:var(--muted)] mb-4">{pdfOpen ? t("cart.chooseBoth") : "\u00a0"}</p>
             <div className="grid sm:grid-cols-2 gap-3 mb-6" data-testid="checkout-kind">
               {[
                 { value: "print", price: printPrice, extra: t("checkout.kindPrintExtra", { price: SHIPPING_PRICE.toFixed(2) }) },
                 { value: "digital", price: digitalPrice, extra: t("checkout.kindDigitalExtra") },
               ].map((option) => {
                 const taken = Boolean(orderedKinds[option.value]);
-                const chosen = kinds[option.value] && !taken;
+                const soon = option.value === "digital" && !pdfOpen;
+                const chosen = kinds[option.value] && !taken && !soon;
                 return (
                   <button
                     key={option.value}
                     type="button"
                     role="checkbox"
                     aria-checked={chosen}
-                    disabled={taken}
+                    disabled={taken || soon}
                     onClick={() => setKinds((k) => ({ ...k, [option.value]: !k[option.value] }))}
                     data-testid={`checkout-kind-${option.value}`}
                     className={`text-left border p-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -152,7 +158,7 @@ export default function OrderCheckoutPage() {
                       </span>
                       <OfferedPrice price={option.price} />
                     </div>
-                    <p className="text-xs text-[color:var(--muted)] mt-1">{taken ? t("checkout.kindAlreadyOrdered") : option.extra}</p>
+                    <p className="text-xs text-[color:var(--muted)] mt-1">{taken ? t("checkout.kindAlreadyOrdered") : soon ? t("checkout.kindDigitalSoon") : option.extra}</p>
                   </button>
                 );
               })}

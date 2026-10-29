@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useLocalePath } from "@/components/LocalLink";
 import { toast } from "sonner";
-import { CreditCard, Gift, Loader2, Plus, Trash2 } from "lucide-react";
+import { Banknote, CreditCard, Gift, Loader2, Plus, Smartphone, Trash2 } from "lucide-react";
 import { api, coverImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -55,8 +55,6 @@ export default function CartPage() {
 
   const items = cart?.items || [];
   const hasPrint = items.some((i) => i.kind === "print" && !i.problem);
-  const hasDigital = items.some((i) => i.kind === "digital" && !i.problem);
-  const hasGift = items.some((i) => i.kind === "gift");
   const hasProblem = items.some((i) => i.problem);
 
   const placeOrder = async (e) => {
@@ -238,18 +236,29 @@ export default function CartPage() {
                 </>
               )}
 
-              {/* The payment step: gift cards are paid here. Online payment
-                  isn't set up yet — the card is activated without charging
-                  (backend services/payments.py, to update then). */}
-              {hasGift && (
-                <div className={`${hasPrint ? "mt-12" : ""}`} data-testid="cart-payment">
-                  <div className="eyebrow mb-2">{t("cart.payment.title")}</div>
-                  <div className="border border-dashed border-ink/25 bg-white px-5 py-4 flex items-start gap-3">
-                    <CreditCard size={18} className="mt-0.5 text-[color:var(--muted)] shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium">{t("cart.payment.amount", { amount: money(cart.pay_now_cents) })}</p>
-                      <p className="text-[color:var(--muted)] text-xs mt-1">{t("cart.payment.notYet")}</p>
+              {/* How it's paid: cash on delivery for now; Whish Pay and card
+                  payment come later (ONLINE_PAYMENT in lib/pricing.js). */}
+              {hasPrint && (
+                <div className="mt-12" data-testid="cart-payment">
+                  <div className="eyebrow mb-3">{t("cart.payment.title")}</div>
+                  <div className="space-y-2">
+                    <div className="border border-[color:var(--ink)] bg-white px-4 py-3 flex items-start gap-3" data-testid="cart-payment-cod">
+                      <span className="mt-1 w-3.5 h-3.5 rounded-full border-[4px] border-[color:var(--ink)] shrink-0" aria-hidden="true" />
+                      <div className="flex-1 text-sm">
+                        <p className="font-medium flex items-center gap-2"><Banknote size={16} className="text-[color:var(--coral)]" /> {t("cart.payment.cod")}</p>
+                        <p className="text-xs text-[color:var(--muted)] mt-0.5">{t("cart.payment.codHint")}</p>
+                      </div>
                     </div>
+                    {[
+                      { key: "whish", Icon: Smartphone },
+                      { key: "card", Icon: CreditCard },
+                    ].map(({ key, Icon }) => (
+                      <div key={key} className="border border-ink/15 px-4 py-3 flex items-center gap-3 opacity-60" aria-disabled="true" data-testid={`cart-payment-${key}`}>
+                        <span className="w-3.5 h-3.5 rounded-full border border-ink/40 shrink-0" aria-hidden="true" />
+                        <p className="flex-1 text-sm flex items-center gap-2"><Icon size={16} /> {t(`cart.payment.${key}`)}</p>
+                        <span className="text-[10px] font-semibold tracking-widest uppercase text-[color:var(--muted)]">{t("cart.payment.soon")}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -326,7 +335,6 @@ export default function CartPage() {
               </button>
               <div className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed space-y-2">
                 {hasPrint && cart.cash_cents > 0 && <p>{t("checkout.noPayment")}</p>}
-                {hasDigital && <p>{t("checkout.noPaymentDigital")}</p>}
               </div>
             </aside>
           </div>
@@ -412,6 +420,9 @@ function GiftLine({ item, onRemove }) {
           </div>
           <span className="text-sm whitespace-nowrap">{money(item.line_total_cents)}</span>
         </div>
+        {item.problem && (
+          <p className="text-xs text-red-700 mt-2" data-testid="cart-item-problem">{t(`cart.problem.${item.problem}`)}</p>
+        )}
         <div className="flex items-center gap-4 mt-3">
           <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-[color:var(--muted)] hover:text-red-700" data-testid="cart-remove-gift">
             <Trash2 size={12} /> {t("cart.remove")}

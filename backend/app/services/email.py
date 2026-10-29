@@ -385,8 +385,8 @@ def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
     notes = []
     if prints:
         notes.append(
-            f"Your printed albums are delivered together, in one package. Online payment isn't set up yet: "
-            f"the total, {cash:.2f} {currency} (delivery included), is paid in cash to the courier."
+            f"Your printed albums are delivered together, in one package. Payment is cash on delivery: "
+            f"the total, {cash:.2f} {currency} (delivery included), is paid to the courier."
         )
     if digitals:
         notes.append(

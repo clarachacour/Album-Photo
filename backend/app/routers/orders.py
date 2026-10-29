@@ -24,6 +24,8 @@ from app.services.orders import (
     status_sequence,
 )
 from app.services.checkout import build_order_doc
+from app.services import payments
+from app.services.payments import NEEDS_ONLINE_PAYMENT
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION
 from app.services import wakilni
 from app.services.storage import get_r2_client
@@ -57,6 +59,8 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     existing_order = await db.orders.find_one({"album_id": data.album_id, "kind": same_kind})
     if existing_order:
         raise HTTPException(status_code=409, detail="An order already exists for this album")
+    if data.kind == "digital" and not payments.ONLINE_PAYMENT:
+        raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
     if data.kind == "print" and not data.shipping_address:
         raise HTTPException(status_code=400, detail="A delivery address is needed for a printed album")
     # The terms must have been accepted, in the version the site shows now

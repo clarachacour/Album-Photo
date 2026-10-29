@@ -43,7 +43,7 @@
         },
         {
           "title": "We print and deliver",
-          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? Get it as a PDF to download."
+          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? The PDF to download is coming soon."
         }
       ]
     },
@@ -154,8 +154,12 @@
         "a": "Everywhere in Lebanon — Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle and the rest of the country — to your door, by courier. Printing takes about 3 days, then delivery 2 to 3 days. Several albums ordered together arrive in one package, with the delivery paid once."
       },
       {
+        "q": "How do I pay?",
+        "a": "Cash on delivery: you pay the courier in cash when your album arrives, delivery included. Whish Pay and card payment are coming soon."
+      },
+      {
         "q": "Can I give a photo album as a gift?",
-        "a": "Yes: with a gift card. Choose the format and number of pages, write a few words, and you receive the card as a PDF to print or send. The person who receives it enters the code on everbook-album.com, creates the album with their own photos, and it's delivered to them in Lebanon — delivery included."
+        "a": "Yes: with a gift card. Choose the format and number of pages, write a few words, and you receive the card as a PDF to print or send. The person who receives it enters the code on everbook-album.com, creates the album with their own photos, and it's delivered to them in Lebanon — delivery included. Coming soon, with Whish Pay and card payment."
       },
       {
         "q": "How long does it take to receive my album?",
@@ -179,7 +183,7 @@
       },
       {
         "q": "Can I get my album as a PDF?",
-        "a": "Yes: choose \"Digital album (PDF)\" when you add your album to your cart — on its own, or together with the printed book. There's no printing or delivery. You download it from \"My orders\" a few minutes after ordering."
+        "a": "Yes: choose \"Digital album (PDF)\" when you add your album to your cart — on its own, or together with the printed book. There's no printing or delivery. You download it from \"My orders\" a few minutes after ordering. Coming soon, with Whish Pay and card payment."
       },
       {
         "q": "What if something arrives damaged or wrong?",
@@ -279,7 +283,7 @@
     "loadError": "Failed to load this order",
     "back": "Back to your orders",
     "orderNumber": "Order {{id}}",
-    "paymentNotice": "Payment isn't set up yet on our end — we've saved your order and started preparing your album. We'll follow up with you directly to complete payment.",
+    "paymentNotice": "Payment is cash on delivery: you pay the courier when your album arrives.",
     "status": "Status",
     "cancelled": "This order was cancelled.",
     "trackingNumber": "Tracking number:",
@@ -403,7 +407,7 @@
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "per copy",
-      "pdfPrice": "or ${{price}} as a PDF to download",
+      "pdfPrice": "or ${{price}} as a PDF to download (coming soon)",
       "gift": {
         "offered": "Your gift card: a {{pages}}-page {{size}} album",
         "offered_from": "Your gift from {{from}}: a {{pages}}-page {{size}} album",
@@ -712,7 +716,7 @@
     "madeIn": "Made in Lebanon"
   },
   "legal": {
-    "lastUpdated": "Last updated: October 27, 2026",
+    "lastUpdated": "Last updated: October 29, 2026",
     "terms": {
       "eyebrow": "Legal",
       "title": "Terms of sale",
@@ -759,11 +763,11 @@
         },
         {
           "heading": "11. Payment",
-          "body": "Payment is made in cash or by bank card, using the payment methods shown on the Site at the time of ordering.\n\nPayment may be processed by a third-party payment provider. The Company does not intend to keep the customer's full card details when payment is processed directly by that provider.\n\nThe order may be suspended or cancelled if payment is refused or fails."
+          "body": "Payment is made in cash on delivery: the customer pays the courier when the album is delivered. Other payment methods, in particular Whish Pay and bank card, will be offered on the Site later; the methods available are those shown on the Site at the time of ordering.\n\nOnce offered, online payment may be processed by a third-party payment provider. The Company does not intend to keep the customer's full card details when payment is processed directly by that provider.\n\nThe order may be suspended or cancelled if payment is refused or fails, in particular if the customer refuses to pay the courier on delivery."
         },
         {
           "heading": "12. Manufacturing",
-          "body": "As albums are personalised from the customer's choices and photographs, their manufacturing starts after the order has been confirmed and payment has been confirmed.\n\nThe Company may entrust the printing and manufacturing of the album to a partner printing house located in Lebanon.\n\nUsing a provider for printing does not change the consumer's rights towards the Company where the Company acts as the contractual seller of the album."
+          "body": "As albums are personalised from the customer's choices and photographs, their manufacturing starts after the order has been confirmed (and after payment has been confirmed, when it is required at the time of ordering).\n\nThe Company may entrust the printing and manufacturing of the album to a partner printing house located in Lebanon.\n\nUsing a provider for printing does not change the consumer's rights towards the Company where the Company acts as the contractual seller of the album."
         },
         {
           "heading": "13. Delivery",
@@ -1066,7 +1070,7 @@
     "placeOrder": "Place order",
     "freeTrialPrint": "Your album is free: only the delivery (${{price}}) is due, in cash, to the courier.",
     "freeTrialDigital": "Your digital album is free: you can download your PDF as soon as it's ready, in a few minutes.",
-    "noPayment": "Online payment isn't set up yet: the total, delivery included, is paid in cash to the courier when your album is delivered.",
+    "noPayment": "Cash on delivery: the total, delivery included, is paid to the courier when your album arrives.",
     "shipping": "Delivery (Lebanon)",
     "deliveryTime": "Production: 3 days · Delivery: 2–3 days",
     "acceptTerms": "I have read and accept the <terms>Terms of sale</terms>.",
@@ -1094,7 +1098,8 @@
     "area": "Area",
     "areaRequired": "Area *",
     "areaPlaceholder": "E.g. Hamra, Achrafieh, Jounieh…",
-    "areaFromList": "Pick your area from the list, so the courier can find your address."
+    "areaFromList": "Pick your area from the list, so the courier can find your address.",
+    "kindDigitalSoon": "Coming soon, with Whish Pay and card payment."
   },
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",
@@ -1277,12 +1282,18 @@
     "placing": "We're placing your order — you'll find each album in your orders in a moment.",
     "problem": {
       "already_ordered": "Already ordered in this version: please remove it.",
-      "no_pages": "This album has no pages yet: please finish it or remove it."
+      "no_pages": "This album has no pages yet: please finish it or remove it.",
+      "payment_soon": "Coming soon, with Whish Pay and card payment — remove it to place your order."
     },
     "payment": {
       "title": "Payment",
       "amount": "To pay now: {{amount}}",
-      "notYet": "Online payment isn't set up yet: your gift card is activated without payment for now."
+      "notYet": "Online payment isn't set up yet: your gift card is activated without payment for now.",
+      "cod": "Cash on delivery",
+      "codHint": "You pay the courier in cash when your album arrives.",
+      "whish": "Whish Pay",
+      "card": "Card payment",
+      "soon": "Coming soon"
     },
     "credit": "Gift card credit",
     "creditLeft": "{{amount}} of credit stays on your account for a next order.",
@@ -1334,11 +1345,12 @@
         "not_paid": "This gift card can't be used yet.",
         "other": "This code can't be used. Please try again."
       }
-    }
+    },
+    "soon": "Gift cards are coming soon, with Whish Pay and card payment."
   },
   "occasions": {
     "howTitle": "How it works",
-    "giftLine": "Making it for someone else? Offer them the album with a gift card:",
+    "giftLine": "Making it for someone else? Gift cards are coming soon:",
     "moreLabel": "Other albums",
     "travel": {
       "eyebrow": "Travel photo book",
@@ -1358,7 +1370,7 @@
         },
         {
           "title": "Printed, or as a PDF",
-          "text": "A hardcover book in A5 or A4, delivered to your door, or the same album as a PDF to keep and share."
+          "text": "A hardcover book in A5 or A4, delivered to your door, or, soon, the same album as a PDF to keep and share."
         }
       ]
     },

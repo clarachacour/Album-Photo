@@ -18,7 +18,8 @@ from app.services.checkout import build_order_doc, unit_price_cents
 from app.config import FRONTEND_URL
 from app.services import gift_cards, reminders
 from app.services.email import send_checkout_confirmation_email, send_gift_cards_email, send_order_confirmation_email
-from app.services.payments import collect_payment
+from app.services import payments
+from app.services.payments import NEEDS_ONLINE_PAYMENT, collect_payment
 from app.services.orders import start_order_pdf_generation
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count
 
@@ -47,6 +48,8 @@ async def _save(user: dict, items: list):
 
 async def _problem(album: dict, kind: str):
     """Why this album can't be ordered in this version (None: it can)."""
+    if kind == "digital" and not payments.ONLINE_PAYMENT:
+        return "payment_soon"
     if not album.get("pages") or album.get("status") == "draft":
         return "no_pages"
     if await db.orders.find_one({"album_id": album["id"], "kind": _same_kind(kind)}, {"_id": 1}):
@@ -56,7 +59,8 @@ async def _problem(album: dict, kind: str):
 
 def _gift_line(item: dict) -> dict:
     value = gift_cards.gift_value_cents(item["size"], int(item["page_tier"]))
-    return {**item, "quantity": 1, "unit_price_cents": value, "line_total_cents": value, "problem": None}
+    return {**item, "quantity": 1, "unit_price_cents": value, "line_total_cents": value,
+            "problem": None if payments.ONLINE_PAYMENT else "payment_soon"}
 
 
 def plan_credit(lines: list, shipping: int, balance: int) -> dict:
@@ -125,6 +129,8 @@ async def add_to_cart(data: CartItemInput, user: dict = Depends(get_current_user
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
     problem = await _problem(album, data.kind)
+    if problem == "payment_soon":
+        raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
     if problem == "no_pages":
         raise HTTPException(status_code=400, detail="This album has no pages yet")
     if problem == "already_ordered":
@@ -148,6 +154,8 @@ async def add_to_cart(data: CartItemInput, user: dict = Depends(get_current_user
 async def add_gift_to_cart(data: GiftCardInput, user: dict = Depends(get_current_user)):
     """A gift card: an album (format, page count) offered to someone, with
     the words written on the card."""
+    if not payments.ONLINE_PAYMENT:
+        raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
     if not gift_cards.valid_choice(data.size, data.page_tier):
         raise HTTPException(status_code=400, detail="Please choose a format and a page count")
     items = await _items(user)

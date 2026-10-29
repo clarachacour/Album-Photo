@@ -89,3 +89,12 @@ def paid_albums(request, monkeypatch):
 
     monkeypatch.setattr(pricing, "FREE_TRIAL", False)
     yield
+
+
+@pytest.fixture()
+def online_payment(app, monkeypatch):
+    """Whish Pay / card switched on: the PDF and gift cards can be ordered
+    (for now they're "coming soon", see services/payments.py)."""
+    from app.services import payments
+
+    monkeypatch.setattr(payments, "ONLINE_PAYMENT", True)

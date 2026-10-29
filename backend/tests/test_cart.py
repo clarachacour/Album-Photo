@@ -37,7 +37,7 @@ def _checkout(client, shop, **extra):
     return client.post("/api/cart/checkout", json=body, headers=shop["headers"])
 
 
-def test_the_cart_prices_everything_with_one_delivery(client, shop):
+def test_the_cart_prices_everything_with_one_delivery(client, shop, online_payment):
     a, b = shop["album"]("Byblos"), shop["album"]("Tyre", pages=60)
     assert _add(client, shop, a, quantity=2).status_code == 200
     _add(client, shop, b)
@@ -61,7 +61,7 @@ def test_the_cart_prices_everything_with_one_delivery(client, shop):
     assert next(line for line in cart["items"] if line["album_id"] == a)["quantity"] == 1
 
 
-def test_a_pdf_only_cart_has_no_delivery_and_needs_no_address(client, shop):
+def test_a_pdf_only_cart_has_no_delivery_and_needs_no_address(client, shop, online_payment):
     a = shop["album"]("Byblos")
     cart = _add(client, shop, a, "digital").json()
     assert cart["shipping_cents"] == 0 and cart["total_cents"] == DIGITAL_PRICE_CENTS
@@ -71,7 +71,7 @@ def test_a_pdf_only_cart_has_no_delivery_and_needs_no_address(client, shop):
     assert order["kind"] == "digital" and order["status"] == "available"
 
 
-def test_checkout_orders_everything_at_once(client, db, shop):
+def test_checkout_orders_everything_at_once(client, db, shop, online_payment):
     from app.services.print_groups import flush_printer_queue
 
     a, b = shop["album"]("Byblos"), shop["album"]("Tyre")
@@ -162,5 +162,43 @@ def test_one_confirmation_email_lists_everything(app, monkeypatch):
     (subject, body, html), = sent
     assert "3 items" in subject
     assert "Byblos — printed album × 2 (EB-5F4C0509)" in body and "Tyre — PDF to download (EB-7C2D0000)" in body
-    assert "164.00 USD (delivery included), is paid in cash to the courier" in body and "one package" in body
+    assert "Payment is cash on delivery" in body and "164.00 USD (delivery included), is paid to the courier" in body and "one package" in body
     assert "nothing to pay for your PDF" in body and "Byblos" in html
+
+
+def test_cash_on_delivery_only_for_now(client, shop):
+    """Until Whish Pay / card: a printed album is ordered and paid cash on
+    delivery; the PDF and gift cards are "coming soon" and can't be ordered."""
+    album_id = shop["album"]("Summer")
+    pdf = client.post("/api/cart/items", json={"album_id": album_id, "kind": "digital"}, headers=shop["headers"])
+    assert pdf.status_code == 400 and "Whish" in pdf.json()["detail"]
+    gift = client.post("/api/cart/gifts", json={"size": "A4", "page_tier": 24, "recipient_name": "Maya", "message": "", "from_name": "", "lang": "en"},
+                       headers=shop["headers"])
+    assert gift.status_code == 400
+    single = client.post("/api/orders", json={"album_id": album_id, "kind": "digital", "quantity": 1, "accepted_terms_version": TERMS_VERSION},
+                         headers=shop["headers"])
+    assert single.status_code == 400
+    cart = client.post("/api/cart/items", json={"album_id": album_id, "kind": "print", "quantity": 1}, headers=shop["headers"]).json()
+    assert cart["cash_cents"] == cart["total_cents"] > 0
+    placed = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    assert placed.status_code == 200
+    # Not paid: printed, then the courier collects the total.
+    order = placed.json()["orders"][0]
+    assert order["status_history"][0]["status"] == "pending_payment"
+    assert all(h["status"] != "paid" for h in order["status_history"])
+
+
+def test_a_pdf_left_in_a_cart_is_shown_as_coming_soon(client, db, shop):
+    """Added before the switch: the line stays, marked "coming soon", out of
+    the total, and the checkout asks to remove it."""
+    album_id = shop["album"]("Winter")
+    user_id = asyncio.run(db.albums.find_one({"id": album_id}))["user_id"]
+    asyncio.run(db.carts.update_one({"user_id": user_id}, {"$set": {"items": [
+        {"id": "p", "album_id": album_id, "kind": "print", "quantity": 1},
+        {"id": "d", "album_id": album_id, "kind": "digital", "quantity": 1},
+    ]}}, upsert=True))
+    cart = client.get("/api/cart", headers=shop["headers"]).json()
+    assert {i["kind"]: i["problem"] for i in cart["items"]} == {"print": None, "digital": "payment_soon"}
+    assert cart["subtotal_cents"] == compute_order_price_cents("A4", 24)
+    placed = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    assert placed.status_code == 409

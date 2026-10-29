@@ -5,6 +5,8 @@ import asyncio
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("online_payment")
+
 from app.services.pricing import DIGITAL_PRICE_CENTS, SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
 from tests.test_api import _signup
 

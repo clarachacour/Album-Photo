@@ -101,8 +101,13 @@ export const SHIPPING_PRICE = 5;
 
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
+// Whish Pay and card payment: coming soon (ONLINE_PAYMENT in
+// backend/app/services/payments.py). Until then printed albums are paid
+// cash on delivery, and the PDF and gift cards can't be ordered.
+export const ONLINE_PAYMENT = false;
+
 // TERMS_VERSION in backend/app/services/pricing.py.
-export const TERMS_VERSION = "2026-10-27";
+export const TERMS_VERSION = "2026-10-29";
 
 // What the customer pays for an order, in cents: its total — but only the
 // delivery when the album is offered (same as cash_due in

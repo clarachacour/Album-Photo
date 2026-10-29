@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { rememberAfterLogin } from "@/lib/afterLogin";
-import { PAGE_TIERS, SHIPPING_PRICE, computeUnitPrice } from "@/lib/pricing";
+import { ONLINE_PAYMENT, PAGE_TIERS, SHIPPING_PRICE, computeUnitPrice } from "@/lib/pricing";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 // The form, kept for the tab while the visitor signs in to add it to the cart.
@@ -153,17 +153,21 @@ export default function GiftPage() {
               <span className="font-medium">{t("gift.cardPrice")}</span>
               <span className="text-xl font-medium" data-testid="gift-price">${giftValue(gift.size, gift.page_tier).toFixed(2)}</span>
             </div>
+            {/* Bought online only: until Whish Pay / card (ONLINE_PAYMENT),
+                "coming soon" — a card already received can still be used below. */}
             <button
               type="button"
               onClick={addToCart}
-              disabled={adding}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-4 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-60"
+              disabled={adding || !ONLINE_PAYMENT}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-4 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-60 disabled:hover:bg-[color:var(--ink)] disabled:cursor-not-allowed"
               data-testid="gift-add-btn"
             >
               {adding && <Loader2 size={14} className="animate-spin" />}
-              {t("cart.add")}
+              {ONLINE_PAYMENT ? t("cart.add") : t("cart.payment.soon")}
             </button>
-            <p className="text-xs text-[color:var(--muted)] mt-3">{t("gift.pdfNote")}</p>
+            <p className={`text-xs mt-3 ${ONLINE_PAYMENT ? "text-[color:var(--muted)]" : "text-[color:var(--coral)]"}`} data-testid="gift-soon">
+              {ONLINE_PAYMENT ? t("gift.pdfNote") : t("gift.soon")}
+            </p>
           </div>
 
           <div className="md:sticky md:top-24 h-fit">

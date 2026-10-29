@@ -11,6 +11,13 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
+# Whish Pay and card payment: not offered yet. Until then printed albums
+# are paid cash on delivery (the courier collects the total), and what
+# can't be — the PDF and gift cards, with nothing delivered — is shown as
+# "coming soon" and can't be ordered (routers/cart.py, routers/orders.py).
+ONLINE_PAYMENT = False
+NEEDS_ONLINE_PAYMENT = "Coming soon: the PDF and gift cards will be available with Whish Pay and card payment"
+
 
 async def collect_payment(user: dict, checkout_id: str, amount_cents: int, description: str) -> dict:
     """Returns {"status": "paid" | "failed", "provider", "reference",

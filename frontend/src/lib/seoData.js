@@ -1,7 +1,7 @@
 // What search engines and AI assistants read about Everbook, made from the
 // site's own data (prices, FAQ) so it never says something the site doesn't:
 // schema.org data for the pages (scripts/prerender.mjs) and llms.txt.
-import { DIGITAL_PRICE, MAX_ALBUM_PAGES, OVERAGE_FROM, OVERAGE_PER_PAGE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
+import { DIGITAL_PRICE, MAX_ALBUM_PAGES, ONLINE_PAYMENT, OVERAGE_FROM, OVERAGE_PER_PAGE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
 
 const SIZES = { A5: "A5 (14.8 × 21 cm)", A4: "A4 (21 × 29.7 cm)" };
 
@@ -48,7 +48,8 @@ export function productData(siteUrl) {
     name: "Everbook digital photo album (PDF)",
     description: "Your photo album as a PDF to download and keep: cover, pages and back cover, in screen quality.",
     brand: { "@id": `${siteUrl}/#organization` },
-    offers: { "@type": "Offer", price: DIGITAL_PRICE, priceCurrency: "USD", availability: "https://schema.org/InStock", url: `${siteUrl}/` },
+    // Ordered with online payment only: coming soon until then.
+    offers: { "@type": "Offer", price: DIGITAL_PRICE, priceCurrency: "USD", availability: `https://schema.org/${ONLINE_PAYMENT ? "InStock" : "PreOrder"}`, url: `${siteUrl}/` },
   };
   return [...printed, digital];
 }
@@ -80,11 +81,13 @@ export function llmsTxt(siteUrl, faqItems) {
     "- What: printed hardcover photo albums (photo books) made from your own photos, and the same album as a PDF.",
     "- How: upload all your photos, even unsorted; Everbook removes duplicates and blurry shots, orders the rest by date and place and lays out the album; you personalize it (cover templates, layouts, text) in an online editor, on phone or computer.",
     "- Where: delivery everywhere in Lebanon (Beirut, Mount Lebanon, Jounieh, Byblos, Tripoli, Saida, Tyre, Zahle…), to the door, by courier.",
-    `- Prices (US dollars): A5 printed album ${price("A5")}; A4 printed album ${price("A4")}; PDF album $${DIGITAL_PRICE}, whatever its format and pages; delivery $${SHIPPING_PRICE} per order, whatever the number of albums.`,
+    `- Prices (US dollars): A5 printed album ${price("A5")}; A4 printed album ${price("A4")}; PDF album $${DIGITAL_PRICE}, whatever its format and pages${ONLINE_PAYMENT ? "" : " (coming soon)"}; delivery $${SHIPPING_PRICE} per order, whatever the number of albums.`,
     `- Page count: up to ${OVERAGE_FROM} pages, an album between two sizes is priced at the nearest one (28 pages as 24, 40 pages as 50); beyond ${OVERAGE_FROM} pages, each page beyond the size reached costs $${OVERAGE_PER_PAGE.toFixed(2)} more. ${MAX_ALBUM_PAGES} pages at most.`,
     "- Timing: about a week in all — printing about 3 days, then delivery 2 to 3 days.",
-    "- Payment: printed albums are paid in cash on delivery.",
-    "- Gift cards: offer an album (format and page count chosen), received as a PDF; the recipient creates their own album with the code, delivery included.",
+    ONLINE_PAYMENT
+      ? "- Payment: printed albums are paid in cash on delivery, or online with Whish Pay or a card."
+      : "- Payment: cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
+    `- Gift cards${ONLINE_PAYMENT ? "" : " (coming soon)"}: offer an album (format and page count chosen), received as a PDF; the recipient creates their own album with the code, delivery included.`,
     "- Languages: English and French.",
     "- Contact: orders@everbook-album.com · Instagram: https://www.instagram.com/everbook_album/",
     "",
