@@ -306,7 +306,7 @@ export default function CartPage() {
                 </div>
               )}
               {cart.credit_applied_cents > 0 && cart.total_cents === 0 && (
-                <p className="text-xs text-[color:var(--coral)] -mt-3 mb-6" data-testid="cart-covered">{t("cart.coveredByGift")}</p>
+                <p className="text-xs text-[color:var(--coral)] -mt-3 mb-6" data-testid="cart-covered">{t(cart.discount_cents > 0 ? "cart.nothingToPay" : "cart.coveredByGift")}</p>
               )}
               {cart.credit_balance_cents > cart.credit_applied_cents && cart.credit_applied_cents > 0 && (
                 <p className="text-xs text-[color:var(--muted)] -mt-3 mb-6">{t("cart.creditLeft", { amount: money(cart.credit_balance_cents - cart.credit_applied_cents) })}</p>

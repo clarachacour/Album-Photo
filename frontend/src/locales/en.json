@@ -1297,7 +1297,7 @@
       "soon": "Coming soon"
     },
     "credit": "Gift card credit",
-    "creditLeft": "{{amount}} of credit stays on your account for a next order.",
+    "creditLeft": "{{amount}} of gift card credit stays on your account for a next order.",
     "gift": {
       "title": "Gift card for {{name}}",
       "detail": "A {{pages}}-page {{size}} album · delivery included · PDF"
@@ -1314,7 +1314,8 @@
         "expired": "This code has expired.",
         "used": "You've already used this code."
       }
-    }
+    },
+    "nothingToPay": "Nothing to pay."
   },
   "gift": {
     "eyebrow": "Gift card",

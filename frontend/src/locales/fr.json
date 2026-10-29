@@ -1297,7 +1297,7 @@
       "soon": "Bientôt disponible"
     },
     "credit": "Avoir carte cadeau",
-    "creditLeft": "{{amount}} d'avoir restent sur votre compte pour une prochaine commande.",
+    "creditLeft": "{{amount}} d'avoir de carte cadeau restent sur votre compte pour une prochaine commande.",
     "gift": {
       "title": "Carte cadeau pour {{name}}",
       "detail": "Un album {{size}} de {{pages}} pages · livraison incluse · PDF"
@@ -1314,7 +1314,8 @@
         "expired": "Ce code a expiré.",
         "used": "Vous avez déjà utilisé ce code."
       }
-    }
+    },
+    "nothingToPay": "Rien à payer."
   },
   "gift": {
     "eyebrow": "Carte cadeau",
