@@ -23,7 +23,6 @@
       "cta": "Créer mon album",
       "image_alt": "Albums photo imprimés Everbook",
       "perks": [
-        "À partir de {{price}} $",
         "Livré au Liban en ~1 semaine"
       ]
     },
@@ -915,7 +914,7 @@
   "meta": {
     "landing": {
       "title": "Everbook — Livre photo et album photo, mis en page pour vous",
-      "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban. À partir de 22 $."
+      "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban."
     },
     "faq": {
       "title": "Questions fréquentes",

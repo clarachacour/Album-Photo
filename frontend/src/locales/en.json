@@ -23,7 +23,6 @@
       "cta": "Create my album",
       "image_alt": "Printed Everbook photo albums",
       "perks": [
-        "From ${{price}}",
         "Delivered in Lebanon in ~1 week"
       ]
     },
@@ -915,7 +914,7 @@
   "meta": {
     "landing": {
       "title": "Everbook — Photo Book & Photo Album, Laid Out for You",
-      "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon. From $22."
+      "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon."
     },
     "faq": {
       "title": "Frequently asked questions",

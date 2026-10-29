@@ -6,12 +6,9 @@ import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Tru
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { lazyPage } from "@/lib/lazyPage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { PRICE_TABLE, DIGITAL_PRICE, ONLINE_PAYMENT } from "@/lib/pricing";
 
 // Cheapest album, for the "From $…" on the home page: follows the price table.
 // The lowest price on the site: the PDF album or the smallest printed one.
-// The lowest price on offer: the PDF only once it can be ordered (online payment).
-const FROM_PRICE = Math.min(...(ONLINE_PAYMENT ? [DIGITAL_PRICE] : []), ...Object.values(PRICE_TABLE).flatMap((tiers) => Object.values(tiers)));
 
 // Reloads the page once if its code can't be downloaded (a release since
 // the page was opened, a dropped connection) — see lazyPage.
@@ -68,7 +65,7 @@ export default function Landing() {
               </button>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/70" data-testid="landing-perks">
-              {t("landing.hero.perks", { returnObjects: true, price: FROM_PRICE }).map((perk) => (
+              {t("landing.hero.perks", { returnObjects: true }).map((perk) => (
                 <li key={perk} className="inline-flex items-center gap-1.5">
                   <Check size={14} className="text-[color:var(--coral)]" />
                   {perk}
