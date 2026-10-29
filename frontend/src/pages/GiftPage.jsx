@@ -105,7 +105,14 @@ export default function GiftPage() {
       <div className="max-w-[1100px] mx-auto">
         <div className="mb-12 max-w-2xl">
           <div className="eyebrow mb-3">{t("gift.eyebrow")}</div>
-          <h1 className="font-serif-display text-4xl md:text-6xl tracking-tight mb-4">{t("gift.title")}</h1>
+          <h1 className="font-serif-display text-4xl md:text-6xl tracking-tight mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {t("gift.title")}
+            {!ONLINE_PAYMENT && (
+              <span style={{ fontFamily: "'Manrope', sans-serif" }} className="text-[11px] md:text-xs font-semibold tracking-widest uppercase text-[color:var(--coral)] border border-[color:var(--coral)] px-2.5 py-1 rounded-full" data-testid="gift-coming-soon">
+                {t("cart.payment.soon")}
+              </span>
+            )}
+          </h1>
           <p className="text-ink/70">{t("gift.subtitle")}</p>
           <a href="#redeem" className="inline-block mt-4 text-sm underline text-ink/80 hover:text-[color:var(--coral)]">{t("gift.haveCode")}</a>
         </div>
