@@ -130,19 +130,6 @@ def test_the_customer_gets_one_shipped_and_one_delivered_email_for_the_package(c
     assert len([p for _, p, _ in fake.calls if p.endswith("/orders/status")]) == before + 1
 
 
-def test_the_customer_gets_one_being_printed_email_for_albums_sent_together(client, db, courier, monkeypatch):  # noqa: F811
-    from app.services import print_groups
-    from app.services.print_groups import flush_printer_queue
-
-    told = []
-    monkeypatch.setattr(print_groups, "send_order_in_production_email", lambda to, name, order, group=None: told.append([o["id"] for o in group or [order]]))
-    first = courier["order"]
-    second = _second_order(client, db, courier["customer"])
-    assert told == []  # not when the PDFs are made: when the printer gets them
-    asyncio.run(flush_printer_queue(force_order_id=first["id"]))
-    assert told == [[first["id"], second["id"]]]
-
-
 def test_bookstop_gets_a_whatsapp_for_each_order_to_print(client, db, courier, monkeypatch):  # noqa: F811
     from app.core.order_number import order_number
     from app.services import whatsapp

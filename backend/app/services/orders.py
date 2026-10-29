@@ -224,8 +224,6 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
             # The printer hears about it within the hour, with the
             # customer's other albums ordered meanwhile (one package, one
             # delivery — see services/print_groups.py).
-            # The customer hears it's being printed then too: one email for
-            # all the albums going to the printer together.
             await queue_for_printer(order_id)
             # Only a genuinely successful, first-time order — a real PDF a
             # printer will actually receive — has "the book is done,

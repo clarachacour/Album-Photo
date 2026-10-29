@@ -17,7 +17,12 @@ from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCar
 from app.services.checkout import build_order_doc, unit_price_cents
 from app.config import FRONTEND_URL
 from app.services import gift_cards, promo_codes, reminders
-from app.services.email import send_checkout_confirmation_email, send_gift_cards_email, send_order_confirmation_email
+from app.services.email import (
+    send_checkout_confirmation_email,
+    send_gift_cards_email,
+    send_order_confirmation_email,
+    send_team_new_order_email,
+)
 from app.services import payments
 from app.services.payments import NEEDS_ONLINE_PAYMENT, collect_payment
 from app.services.orders import start_order_pdf_generation
@@ -295,6 +300,8 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
             await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), orders[0])
         else:
             await run_email(send_checkout_confirmation_email, user.get("email"), user.get("name"), orders)
+        # The team hears of it too: one email for the whole checkout.
+        await run_email(send_team_new_order_email, orders, user)
     if cards:
         pdfs = [(f"Everbook gift card {c['code']}.pdf", gift_cards.render_gift_card_pdf(c), "application/pdf") for c in cards]
         await run_email(send_gift_cards_email, user.get("email"), user.get("name"), cards, pdfs)

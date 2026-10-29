@@ -62,15 +62,6 @@ def test_the_courier_email_has_the_order_number_and_no_price(app, monkeypatch):
     assert "134" not in body and "$" not in body
 
 
-def test_the_customer_hears_the_book_is_being_printed(app, monkeypatch):
-    from app.services import email as email_module
-
-    sent = _capture(monkeypatch, email_module)
-    email_module.send_order_in_production_email("rita@example.com", "Rita", _order())
-    (to, subject, body, _), = sent
-    assert to == "rita@example.com" and "EB-5F4C0509" in subject and "printer" in body
-
-
 def test_wakilni_waybill_is_the_same_order_number(app):
     from app.services import wakilni
 

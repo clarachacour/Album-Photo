@@ -202,3 +202,37 @@ def test_a_pdf_left_in_a_cart_is_shown_as_coming_soon(client, db, shop):
     assert cart["subtotal_cents"] == compute_order_price_cents("A4", 24)
     placed = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     assert placed.status_code == 409
+
+
+def test_the_team_gets_one_email_per_order(client, shop, monkeypatch):
+    """One "[New order]" email for a whole checkout, however many albums."""
+    from app.routers import cart as cart_router
+
+    team = []
+    monkeypatch.setattr(cart_router, "send_team_new_order_email", lambda orders, user: team.append([o["id"] for o in orders]))
+    for title in ("Anjar", "Tannourine"):
+        client.post("/api/cart/items", json={"album_id": shop["album"](title), "kind": "print", "quantity": 1}, headers=shop["headers"])
+    orders = _checkout(client, shop).json()["orders"]
+    assert len(orders) == 2 and len(team) == 1 and sorted(team[0]) == sorted(o["id"] for o in orders)
+
+
+def test_the_new_order_email_says_who_where_and_what_to_collect(app, monkeypatch):
+    from app.services import email as email_module
+
+    sent = []
+    monkeypatch.setattr(email_module, "send_email", lambda to, subject, body, html_body=None, reply_to=None: sent.append((to, subject, body)))
+    address = {**ADDRESS, "full_name": "Rita Haddad", "phone": "70123456"}
+    orders = [
+        {"id": "5f4c0509-1", "album_title": "Byblos", "kind": "print", "quantity": 2, "size": "A4", "orientation": "portrait", "unit_price_cents": 5300,
+         "shipping_price_cents": 500, "total_price_cents": 10460, "promo_code": "WELCOME10", "promo_discount_cents": 1040,
+         "shipping_address": address, "currency": "usd"},
+        {"id": "6a1b0000-2", "album_title": "Tyre", "kind": "print", "quantity": 1, "size": "A5", "orientation": "landscape", "unit_price_cents": 3500,
+         "shipping_price_cents": 0, "total_price_cents": 3150, "promo_code": "WELCOME10", "promo_discount_cents": 350,
+         "shipping_address": address, "currency": "usd"},
+    ]
+    email_module.send_team_new_order_email(orders, {"email": "rita@example.com", "name": "Rita"})
+    (to, subject, body), = sent
+    assert to == email_module.ORDERS_EMAIL
+    assert subject == "[New order] EB-5F4C0509 — Rita Haddad — 136.10 USD"
+    assert "70123456" in body and "Byblos — printed × 2" in body and "Tyre — printed × 1" in body
+    assert "Promo code WELCOME10: −13.90 USD" in body and "To collect in cash by the courier: 136.10 USD" in body

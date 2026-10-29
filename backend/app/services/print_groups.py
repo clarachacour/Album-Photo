@@ -19,7 +19,7 @@ from app.core.executors import run_blocking, run_email
 from app.core.order_number import order_number
 from app.db import db
 from app.services import whatsapp
-from app.services.email import send_delivery_problem_email, send_order_in_production_email, send_printer_order_email
+from app.services.email import send_delivery_problem_email, send_printer_order_email
 from app.services.gift_cards import GIFT_VALIDITY_DAYS, add_credit
 
 logger = logging.getLogger(__name__)
@@ -137,10 +137,6 @@ async def flush_printer_queue(force_order_id: str = None) -> int:
         await run_email(send_printer_order_email, members[0], members)
         # …and on WhatsApp, if set up (the files stay in the email).
         await _tell_printer_on_whatsapp(members)
-        # …and the customer, once for all of them: their albums are being printed.
-        customer = await db.users.find_one({"id": lead.get("user_id")}, {"_id": 0, "email": 1, "name": 1})
-        if customer and customer.get("email"):
-            await run_email(send_order_in_production_email, customer["email"], customer.get("name"), members[0], members)
         if len(members) > 1:
             logger.info(f"Commandes {', '.join(o['id'] for o in members)} : envoyées ensemble à l'imprimerie")
         sent += 1

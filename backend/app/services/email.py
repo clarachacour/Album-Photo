@@ -511,41 +511,6 @@ def send_digital_album_ready_email(to_email: str, name: str, order: dict):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_order_in_production_email(to_email: str, name: str, order: dict, group: list = None):
-    """To the customer: their book has gone to the printer — or, for albums
-    sent to the printer together (`group`, see services/print_groups.py),
-    all of them: one email for the order."""
-    group = group or [order]
-    many = len(group) > 1
-    order_url = f"{FRONTEND_URL}/orders" if many else f"{FRONTEND_URL}/orders/{order['id']}"
-    number = order_number(order)
-    titles = [f"{o.get('album_title', 'Album')} ({order_number(o)})" for o in group]
-    if many:
-        subject = f"Your {len(group)} Everbook albums are being printed"
-        news = f"Your {len(group)} albums have gone to the printer:"
-        plain_news = news + "\n" + "".join(f"- {t}\n" for t in titles)
-        html_news = f"<p>{news}</p><ul>" + "".join(f"<li>{_h(t)}</li>" for t in titles) + "</ul>"
-        then = "Printing takes about 3 days, then they're handed to the courier together, in one package — we'll email you when they're on their way."
-    else:
-        subject = f"Your Everbook album is being printed ({number})"
-        plain_news = f"Your album \"{order.get('album_title', 'Album')}\" has gone to the printer (order {number}).\n"
-        html_news = f"<p>Your album <strong>{_h(order.get('album_title', 'Album'))}</strong> has gone to the printer (order {number}).</p>"
-        then = "Printing takes about 3 days, then it's handed to the courier — we'll email you when it's on its way."
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"{plain_news}"
-        f"{then}\n\n"
-        f"Follow {'them' if many else 'your order'} here:\n{order_url}"
-    )
-    html_body = _email_wrapper(
-        preheader="Your albums have gone to the printer." if many else "Your album has gone to the printer.",
-        title="Your albums are being printed." if many else "Your album is being printed.",
-        body_html=f"<p>Hi {_h(name or '')},</p>{html_news}<p>{then}</p>",
-        cta_label="Follow your orders" if many else "Follow your order",
-        cta_url=order_url,
-    )
-    send_email(to_email, subject, body, html_body=html_body)
-
 def send_order_shipped_email(to_email: str, name: str, order: dict, group: list = None):
     """The book is on its way — or, for albums delivered together (`group`,
     see services/print_groups.py), all of them: one email for the package."""
@@ -942,6 +907,57 @@ def send_delivery_problem_email(order: dict, problem: str):
         cta_url=f"{FRONTEND_URL}/admin/orders",
     )
     send_email(ADMIN_EMAIL, subject, body, html_body=html_body)
+
+
+def send_team_new_order_email(orders: list, customer: dict):
+    """To the team's order inbox (ORDERS_EMAIL): an order just placed — one
+    email for everything ordered together (a cart's albums), with who, where
+    and what the courier collects."""
+    if not ORDERS_EMAIL or not orders:
+        return
+    from app.services.wakilni import cash_due
+
+    currency = (orders[0].get("currency") or "usd").upper()
+    money = lambda cents: f"{(cents or 0) / 100:.2f} {currency}"  # noqa: E731
+    prints = [o for o in orders if o.get("kind") != "digital"]
+    lead = (prints or orders)[0]
+    number = order_number(lead)
+    addr = lead.get("shipping_address") or {}
+    name = addr.get("full_name") or customer.get("name") or ""
+
+    def album(o):
+        what = "PDF" if o.get("kind") == "digital" else f"printed × {o.get('quantity', 1)}"
+        return f"{o.get('album_title', 'Album')} — {what}, {o.get('size', '')} {o.get('orientation', '')} ({order_number(o)})"
+
+    lines = [f"Customer: {name} — {customer.get('email', '')}" + (f" — {addr['phone']}" if addr.get("phone") else "")]
+    if prints:
+        lines.append(f"Address: {addr.get('street', '')}{', ' + addr['building'] if addr.get('building') else ''}, "
+                     f"{addr.get('area') or ''}{', ' if addr.get('area') else ''}{addr.get('city', '')}"
+                     + (f" ({addr['additional_info']})" if addr.get("additional_info") else ""))
+    lines.append("Albums:")
+    lines += [f"- {album(o)}" for o in orders]
+    shipping = sum(int(o.get("shipping_price_cents") or 0) for o in prints)
+    if shipping:
+        lines.append(f"Delivery: {money(shipping)}")
+    promo = next((o for o in orders if o.get("promo_code")), None)
+    if promo:
+        lines.append(f"Promo code {promo['promo_code']}: −{money(sum(int(o.get('promo_discount_cents') or 0) for o in orders))}")
+    credit = sum(int(o.get("gift_credit_cents") or 0) for o in orders)
+    if credit:
+        lines.append(f"Gift card credit: −{money(credit)}")
+    cash = sum(cash_due(o) for o in prints)
+    if prints:
+        lines.append(f"To collect in cash by the courier: {money(cash)}")
+    subject = f"[New order] {number} — {name or customer.get('email', '')} — {money(cash) if prints else 'PDF'}"
+    body = "\n".join(lines) + f"\n\nAdmin: {FRONTEND_URL}/admin/orders"
+    html_body = _email_wrapper(
+        preheader=f"New order {number}",
+        title="New order.",
+        body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
+        cta_label="Open the orders",
+        cta_url=f"{FRONTEND_URL}/admin/orders",
+    )
+    send_email(ORDERS_EMAIL, subject, body, html_body=html_body)
 
 
 TEAM_EVENTS = {

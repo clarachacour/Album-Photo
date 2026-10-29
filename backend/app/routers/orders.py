@@ -16,7 +16,7 @@ from app.schemas import OrderCreate, OrderFeedbackInput
 from app.services.delivery import dispatch_delivery
 from app.services.print_groups import group_of
 from app.core.order_number import order_number
-from app.services.email import printer_ready_url, send_order_confirmation_email, send_team_order_update_email
+from app.services.email import printer_ready_url, send_order_confirmation_email, send_team_new_order_email, send_team_order_update_email
 from app.services.orders import (
     ORDER_STATUS_LABELS,
     order_kind,
@@ -90,6 +90,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # preparing your book" — never claims the PDF is done), so only the
     # trigger moved, not the text.
     await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), order_doc)
+    await run_email(send_team_new_order_email, [order_doc], user)
     # Through the Cloud Tasks queue when configured: the customer gets
     # their answer at once and a failed generation is retried (background
     # work inside this request doesn't survive on Cloud Run). Without the
