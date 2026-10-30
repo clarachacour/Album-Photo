@@ -16,12 +16,22 @@ describe("what search engines and AI assistants read", () => {
     expect(text).toContain("costs $0.60 more");
   });
 
-  it("lists every album with its prices, delivered in Lebanon", () => {
-    const [a5, a4, pdf] = productData(SITE);
-    expect(a5.offers.offers.map((o) => o.price)).toEqual(PAGE_TIERS.map((p) => PRICE_TABLE.A5[p]));
-    expect(a4.offers.lowPrice).toBe(PRICE_TABLE.A4[24]);
-    expect(a4.offers.offers[0].shippingDetails.shippingRate.value).toBe(SHIPPING_PRICE);
-    expect(pdf.offers.price).toBe(DIGITAL_PRICE);
+  it("lists every album with its prices, delivered in Lebanon, as Google's merchant listings expect", () => {
+    const products = productData(SITE);
+    const [a5, a4] = products;
+    expect(a5.offers.map((o) => o.price)).toEqual(PAGE_TIERS.map((p) => PRICE_TABLE.A5[p]));
+    expect(a4.offers[0].price).toBe(PRICE_TABLE.A4[24]);
+    for (const product of products) {
+      expect(product.image.length).toBeGreaterThan(0);
+      expect(product.brand["@type"]).toBe("Brand");
+      for (const o of product.offers) {
+        expect(o.shippingDetails.shippingDestination.addressCountry).toBe("LB");
+        expect(o.hasMerchantReturnPolicy.applicableCountry).toBe("LB");
+      }
+    }
+    expect(a4.offers[0].shippingDetails.shippingRate.value).toBe(SHIPPING_PRICE);
+    // The PDF only once it can be ordered.
+    expect(products.find((p) => p["@id"].endsWith("#album-pdf"))?.offers[0].price ?? DIGITAL_PRICE).toBe(DIGITAL_PRICE);
   });
 
   it("marks the FAQ up as questions and answers, and sums the site up in llms.txt", () => {

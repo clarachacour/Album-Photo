@@ -5,8 +5,22 @@ import { DIGITAL_PRICE, MAX_ALBUM_PAGES, ONLINE_PAYMENT, OVERAGE_FROM, OVERAGE_P
 
 const SIZES = { A5: "A5 (14.8 × 21 cm)", A4: "A4 (21 × 29.7 cm)" };
 
-/** The printed albums and the PDF, with their prices, delivered in Lebanon. */
+/** The printed albums (and the PDF, once it can be ordered), with their
+ * prices, delivered in Lebanon — as Google's merchant listings expect them:
+ * an image, a brand, and on each offer the delivery and the return policy. */
 export function productData(siteUrl) {
+  const brand = { "@type": "Brand", name: "Everbook" };
+  const images = ["og-image.jpg", "theme-covers/travel-beirut.webp", "theme-covers/travel-sicily.webp", "theme-covers/couple-wedding-ivory.webp"].map(
+    (f) => `${siteUrl}/${f}`
+  );
+  // Made to order from the customer's own photos: not returnable (terms of
+  // sale), a faulty book is reprinted.
+  const returnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "LB",
+    returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+    merchantReturnLink: `${siteUrl}/terms`,
+  };
   const shipping = {
     "@type": "OfferShippingDetails",
     shippingRate: { "@type": "MonetaryAmount", value: SHIPPING_PRICE, currency: "USD" },
@@ -17,39 +31,36 @@ export function productData(siteUrl) {
       transitTime: { "@type": "QuantitativeValue", minValue: 2, maxValue: 3, unitCode: "DAY" },
     },
   };
+  const offer = (name, price, extra = {}) => ({
+    "@type": "Offer",
+    name,
+    price,
+    priceCurrency: "USD",
+    availability: "https://schema.org/InStock",
+    areaServed: { "@type": "Country", name: "Lebanon" },
+    shippingDetails: shipping,
+    hasMerchantReturnPolicy: returnPolicy,
+    url: `${siteUrl}/`,
+    ...extra,
+  });
   const printed = Object.entries(PRICE_TABLE).map(([size, prices]) => ({
     "@type": "Product",
     "@id": `${siteUrl}/#album-${size.toLowerCase()}`,
     name: `Everbook printed photo album — ${size}`,
     description: `A hardcover photo book in ${SIZES[size]}, portrait or landscape, made from your own photos: laid out for you, printed and delivered in Lebanon.`,
-    brand: { "@id": `${siteUrl}/#organization` },
-    image: `${siteUrl}/og-image.jpg`,
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "USD",
-      lowPrice: Math.min(...Object.values(prices)),
-      highPrice: Math.max(...Object.values(prices)),
-      offerCount: PAGE_TIERS.length,
-      offers: PAGE_TIERS.map((pages) => ({
-        "@type": "Offer",
-        name: `${size}, ${pages} pages`,
-        price: prices[pages],
-        priceCurrency: "USD",
-        availability: "https://schema.org/InStock",
-        areaServed: { "@type": "Country", name: "Lebanon" },
-        shippingDetails: shipping,
-        url: `${siteUrl}/`,
-      })),
-    },
+    brand,
+    image: images,
+    offers: PAGE_TIERS.map((pages) => offer(`${size}, ${pages} pages`, prices[pages])),
   }));
+  if (!ONLINE_PAYMENT) return printed; // the PDF can't be ordered yet
   const digital = {
     "@type": "Product",
     "@id": `${siteUrl}/#album-pdf`,
     name: "Everbook digital photo album (PDF)",
     description: "Your photo album as a PDF to download and keep: cover, pages and back cover, in screen quality.",
-    brand: { "@id": `${siteUrl}/#organization` },
-    // Ordered with online payment only: coming soon until then.
-    offers: { "@type": "Offer", price: DIGITAL_PRICE, priceCurrency: "USD", availability: `https://schema.org/${ONLINE_PAYMENT ? "InStock" : "PreOrder"}`, url: `${siteUrl}/` },
+    brand,
+    image: images,
+    offers: [offer("PDF", DIGITAL_PRICE, { shippingDetails: { ...shipping, shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "USD" }, doesNotShip: true } })],
   };
   return [...printed, digital];
 }
