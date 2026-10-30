@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse
 from pymongo.errors import DuplicateKeyError
 
 from app.config import ADMIN_EMAIL, APPLE_CLIENT_ID, FRONTEND_URL, GOOGLE_CLIENT_ID
@@ -70,6 +70,7 @@ async def signup(data: SignupInput):
         "email": data.email.lower(),
         "password_hash": hash_password(data.password),
         "name": data.name,
+        "lang": data.lang,
         # Unverified until the link in the confirmation email below is
         # clicked (see verify_email) — unlike Google/Apple sign-in
         # (upsert_oauth_user), nothing here proves this address actually
@@ -152,25 +153,18 @@ async def reset_password(data: ResetPasswordInput):
 async def verify_email(token: str = Query(...)):
     """Reached by a direct click from send_verification_email's link — no
     login involved, the token itself (stored on the user doc at signup) is
-    the only proof needed. Returns a plain confirmation page rather than
-    JSON, matching order_action_mark_ready's shape: a person clicking a
-    link in their inbox expects to land on a page, not to receive raw
-    API output."""
+    the only proof needed. Sends the person on to the site's home page,
+    which says the address is confirmed (?verified=1) — or, for a link
+    already used or no longer valid, that it can't be used (?verified=0)."""
     user = await db.users.find_one({"verify_email_token": token})
     if not user:
-        return HTMLResponse(
-            "<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
-            "<h2>This confirmation link is invalid or has already been used.</h2></body></html>"
-        )
+        return RedirectResponse(f"{FRONTEND_URL}/?verified=0", status_code=303)
+    home = "/fr" if user.get("lang") == "fr" else "/"
     await db.users.update_one(
         {"id": user["id"]},
         {"$set": {"email_verified": True}, "$unset": {"verify_email_token": ""}},
     )
-    return HTMLResponse(
-        "<html><body style='font-family:sans-serif; text-align:center; padding:60px;'>"
-        f"<h2>Your email is confirmed — thanks!</h2>"
-        f"<p><a href='{FRONTEND_URL}/dashboard'>Go to your albums</a></p></body></html>"
-    )
+    return RedirectResponse(f"{FRONTEND_URL}{home}?verified=1", status_code=303)
 
 @router.post("/auth/resend-verification")
 async def resend_verification_email(user: dict = Depends(get_current_user_raw)):

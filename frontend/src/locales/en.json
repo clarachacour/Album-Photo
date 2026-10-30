@@ -139,7 +139,9 @@
     },
     "invalidEmail": "Please check your email address (for example name@gmail.com).",
     "invalidPassword": "Your password must have at least 6 characters.",
-    "wrongCredentials": "Incorrect email or password."
+    "wrongCredentials": "Incorrect email or password.",
+    "emailConfirmed": "Your email is confirmed — welcome to Everbook!",
+    "confirmLinkUsed": "This confirmation link has already been used or is no longer valid. Sign in to continue."
   },
   "faq": {
     "eyebrow": "Support",

@@ -197,3 +197,19 @@ def test_an_album_pdf_cant_be_downloaded_without_an_order(client, db):
     _, headers = _signup(client, db=db)
     album_id = client.post("/api/albums", json={"title": "Byblos"}, headers=headers).json()["id"]
     assert client.get(f"/api/albums/{album_id}/export", headers=headers).status_code in (404, 405)
+
+
+def test_the_email_confirmation_link_leads_to_the_home_page(client, db):
+    email = f"{uuid.uuid4().hex[:10]}@example.com"
+    client.post("/api/auth/signup", json={"email": email, "password": "secret123", "name": "T"})
+    token = asyncio.run(db.users.find_one({"email": email}))["verify_email_token"]
+    res = client.get(f"/api/auth/verify-email?token={token}", follow_redirects=False)
+    assert res.status_code == 303 and res.headers["location"].endswith("/?verified=1")
+    assert asyncio.run(db.users.find_one({"email": email}))["email_verified"] is True
+    again = client.get(f"/api/auth/verify-email?token={token}", follow_redirects=False)
+    assert again.headers["location"].endswith("/?verified=0")
+    # Signed up on the French site: the French home page.
+    fr = f"{uuid.uuid4().hex[:10]}@example.com"
+    client.post("/api/auth/signup", json={"email": fr, "password": "secret123", "name": "T", "lang": "fr"})
+    token = asyncio.run(db.users.find_one({"email": fr}))["verify_email_token"]
+    assert client.get(f"/api/auth/verify-email?token={token}", follow_redirects=False).headers["location"].endswith("/fr?verified=1")

@@ -1,5 +1,6 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Truck, Check, Undo2 } from "lucide-react";
@@ -18,6 +19,18 @@ export default function Landing() {
   usePageMeta("landing");
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // Arriving from the link in the confirmation email (backend
+  // /auth/verify-email): say so, then tidy the address.
+  useEffect(() => {
+    const verified = new URLSearchParams(window.location.search).get("verified");
+    if (verified === null) return;
+    if (verified === "1") toast.success(t("auth.emailConfirmed"));
+    else toast.error(t("auth.confirmLinkUsed"));
+    navigate(window.location.pathname, { replace: true });
+    // Once, on arriving.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateAlbumClick = () => {
     // On vérifie la présence de 'album_token' ou 'album_user'

@@ -40,6 +40,9 @@ class SignupInput(BaseModel):
     email: EmailStr
     password: NewPassword
     name: Name
+    # The site's language at signup: the confirmation link opens the home
+    # page in it.
+    lang: Literal["en", "fr"] = "en"
 
 class LoginInput(BaseModel):
     email: EmailStr

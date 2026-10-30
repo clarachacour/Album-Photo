@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "./api";
+import i18n from "@/lib/i18n";
 
 const AuthContext = createContext(null);
 const SIGNED_IN_BEFORE = "everbook_signed_in_before";
@@ -64,7 +65,8 @@ export function AuthProvider({ children }) {
   };
 
   const signup = async (name, email, password) => {
-    const { data } = await api.post("/auth/signup", { name, email, password });
+    const lang = (i18n.language || "en").startsWith("fr") ? "fr" : "en";
+    const { data } = await api.post("/auth/signup", { name, email, password, lang });
     saveSession(data);
     setUser(data.user);
     return data.user;
