@@ -154,3 +154,18 @@ def test_bookstop_gets_a_whatsapp_for_each_order_to_print(client, db, courier, m
     numbers = {order_number(_order(db, first["id"])), order_number(_order(db, second["id"]))}
     assert set(params[0].split(", ")) == numbers and params[1] == "2"
     assert len(courier["sent"]["printer"]) == 1
+
+
+def test_an_order_cancelled_while_its_pdf_is_made_never_goes_to_the_printer(client, db, courier):  # noqa: F811
+    from app.services.orders import generate_order_pdf
+    from app.services.print_groups import flush_printer_queue
+
+    order = courier["order"]
+    # Cancelled by the admin before its PDF was finished.
+    asyncio.run(db.orders.update_one({"id": order["id"]}, {"$set": {"status": "cancelled", "pdf_ready": False}, "$unset": {"printer_pending_at": ""}}))
+    assert asyncio.run(generate_order_pdf(order["id"], order["album_id"], _order(db, order["id"])["user_id"]))
+    after = _order(db, order["id"])
+    assert after["status"] == "cancelled" and not after.get("printer_pending_at")
+    _wait_over(db, order["id"])
+    asyncio.run(flush_printer_queue())
+    assert not any(order["id"] in g for g in courier["sent"].get("printer", []))

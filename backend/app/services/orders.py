@@ -214,12 +214,18 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
                 await _delete_unselected_photos(album_id)
             await deliver_digital_if_ready(order_id)
             return True
-        if order and order["status"] not in ("printing", "ready_for_delivery", "shipped", "delivered"):
+        # A cancelled order stays cancelled (cancelled while its PDF was
+        # being made): it never goes to the printer. Checked in the update
+        # itself, so a cancel landing right now isn't overwritten.
+        not_yet_printing = ("printing", "ready_for_delivery", "shipped", "delivered", "cancelled")
+        if order and order["status"] not in not_yet_printing:
             now2 = datetime.now(timezone.utc).isoformat()
-            await db.orders.update_one(
-                {"id": order_id},
+            moved = await db.orders.update_one(
+                {"id": order_id, "status": {"$nin": list(not_yet_printing)}},
                 {"$set": {"status": "printing", "updated_at": now2}, "$push": {"status_history": {"status": "printing", "at": now2}}},
             )
+            if not moved.modified_count:
+                return True
             order["status"] = "printing"
             # The printer hears about it within the hour, with the
             # customer's other albums ordered meanwhile (one package, one
