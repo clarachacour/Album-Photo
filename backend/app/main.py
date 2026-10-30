@@ -35,7 +35,6 @@ from app.routers import (
     orders,
     photos,
     promo_codes,
-    test_cleanup,  # one-time: delete the pre-launch test data (remove afterwards)
 )
 from app.db_indexes import ensure_indexes
 from app.monitoring import init_monitoring
@@ -65,7 +64,7 @@ app = FastAPI(title="Album AI Studio API", lifespan=lifespan)
 # Every route lives under /api. Order matters when two paths could match the
 # same URL, so keep this list in the same order as before the split.
 api_router = APIRouter(prefix="/api")
-for module in (auth, contact, albums, photos, mobile_upload, covers, orders, cart, gift_cards, promo_codes, test_cleanup, admin, internal, health):
+for module in (auth, contact, albums, photos, mobile_upload, covers, orders, cart, gift_cards, promo_codes, admin, internal, health):
     api_router.include_router(module.router)
 app.include_router(api_router)
 

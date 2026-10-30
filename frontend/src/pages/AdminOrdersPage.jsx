@@ -9,7 +9,6 @@ import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 import PromoCodesPanel from "@/components/admin/PromoCodesPanel";
 import SetupCheckPanel from "@/components/admin/SetupCheckPanel";
-import TestCleanupPanel from "@/components/admin/TestCleanupPanel"; // one-time, remove after the cleanup
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -274,7 +273,6 @@ export default function AdminOrdersPage() {
 
         <SetupCheckPanel />
         <PromoCodesPanel />
-        <TestCleanupPanel />
 
         {loading ? (
           <p className="text-sm text-[color:var(--muted)]">Loading…</p>
