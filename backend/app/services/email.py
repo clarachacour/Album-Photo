@@ -101,7 +101,7 @@ _EMAIL_BORDER = "#E2DFD8"
 _EMAIL_SERIF = "Georgia, 'Times New Roman', serif"
 _EMAIL_SANS = "Helvetica, Arial, sans-serif"
 
-def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = None, cta_url: str = None, footer_html: str = "") -> str:
+def _email_wrapper(title: str, body_html: str, cta_label: str = None, cta_url: str = None, footer_html: str = "") -> str:
     """Wraps any email's content in Everbook's branded shell — the same
     wordmark, paper background, ink text, and coral call-to-action button
     used across every automated email (welcome, verification, password,
@@ -117,8 +117,9 @@ def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = 
     than inventing a graphical logo that doesn't exist on the site
     itself) is what "matching the site" actually means.
 
-    body_html and preheader are HTML: every customer-typed value in them
-    goes through _h() first."""
+    body_html is HTML: every customer-typed value in it goes through _h()
+    first. No hidden preview text: spam filters count invisible text
+    against the email (SpamAssassin's FONT_INVIS_*)."""
     cta_html = ""
     if cta_label and cta_url:
         cta_html = f"""
@@ -132,7 +133,6 @@ def _email_wrapper(preheader: str, title: str, body_html: str, cta_label: str = 
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0; padding:0; background-color:{_EMAIL_CANVAS};">
-  <span style="display:none; max-height:0; overflow:hidden; font-size:1px; color:{_EMAIL_CANVAS};">{preheader}</span>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:{_EMAIL_CANVAS};">
     <tr><td align="center" style="padding: 40px 20px;">
       <table role="presentation" width="100%" style="max-width:520px; background-color:{_EMAIL_PAPER}; border:1px solid {_EMAIL_BORDER};">
@@ -165,7 +165,6 @@ def send_welcome_email(to_email: str, name: str):
         f"{FRONTEND_URL}"
     )
     html_body = _email_wrapper(
-        preheader="You're all set to start turning your photos into a printed book.",
         title="Welcome to Everbook.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -212,7 +211,6 @@ def send_verification_email(to_email: str, name: str, verify_token: str, welcome
         f"If you didn't create an Everbook account, you can safely ignore this email."
     )
     html_body = _email_wrapper(
-        preheader=intro,
         title="Welcome to Everbook." if welcome else "Confirm your email address.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -249,7 +247,6 @@ def send_pdf_generation_failed_email(order: dict, error: str):
         f"Regenerate or investigate here:\n{admin_url}"
     )
     html_body = _email_wrapper(
-        preheader=f"PDF generation failed for order {order_number(order)}",
         title="PDF generation failed.",
         body_html=(
             f"<p>An order's PDF generation attempt failed and needs attention.</p>"
@@ -271,7 +268,6 @@ def send_password_reset_email(to_email: str, name: str, reset_link: str):
         f"If you didn't request this, you can safely ignore this email."
     )
     html_body = _email_wrapper(
-        preheader="Click below to reset your Everbook password.",
         title="Reset your password.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -294,7 +290,6 @@ def send_account_deleted_email(to_email: str, name: str):
         f"If you didn't ask for this, please contact us right away."
     )
     html_body = _email_wrapper(
-        preheader="Your Everbook account and photos have been deleted.",
         title="Your account was deleted.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -322,7 +317,6 @@ def send_password_changed_email(to_email: str, name: str):
         f"please contact us right away so we can help secure your account."
     )
     html_body = _email_wrapper(
-        preheader="Your Everbook account password was just changed.",
         title="Your password was changed.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -351,7 +345,6 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         f"We'll email you again once it ships."
     )
     html_body = _email_wrapper(
-        preheader="Thanks for your order! We've received it and will start preparing your book.",
         title="Your order is confirmed.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -401,7 +394,6 @@ def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
         + f"\n\nYou can follow each of them here:\n{orders_url}"
     )
     html_body = _email_wrapper(
-        preheader="Thanks for your order! We've received it and are starting on it.",
         title="Your order is confirmed.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -445,7 +437,6 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
     hello = f"{'Bonjour' if fr else 'Hi'} {name or ''},"
     body = f"{hello}\n\n{intro}\n\n" + "".join(f"- {line(c)}\n" for c in cards) + f"\n{how}\n\n{again}\n{page_url}"
     html_body = _email_wrapper(
-        preheader=intro,
         title=subject + ".",
         body_html=(
             f"<p>{_h(hello)}</p><p>{_h(intro)}</p>"
@@ -473,7 +464,6 @@ def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict
         f"We'll email you again the moment your PDF is ready."
     )
     html_body = _email_wrapper(
-        preheader=intro,
         title="Your digital album is ordered.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -499,7 +489,6 @@ def send_digital_album_ready_email(to_email: str, name: str, order: dict):
         f"Thanks for choosing Everbook."
     )
     html_body = _email_wrapper(
-        preheader=intro,
         title="Your album is ready to download.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -536,7 +525,6 @@ def send_order_shipped_email(to_email: str, name: str, order: dict, group: list 
         + f"You can follow {'them' if many else 'its status'} here:\n{order_url}"
     )
     html_body = _email_wrapper(
-        preheader=news,
         title="Your order has shipped.",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -576,7 +564,6 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict, g
         f"Thank you for printing with Everbook."
     )
     html_body = _email_wrapper(
-        preheader=arrived,
         title="How did your books turn out?" if many else "How did your book turn out?",
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
@@ -646,7 +633,6 @@ def send_unfinished_album_reminder_email(to_email: str, name: str, album: dict, 
     if stop_url:
         body += "\n\n" + t["stop_plain"].format(url=stop_url)
     html_body = _email_wrapper(
-        preheader=_h(t["album_body"].format(title=title)),
         title=t["album_title"],
         body_html=f"<p>{_h(hi)}</p><p>{_h(t['album_body'].format(title=title))}</p>",
         cta_label=t["album_cta"],
@@ -666,7 +652,6 @@ def send_cart_reminder_email(to_email: str, name: str, lines: list, lang: str, s
     if stop_url:
         body += "\n\n" + t["stop_plain"].format(url=stop_url)
     html_body = _email_wrapper(
-        preheader=_h(t["cart_body"] + " " + ", ".join(listed)),
         title=t["cart_title"],
         body_html=(
             f"<p>{_h(hi)}</p><p>{_h(t['cart_body'])}</p>"
@@ -712,7 +697,6 @@ def send_album_expiring_soon_email(to_email: str, name: str, album: dict, days_l
     paragraph2 = t["when"].format(days=days)
     body = f"{hi}\n\n{paragraph1}\n\n{paragraph2}\n\n{album_url}"
     html_body = _email_wrapper(
-        preheader=_h(paragraph2),
         title=t["title"],
         body_html=f"<p>{_h(hi)}</p><p>{_h(paragraph1)}</p><p>{_h(paragraph2)}</p>",
         cta_label=t["cta"],
@@ -773,7 +757,6 @@ def send_printer_order_email(order: dict, group: list = None):
         ready_url, "Mark ready for delivery", _EMAIL_CORAL, "14px"
     )
     html_body = _email_wrapper(
-        preheader=f"New book to print — {_h(order.get('album_title', 'Album'))}",
         title="New book to print.",
         body_html=(
             f"<p style=\"font-size:18px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">Reference: {number}</p>"
@@ -827,7 +810,6 @@ def _send_printer_group_email(group: list):
         + f"\n\nOnce they're all printed and packed, open this page and confirm (once for all) — it then shows the number to write on the package:\n{ready_url}"
     )
     html_body = _email_wrapper(
-        preheader=f"New books to print — {len(group)} albums, one package",
         title="New books to print.",
         body_html=(
             f"<p style=\"font-size:18px; font-weight:bold; letter-spacing:1px; margin:0 0 4px;\">One package — reference: {number}</p>"
@@ -864,7 +846,6 @@ def send_delivery_pickup_email(order: dict, group: list = None):
         + f"\nQuantity: {quantity}"
     )
     html_body = _email_wrapper(
-        preheader=f"Ready for pickup — {_h(order.get('album_title', 'Album'))}",
         title="Ready for pickup.",
         body_html=(
             f"<p>A book is ready for pickup and delivery.</p>"
@@ -900,7 +881,6 @@ def send_delivery_problem_email(order: dict, problem: str):
         lines.append(f"Wakilni tracking: {delivery.get('tracking_id')} {delivery.get('tracking_url') or ''}")
     body = "\n".join(lines) + f"\n\nAdmin: {FRONTEND_URL}/admin/orders"
     html_body = _email_wrapper(
-        preheader=f"Delivery problem — {_h(problem)}",
         title="Delivery problem.",
         body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
         cta_label="Open the orders",
@@ -951,7 +931,6 @@ def send_team_new_order_email(orders: list, customer: dict):
     subject = f"[New order] {number} — {name or customer.get('email', '')} — {money(cash) if prints else 'PDF'}"
     body = "\n".join(lines) + f"\n\nAdmin: {FRONTEND_URL}/admin/orders"
     html_body = _email_wrapper(
-        preheader=f"New order {number}",
         title="New order.",
         body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
         cta_label="Open the orders",
@@ -989,7 +968,6 @@ def send_team_order_update_email(order: dict, event: str):
     subject = f"[{label}] {number} — {order.get('album_title', 'Album')}"
     body = "\n".join(lines) + f"\n\nAdmin: {FRONTEND_URL}/admin/orders"
     html_body = _email_wrapper(
-        preheader=f"{label} — {number}",
         title=f"{label}.",
         body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
         cta_label="Open the orders",
