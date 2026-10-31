@@ -69,11 +69,15 @@ def _auth_token(fresh: bool = False) -> str:
     credentials = {"key": WAKILNI_KEY, "secret": WAKILNI_SECRET}
     # Documented as a GET with a JSON body; query parameters as a fallback.
     res = _send("GET", url, json=credentials)
+    if res.status_code == 429:
+        # Too many attempts: Wakilni wants us to slow down — waiting for
+        # the next round, not a fallback call that would make it worse.
+        raise WakilniUnavailable(f"auth failed (429): {_short(_json(res))}")
     if 400 <= res.status_code < 500:
         res = _send("GET", url, params=credentials)
     body = _json(res)
     token = body.get("token") or (body.get("data") or {}).get("token")
-    if res.status_code >= 500:
+    if res.status_code >= 500 or res.status_code == 429:
         raise WakilniUnavailable(f"auth failed ({res.status_code}): {_short(body)}")
     if res.status_code >= 400 or not token:
         raise WakilniError(f"auth failed ({res.status_code}): {_short(body)}")
@@ -100,7 +104,7 @@ def _call(method: str, path: str, json: Optional[dict] = None, params: Optional[
         if res.status_code == 401 and attempt == 1:
             continue  # token expired: once more with a fresh one
         body = _json(res)
-        if res.status_code >= 500:
+        if res.status_code >= 500 or res.status_code == 429:  # down, or "too many attempts"
             raise WakilniUnavailable(f"{method} {path} → {res.status_code}: {_short(body)}")
         if res.status_code >= 400:
             raise WakilniError(f"{method} {path} → {res.status_code}: {_short(body)}")

@@ -26,6 +26,7 @@ class FakeWakilni:
         self.fail_add = False
         self.down = False
         self.fail_cancel = False
+        self.rate_limited = False
         # Its own delivery number for each test: the test database is
         # shared, and albums with the same delivery are followed together.
         self.delivery_id = 9001 + next(_delivery_numbers)
@@ -35,6 +36,8 @@ class FakeWakilni:
         self.calls.append((method, path, json))
         if self.down:  # their database overloaded, as seen in production
             return _Res(500, {"message": "SQLSTATE[HY000] [1040] Too many connections", "code": 1040, "status_code": 500})
+        if self.rate_limited:  # as seen in production
+            return _Res(429, {"message": "Too Many Attempts.", "status_code": 429})
         if path.endswith("/auth_token"):
             return _Res(200, {"message": "Auth token retrieved successfully", "token": "tok"})
         if path.endswith("/start_bulk"):
@@ -382,3 +385,19 @@ def test_no_whatsapp_without_its_settings(client, db, courier, monkeypatch):
 
     monkeypatch.setattr(whatsapp.requests, "post", lambda *a, **k: pytest.fail("nothing should be sent"))
     _ready(client, courier["order"]["id"])
+
+
+def test_too_many_attempts_at_wakilni_waits_for_the_next_round(client, db, courier, caplog):
+    from app.services import wakilni
+    from app.services.delivery import sync_all_deliveries
+
+    _ready(client, courier["order"]["id"])
+    asyncio.run(db.app_state.delete_many({}))
+    courier["fake"].rate_limited = True
+    wakilni._token.update(value=None, at=0)
+    calls = len(courier["fake"].calls)
+    with caplog.at_level("WARNING"):
+        result = asyncio.run(sync_all_deliveries())
+    # One login attempt, no second try, a warning, not an error.
+    assert result["wakilni_down"] and len(courier["fake"].calls) - calls == 1
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]

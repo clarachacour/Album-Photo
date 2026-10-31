@@ -6,6 +6,7 @@ import logging
 from datetime import datetime, timezone
 
 from app.core.executors import run_blocking, run_email
+from app.core.order_number import order_number
 from app.db import db
 from app.services import wakilni, whatsapp
 from app.services.print_groups import group_of
@@ -196,7 +197,7 @@ async def sync_all_deliveries() -> dict:
             return {"checked": checked, "failed": failed, "wakilni_down": True}
         except Exception as e:
             failed += 1
-            logger.error(f"Commande {o['id']} : suivi Wakilni impossible : {e}")
+            logger.error(f"Commande {order_number(o)} ({o['id']}) : suivi Wakilni impossible : {e}")
     if checked:
         await db.app_state.delete_one({"id": "wakilni_outage"})
     return {"checked": checked, "failed": failed}
@@ -213,7 +214,7 @@ async def _wakilni_down(order_id: str, error: Exception):
         await db.app_state.update_one({"id": "wakilni_outage"}, {"$set": {"alerted": True}})
         logger.error(f"Wakilni injoignable depuis {hours:.0f} h : suivi des livraisons en attente ({error})")
     else:
-        logger.warning(f"Commande {order_id} : Wakilni indisponible, nouvel essai au prochain passage : {error}")
+        logger.warning(f"Commande {order_number({'id': order_id})} ({order_id}) : Wakilni indisponible, nouvel essai au prochain passage : {error}")
 
 
 async def cancel_delivery(order_id: str, reason: str) -> dict:
