@@ -217,3 +217,16 @@ def test_two_runs_at_the_same_time_send_each_reminder_once(client, db, mails, mo
 
     asyncio.run(both())
     assert [m[0] for m in mails if m[1] == email] == ["album"]
+
+
+def test_a_deleted_album_gets_no_reminder(client, db, mails):
+    email, headers, album_id, user_id = _customer(client, db, lang="en")
+    assert client.post("/api/cart/items", json={"album_id": album_id, "kind": "print", "quantity": 1}, headers=headers).status_code == 200
+    assert client.delete(f"/api/albums/{album_id}", headers=headers).json() == {"deleted": 1}
+    # Left long enough for every reminder: the cart's, "come finish it",
+    # and "it will be deleted".
+    _age(db, "carts", {"user_id": user_id}, 25)
+    _age(db, "albums", {"id": album_id}, 24 * 4)
+    _run()
+    _run(NOON + timedelta(days=40))
+    assert not [m for m in mails if m[1] == email]
