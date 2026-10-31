@@ -177,3 +177,43 @@ def test_the_deletion_warning_reads_well(monkeypatch):
     assert "Il sera supprimé dans 5 jours" in out[-1][1]
     email.send_album_expiring_soon_email("a@b.c", "Rita", {"id": "x1", "title": "Paros"}, 1)
     assert out[-1][0] == '"Paros" will be deleted in 1 day'
+
+
+def test_two_runs_at_the_same_time_send_each_reminder_once(client, db, mails, monkeypatch):
+    from app.services import reminders
+    from app.services.reminders import send_reminders
+
+    email, headers, album_id, user_id = _customer(client, db, lang="en")
+    _age(db, "albums", {"id": album_id}, 24 * 4)
+
+    # Each run reads the albums, then lets the other run read them too
+    # before going on (two scheduler calls overlapping).
+    class Cursor:
+        def __init__(self, cursor):
+            self.cursor = cursor
+
+        async def to_list(self, n):
+            found = await self.cursor.to_list(n)
+            await asyncio.sleep(0)
+            return found
+
+    class Albums:
+        def __getattr__(self, name):
+            return getattr(db.albums, name)
+
+        def find(self, *a, **k):
+            return Cursor(db.albums.find(*a, **k))
+
+    class Db:
+        albums = Albums()
+
+        def __getattr__(self, name):
+            return getattr(db, name)
+
+    monkeypatch.setattr(reminders, "db", Db())
+
+    async def both():
+        await asyncio.gather(send_reminders(NOON), send_reminders(NOON))
+
+    asyncio.run(both())
+    assert [m[0] for m in mails if m[1] == email] == ["album"]

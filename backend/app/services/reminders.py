@@ -57,7 +57,13 @@ async def remind_carts(now: datetime) -> int:
     for cart in carts:
         if cart.get("reminded_at") and cart["reminded_at"] >= cart["updated_at"]:
             continue  # already reminded about this cart as it is
-        await db.carts.update_one({"user_id": cart["user_id"]}, {"$set": {"reminded_at": now.isoformat()}})
+        # Claimed before sending, only if no other run claimed it first
+        # (two runs at once must not send it twice).
+        claimed = await db.carts.update_one(
+            {"user_id": cart["user_id"], "reminded_at": cart.get("reminded_at")}, {"$set": {"reminded_at": now.isoformat()}}
+        )
+        if not claimed.modified_count:
+            continue
         user = await _customer(cart["user_id"])
         if not user:
             continue
@@ -136,8 +142,8 @@ async def remind_unfinished_albums(now: datetime) -> dict:
     for album in stage1:
         if album["id"] in ordered:
             continue
-        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 1}})
-        if album["id"] in in_carts:
+        claimed = await db.albums.update_one({"id": album["id"], "reminder_stage": {"$exists": False}}, {"$set": {"reminder_stage": 1}})
+        if not claimed.modified_count or album["id"] in in_carts:
             continue
         user = await _customer(album["user_id"])
         if user:
@@ -155,7 +161,12 @@ async def remind_unfinished_albums(now: datetime) -> dict:
         if not user or not user.get("email"):
             continue
         days_left = max(1, round((deletion_at(album, now) - now).total_seconds() / 86400))
-        await db.albums.update_one({"id": album["id"]}, {"$set": {"reminder_stage": 2, "deletion_warned_at": now.isoformat()}})
+        claimed = await db.albums.update_one(
+            {"id": album["id"], "deletion_warned_at": album.get("deletion_warned_at")},
+            {"$set": {"reminder_stage": 2, "deletion_warned_at": now.isoformat()}},
+        )
+        if not claimed.modified_count:
+            continue
         await run_email(send_album_expiring_soon_email, user["email"], user.get("name"), album, days_left)
         stage2_sent += 1
 
