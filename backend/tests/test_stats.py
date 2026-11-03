@@ -1,5 +1,5 @@
-"""The admin's statistics: the customers' journey, kept even once an album
-is deleted, without the admin's own tests."""
+"""The admin's dashboard: the customers' journey, kept even once an album
+is deleted, the albums' choices, the orders, without the admin's own tests."""
 import asyncio
 from datetime import datetime, timezone
 
@@ -17,8 +17,9 @@ def admin(client, db, monkeypatch):
     return headers
 
 
-def _album(client, db, headers):
-    album_id = client.post("/api/albums", json={"title": "Byblos", "size": "A5", "target_pages": 24}, headers=headers).json()["id"]
+def _album(client, db, headers, template="travel-beirut", pages=24):
+    body = {"title": "Byblos", "size": "A5", "target_pages": pages, "cover_template_id": template}
+    album_id = client.post("/api/albums", json=body, headers=headers).json()["id"]
     asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"pages": [{"id": "1", "items": []}], "status": "ready"}}))
     return album_id
 
@@ -27,42 +28,65 @@ def _user_id(client, headers):
     return client.get("/api/auth/me", headers=headers).json()["id"]
 
 
-def _stats(client, admin):
-    res = client.get("/api/admin/stats", params={"days": 30}, headers=admin)
+def _dashboard(client, admin):
+    res = client.get("/api/admin/dashboard", params={"days": 30}, headers=admin)
     assert res.status_code == 200, res.text
-    body = res.json()
-    return {**body, "funnel": {f["step"]: f["count"] for f in body["funnel"]}}
+    return res.json()
 
 
-def test_the_journey_and_the_period(client, db, admin):
-    before = _stats(client, admin)
+def _counts(rows):
+    return {r["key"]: r["count"] for r in rows}
+
+
+def _added(after: dict, before: dict) -> dict:
+    return {k: after.get(k, 0) - before.get(k, 0) for k in set(after) | set(before) if after.get(k, 0) != before.get(k, 0)}
+
+
+def test_the_dashboard_follows_the_customers(client, db, admin):
+    before = _dashboard(client, admin)
 
     # A: an album put in the cart, then deleted — the steps stay.
     _, a = _signup(client, db=db)
-    album_a = _album(client, db, a)
+    album_a = _album(client, db, a, "travel-dubai", 50)
     assert client.post("/api/cart/items", json={"album_id": album_a, "kind": "print", "quantity": 1}, headers=a).status_code == 200
     assert client.delete(f"/api/albums/{album_a}", headers=a).json() == {"deleted": 1}
-    # B: an album, ordered (two books).
+    # B: an album with 3 photos, ordered (two books), its PDF not made yet.
     _, b = _signup(client, db=db)
     album_b = _album(client, db, b)
+    user_b = _user_id(client, b)
+    asyncio.run(db.photos.insert_many([{"id": f"dash-ph-{i}", "album_id": album_b, "user_id": user_b, "is_deleted": False} for i in range(3)]))
     now = datetime.now(timezone.utc).isoformat()
-    asyncio.run(db.orders.insert_one({"id": "stats-order-b", "album_id": album_b, "user_id": _user_id(client, b), "kind": "print",
+    asyncio.run(db.orders.insert_one({"id": "dash-order-b", "album_id": album_b, "user_id": user_b, "kind": "print", "size": "A5",
                                       "quantity": 2, "status": "pending_payment", "total_price_cents": 9100, "promo_code": "HELLO",
-                                      "created_at": now}))
-    # C: an account only.
+                                      "promo_discount_cents": 800, "pdf_ready": False, "created_at": now,
+                                      "shipping_address": {"city": "Beirut", "area": "Hamra"}}))
+    # C: an account only, and a message through the contact form.
     _signup(client, db=db)
+    assert client.post("/api/contact", json={"name": "C", "email": "c@example.com", "subject": "Hello", "message": "A question about sizes"}).status_code == 200
     # The admin's own test album: not counted.
-    _album(client, db, admin)
+    _album(client, db, admin, "travel-cairo")
 
-    after = _stats(client, admin)
-    added = {step: after["funnel"][step] - before["funnel"][step] for step in after["funnel"]}
-    assert added == {"accounts": 3, "album": 2, "photos": 2, "cart": 2, "ordered": 1}
-    period = {k: after["period"][k] - before["period"][k] for k in ("albums_started", "orders", "books", "revenue_cents", "with_promo")}
-    assert period == {"albums_started": 2, "orders": 1, "books": 2, "revenue_cents": 9100, "with_promo": 1}
-    this_week = after["weekly"][-1]
-    assert this_week["orders"] >= 1 and this_week["accounts"] >= 3 and len(after["weekly"]) == 12
+    after = _dashboard(client, admin)
+    funnel = lambda d: {f["step"]: f["count"] for f in d["funnel"]}  # noqa: E731
+    assert _added(funnel(after), funnel(before)) == {"accounts": 3, "album": 2, "photos": 2, "cart": 2, "ordered": 1}
+    kpis = {k: after["kpis"][k]["value"] - before["kpis"][k]["value"] for k in ("albums_started", "orders", "books", "revenue_cents", "messages")}
+    assert kpis == {"albums_started": 2, "orders": 1, "books": 2, "revenue_cents": 9100, "messages": 1}
+
+    # Albums: the choices made at creation, the deleted album included.
+    started = lambda d, g: _counts(d["albums"]["started_by"][g])  # noqa: E731
+    assert _added(started(after, "templates"), started(before, "templates")) == {"travel-dubai": 1, "travel-beirut": 1}
+    assert _added(started(after, "pages"), started(before, "pages")) == {"50": 1, "24": 1}
+    assert _counts(after["albums"]["ordered_by"]["templates"])["travel-beirut"] >= 1
+    assert after["albums"]["photos_per_ordered_album"]["average"] is not None
+
+    # Orders: the PDF still to make is listed, the promo code and the area.
+    assert "EB-DASH-ORD" in [o["number"] for o in after["orders"]["pdf_not_ready"]["orders"]]
+    assert {p["code"]: p["discount_cents"] for p in after["orders"]["promo_codes"]}["HELLO"] >= 800
+    assert _counts(after["orders"]["areas"])["Hamra"] >= 1
+    assert after["messages"]["latest"][0]["subject"] == "Hello"
+    assert len(after["weekly"]) == 12 and after["weekly"][-1]["orders"] >= 1
 
 
-def test_only_the_admin_sees_them(client, db):
+def test_only_the_admin_sees_it(client, db):
     _, someone = _signup(client, db=db)
-    assert client.get("/api/admin/stats", headers=someone).status_code == 403
+    assert client.get("/api/admin/dashboard", headers=someone).status_code == 403

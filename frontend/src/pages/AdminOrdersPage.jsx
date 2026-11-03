@@ -4,12 +4,11 @@ import { isLebanesePhone } from "@/lib/phone";
 import { Link } from "react-router-dom";
 import { api, adminOrderPdfUrl, adminPrinterStatementUrl } from "@/lib/api";
 import { toast } from "sonner";
-import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail, FileSpreadsheet, Link2 } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Bug, Pencil, Mail, FileSpreadsheet, Link2, BarChart3 } from "lucide-react";
 import { parseDate } from "@/lib/dates";
 import { sendTestError } from "@/lib/monitoring";
 import PromoCodesPanel from "@/components/admin/PromoCodesPanel";
 import SetupCheckPanel from "@/components/admin/SetupCheckPanel";
-import StatsPanel from "@/components/admin/StatsPanel";
 
 function formatPrice(cents, currency = "usd") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format((cents || 0) / 100);
@@ -249,6 +248,13 @@ export default function AdminOrdersPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <h1 className="font-serif-display text-4xl tracking-tight">All orders</h1>
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/admin/dashboard"
+              data-testid="admin-dashboard-link"
+              className="inline-flex items-center gap-1.5 text-xs bg-[color:var(--ink)] text-[color:var(--paper)] px-3 py-2 hover:bg-[color:var(--coral)] transition-colors"
+            >
+              <BarChart3 size={13} /> Dashboard
+            </Link>
             {/* The printer's statement (Excel): made from the orders each time
                 it's opened, so always up to date. */}
             <button
@@ -273,7 +279,6 @@ export default function AdminOrdersPage() {
         </div>
 
         <SetupCheckPanel />
-        <StatsPanel />
         <PromoCodesPanel />
 
         {loading ? (

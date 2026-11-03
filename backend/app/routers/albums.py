@@ -82,7 +82,7 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
     album.pop("_id", None)
     if not is_admin(user):  # the admin's own tests aren't counted
         await mark_step(user["id"], "album")
-        await count_album_started()
+        await count_album_started(album)
     return album
 
 @router.get("/albums")

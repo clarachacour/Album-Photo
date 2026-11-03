@@ -45,6 +45,7 @@ const OrderFeedback = lazyPage(() => import("@/pages/OrderFeedback"));
 const OrderCheckoutPage = lazyPage(() => import("@/pages/OrderCheckoutPage"));
 const CartPage = lazyPage(() => import("@/pages/CartPage"));
 const AdminOrdersPage = lazyPage(() => import("@/pages/AdminOrdersPage"));
+const AdminDashboardPage = lazyPage(() => import("@/pages/AdminDashboardPage"));
 const VerifyEmailPending = lazyPage(() => import("@/pages/VerifyEmailPending"));
 const PrinterOrderPage = lazyPage(() => import("@/pages/PrinterOrderPage"));
 const PrinterDownloadRedirect = lazyPage(() =>
@@ -230,6 +231,14 @@ export function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <AdminOrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboardPage />
                 </ProtectedRoute>
               }
             />
