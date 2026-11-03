@@ -35,6 +35,7 @@ INDEXES = [
     ("gift_cards", "code", {"unique": True}),
     ("gift_cards", "buyer_user_id", {}),
     ("promo_codes", "code", {"unique": True}),
+    ("stats_daily", "day", {"unique": True}),
     ("orders", "promo_code", {}),
     ("credits", "id", {"unique": True}),
     ("credits", "user_id", {}),

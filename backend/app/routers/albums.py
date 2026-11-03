@@ -22,6 +22,7 @@ from app.core.auth import (
 )
 from app.db import db
 from app.schemas import MAX_ALBUM_PAGES, AlbumCreate, AlbumUpdate, RepackPagesInput
+from app.services.activity import count_album_started, mark_step
 from app.services.albums import reject_if_ordered
 from app.services.layout import (
     LAYOUT_PATTERN,
@@ -79,6 +80,9 @@ async def create_album(data: AlbumCreate, user: dict = Depends(get_current_user)
     }
     await db.albums.insert_one(album)
     album.pop("_id", None)
+    if not is_admin(user):  # the admin's own tests aren't counted
+        await mark_step(user["id"], "album")
+        await count_album_started()
     return album
 
 @router.get("/albums")

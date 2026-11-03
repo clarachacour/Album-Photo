@@ -14,6 +14,7 @@ from app.core.executors import run_email
 from app.db import db
 from app.routers.albums import _slim_stored_cover
 from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput, PromoApplyInput
+from app.services.activity import mark_step
 from app.services.checkout import build_order_doc, unit_price_cents
 from app.config import FRONTEND_URL
 from app.services import gift_cards, promo_codes, reminders
@@ -176,6 +177,7 @@ async def add_to_cart(data: CartItemInput, user: dict = Depends(get_current_user
         items.append({"id": str(uuid.uuid4()), "album_id": data.album_id, "kind": data.kind, "quantity": quantity,
                       "added_at": datetime.now(timezone.utc).isoformat()})
     await _save(user, items)
+    await mark_step(user["id"], "cart")
     return await _view(user)
 
 

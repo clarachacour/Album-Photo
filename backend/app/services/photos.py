@@ -13,6 +13,7 @@ from PIL import Image, ImageOps
 from app.config import APP_NAME, UPLOAD_CONCURRENCY
 from app.core.executors import photo_processing_executor
 from app.db import db
+from app.services.activity import mark_step
 from app.services.curation import ahash_to_str, compute_ahash, compute_brightness, compute_visual_signature, extract_exif_info
 from app.services.storage import get_object, put_object
 
@@ -489,6 +490,7 @@ async def store_new_photo(album_id: str, user_id: str, filename: str, content_ty
     }
     await db.photos.insert_one(photo_doc)
     photo_doc.pop("_id", None)
+    await mark_step(user_id, "photos")
     return photo_doc
 
 # The AI curation step (curate_photos, via run_ai_processing) queries with
