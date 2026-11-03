@@ -4,8 +4,10 @@ import "@/index.css";
 import { i18nReady } from "@/lib/i18n";
 import App from "@/App";
 import { initMonitoring } from "@/lib/monitoring";
+import { initAnalytics } from "@/lib/analytics";
 
 initMonitoring();
+initAnalytics();
 
 // The page drawn at build time (public pages, see prerender.jsx) stays on
 // screen while the visitor's language downloads; the app then takes it over
