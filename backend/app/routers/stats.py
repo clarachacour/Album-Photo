@@ -8,7 +8,9 @@ services/activity.py keeps what albums deleted since were. The admin's own
 account and orders are left out.
 
 An order here is a checkout (one cart, one or more albums); "albums
-ordered" counts each album in it."""
+ordered" counts each album in it. What customers paid counts gift cards
+when they're bought; an order paid with one only counts what was paid on
+top (its total is already less the card), so nothing is counted twice."""
 from datetime import datetime, timedelta, timezone
 from statistics import median
 
@@ -167,6 +169,9 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         {"_id": 0, "id": 1, "user_id": 1, "created_at": 1, "cover_template_id": 1, "target_pages": 1, "size": 1, "orientation": 1},
     ).to_list(100000))
     counters = await db.stats_daily.find({}, {"_id": 0}).to_list(10000)
+    gifts = _dated(await db.gift_cards.find(
+        {"buyer_user_id": others}, {"_id": 0, "value_cents": 1, "status": 1, "created_at": 1, "redeemed_at": 1, "expires_at": 1},
+    ).to_list(100000))
     messages = _dated(await db.contact_messages.find({}, {"_id": 0, "created_at": 1}).to_list(100000))
     photo_counts = {
         row["_id"]: row["n"]
@@ -181,26 +186,30 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
     album_by_id = {a.get("id"): a for a in albums}
     ordered_album_ids = {o.get("album_id") for o in live}
     costs = {o.get("id"): _costs(o, album_by_id.get(o.get("album_id"))) for o in live}
+    # Gift cards paid for (not waiting for payment, not cancelled).
+    sold = [g for g in gifts if g.get("status") in ("active", "redeemed", "expired")]
 
-    def money(period_orders: list) -> dict:
-        revenue = sum(int(o.get("total_price_cents") or 0) for o in period_orders)
+    def money(period_orders: list, period_gifts: list) -> dict:
+        orders_paid = sum(int(o.get("total_price_cents") or 0) for o in period_orders)
+        gifts_paid = sum(int(g.get("value_cents") or 0) for g in period_gifts)
         printing = sum(costs[o.get("id")]["printing"] or 0 for o in period_orders)
         delivery = sum(costs[o.get("id")]["delivery"] for o in period_orders)
-        return {"revenue_cents": revenue, "printing_cents": printing, "delivery_cents": delivery,
-                "margin_cents": revenue - printing - delivery,
+        revenue = orders_paid + gifts_paid
+        return {"revenue_cents": revenue, "orders_cents": orders_paid, "gift_cards_cents": gifts_paid,
+                "printing_cents": printing, "delivery_cents": delivery, "margin_cents": revenue - printing - delivery,
                 "printing_unknown": len([o for o in period_orders if costs[o.get("id")]["printing"] is None])}
 
     # ---------- Key figures, against the period just before ----------
     def figures(start: str, end: str = None) -> dict:
         period_orders = [o for o in live if _within(o.get("created_at"), start, end)]
         checkouts = {_checkout(o) for o in period_orders}
-        m = money(period_orders)
+        m = money(period_orders, [g for g in sold if _within(g.get("created_at"), start, end)])
         return {
             "orders": len(checkouts),
             "albums_ordered": len(period_orders),
             "revenue_cents": m["revenue_cents"],
             "margin_cents": m["margin_cents"],
-            "average_order_cents": round(m["revenue_cents"] / len(checkouts)) if checkouts else 0,
+            "average_order_cents": round(m["orders_cents"] / len(checkouts)) if checkouts else 0,
             "accounts": len([u for u in users if _within(u.get("created_at"), start, end)]),
             "albums_started": started.count(start[:10], end[:10] if end else None),
             "messages": len([m for m in messages if _within(m.get("created_at"), start, end)]),
@@ -209,7 +218,7 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
     current, previous = figures(since), (figures(before, since) if before else None)
     kpis = {k: {"value": v, "previous": previous[k] if previous else None} for k, v in current.items()}
     period_live = [o for o in live if _within(o.get("created_at"), since)]
-    money_section = money(period_live)
+    money_section = money(period_live, [g for g in sold if _within(g.get("created_at"), since)])
 
     # ---------- The journey of the accounts created in the period ----------
     new_ids = {u.get("id") for u in users if _within(u.get("created_at"), since)}
@@ -295,6 +304,20 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         "repeat_customers": len([c for c in checkouts_per_customer.values() if len(c) >= 2]),
     }
 
+    # ---------- Gift cards ----------
+    now_iso = now.isoformat()
+    period_sold = [g for g in sold if _within(g.get("created_at"), since)]
+    unused = [g for g in gifts if g.get("status") == "active" and (g.get("expires_at") or "") >= now_iso]
+    gift_cards_section = {
+        "sold": len(period_sold),
+        "sold_cents": sum(int(g.get("value_cents") or 0) for g in period_sold),
+        "redeemed": len([g for g in gifts if g.get("status") == "redeemed" and _within(_iso(g.get("redeemed_at")), since)]),
+        "unused": len(unused),
+        "unused_cents": sum(int(g.get("value_cents") or 0) for g in unused),
+        "expired_unused": len([g for g in gifts if g.get("status") in ("active", "expired") and (g.get("expires_at") or "") < now_iso]),
+        "waiting_for_payment": len([g for g in gifts if g.get("status") == "pending_payment"]),
+    }
+
     # ---------- Right now ----------
     right_now = {
         "carts_waiting": await db.carts.count_documents({"user_id": others, "items.0": {"$exists": True}}),
@@ -325,6 +348,10 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
                 rows[b]["albums_ordered"] += 1
                 rows[b]["revenue_cents"] += int(o.get("total_price_cents") or 0)
                 rows[b]["margin_cents"] += int(o.get("total_price_cents") or 0) - (c["printing"] or 0) - c["delivery"]
+        for g in sold:
+            if (b := bucket(g.get("created_at"))):
+                rows[b]["revenue_cents"] += int(g.get("value_cents") or 0)
+                rows[b]["margin_cents"] += int(g.get("value_cents") or 0)
         for u in users:
             if (b := bucket(u.get("created_at"))):
                 rows[b]["accounts"] += 1
@@ -341,6 +368,7 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         "funnel": funnel,
         "albums": albums_section,
         "orders": orders_section,
+        "gift_cards": gift_cards_section,
         "now": right_now,
         "weekly": series(week_starts),
         "monthly": series(_month_starts(now, MONTHS)),

@@ -43,7 +43,7 @@ const bucketName = (start, source) =>
   source === "weekly"
     ? `Week of ${utc(start).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`
     : utc(start).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const isCurrent = (d) => Boolean(d?.kpis && d.money && d.weekly && d.monthly && d.albums?.templates && d.orders?.printed && d.now);
+const isCurrent = (d) => Boolean(d?.kpis && d.money && d.weekly && d.monthly && d.albums?.templates && d.orders?.printed && d.gift_cards && d.now);
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function Card({ title, children, className = "" }) {
@@ -266,7 +266,11 @@ export default function AdminDashboardPage() {
             {/* Money */}
             <Card title={`Money, last ${periodLabel}`}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="dashboard-money">
-                <Figure label="Paid by customers" value={usd(money.revenue_cents)} hint="albums + delivery, after promo codes" />
+                <Figure
+                  label="Paid by customers"
+                  value={usd(money.revenue_cents)}
+                  hint={`orders ${usd(money.orders_cents)} (after promo codes) + gift cards ${usd(money.gift_cards_cents)}`}
+                />
                 <Figure label="− Printing (Bookstop)" value={usd(money.printing_cents)} hint="the printer's price list + envelopes" />
                 <Figure label="− Delivery (Wakilni)" value={usd(money.delivery_cents)} hint="what customers pay for delivery" />
                 <Figure label="= Margin" value={usd(money.margin_cents)} hint={money.revenue_cents ? `${pct(money.margin_cents, money.revenue_cents)}% of what customers paid` : null} />
@@ -274,7 +278,9 @@ export default function AdminDashboardPage() {
               {money.printing_unknown > 0 && (
                 <p className="text-xs text-amber-700 mt-3">{money.printing_unknown} album(s) past 100 pages in a format the price list doesn't cover: their printing isn't counted.</p>
               )}
-              <p className="text-xs text-[color:var(--muted)] mt-3">Orders placed in the period, cancelled ones left out. Cash on delivery: the money comes in when the book is delivered.</p>
+              <p className="text-xs text-[color:var(--muted)] mt-3">
+                Orders placed and gift cards bought in the period, cancelled orders left out. An order paid with a gift card only counts what was paid on top, so nothing is counted twice. Cash on delivery: the money comes in when the book is delivered.
+              </p>
             </Card>
 
             {/* Needs attention */}
@@ -347,34 +353,6 @@ export default function AdminDashboardPage() {
                   <OverTimeChart rows={overTime} source={chosen.source} field="revenue_cents" label="Revenue" money />
                   <OverTimeChart rows={overTime} source={chosen.source} field="margin_cents" label="Margin" money />
                   <OverTimeChart rows={overTime} source={chosen.source} field="accounts" label="New accounts" />
-                </div>
-                <div className="overflow-x-auto mt-5">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-widest text-[color:var(--muted)] border-b border-[color:var(--border-soft)]">
-                        <th className="py-2 pr-3 whitespace-nowrap">{chosen.source === "weekly" ? "Week" : "Month"}</th>
-                        <th className="py-2 pr-3 text-right">Orders</th>
-                        <th className="py-2 pr-3 text-right whitespace-nowrap">Albums ordered</th>
-                        <th className="py-2 pr-3 text-right">Revenue</th>
-                        <th className="py-2 pr-3 text-right">Margin</th>
-                        <th className="py-2 pr-3 text-right">Accounts</th>
-                        <th className="py-2 text-right whitespace-nowrap">Albums created</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...overTime].reverse().map((r) => (
-                        <tr key={r.start} className="border-b border-[color:var(--border-soft)] last:border-0 tabular-nums">
-                          <td className="py-1.5 pr-3 whitespace-nowrap">{bucketName(r.start, chosen.source)}</td>
-                          <td className="py-1.5 pr-3 text-right">{r.orders}</td>
-                          <td className="py-1.5 pr-3 text-right">{r.albums_ordered}</td>
-                          <td className="py-1.5 pr-3 text-right">{usd(r.revenue_cents)}</td>
-                          <td className="py-1.5 pr-3 text-right">{usd(r.margin_cents)}</td>
-                          <td className="py-1.5 pr-3 text-right">{r.accounts}</td>
-                          <td className="py-1.5 text-right">{r.albums_started}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </Card>
             </div>
@@ -455,6 +433,14 @@ export default function AdminDashboardPage() {
               ) : (
                 <p className="text-sm text-[color:var(--muted)]">No promo code used in this period.</p>
               )}
+            </Card>
+            <Card title="Gift cards">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-testid="dashboard-gift-cards">
+                <Figure label={`Sold, last ${periodLabel}`} value={data.gift_cards.sold} hint={`${usd(data.gift_cards.sold_cents)} paid`} />
+                <Figure label={`Used, last ${periodLabel}`} value={data.gift_cards.redeemed} hint="turned into credit by the person who received it" />
+                <Figure label="Not used yet" value={data.gift_cards.unused} hint={`${usd(data.gift_cards.unused_cents)} still to spend`} />
+                <Figure label="Expired without being used" value={data.gift_cards.expired_unused} hint={data.gift_cards.waiting_for_payment ? `${data.gift_cards.waiting_for_payment} waiting for payment` : null} />
+              </div>
             </Card>
             <p className="text-xs text-[color:var(--muted)]">An order is one cart: it can hold several albums. Cancelled orders are left out of orders, revenue and margin. Albums deleted later still count in albums created.</p>
           </div>

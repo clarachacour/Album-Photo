@@ -60,8 +60,14 @@ def test_the_dashboard_follows_the_customers(client, db, admin):
                                       "quantity": 2, "page_count": 24, "status": "pending_payment", "total_price_cents": 9100, "shipping_price_cents": 500, "promo_code": "HELLO",
                                       "promo_discount_cents": 800, "pdf_ready": False, "created_at": now,
                                       "shipping_address": {"city": "Beirut", "area": "Hamra"}}))
-    # C: an account only, and a message through the contact form.
-    _signup(client, db=db)
+    # C: a gift card bought (paid), another waiting for payment, and a
+    # message through the contact form.
+    _, c = _signup(client, db=db)
+    user_c = _user_id(client, c)
+    asyncio.run(db.gift_cards.insert_many([
+        {"id": "dash-gift-1", "code": "DASH-GIFT-1", "buyer_user_id": user_c, "value_cents": 4800, "status": "active", "created_at": now, "expires_at": "2099-01-01T00:00:00+00:00"},
+        {"id": "dash-gift-2", "code": "DASH-GIFT-2", "buyer_user_id": user_c, "value_cents": 4800, "status": "pending_payment", "created_at": now, "expires_at": "2099-01-01T00:00:00+00:00"},
+    ]))
     assert client.post("/api/contact", json={"name": "C", "email": "c@example.com", "subject": "Hello", "message": "A question about sizes"}).status_code == 200
     # The admin's own test album: not counted.
     _album(client, db, admin, "travel-cairo")
@@ -73,8 +79,11 @@ def test_the_dashboard_follows_the_customers(client, db, admin):
             for k in ("albums_started", "orders", "albums_ordered", "revenue_cents", "margin_cents", "messages")}
     # Two A5 24-page books: the printer's $24 + the $0.50 envelope each; the
     # $5 delivery goes to Wakilni.
-    assert kpis == {"albums_started": 2, "orders": 1, "albums_ordered": 1, "revenue_cents": 9100,
-                    "margin_cents": 9100 - 2 * 2450 - 500, "messages": 1}
+    # What customers paid: the order and the gift card paid for.
+    assert kpis == {"albums_started": 2, "orders": 1, "albums_ordered": 1, "revenue_cents": 9100 + 4800,
+                    "margin_cents": 9100 + 4800 - 2 * 2450 - 500, "messages": 1}
+    gifts = {k: after["gift_cards"][k] - before["gift_cards"][k] for k in ("sold", "sold_cents", "unused", "waiting_for_payment")}
+    assert gifts == {"sold": 1, "sold_cents": 4800, "unused": 1, "waiting_for_payment": 1}
     assert after["money"]["printing_cents"] - before["money"]["printing_cents"] == 4900
     assert after["orders"]["printed"]["copies"] - before["orders"]["printed"]["copies"] == 2
 
