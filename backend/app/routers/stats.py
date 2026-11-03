@@ -29,9 +29,10 @@ CHOICES = ("templates", "pages", "sizes", "orientations")
 WEEKS = 5
 MONTHS = 12
 
-# What one delivery costs Everbook, in cents. None: what the customer pays
-# for it goes to Wakilni as it is (the delivery neither costs nor earns).
-DELIVERY_COST_CENTS = None
+# What Wakilni bills Everbook for one delivery, in cents. Albums delivered
+# together (one package) are one delivery: only the order paying it carries
+# the delivery price (see print_groups).
+DELIVERY_COST_CENTS = 500
 
 
 def _iso(value):
@@ -128,11 +129,7 @@ def _costs(order: dict, album: dict) -> dict:
     pages = order.get("page_count") or (album or {}).get("target_pages") or 0
     unit = printer_unit_price(order.get("size"), pages) if pages else None
     quantity = int(order.get("quantity") or 1)
-    shipping = int(order.get("shipping_price_cents") or 0)
-    if DELIVERY_COST_CENTS is None:
-        delivery = shipping
-    else:
-        delivery = DELIVERY_COST_CENTS if shipping else 0
+    delivery = DELIVERY_COST_CENTS if int(order.get("shipping_price_cents") or 0) else 0
     return {"printing": round((unit + ENVELOPE_PRICE) * quantity * 100) if unit is not None else None, "delivery": delivery}
 
 

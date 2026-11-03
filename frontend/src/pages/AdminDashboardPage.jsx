@@ -272,7 +272,7 @@ export default function AdminDashboardPage() {
                   hint={`orders ${usd(money.orders_cents)} (after promo codes) + gift cards ${usd(money.gift_cards_cents)}`}
                 />
                 <Figure label="− Printing (Bookstop)" value={usd(money.printing_cents)} hint="the printer's price list + envelopes" />
-                <Figure label="− Delivery (Wakilni)" value={usd(money.delivery_cents)} hint="what customers pay for delivery" />
+                <Figure label="− Delivery (Wakilni)" value={usd(money.delivery_cents)} hint="$5 per delivery" />
                 <Figure label="= Margin" value={usd(money.margin_cents)} hint={money.revenue_cents ? `${pct(money.margin_cents, money.revenue_cents)}% of what customers paid` : null} />
               </div>
               {money.printing_unknown > 0 && (
