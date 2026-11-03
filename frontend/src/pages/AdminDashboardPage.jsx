@@ -43,6 +43,7 @@ const bucketName = (start, source) =>
   source === "weekly"
     ? `Week of ${utc(start).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`
     : utc(start).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const isCurrent = (d) => Boolean(d?.kpis && d.money && d.weekly && d.monthly && d.albums?.templates && d.orders?.printed && d.now);
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function Card({ title, children, className = "" }) {
@@ -177,6 +178,12 @@ export default function AdminDashboardPage() {
     api
       .get("/admin/dashboard", { params: { days } })
       .then(({ data: d }) => {
+        // A server still on an older version answers without some parts
+        // (the site is updated first): said, rather than a broken page.
+        if (!isCurrent(d)) {
+          setState("outdated");
+          return;
+        }
         setData(d);
         setState("ready");
       })
@@ -199,7 +206,7 @@ export default function AdminDashboardPage() {
   const accounts = funnel[0]?.count || 0;
   const periodLabel = PERIODS.find((p) => p.days === days)?.label.toLowerCase();
   const chosen = RANGES.find((r) => r.key === range);
-  const overTime = data ? data[chosen.source].slice(-chosen.count) : [];
+  const overTime = data ? (data[chosen.source] || []).slice(-chosen.count) : [];
   const money = data?.money;
   const templateName = (key) => findTemplate(key)?.name || (key === "unknown" ? "Not known" : key);
 
@@ -232,9 +239,14 @@ export default function AdminDashboardPage() {
         </div>
 
         {state === "failed" && <p className="text-sm text-[color:var(--muted)]">Couldn't load the dashboard. Try again in a moment.</p>}
+        {state === "outdated" && (
+          <p className="text-sm text-[color:var(--muted)]" data-testid="dashboard-outdated">
+            The server is still being updated to this version of the dashboard. Refresh in a few minutes.
+          </p>
+        )}
         {state === "loading" && !data && <p className="text-sm text-[color:var(--muted)]">Loading…</p>}
 
-        {data && (
+        {data && state !== "outdated" && (
           <div className={`space-y-6 ${state === "loading" ? "opacity-50" : ""}`}>
             {/* Key figures */}
             <div>
