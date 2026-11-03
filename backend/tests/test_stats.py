@@ -57,7 +57,7 @@ def test_the_dashboard_follows_the_customers(client, db, admin):
     asyncio.run(db.photos.insert_many([{"id": f"dash-ph-{i}", "album_id": album_b, "user_id": user_b, "is_deleted": False} for i in range(3)]))
     now = datetime.now(timezone.utc).isoformat()
     asyncio.run(db.orders.insert_one({"id": "dash-order-b", "album_id": album_b, "user_id": user_b, "kind": "print", "size": "A5",
-                                      "quantity": 2, "status": "pending_payment", "total_price_cents": 9100, "promo_code": "HELLO",
+                                      "quantity": 2, "page_count": 24, "status": "pending_payment", "total_price_cents": 9100, "shipping_price_cents": 500, "promo_code": "HELLO",
                                       "promo_discount_cents": 800, "pdf_ready": False, "created_at": now,
                                       "shipping_address": {"city": "Beirut", "area": "Hamra"}}))
     # C: an account only, and a message through the contact form.
@@ -69,22 +69,30 @@ def test_the_dashboard_follows_the_customers(client, db, admin):
     after = _dashboard(client, admin)
     funnel = lambda d: {f["step"]: f["count"] for f in d["funnel"]}  # noqa: E731
     assert _added(funnel(after), funnel(before)) == {"accounts": 3, "album": 2, "photos": 2, "cart": 2, "ordered": 1}
-    kpis = {k: after["kpis"][k]["value"] - before["kpis"][k]["value"] for k in ("albums_started", "orders", "books", "revenue_cents", "messages")}
-    assert kpis == {"albums_started": 2, "orders": 1, "books": 2, "revenue_cents": 9100, "messages": 1}
+    kpis = {k: after["kpis"][k]["value"] - before["kpis"][k]["value"]
+            for k in ("albums_started", "orders", "albums_ordered", "revenue_cents", "margin_cents", "messages")}
+    # Two A5 24-page books: the printer's $24 + the $0.50 envelope each; the
+    # $5 delivery goes to Wakilni.
+    assert kpis == {"albums_started": 2, "orders": 1, "albums_ordered": 1, "revenue_cents": 9100,
+                    "margin_cents": 9100 - 2 * 2450 - 500, "messages": 1}
+    assert after["money"]["printing_cents"] - before["money"]["printing_cents"] == 4900
+    assert after["orders"]["printed"]["copies"] - before["orders"]["printed"]["copies"] == 2
 
-    # Albums: the choices made at creation, the deleted album included.
-    started = lambda d, g: _counts(d["albums"]["started_by"][g])  # noqa: E731
-    assert _added(started(after, "templates"), started(before, "templates")) == {"travel-dubai": 1, "travel-beirut": 1}
-    assert _added(started(after, "pages"), started(before, "pages")) == {"50": 1, "24": 1}
-    assert _counts(after["albums"]["ordered_by"]["templates"])["travel-beirut"] >= 1
-    assert after["albums"]["photos_per_ordered_album"]["average"] is not None
+    # Albums: created (the deleted one included) and ordered, by choice.
+    rows = lambda d, g: {r["key"]: (r["created"], r["ordered"]) for r in d["albums"][g]}  # noqa: E731
+    def added(group):
+        a, b = rows(after, group), rows(before, group)
+        return {k: (v[0] - b.get(k, (0, 0))[0], v[1] - b.get(k, (0, 0))[1]) for k, v in a.items() if v != b.get(k, (0, 0))}
+    assert added("templates") == {"travel-dubai": (1, 0), "travel-beirut": (1, 1)}
+    assert added("pages") == {"50": (1, 0), "24": (1, 1)}
+    assert after["albums"]["photos_per_album"]["average"] is not None
 
     # Orders: the PDF still to make is listed, the promo code and the area.
     assert "EB-DASH-ORD" in [o["number"] for o in after["orders"]["pdf_not_ready"]["orders"]]
     assert {p["code"]: p["discount_cents"] for p in after["orders"]["promo_codes"]}["HELLO"] >= 800
     assert _counts(after["orders"]["areas"])["Hamra"] >= 1
-    assert after["messages"]["latest"][0]["subject"] == "Hello"
-    assert len(after["weekly"]) == 12 and after["weekly"][-1]["orders"] >= 1
+    assert len(after["weekly"]) == 5 and after["weekly"][-1]["orders"] >= 1
+    assert len(after["monthly"]) == 12 and after["monthly"][-1]["albums_ordered"] - before["monthly"][-1]["albums_ordered"] == 1
 
 
 def test_only_the_admin_sees_it(client, db):

@@ -1,9 +1,14 @@
-"""The admin's dashboard: key figures against the period before, the
-customers' journey (accounts → album → photos → cart → order), the albums
-(templates, pages, photos), the orders (status, PDFs not ready, promo
-codes, delivery times, areas), the accounts, the contact messages, and
-week by week. All from the database; services/activity.py keeps what
-albums deleted since were. The admin's own account and orders are left out."""
+"""The admin's dashboard: key figures against the period just before (the
+same number of days), the money (paid by customers, printing and delivery
+costs, margin), the customers' journey (accounts → album → photos → cart →
+order), the albums (templates, pages, format: created and ordered, photos),
+the orders (printed or PDF, status, PDFs not ready, promo codes, delivery
+times, areas), and week by week / month by month. All from the database;
+services/activity.py keeps what albums deleted since were. The admin's own
+account and orders are left out.
+
+An order here is a checkout (one cart, one or more albums); "albums
+ordered" counts each album in it."""
 from datetime import datetime, timedelta, timezone
 from statistics import median
 
@@ -13,12 +18,18 @@ from app.core.auth import get_current_user, require_admin
 from app.core.order_number import order_number
 from app.db import db
 from app.services.activity import album_choices
+from app.services.printer_statement import ENVELOPE_PRICE, printer_unit_price
 
 router = APIRouter()
 
 FUNNEL = ("accounts", "album", "photos", "cart", "ordered")
 CHOICES = ("templates", "pages", "sizes", "orientations")
-WEEKS = 12
+WEEKS = 5
+MONTHS = 12
+
+# What one delivery costs Everbook, in cents. None: what the customer pays
+# for it goes to Wakilni as it is (the delivery neither costs nor earns).
+DELIVERY_COST_CENTS = None
 
 
 def _iso(value):
@@ -106,32 +117,57 @@ class AlbumsStarted:
         return {g: _ranked(c) for g, c in totals.items()}
 
 
+def _costs(order: dict, album: dict) -> dict:
+    """What an order costs Everbook, in cents: the printer's price list
+    (see printer_statement) and the delivery. printing is None when the
+    price list can't say (an album past 100 pages in an unlisted format)."""
+    if order.get("kind", "print") != "print":
+        return {"printing": 0, "delivery": 0}
+    pages = order.get("page_count") or (album or {}).get("target_pages") or 0
+    unit = printer_unit_price(order.get("size"), pages) if pages else None
+    quantity = int(order.get("quantity") or 1)
+    shipping = int(order.get("shipping_price_cents") or 0)
+    if DELIVERY_COST_CENTS is None:
+        delivery = shipping
+    else:
+        delivery = DELIVERY_COST_CENTS if shipping else 0
+    return {"printing": round((unit + ENVELOPE_PRICE) * quantity * 100) if unit is not None else None, "delivery": delivery}
+
+
+def _month_starts(now: datetime, count: int) -> list:
+    year, month = now.year, now.month
+    starts = []
+    for _ in range(count):
+        starts.append(f"{year:04d}-{month:02d}-01")
+        month -= 1
+        if not month:
+            year, month = year - 1, 12
+    return starts[::-1]
+
+
 @router.get("/admin/dashboard")
 async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Depends(get_current_user)):
     """days: the period (0 = since the start), compared with the same
-    number of days before it."""
+    number of days just before it."""
     require_admin(user)
     now = datetime.now(timezone.utc)
     since = (now - timedelta(days=days)).isoformat() if days else ""
     before = (now - timedelta(days=2 * days)).isoformat() if days else None
     others = {"$ne": user["id"]}
 
-    users = _dated(await db.users.find(
-        {"id": others},
-        {"_id": 0, "id": 1, "created_at": 1, "steps": 1, "email_verified": 1, "lang": 1, "auth_provider": 1},
-    ).to_list(100000))
+    users = _dated(await db.users.find({"id": others}, {"_id": 0, "id": 1, "created_at": 1, "steps": 1}).to_list(100000))
     orders = _dated(await db.orders.find(
         {"user_id": others},
         {"_id": 0, "id": 1, "user_id": 1, "checkout_id": 1, "status": 1, "kind": 1, "quantity": 1, "size": 1,
-         "total_price_cents": 1, "promo_code": 1, "promo_discount_cents": 1, "created_at": 1, "album_id": 1,
-         "pdf_ready": 1, "pdf_error": 1, "status_history": 1, "shipping_address": 1},
+         "page_count": 1, "total_price_cents": 1, "shipping_price_cents": 1, "promo_code": 1, "promo_discount_cents": 1,
+         "created_at": 1, "album_id": 1, "pdf_ready": 1, "pdf_error": 1, "status_history": 1, "shipping_address": 1},
     ).to_list(100000))
     albums = _dated(await db.albums.find(
         {"user_id": others},
         {"_id": 0, "id": 1, "user_id": 1, "created_at": 1, "cover_template_id": 1, "target_pages": 1, "size": 1, "orientation": 1},
     ).to_list(100000))
     counters = await db.stats_daily.find({}, {"_id": 0}).to_list(10000)
-    messages = _dated(await db.contact_messages.find({}, {"_id": 0, "created_at": 1, "subject": 1}).to_list(100000))
+    messages = _dated(await db.contact_messages.find({}, {"_id": 0, "created_at": 1}).to_list(100000))
     photo_counts = {
         row["_id"]: row["n"]
         for row in await db.photos.aggregate([
@@ -144,28 +180,36 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
     started = AlbumsStarted(counters, albums)
     album_by_id = {a.get("id"): a for a in albums}
     ordered_album_ids = {o.get("album_id") for o in live}
-    ever_ordered = {o.get("user_id") for o in live}
+    costs = {o.get("id"): _costs(o, album_by_id.get(o.get("album_id"))) for o in live}
 
-    # ---------- Key figures, against the period before ----------
+    def money(period_orders: list) -> dict:
+        revenue = sum(int(o.get("total_price_cents") or 0) for o in period_orders)
+        printing = sum(costs[o.get("id")]["printing"] or 0 for o in period_orders)
+        delivery = sum(costs[o.get("id")]["delivery"] for o in period_orders)
+        return {"revenue_cents": revenue, "printing_cents": printing, "delivery_cents": delivery,
+                "margin_cents": revenue - printing - delivery,
+                "printing_unknown": len([o for o in period_orders if costs[o.get("id")]["printing"] is None])}
+
+    # ---------- Key figures, against the period just before ----------
     def figures(start: str, end: str = None) -> dict:
-        new = [u for u in users if _within(u.get("created_at"), start, end)]
         period_orders = [o for o in live if _within(o.get("created_at"), start, end)]
         checkouts = {_checkout(o) for o in period_orders}
-        revenue = sum(int(o.get("total_price_cents") or 0) for o in period_orders)
+        m = money(period_orders)
         return {
-            "accounts": len(new),
-            "albums_started": started.count(start[:10], end[:10] if end else None),
             "orders": len(checkouts),
-            "books": sum(int(o.get("quantity") or 1) for o in period_orders if o.get("kind", "print") == "print"),
-            "revenue_cents": revenue,
-            "average_order_cents": round(revenue / len(checkouts)) if checkouts else 0,
-            "customers": len({o.get("user_id") for o in period_orders}),
-            "conversion_percent": round(100 * len([u for u in new if u.get("id") in ever_ordered]) / len(new)) if new else 0,
+            "albums_ordered": len(period_orders),
+            "revenue_cents": m["revenue_cents"],
+            "margin_cents": m["margin_cents"],
+            "average_order_cents": round(m["revenue_cents"] / len(checkouts)) if checkouts else 0,
+            "accounts": len([u for u in users if _within(u.get("created_at"), start, end)]),
+            "albums_started": started.count(start[:10], end[:10] if end else None),
             "messages": len([m for m in messages if _within(m.get("created_at"), start, end)]),
         }
 
     current, previous = figures(since), (figures(before, since) if before else None)
     kpis = {k: {"value": v, "previous": previous[k] if previous else None} for k, v in current.items()}
+    period_live = [o for o in live if _within(o.get("created_at"), since)]
+    money_section = money(period_live)
 
     # ---------- The journey of the accounts created in the period ----------
     new_ids = {u.get("id") for u in users if _within(u.get("created_at"), since)}
@@ -173,7 +217,7 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         "album": {a.get("user_id") for a in albums},
         "photos": set(await db.photos.distinct("user_id", {"user_id": {"$in": list(new_ids)}})),
         "cart": set(await db.carts.distinct("user_id", {"user_id": {"$in": list(new_ids)}, "items.0": {"$exists": True}})),
-        "ordered": set(ever_ordered),
+        "ordered": {o.get("user_id") for o in live},
     }
     for u in users:
         for step in ("album", "photos", "cart"):
@@ -185,39 +229,35 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         later = reached[step]
     funnel = [{"step": "accounts", "count": len(new_ids)}] + [{"step": s, "count": len(reached[s])} for s in FUNNEL[1:]]
 
-    # ---------- Albums ----------
-    period_live = [o for o in live if _within(o.get("created_at"), since)]
-    ordered_choices = {g: {} for g in CHOICES}
+    # ---------- Albums: created and ordered, by choice ----------
+    created_by = {g: {r["key"]: r["count"] for r in rows} for g, rows in started.choices(since[:10]).items()}
+    ordered_by = {g: {} for g in CHOICES}
     for o in period_live:
         album = album_by_id.get(o.get("album_id"))
         if album:
             for group, key in album_choices(album).items():
-                _add(ordered_choices[group], key)
+                _add(ordered_by[group], key)
+    choices = {}
+    for group in CHOICES:
+        keys = set(created_by[group]) | set(ordered_by[group])
+        rows = [{"key": k, "created": created_by[group].get(k, 0), "ordered": ordered_by[group].get(k, 0)} for k in keys]
+        choices[group] = sorted(rows, key=lambda r: (-r["created"], -r["ordered"], r["key"]))
     in_progress = [a for a in albums if a.get("id") not in ordered_album_ids]
-    week_ago = (now - timedelta(days=7)).isoformat()
-    photos_in_progress = [photo_counts[a.get("id")] for a in in_progress if photo_counts.get(a.get("id"))]
-    photos_ordered = [photo_counts[a] for a in {o.get("album_id") for o in period_live} if photo_counts.get(a)]
+    with_photos = [n for n in photo_counts.values() if n]
     albums_section = {
-        "started": current["albums_started"],
-        "started_by": started.choices(since[:10]),
-        "ordered_by": {g: _ranked(c) for g, c in ordered_choices.items()},
+        **choices,
+        "photos_per_album": {"average": _avg(with_photos), "median": _median(with_photos), "albums": len(with_photos)},
         "in_progress": len(in_progress),
         "in_progress_without_photos": len([a for a in in_progress if not photo_counts.get(a.get("id"))]),
-        "in_progress_older_than_7_days": len([a for a in in_progress if (a.get("created_at") or "") < week_ago]),
-        "photos_per_album_in_progress": {"average": _avg(photos_in_progress), "median": _median(photos_in_progress)},
-        "photos_per_ordered_album": {"average": _avg(photos_ordered), "median": _median(photos_ordered)},
     }
 
     # ---------- Orders ----------
-    period_all = [o for o in orders if _within(o.get("created_at"), since)]
-    by_status, by_kind, by_size, areas, promos = {}, {}, {}, {}, {}
-    for o in period_all:
-        _add(by_status, o.get("status") or "unknown")
+    by_status, areas, promos = {}, {}, {}
+    for o in orders:
+        if _within(o.get("created_at"), since):
+            _add(by_status, o.get("status") or "unknown")
     seen_checkouts = set()
     for o in period_live:
-        _add(by_kind, o.get("kind") or "print")
-        if o.get("kind", "print") == "print":
-            _add(by_size, o.get("size") or "unknown", int(o.get("quantity") or 1))
         if o.get("promo_code"):
             row = promos.setdefault(o["promo_code"], {"code": o["promo_code"], "orders": set(), "discount_cents": 0})
             row["orders"].add(_checkout(o))
@@ -226,6 +266,7 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         if address and _checkout(o) not in seen_checkouts:
             seen_checkouts.add(_checkout(o))
             _add(areas, (address.get("area") or address.get("city") or "unknown").strip().title())
+    printed = [o for o in period_live if o.get("kind", "print") == "print"]
     not_ready = sorted((o for o in live if o.get("kind", "print") == "print" and not o.get("pdf_ready")),
                        key=lambda o: o.get("created_at") or "")
     delivery_days = []
@@ -239,9 +280,9 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
     for o in live:
         checkouts_per_customer.setdefault(o.get("user_id"), set()).add(_checkout(o))
     orders_section = {
+        "printed": {"albums": len(printed), "copies": sum(int(o.get("quantity") or 1) for o in printed)},
+        "digital": {"albums": len([o for o in period_live if o.get("kind") == "digital"])},
         "by_status": _ranked(by_status),
-        "by_kind": _ranked(by_kind),
-        "books_by_size": _ranked(by_size),
         "areas": _ranked(areas, 8),
         "promo_codes": sorted(({**p, "orders": len(p["orders"])} for p in promos.values()), key=lambda p: -p["orders"]),
         "pdf_not_ready": {
@@ -254,70 +295,53 @@ async def admin_dashboard(days: int = Query(30, ge=0, le=3650), user: dict = Dep
         "repeat_customers": len([c for c in checkouts_per_customer.values() if len(c) >= 2]),
     }
 
-    # ---------- Accounts ----------
-    languages, providers = {}, {}
-    for u in users:
-        _add(languages, u.get("lang") or "unknown")
-        _add(providers, u.get("auth_provider") or "email")
-    users_section = {
-        "total": len(users),
-        "new": current["accounts"],
-        "verified": len([u for u in users if u.get("email_verified", True)]),
-        "with_an_order": len(ever_ordered),
-        "languages": _ranked(languages),
-        "sign_in": _ranked(providers),
-    }
-
-    # ---------- Contact messages ----------
-    latest = sorted(messages, key=lambda m: m.get("created_at") or "", reverse=True)[:5]
-    messages_section = {"period": current["messages"], "total": len(messages),
-                        "latest": [{"subject": m.get("subject"), "created_at": m.get("created_at")} for m in latest]}
-
     # ---------- Right now ----------
     right_now = {
         "carts_waiting": await db.carts.count_documents({"user_id": others, "items.0": {"$exists": True}}),
         "albums_in_progress": len(in_progress),
-        "orders_in_production": len([o for o in live if o.get("status") in ("pending_payment", "paid", "processing", "printing")]),
-        "orders_on_their_way": len([o for o in live if o.get("status") in ("ready_for_delivery", "shipped")]),
+        "orders_in_production": len({_checkout(o) for o in live if o.get("status") in ("pending_payment", "paid", "processing", "printing")}),
+        "orders_on_their_way": len({_checkout(o) for o in live if o.get("status") in ("ready_for_delivery", "shipped")}),
     }
 
-    # ---------- Week by week (weeks starting on Monday, UTC) ----------
+    # ---------- Over time: week by week (weeks starting on Monday, UTC) and month by month ----------
     monday = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-    starts = [(monday - timedelta(weeks=i)).strftime("%Y-%m-%d") for i in range(WEEKS - 1, -1, -1)]
+    week_starts = [(monday - timedelta(weeks=i)).strftime("%Y-%m-%d") for i in range(WEEKS - 1, -1, -1)]
 
-    def week_of(iso):
-        day = (iso or "")[:10]
-        found = None
-        for start in starts:
-            if day >= start:
-                found = start
-        return found
+    def series(starts: list) -> list:
+        def bucket(iso):
+            day = (iso or "")[:10]
+            found = None
+            for start in starts:
+                if day >= start:
+                    found = start
+            return found
 
-    weeks = {s: {"week": s, "accounts": 0, "albums": 0, "orders": set(), "revenue_cents": 0, "messages": 0} for s in starts}
-    for u in users:
-        if (w := week_of(u.get("created_at"))):
-            weeks[w]["accounts"] += 1
-    for day, n, _ in started.per_day(starts[0]):
-        if (w := week_of(day)):
-            weeks[w]["albums"] += n
-    for o in live:
-        if (w := week_of(o.get("created_at"))):
-            weeks[w]["orders"].add(_checkout(o))
-            weeks[w]["revenue_cents"] += int(o.get("total_price_cents") or 0)
-    for m in messages:
-        if (w := week_of(m.get("created_at"))):
-            weeks[w]["messages"] += 1
-    weekly = [{**w, "orders": len(w["orders"])} for w in weeks.values()]
+        rows = {s: {"start": s, "orders": set(), "albums_ordered": 0, "revenue_cents": 0, "margin_cents": 0,
+                    "accounts": 0, "albums_started": 0} for s in starts}
+        for o in live:
+            if (b := bucket(o.get("created_at"))):
+                c = costs[o.get("id")]
+                rows[b]["orders"].add(_checkout(o))
+                rows[b]["albums_ordered"] += 1
+                rows[b]["revenue_cents"] += int(o.get("total_price_cents") or 0)
+                rows[b]["margin_cents"] += int(o.get("total_price_cents") or 0) - (c["printing"] or 0) - c["delivery"]
+        for u in users:
+            if (b := bucket(u.get("created_at"))):
+                rows[b]["accounts"] += 1
+        for day, n, _ in started.per_day(starts[0]):
+            if (b := bucket(day)):
+                rows[b]["albums_started"] += n
+        return [{**r, "orders": len(r["orders"])} for r in rows.values()]
 
     return {
         "days": days,
         "generated_at": now.isoformat(),
         "kpis": kpis,
+        "money": money_section,
         "funnel": funnel,
         "albums": albums_section,
         "orders": orders_section,
-        "users": users_section,
-        "messages": messages_section,
         "now": right_now,
-        "weekly": weekly,
+        "weekly": series(week_starts),
+        "monthly": series(_month_starts(now, MONTHS)),
     }
