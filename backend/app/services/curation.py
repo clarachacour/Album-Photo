@@ -488,6 +488,58 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
         logger.warning(f"Résolution IA d'un groupe ambigu échouée (on garde le regroupement classique) : {e}")
         return [cluster]
 
+UNDATED = "9999-12-31"
+
+
+def _when(p: dict) -> str:
+    return p.get("taken_at") or UNDATED
+
+
+def order_for_album(photos: List[dict]) -> List[dict]:
+    """The order photos go on the album's pages. With enough GPS, by place:
+    each place's photos together, the places in the order they were visited.
+    A dated photo without GPS (taken indoors, received on WhatsApp…) goes at
+    its date: with the place photographed at that time, or between two
+    places — not at the end of the album. Photos with neither date nor GPS
+    go last."""
+    with_gps = [p for p in photos if p.get("gps_lat") is not None and p.get("gps_lng") is not None]
+    with_gps_ids = {p["id"] for p in with_gps}
+    without_gps = [p for p in photos if p["id"] not in with_gps_ids]
+
+    if len(with_gps) >= max(2, len(photos) * 0.3):
+        groups = [sorted(g, key=_when) for g in cluster_by_location(with_gps)]
+        undated = [p for p in without_gps if not p.get("taken_at")]
+        for p in sorted((p for p in without_gps if p.get("taken_at")), key=_when):
+            # The place photographed while this one was taken (its first and
+            # last dated photo around it); the closest in time if several.
+            spans = []
+            for g in groups:
+                dated = [_when(x) for x in g if x.get("taken_at")]
+                if dated and dated[0] <= p["taken_at"] <= dated[-1]:
+                    spans.append(g)
+            if spans:
+                home = min(spans, key=lambda g: min(abs(_seconds(_when(x)) - _seconds(p["taken_at"])) for x in g if x.get("taken_at")))
+                home.append(p)
+                home.sort(key=_when)
+            else:
+                groups.append([p])  # a moment of its own, at its date
+        groups.sort(key=lambda g: min((_when(x) for x in g), default=UNDATED))
+        return [p for g in groups for p in g] + undated
+
+    dated = [p for p in photos if p.get("taken_at")]
+    if len(dated) >= max(1, len(photos) * 0.5):
+        return sorted(photos, key=_when)
+    return sorted(photos, key=lambda x: (x.get("ai_group", "zzz"), -(x.get("ai_score") or 0)))
+
+
+def _seconds(iso: str) -> float:
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
+
+
 async def curate_photos(new_photos: List[dict], existing_selected: Optional[List[dict]] = None) -> List[dict]:
     """Real duplicate/burst detection, fast local best-of-cluster selection,
     a classical sharpness quality gate on the survivors, and
@@ -919,29 +971,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         selected = thinned
 
     # ---- 4. Group & sort (place / date priority, same rules as the initial pass) ----
-    with_gps = [p for p in selected if p.get("gps_lat") is not None and p.get("gps_lng") is not None]
-    with_gps_ids = {p["id"] for p in with_gps}
-    without_gps = [p for p in selected if p["id"] not in with_gps_ids]
-
-    if len(with_gps) >= max(2, len(selected) * 0.3):
-        location_groups = cluster_by_location(with_gps)
-        for group in location_groups:
-            group.sort(key=lambda x: x.get("taken_at") or "9999-12-31")
-
-        def group_sort_key(group):
-            dated = [p.get("taken_at") for p in group if p.get("taken_at")]
-            return min(dated) if dated else "9999-12-31"
-
-        location_groups.sort(key=group_sort_key)
-        selected = [p for group in location_groups for p in group]
-        without_gps.sort(key=lambda x: x.get("taken_at") or "9999-12-31")
-        selected.extend(without_gps)
-    else:
-        dated = [p for p in selected if p.get("taken_at")]
-        if len(dated) >= max(1, len(selected) * 0.5):
-            selected.sort(key=lambda x: x.get("taken_at") or "9999-12-31")
-        else:
-            selected.sort(key=lambda x: (x.get("ai_group", "zzz"), -(x.get("ai_score") or 0)))
+    selected = order_for_album(selected)
 
     _phase_times["sorting_and_rest"] = _time.monotonic() - _t0 - sum(_phase_times.values())
     stats = {
