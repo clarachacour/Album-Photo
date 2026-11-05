@@ -65,3 +65,61 @@ export function darkPhotoItems(album) {
   });
   return found;
 }
+
+// ---------- The cover ----------
+
+/** A photo placed on the front or back cover (not a template's logo). */
+export function isCoverPhotoItem(item) {
+  return item?.type === "image" && (!!item.is_photo || (!!item.storage_path && !item.asset));
+}
+
+const coverSides = (album) => [
+  ["front", album?.cover?.extra_items || []],
+  ["back", album?.cover?.back_extra_items || []],
+];
+
+/**
+ * The print warnings of a cover photo, as for the photos inside: blurry for
+ * its frame, or dark. `measured`: its pixel size read in the browser, for a
+ * photo placed before its size was kept on it (photo_width/photo_height).
+ */
+export function coverPhotoWarnings(item, size, orientation, measured) {
+  if (!isCoverPhotoItem(item) || !item.image_url) return [];
+  const photo = item.photo_width ? { width: item.photo_width, height: item.photo_height } : measured;
+  return [
+    isLowResolution(item, photo, size, orientation) && "lowResolution",
+    isTooDark({ brightness: item.brightness }) && "tooDark",
+  ].filter(Boolean);
+}
+
+/** The cover photos with a warning: [{ side, item, warnings }]. */
+export function coverPhotoIssues(album, measuredSizes = {}) {
+  const found = [];
+  for (const [side, items] of coverSides(album)) {
+    for (const item of items) {
+      const warnings = coverPhotoWarnings(item, album.size, album.orientation, measuredSizes[item.id]);
+      if (warnings.length) found.push({ side, item, warnings });
+    }
+  }
+  return found;
+}
+
+/**
+ * Photo frames left empty, inside and on the cover: not printed (the page
+ * stays blank there), so the customer is told before ordering.
+ * [{ pageIndex }] for the pages, [{ side }] for the cover.
+ */
+export function emptyFrames(album) {
+  const found = [];
+  (album?.pages || []).forEach((page, pageIndex) => {
+    for (const item of page.items || []) {
+      if (item.type === "photo" && !item.photo_id) found.push({ pageIndex });
+    }
+  });
+  for (const [side, items] of coverSides(album)) {
+    for (const item of items) {
+      if (item.type === "image" && !item.image_url) found.push({ side });
+    }
+  }
+  return found;
+}

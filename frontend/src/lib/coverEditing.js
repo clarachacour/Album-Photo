@@ -243,10 +243,12 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       // export — must stay full resolution, unlike normal on-screen photo
       // display which defaults to the thumbnail.
       const imageUrl = coverAssetUrl(data.storage_path, "original");
+      // Its pixel size and lightness, for the print warnings (printQuality).
+      const quality = { photo_width: data.photo_width ?? null, photo_height: data.photo_height ?? null, brightness: data.brightness ?? null };
       if (replaceItemId) {
         // Becomes a photo (even in place of a template's logo): edited like
         // the photos inside the album, starting fresh in its frame.
-        updateCoverItem(replaceItemId, { image_url: imageUrl, storage_path: data.storage_path, asset: null, is_photo: true, photo_aspect: null, scale: 1, rotation: 0, focal_x: 0.5, focal_y: 0.5 }, side);
+        updateCoverItem(replaceItemId, { image_url: imageUrl, storage_path: data.storage_path, asset: null, is_photo: true, photo_aspect: null, scale: 1, rotation: 0, focal_x: 0.5, focal_y: 0.5, ...quality }, side);
         toast.success(i18n.t("coverPanel.toast.imageReplaced"));
       } else {
         const newItem = {
@@ -256,6 +258,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
           ...NEW_ITEM_BOX.image,
           image_url: imageUrl,
           storage_path: data.storage_path,
+          ...quality,
         };
         setAlbum((prev) => {
           const cover = prev.cover || {};

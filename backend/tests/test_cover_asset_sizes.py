@@ -68,3 +68,16 @@ def test_a_small_cover_image_is_sent_as_is(client, db, store):
     res = client.get("/api/cover-assets/image", params={"path": path, "variant": "medium"}, headers=headers)
     assert res.status_code == 200 and res.headers["content-type"] == "image/png"
     assert not any(k.endswith("_medium.webp") for k in store)
+
+
+def test_a_cover_photo_comes_back_with_its_size_and_lightness(client, db, store):
+    """For the editor's and the order page's warnings (blurry, dark)."""
+    _, headers = _signup(client, db=db)
+    album_id = client.post("/api/albums", json={"title": "Faqra", "size": "A4", "target_pages": 24}, headers=headers).json()["id"]
+    buf = BytesIO()
+    Image.new("RGB", (640, 480), (25, 25, 30)).save(buf, format="JPEG")  # small and dark
+    res = client.post(f"/api/albums/{album_id}/cover-assets", files={"file": ("night.jpg", buf.getvalue(), "image/jpeg")}, headers=headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert (body["photo_width"], body["photo_height"]) == (640, 480)
+    assert body["brightness"] < 0.25

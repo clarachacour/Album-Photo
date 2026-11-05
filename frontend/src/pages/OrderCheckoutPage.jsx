@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "@/lib/api";
+import { api, coverItemImageSrc } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { FREE_TRIAL, ONLINE_PAYMENT, SHIPPING_PRICE, billedPageCount, computeDigitalPrice, computeUnitPrice } from "@/lib/pricing";
-import { darkPhotoItems, lowResolutionItems } from "@/lib/printQuality";
+import { coverPhotoIssues, darkPhotoItems, emptyFrames, isCoverPhotoItem, lowResolutionItems } from "@/lib/printQuality";
+import { useNaturalSizes } from "@/lib/useNaturalSize";
 
 /**
  * Choosing what to order for one album — the printed book, the PDF, or
@@ -77,6 +78,19 @@ export default function OrderCheckoutPage() {
 
   const lowResCount = album ? lowResolutionItems(album).length : 0;
   const darkCount = album ? darkPhotoItems(album).length : 0;
+  // Cover photos placed before their pixel size was kept on them: measured
+  // from the printed file.
+  const unmeasuredCoverPhotos = [...(album?.cover?.extra_items || []), ...(album?.cover?.back_extra_items || [])]
+    .filter((item) => isCoverPhotoItem(item) && item.image_url && !item.photo_width)
+    .map((item) => ({ id: item.id, src: coverItemImageSrc(item, "original") }));
+  const coverSizes = useNaturalSizes(unmeasuredCoverPhotos);
+  const coverIssues = album ? coverPhotoIssues(album, coverSizes) : [];
+  const coverLowRes = coverIssues.some((i) => i.warnings.includes("lowResolution"));
+  const coverDark = coverIssues.some((i) => i.warnings.includes("tooDark"));
+  const empties = album ? emptyFrames(album) : [];
+  // Pages as the editor numbers them (the first spread's right page is 1).
+  const emptyPages = [...new Set(empties.filter((e) => e.pageIndex !== undefined).map((e) => e.pageIndex + 1))];
+  const emptyOnCover = empties.some((e) => e.side);
   const pageCount = album ? billedPageCount(album) : 0;
   const printPrice = album ? computeUnitPrice(album.size || "A4", pageCount) : 0;
   const digitalPrice = album ? computeDigitalPrice(album.size || "A4", pageCount) : 0;
@@ -192,6 +206,21 @@ export default function OrderCheckoutPage() {
                   {lowResCount > 0 && (
                     <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-low-res">
                       {t("checkout.lowResolution", { count: lowResCount })}{" "}
+                      <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
+                    </div>
+                  )}
+                  {(coverLowRes || coverDark) && (
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-cover-quality">
+                      {t(coverLowRes && coverDark ? "checkout.coverBlurryAndDark" : coverLowRes ? "checkout.coverBlurry" : "checkout.coverDark")}{" "}
+                      <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
+                    </div>
+                  )}
+                  {empties.length > 0 && (
+                    <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-3" data-testid="checkout-empty-frames">
+                      {t("checkout.emptyFrames", { count: empties.length })}{" "}
+                      {emptyPages.length > 0 && t("checkout.emptyFramesPages", { count: emptyPages.length, pages: emptyPages.join(", ") })}
+                      {emptyPages.length > 0 && emptyOnCover && " "}
+                      {emptyOnCover && t("checkout.emptyFramesCover")}{" "}
                       <Link to={`/editor/${albumId}`} className="underline">{t("checkout.backToEditing")}</Link>
                     </div>
                   )}

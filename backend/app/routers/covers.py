@@ -11,7 +11,7 @@ from app.core.auth import album_scope, decode_token_for_album, get_current_user,
 from app.core.executors import run_blocking
 from app.db import db
 from app.services.albums import reject_if_ordered
-from app.services.photos import ALLOWED_MIME, cover_asset_medium, store_image_with_thumbnail
+from app.services.photos import ALLOWED_MIME, cover_asset_medium, cover_photo_quality, store_image_with_thumbnail
 from app.services.storage import get_object
 
 router = APIRouter()
@@ -108,7 +108,11 @@ async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: 
     path = f"{APP_NAME}/users/{album['user_id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
     loop = asyncio.get_event_loop()
     result, thumb_path, _, _ = await loop.run_in_executor(None, store_image_with_thumbnail, path, data, content_type)
-    return {"storage_path": result["path"], "thumbnail_path": thumb_path}
+    # Its size in pixels and how light it is, kept on the cover item: the
+    # editor and the order page warn when it may print blurry or dark, as
+    # for the photos inside the album.
+    quality = await loop.run_in_executor(None, cover_photo_quality, data)
+    return {"storage_path": result["path"], "thumbnail_path": thumb_path, **quality}
 
 @router.get("/cover-assets/image")
 async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):

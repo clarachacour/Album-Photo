@@ -392,6 +392,21 @@ _TYPES_BY_EXTENSION = {
 }
 
 
+def cover_photo_quality(data: bytes) -> dict:
+    """A cover photo's size in pixels as it shows (turned by its EXIF
+    orientation) and its lightness (see compute_brightness), for the print
+    warnings; empty when the image can't be read."""
+    try:
+        img = Image.open(BytesIO(data))
+        width, height = img.size
+        if (img.getexif() or {}).get(0x0112) in (5, 6, 7, 8):  # taken turned a quarter
+            width, height = height, width
+    except Exception:
+        return {}
+    light = compute_brightness(data) or {}
+    return {"photo_width": width, "photo_height": height, "brightness": light.get("brightness")}
+
+
 def guess_image_type(filename: str, content_type: str) -> str:
     """Some browsers (Windows, some Android phones) don't know HEIC and send
     an iPhone photo with no type, or as "application/octet-stream": its

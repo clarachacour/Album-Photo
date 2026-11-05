@@ -187,7 +187,7 @@ export function CoverEditorPanel({
               <input
                 type="range"
                 min={20}
-                max={120}
+                max={240}
                 value={cover.title_font_size || 48}
                 onChange={(e) => updateCover({ title_font_size: Number(e.target.value) })}
                 className="flex-1 min-w-0"
@@ -201,7 +201,7 @@ export function CoverEditorPanel({
               <input
                 type="range"
                 min={0.5}
-                max={1.6}
+                max={2.2}
                 step={0.02}
                 value={cover.title_scale ?? 1}
                 onChange={(e) => updateCover({ title_scale: Number(e.target.value) })}
@@ -382,7 +382,7 @@ export function CoverEditorPanel({
                   <input
                     type="range"
                     min={0.4}
-                    max={1}
+                    max={2}
                     step={0.02}
                     value={selectedItem.font_scale ?? 1}
                     onChange={(e) => updateCoverItem(selectedItem.id, { font_scale: Number(e.target.value) }, side)}
@@ -394,7 +394,7 @@ export function CoverEditorPanel({
                     <input
                       type="range"
                       min={10}
-                      max={72}
+                      max={200}
                       value={selectedItem.font_size || selectedItem.fontSize || 22}
                       onChange={(e) =>
                         updateCoverItem(

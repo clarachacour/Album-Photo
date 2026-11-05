@@ -1,17 +1,18 @@
 import React, { useState } from "react";
-import { ImagePlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { ImagePlus, TriangleAlert } from "lucide-react";
 import { PhotoFrameToolbar, PhotoEditToolbar, PhotoPanOverlay } from "@/components/ItemToolbars";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { FramedPhoto } from "@/components/book/FramedPhoto";
 import { coverItemImageSrc } from "@/lib/api";
 import { cropPatch, isCropped, minZoom, pageAspect, wholePhotoFields, zoomToFillTurned } from "@/lib/photoFit";
+import { coverPhotoWarnings, isCoverPhotoItem } from "@/lib/printQuality";
+import { useNaturalSize } from "@/lib/useNaturalSize";
 
 // A cover image that is a photo: a photo frame, or a template's logo the
 // person replaced with their own picture (uploaded: storage_path, no asset).
 // Template logos and drawings stay plain images.
-export function isCoverPhoto(item) {
-  return item?.type === "image" && (!!item.is_photo || (!!item.storage_path && !item.asset));
-}
+export const isCoverPhoto = isCoverPhotoItem;
 
 /**
  * A photo on the front or back cover, edited the same way as a photo inside
@@ -22,6 +23,8 @@ export function isCoverPhoto(item) {
 export function CoverPhotoItem({
   item,
   orientation,
+  // The album's format (A4/A5), for the print resolution warning.
+  size,
   editable,
   selected,
   containerRef,
@@ -34,6 +37,7 @@ export function CoverPhotoItem({
   onDelete,
   onDragStateChange,
 }) {
+  const { t } = useTranslation();
   // Pan/zoom/rotate mode: local UI state only, like the interior's cropMode.
   const [inCropState, setInCrop] = useState(false);
   const [loadedAspect, setLoadedAspect] = useState(null);
@@ -52,6 +56,13 @@ export function CoverPhotoItem({
   // Turning the photo in its frame zooms in as needed to keep it filled.
   const turnPhotoPatch = (r) => ({ rotation: r, scale: Math.max(scale, zoomToFillTurned(frameAspect, r)) });
   const withAspect = { ...item, photo_aspect: photoAspect };
+  // Print warnings, in the editor only. A photo placed before its pixel size
+  // was kept on it is measured from the printed file itself.
+  const checkQuality = editable && !!size && !isEmpty && isCoverPhotoItem(item);
+  const measured = useNaturalSize(checkQuality && !item.photo_width ? coverItemImageSrc(item, "original") : null);
+  const warnings = checkQuality ? coverPhotoWarnings(withAspect, size, orientation, measured) : [];
+  // A frame left without a photo is only an editing aid: not printed.
+  if (isEmpty && !editable) return null;
 
   return (
     <>
@@ -90,6 +101,17 @@ export function CoverPhotoItem({
               rotation={rotation}
               onAspect={setLoadedAspect}
             />
+          )}
+          {warnings.length > 0 && !inCrop && (
+            <span
+              className="absolute left-1 bottom-1 z-10 inline-flex items-center gap-1 bg-amber-100/95 text-amber-900 border border-amber-300 px-1.5 py-0.5 text-[10px] leading-none rounded-sm"
+              title={warnings.map((w) => t(`albumEditor.${w}`)).join("\n")}
+              aria-label={warnings.map((w) => t(`albumEditor.${w}`)).join(" ")}
+              data-testid={`cover-print-warning-${item.id}`}
+            >
+              <TriangleAlert size={11} aria-hidden="true" />
+              {selected && <span>{warnings.map((w) => t(`albumEditor.${w}Short`)).join(" · ")}</span>}
+            </span>
           )}
           {inCrop && <PhotoPanOverlay focalX={focalX} focalY={focalY} onPan={(fx, fy) => update({ focal_x: fx, focal_y: fy })} />}
         </div>

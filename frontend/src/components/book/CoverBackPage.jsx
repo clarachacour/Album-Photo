@@ -12,6 +12,8 @@ export function CoverBackPage({
   country,
   orientation,
   cover = {},
+  // The album's format (A4/A5): the editor's print warnings on cover photos.
+  size,
   editable = false,
   onSelectItem,
   onUpdateItem,
@@ -145,6 +147,7 @@ export function CoverBackPage({
               key={item.id}
               item={item}
               orientation={orientation}
+              size={size}
               editable={editable}
               selected={isSel}
               containerRef={containerRef}
@@ -160,6 +163,8 @@ export function CoverBackPage({
           );
         }
         if (item.type === "image") {
+          // A frame left without a photo is only an editing aid: not printed.
+          if (!item.image_url && !editable) return null;
           return (
             <DraggableItem
               key={item.id}

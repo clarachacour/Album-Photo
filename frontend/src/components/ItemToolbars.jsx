@@ -13,6 +13,13 @@ const TOOLBAR_COLORS = ["#1A1A17", "#F9F8F6", "#E07A5F", "#3D405B", "#81B29A"];
  * On a scaled page (rect.width ≠ offsetWidth) a shift of n CSS px moves it
  * by n × scale on screen — the reason it's worked out in one go here.
  */
+// A page's text size, from 8 to MAX_FONT_SIZE: steps of 2 up to 40, then 4
+// up to 80, then 8, so a big title doesn't take dozens of clicks.
+export const MAX_FONT_SIZE = 240;
+const fontStep = (size) => (size < 40 ? 2 : size < 80 ? 4 : 8);
+export const biggerFontSize = (size) => Math.min(MAX_FONT_SIZE, size + fontStep(size));
+export const smallerFontSize = (size) => Math.max(8, size - fontStep(size - 1));
+
 export function toolbarShift(rect, offsetWidth, currentShift, windowWidth, margin = 4) {
   const scale = rect.width / offsetWidth || 1;
   const left = rect.left - currentShift * scale;
@@ -267,15 +274,15 @@ export function TextItemToolbar({ x, y, w, item, onChange, onDelete, onDuplicate
       />
       <div className="flex items-center gap-1 shrink-0">
         <ToolbarButton
-          onClick={() => onChange({ font_size: Math.max(8, (item.font_size || 16) - 2) })}
+          onClick={() => onChange({ font_size: smallerFontSize(item.font_size || 16) })}
           title={t("toolbars.decreaseFontSize")}
           tid="text-toolbar-size-down"
         >
           <span className="text-xs w-3 inline-block text-center">−</span>
         </ToolbarButton>
-        <span className="text-xs w-6 text-center">{item.font_size || 16}</span>
+        <span className="text-xs w-7 text-center tabular-nums">{item.font_size || 16}</span>
         <ToolbarButton
-          onClick={() => onChange({ font_size: Math.min(96, (item.font_size || 16) + 2) })}
+          onClick={() => onChange({ font_size: biggerFontSize(item.font_size || 16) })}
           title={t("toolbars.increaseFontSize")}
           tid="text-toolbar-size-up"
         >

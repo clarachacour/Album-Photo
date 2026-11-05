@@ -100,6 +100,7 @@ export function BookRenderer({
           template={template}
           title={album.title}
           orientation={orientation}
+          size={album.size}
           coverImageUrl={coverImageUrl}
           cover={album.cover || {}}
           templateId={album.cover_template_id}
@@ -164,6 +165,7 @@ export function BookRenderer({
       template={template}
       country={album.country}
       orientation={orientation}
+      size={album.size}
       cover={album.cover || {}}
       editable={!album.was_ordered}
       onSelectCover={() => onSelectCover("back")}

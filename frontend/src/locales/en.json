@@ -1105,7 +1105,15 @@
     "areaRequired": "Area *",
     "areaPlaceholder": "E.g. Hamra, Achrafieh, Jounieh…",
     "areaFromList": "Pick your area from the list, so the courier can find your address.",
-    "kindDigitalSoon": "Coming soon, with Whish Pay and card payment."
+    "kindDigitalSoon": "Coming soon, with Whish Pay and card payment.",
+    "coverBlurry": "The photo on your cover may print blurry (marked ⚠ in the editor): it's small for the size of its frame. Make the frame smaller or choose a sharper photo. If you keep it, you accept that risk.",
+    "coverDark": "The photo on your cover may print dark (marked ⚠ in the editor). Choose a lighter photo if you can. If you keep it, you accept that risk.",
+    "coverBlurryAndDark": "The photo on your cover may print blurry and dark (marked ⚠ in the editor). Choose a sharper, lighter photo if you can. If you keep it, you accept that risk.",
+    "emptyFrames_one": "{{count}} photo frame is empty: it won't be printed, the page stays blank there.",
+    "emptyFrames_other": "{{count}} photo frames are empty: they won't be printed, the page stays blank there.",
+    "emptyFramesPages_one": "Page {{pages}}.",
+    "emptyFramesPages_other": "Pages {{pages}}.",
+    "emptyFramesCover": "On the cover."
   },
   "mobileUpload": {
     "expired": "This link has expired or is invalid. Ask for a new QR code.",

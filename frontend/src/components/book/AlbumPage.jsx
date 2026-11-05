@@ -200,6 +200,8 @@ export function AlbumPage({
           const turnPhotoPatch = (r) => ({ rotation: r, scale: Math.max(scale, zoomToFillTurned(frameAspect, r)) });
           const isSwapSource = swapSourceItemId === item.id;
           const isEmpty = !item.photo_id;
+          // A frame left without a photo is only an editing aid: not printed.
+          if (isEmpty && !editable) return null;
           const lowRes = editable && !isEmpty && isLowResolution(item, photoSizes?.get(item.photo_id), pageSize, orientation);
           const dark = editable && !isEmpty && isTooDark(photoSizes?.get(item.photo_id));
           const warnings = [lowRes && "lowResolution", dark && "tooDark"].filter(Boolean);

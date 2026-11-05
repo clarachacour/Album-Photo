@@ -1105,7 +1105,15 @@
     "areaRequired": "Zone *",
     "areaPlaceholder": "Ex. Hamra, Achrafieh, Jounieh…",
     "areaFromList": "Choisissez votre zone dans la liste proposée, pour que le livreur trouve votre adresse.",
-    "kindDigitalSoon": "Bientôt disponible, avec Whish Pay et le paiement par carte."
+    "kindDigitalSoon": "Bientôt disponible, avec Whish Pay et le paiement par carte.",
+    "coverBlurry": "La photo de votre couverture risque d'être floue à l'impression (signalée ⚠ dans l'éditeur) : elle est petite pour la taille de son cadre. Réduisez le cadre ou choisissez une photo plus nette. Si vous la gardez, vous acceptez ce risque.",
+    "coverDark": "La photo de votre couverture risque d'être sombre à l'impression (signalée ⚠ dans l'éditeur). Choisissez une photo plus claire si possible. Si vous la gardez, vous acceptez ce risque.",
+    "coverBlurryAndDark": "La photo de votre couverture risque d'être floue et sombre à l'impression (signalée ⚠ dans l'éditeur). Choisissez une photo plus nette et plus claire si possible. Si vous la gardez, vous acceptez ce risque.",
+    "emptyFrames_one": "{{count}} cadre photo est vide : il ne sera pas imprimé, la page restera blanche à cet endroit.",
+    "emptyFrames_other": "{{count}} cadres photo sont vides : ils ne seront pas imprimés, la page restera blanche à ces endroits.",
+    "emptyFramesPages_one": "Page {{pages}}.",
+    "emptyFramesPages_other": "Pages {{pages}}.",
+    "emptyFramesCover": "Sur la couverture."
   },
   "mobileUpload": {
     "expired": "Ce lien a expiré ou n'est pas valide. Demandez un nouveau QR code.",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { darkPhotoItems, isLowResolution, isTooDark, lowResolutionItems, photoPrintDpi } from "@/lib/printQuality";
+import { coverPhotoIssues, coverPhotoWarnings, darkPhotoItems, emptyFrames, isLowResolution, isTooDark, lowResolutionItems, photoPrintDpi } from "@/lib/printQuality";
 
 // A full A4 portrait page: 210 × 297 mm, 8.27 in wide.
 const fullPage = { x: 0, y: 0, w: 1, h: 1, scale: 1 };
@@ -65,5 +65,30 @@ describe("isTooDark", () => {
       pages: [{ items: [{ type: "photo", photo_id: "fine" }] }, { items: [{ type: "photo", photo_id: "dark" }, { type: "text" }] }],
     };
     expect(darkPhotoItems(album).map((f) => f.pageIndex)).toEqual([1]);
+  });
+});
+
+describe("the cover and empty frames", () => {
+  const album = (cover, pages = []) => ({ size: "A4", orientation: "portrait", pages, cover });
+  // A photo filling most of an A4 cover (about 18 × 25 cm).
+  const coverPhoto = (extra) => ({ id: "c1", type: "image", is_photo: true, image_url: "x", x: 0.07, y: 0.07, w: 0.86, h: 0.86, ...extra });
+
+  it("flags a cover photo too small for its frame, or dark", () => {
+    expect(coverPhotoWarnings(coverPhoto({ photo_width: 640, photo_height: 900 }), "A4", "portrait")).toEqual(["lowResolution"]);
+    expect(coverPhotoWarnings(coverPhoto({ photo_width: 3000, photo_height: 4000, brightness: 0.1 }), "A4", "portrait")).toEqual(["tooDark"]);
+    expect(coverPhotoWarnings(coverPhoto({ photo_width: 3000, photo_height: 4000, brightness: 0.5 }), "A4", "portrait")).toEqual([]);
+  });
+
+  it("measures an older cover photo from its file, and leaves logos alone", () => {
+    expect(coverPhotoWarnings(coverPhoto(), "A4", "portrait", { width: 500, height: 700 })).toEqual(["lowResolution"]);
+    expect(coverPhotoWarnings(coverPhoto(), "A4", "portrait")).toEqual([]); // size not known yet
+    expect(coverPhotoWarnings({ ...coverPhoto({ photo_width: 100, photo_height: 100 }), is_photo: false, asset: "logo" }, "A4", "portrait")).toEqual([]);
+    const issues = coverPhotoIssues(album({ back_extra_items: [coverPhoto({ photo_width: 400, photo_height: 600 })] }));
+    expect(issues.map((i) => [i.side, i.warnings])).toEqual([["back", ["lowResolution"]]]);
+  });
+
+  it("finds the empty photo frames, inside and on the cover", () => {
+    const pages = [{ items: [{ type: "photo", photo_id: "p1" }] }, { items: [{ type: "photo" }, { type: "text", content: "" }] }];
+    expect(emptyFrames(album({ extra_items: [{ type: "image" }, coverPhoto()] }, pages))).toEqual([{ pageIndex: 1 }, { side: "front" }]);
   });
 });
