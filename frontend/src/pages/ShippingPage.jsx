@@ -1,11 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function ShippingPage() {
   usePageMeta("shipping");
   const { t } = useTranslation();
-  const sections = t("legal.shipping.sections", { returnObjects: true });
+  const sections = textList(t, "legal.shipping.sections");
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[800px] mx-auto">

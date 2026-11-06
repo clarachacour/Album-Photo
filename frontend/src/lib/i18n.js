@@ -14,15 +14,41 @@ export const LANGUAGES = Object.keys(LOADERS);
 /** "fr", "fr-FR", "fr-CA"… → "fr"; anything else → "en". */
 export const baseLanguage = (lng) => (String(lng || "").toLowerCase().startsWith("fr") ? "fr" : "en");
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A language's texts file, tried up to 3 times: on a phone, a download can
+ * fail once ("Importing a module script failed") and work a second later.
+ */
+export async function importWithRetry(load, attempts = 3, delayMs = 800) {
+  for (let i = 1; ; i += 1) {
+    try {
+      return await load();
+    } catch (error) {
+      if (i >= attempts) throw error;
+      await wait(delayMs * i);
+    }
+  }
+}
+
 /** Downloads a language's texts (once). */
 export async function loadLanguage(lng) {
   const code = baseLanguage(lng);
   if (!i18n.hasResourceBundle(code, "translation")) {
-    const texts = await LOADERS[code]();
+    const texts = await importWithRetry(LOADERS[code]);
     i18n.addResourceBundle(code, "translation", texts.default || texts, true, true);
   }
   return code;
 }
+
+/**
+ * A list of texts (t(key, { returnObjects: true })), or [] if the texts
+ * aren't there: the page then shows without that list instead of breaking.
+ */
+export const textList = (t, key, options) => {
+  const value = t(key, { ...options, returnObjects: true });
+  return Array.isArray(value) ? value : [];
+};
 
 /** Switches the site's language, its texts downloaded first. */
 export async function setLanguage(lng) {

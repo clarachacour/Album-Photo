@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { DEFAULT_COVER, defaultLogoItem, getTemplate } from "@/lib/coverTemplates";
@@ -50,7 +51,7 @@ function defaultCoverPayload(chosenTemplate) {
 
 function CreationProgressScreen({ progress }) {
   const { t } = useTranslation();
-  const stages = t("createAlbum.creationStages", { returnObjects: true });
+  const stages = textList(t, "createAlbum.creationStages");
   const [stage, setStage] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setStage((s) => (s + 1) % stages.length), 2200);

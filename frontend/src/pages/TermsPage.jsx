@@ -1,11 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function TermsPage() {
   usePageMeta("terms");
   const { t } = useTranslation();
-  const sections = t("legal.terms.sections", { returnObjects: true });
+  const sections = textList(t, "legal.terms.sections");
   const intro = t("legal.terms.intro", { defaultValue: "" });
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">

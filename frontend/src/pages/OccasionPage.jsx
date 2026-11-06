@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { ArrowRight, Check } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import LocalLink from "@/components/LocalLink";
@@ -58,7 +59,7 @@ export default function OccasionPage({ occasion }) {
 
       <section className="py-16 md:py-24 px-6 md:px-12 bg-white border-y border-[color:var(--border-soft)]">
         <div className="max-w-[1100px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
-          {k("points", { returnObjects: true }).map((p) => (
+          {textList(k, "points").map((p) => (
             <div key={p.title}>
               <h2 className="font-serif-display text-2xl mb-3 flex items-start gap-2">
                 <Check size={18} className="text-[color:var(--coral)] mt-1.5 shrink-0" />
@@ -74,7 +75,7 @@ export default function OccasionPage({ occasion }) {
         <div className="max-w-[1100px] mx-auto">
           <h2 className="font-serif-display text-3xl md:text-4xl tracking-tight mb-10">{t("occasions.howTitle")}</h2>
           <ol className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
-            {t("landing.process.steps", { returnObjects: true }).map((s, i) => (
+            {textList(t, "landing.process.steps").map((s, i) => (
               <li key={s.title}>
                 <div className="font-serif-display text-3xl text-[color:var(--coral)]">{String(i + 1).padStart(2, "0")}</div>
                 <h3 className="font-serif-display text-xl mt-2 mb-1">{s.title}</h3>

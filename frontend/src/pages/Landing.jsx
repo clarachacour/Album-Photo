@@ -2,6 +2,7 @@ import React, { Suspense, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { TID } from "@/constants/testIds";
 import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Truck, Check, Undo2 } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -78,7 +79,7 @@ export default function Landing() {
               </button>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/70" data-testid="landing-perks">
-              {t("landing.hero.perks", { returnObjects: true }).map((perk) => (
+              {textList(t, "landing.hero.perks").map((perk) => (
                 <li key={perk} className="inline-flex items-center gap-1.5">
                   <Check size={14} className="text-[color:var(--coral)]" />
                   {perk}
@@ -110,7 +111,7 @@ export default function Landing() {
       {/* Process strip */}
       <section className="border-y border-[color:var(--border-soft)] py-16 md:py-24 bg-white">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-12">
-          {t("landing.process.steps", { returnObjects: true }).map((s, i) => (
+          {textList(t, "landing.process.steps").map((s, i) => (
             <div key={i} className="flex gap-6 items-start">
               <div className="font-serif-display text-4xl text-[color:var(--coral)]">{String(i + 1).padStart(2, "0")}</div>
               <div>
@@ -140,7 +141,7 @@ export default function Landing() {
           </div>
 
           <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
-            {t("landing.sorting.steps", { returnObjects: true }).map((s, i) => (
+            {textList(t, "landing.sorting.steps").map((s, i) => (
               <div key={i} className="flex gap-4 items-start">
                 <div className="mt-0.5 text-[color:var(--coral)] shrink-0">{sortingIcons[i]}</div>
                 <div>

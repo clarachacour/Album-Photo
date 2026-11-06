@@ -1,11 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function PrivacyPage() {
   usePageMeta("privacy");
   const { t } = useTranslation();
-  const sections = t("legal.privacy.sections", { returnObjects: true });
+  const sections = textList(t, "legal.privacy.sections");
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">
       <div className="max-w-[800px] mx-auto">

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { textList } from "@/lib/i18n";
 import { Sparkles } from "lucide-react";
 
 export function ProcessingScreen({ title }) {
   const { t } = useTranslation();
-  const stages = t("createAlbum.creationStages", { returnObjects: true });
+  const stages = textList(t, "createAlbum.creationStages");
   const [dots, setDots] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setDots((d) => (d + 1) % 4), 500);
