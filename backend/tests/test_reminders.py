@@ -230,3 +230,15 @@ def test_a_deleted_album_gets_no_reminder(client, db, mails):
     _run()
     _run(NOON + timedelta(days=40))
     assert not [m for m in mails if m[1] == email]
+
+
+def test_two_albums_left_aside_make_one_reminder(client, db, mails):
+    """The same trip started twice: one "finish your album" email, not two
+    half an hour apart."""
+    email, headers, first, user_id = _customer(client, db, lang="en")
+    second = client.post("/api/albums", json={"title": "Byblos", "size": "A5", "target_pages": 24, "lang": "en"}, headers=headers).json()["id"]
+    _age(db, "albums", {"id": first}, 24 * 4)
+    _run()
+    _age(db, "albums", {"id": second}, 24 * 4)  # left aside a little later
+    _run(NOON + timedelta(minutes=30))
+    assert [m[0] for m in mails if m[1] == email] == ["album"]

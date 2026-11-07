@@ -30,6 +30,9 @@ from app.services.email import (
 # (UTC+2 in winter, UTC+3 in summer) — never in the middle of the night.
 SENDING_HOURS_UTC = range(7, 18)
 
+# At most one "come finish your album" email per person in this many days.
+ALBUM_REMINDER_GAP_DAYS = 7
+
 
 def stop_url(user_id: str) -> str:
     """The link, in each reminder, that stops them for this account."""
@@ -146,7 +149,15 @@ async def remind_unfinished_albums(now: datetime) -> dict:
         if not claimed.modified_count or album["id"] in in_carts:
             continue
         user = await _customer(album["user_id"])
-        if user:
+        # One "come finish it" per person per ALBUM_REMINDER_GAP_DAYS, even
+        # with several albums left aside (two albums started for the same
+        # trip were two emails half an hour apart). Claimed on the account
+        # before sending, as the album is.
+        gap_start = (now - timedelta(days=ALBUM_REMINDER_GAP_DAYS)).isoformat()
+        if user and (await db.users.update_one(
+            {"id": album["user_id"], "$or": [{"album_reminded_at": {"$exists": False}}, {"album_reminded_at": {"$lt": gap_start}}]},
+            {"$set": {"album_reminded_at": now.isoformat()}},
+        )).modified_count:
             await run_email(send_unfinished_album_reminder_email, user["email"], user.get("name"), album, stop_url(album["user_id"]))
             stage1_sent += 1
 
