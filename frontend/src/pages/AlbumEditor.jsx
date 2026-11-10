@@ -28,6 +28,7 @@ import { useGuidedTour, TourHelpButton } from "@/components/tour/GuidedTour";
 import { editableContent, useAlbumSaving } from "@/hooks/useAlbumSaving";
 import { parseDate } from "@/lib/dates";
 import { snapToSameSize, spreadPhotoFrames } from "@/lib/sizeMatch";
+import { snapSideResize } from "@/lib/sideResizeSnap";
 import { spacingSnap } from "@/lib/spacingGuides";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
@@ -316,6 +317,19 @@ export default function AlbumEditor() {
     // edge alignment below then leaves that axis alone.
     const sizeLock = { w: false, h: false };
     const resized = album?.pages?.[pageIdx]?.items?.find((it) => it.id === itemId);
+    // Resizing from a side or another corner (x, y, w and h together): the
+    // same help — same size as another photo, pulled edge lined up with a
+    // guide line. Not for a turned frame (its edges aren't the page's).
+    let sideGuides = null;
+    const turned = resized && (resized.frame_rotation || (resized.type !== "photo" && resized.rotation));
+    if (resized && !turned && patch.slot === undefined && [patch.x, patch.y, patch.w, patch.h].every((v) => v !== undefined)) {
+      const siblings = album.pages[pageIdx].items.filter((it) => it.id !== itemId && it.w != null && it.h != null);
+      const frames = resized.type === "photo" ? spreadPhotoFrames(album.pages, pageIdx, itemId) : null;
+      const r = snapSideResize(resized, patch, siblings, frames);
+      patch = { ...patch, ...r.patch };
+      sideGuides = { x: r.guideX, y: r.guideY };
+      setSizeMatch(r.matches.length ? { itemId, pageIdx, matches: r.matches } : null);
+    }
     if (resized?.type === "photo" && patch.w !== undefined && patch.h !== undefined && patch.x === undefined && patch.y === undefined) {
       const s = snapToSameSize(patch.w, patch.h, spreadPhotoFrames(album.pages, pageIdx, itemId), {
         maxW: 1 - (resized.x ?? 0),
@@ -378,15 +392,17 @@ export default function AlbumEditor() {
         // whether the *moving* edge (x+w or y+h) lines up with a sibling's
         // edge/center instead, using the same guide-line mechanism as a
         // move.
-        if (updatedPatch.w !== undefined && updatedPatch.x === undefined && !sizeLock.w) {
+        // A size taken from another photo (sizeLock) isn't moved for an
+        // alignment, but its guide line shows when the edge also lines up.
+        if (updatedPatch.w !== undefined && updatedPatch.x === undefined) {
           const s = computeResizeAlignSnap(it.x ?? 0, updatedPatch.w, siblings, "x");
-          updatedPatch.w = s.value;
-          guideX = s.guide;
+          if (!sizeLock.w) updatedPatch.w = s.value;
+          guideX = !sizeLock.w || Math.abs(s.value - updatedPatch.w) < 1e-6 ? s.guide : null;
         }
-        if (updatedPatch.h !== undefined && updatedPatch.y === undefined && !sizeLock.h) {
+        if (updatedPatch.h !== undefined && updatedPatch.y === undefined) {
           const s = computeResizeAlignSnap(it.y ?? 0, updatedPatch.h, siblings, "y");
-          updatedPatch.h = s.value;
-          guideY = s.guide;
+          if (!sizeLock.h) updatedPatch.h = s.value;
+          guideY = !sizeLock.h || Math.abs(s.value - updatedPatch.h) < 1e-6 ? s.guide : null;
         }
         if (it.type === "photo" && it.slot && patch.slot === undefined) {
           const moved = { ...it, ...updatedPatch };
@@ -400,6 +416,7 @@ export default function AlbumEditor() {
         }
         return { ...it, ...updatedPatch };
       });
+      if (sideGuides) ({ x: guideX, y: guideY } = sideGuides);
       newPages[pageIdx] = { ...newPages[pageIdx], items, align_guide_x: guideX, align_guide_y: guideY };
       return { ...prev, pages: newPages };
     });

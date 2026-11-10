@@ -73,6 +73,26 @@ export function computeResizeAlignSnap(pos, size, siblings, axis) {
   return findResizeSnap(pos, size, siblings || [], axis);
 }
 
+/**
+ * One edge being pulled (a side or corner handle): where it lands when it's
+ * close to the page centre or to another item's start, centre or end.
+ * { value, guide } — guide null when nothing is close.
+ */
+export function snapEdge(edge, siblings, axis) {
+  const sizeKey = axis === "x" ? "w" : "h";
+  const candidates = [0.5];
+  for (const s of siblings || []) {
+    if (s[axis] == null || s[sizeKey] == null) continue;
+    candidates.push(s[axis], s[axis] + s[sizeKey] / 2, s[axis] + s[sizeKey]);
+  }
+  let best = null;
+  for (const c of candidates) {
+    const diff = Math.abs(edge - c);
+    if (diff < SNAP_THRESHOLD && (!best || diff < best.diff)) best = { diff, c };
+  }
+  return best ? { value: best.c, guide: best.c } : { value: edge, guide: null };
+}
+
 // What "Delete" changes on the cover for a selected built-in piece (extra
 // items are removed from their list instead): texts of their own are
 // emptied, the title / spine title / logo / divider are hidden — they can
