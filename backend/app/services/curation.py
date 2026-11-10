@@ -245,6 +245,11 @@ def _get_face_detector():
     return _face_detector
 
 def compute_face_focal_point(data: bytes):
+    """See detect_faces: just its focal point (None without a face)."""
+    return detect_faces(data)["focal"]
+
+
+def detect_faces(data: bytes) -> dict:
     """Finds faces in a photo and returns a (focal_x, focal_y) point — in
     the same 0-1, top-left-origin coordinate space the layout already uses
     for ai_focal_x/ai_focal_y — positioned so a crop centered on it keeps
@@ -253,19 +258,24 @@ def compute_face_focal_point(data: bytes):
     weren't centered in the original shot). Runs entirely locally via
     OpenCV's YuNet model — no photo or photo data is sent anywhere outside
     this server for this. Returns None (caller falls back to center) if no
-    faces are found, or if the model isn't available for any reason."""
+    faces are found, or if the model isn't available for any reason.
+
+    Returns {"focal", "count", "area"}: the focal point (None without a
+    face), how many faces, and the largest one's share of the photo (0-1) —
+    used to prefer photos of people when choosing (see photo_quality)."""
+    none = {"focal": None, "count": 0, "area": 0.0}
     detector = _get_face_detector()
     if detector is None:
-        return None
+        return none
     try:
         import cv2
         arr = np.frombuffer(data, dtype=np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
-            return None
+            return none
         h, w = img.shape[:2]
         if h == 0 or w == 0:
-            return None
+            return none
         # YuNet's accuracy/speed trade-off is tuned around a few hundred
         # pixels on the long side — shrinking a large original down to that
         # before detection costs nothing in the result (faces are still
@@ -278,7 +288,7 @@ def compute_face_focal_point(data: bytes):
             detector.setInputSize((dw, dh))
             _, faces = detector.detect(detect_img)
         if faces is None or len(faces) == 0:
-            return None
+            return none
         # Bounding-box centroid of every detected face, weighted by each
         # face's own area — a large, close/prominent face pulls the focal
         # point more than a tiny, distant one in the background, which is
@@ -293,7 +303,7 @@ def compute_face_focal_point(data: bytes):
             sum_y += cy * weight
             total_weight += weight
         if total_weight <= 0:
-            return None
+            return none
         # OpenCV's detection results are numpy scalars (np.float32), not
         # plain Python floats — MongoDB's BSON encoder has no idea how to
         # store those and raises on the very first save, which was
@@ -301,10 +311,11 @@ def compute_face_focal_point(data: bytes):
         # with no pages at all) any time a face was actually detected.
         focal_x = float(min(1.0, max(0.0, (sum_x / total_weight) / dw)))
         focal_y = float(min(1.0, max(0.0, (sum_y / total_weight) / dh)))
-        return (focal_x, focal_y)
+        largest = max(float(f[2]) * float(f[3]) for f in faces) / float(dw * dh)
+        return {"focal": (focal_x, focal_y), "count": int(len(faces)), "area": round(min(1.0, largest), 4)}
     except Exception as e:
         logger.debug(f"Détection de visages échouée pour une photo (on garde le centre par défaut) : {e}")
-        return None
+        return none
 
 def hamming_distance(a, b) -> int:
     if a is None or b is None:
@@ -372,12 +383,63 @@ def _redundancy(a: dict, b: dict) -> float:
     return dist + apart
 
 
+# ---- Choosing between photos of the same moment ----
+# A photo's sharpness alone (ai_score) favours what's full of detail — a
+# plate, bottles, rocks in the sun — over people, often softer (an evening
+# on a terrace). So photos are compared with the others of their moment
+# (a burst, the same scene a few minutes apart, neighbours in the album):
+# people first, then the light compared with the others there, then the
+# sharpness compared with the others there. Never against photos of
+# another kind: a sunset or an underwater photo, naturally soft and
+# coloured, is only weighed against its own look-alikes.
+FACE_BONUS = 2.0  # a photo with people beats one without
+FACE_SIZE_FULL = 0.04  # a face this big (share of the photo) gets the whole size bonus
+FACE_SIZE_BONUS = 1.0
+DARKER_PENALTY = 3.0  # per point of mean lightness under the moment's
+NEAR_BLACK = 0.04  # a photo this dark is a failed shot (pocket, lens covered)
+SHARPNESS_WEIGHT = 0.6
+
+
+def _median(values: List[float]) -> float:
+    values = sorted(values)
+    n = len(values)
+    if not n:
+        return 0.0
+    return values[n // 2] if n % 2 else (values[n // 2 - 1] + values[n // 2]) / 2
+
+
+def photo_quality(photo: dict, peers: List[dict]) -> float:
+    """How good a photo is next to the others of its moment (`peers`, the
+    photo included): higher is better. Only meaningful within one moment."""
+    import math
+
+    def sharp(p):
+        return math.log1p(max(0.0, float(p.get("ai_score") or 0)))
+
+    score = 0.0
+    if (photo.get("ai_face_count") or 0) > 0:
+        score += FACE_BONUS + FACE_SIZE_BONUS * min(1.0, float(photo.get("ai_face_area") or 0) / FACE_SIZE_FULL)
+    light = photo.get("brightness")
+    if light is not None:
+        lights = [p["brightness"] for p in peers if p.get("brightness") is not None]
+        score -= DARKER_PENALTY * max(0.0, _median(lights) - light)
+        if light < NEAR_BLACK:
+            score -= 2.0
+    score += SHARPNESS_WEIGHT * max(-2.0, min(2.0, sharp(photo) - _median([sharp(p) for p in peers])))
+    return score
+
+
+def best_photo(photos: List[dict]) -> dict:
+    """The one to keep out of photos of one moment (see photo_quality)."""
+    return max(photos, key=lambda p: photo_quality(p, photos))
+
+
 def spread_to_capacity(photos: List[dict], capacity: int) -> tuple:
     """More photos than the pages can hold: instead of the album simply
     stopping where the pages run out (the end of a trip left out while
     look-alike shots from its start fill pages), the most repetitive photos
     go first. Among photos next to each other (in album order), the pair
-    that repeats itself most loses its less sharp photo, again and again,
+    that repeats itself most loses its weaker photo (see best_photo), again and again,
     until `capacity` remain — so the whole album stays covered and bursts
     of near-identical shots are thinned. Returns (kept, dropped), order
     kept."""
@@ -391,7 +453,7 @@ def spread_to_capacity(photos: List[dict], capacity: int) -> tuple:
     while len(kept) > capacity:
         best_i = min(range(len(costs)), key=costs.__getitem__)
         a, b = kept[best_i], kept[best_i + 1]
-        loser = best_i if (a.get("ai_score") or 0) < (b.get("ai_score") or 0) else best_i + 1
+        loser = best_i + 1 if best_photo([a, b]) is a else best_i
         dropped.append(kept.pop(loser))
         # The pairs on either side of the removed photo become one new pair
         # (just one pair goes when it was first or last).
@@ -750,12 +812,15 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
     duplicates_removed = 0
     low_sharpness_removed = 0
 
-    # ---- 2. Pick a representative per cluster using a fast, local,
-    # no-AI sharpness check — this is what lets us skip sending every burst
-    # frame locally, no external AI call needed. ----
+    # ---- 2. Pick a representative per cluster, locally, no AI call: each
+    # photo's sharpness and faces, read in one go (see photo_quality for
+    # how they're weighed — people first). ----
     loop = asyncio.get_event_loop()
 
-    async def _sharpness_of(p):
+    def _signals(data):
+        return compute_sharpness(data), detect_faces(data)
+
+    async def _signals_of(p):
         try:
             read_path = p.get("thumbnail_path") or p["storage_path"]
             # r2_io_executor (32 workers), not the default pool — this is
@@ -769,9 +834,12 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
             # Google Photos import: curation alone took 5m36s with this
             # still on the default pool.
             data, _ = await loop.run_in_executor(r2_io_executor, get_object, read_path)
-            return await loop.run_in_executor(None, compute_sharpness, data)
+            sharpness, faces = await loop.run_in_executor(None, _signals, data)
+            if p.get("brightness") is None:
+                p["brightness"] = (compute_brightness(data) or {}).get("brightness")
+            return sharpness, faces
         except Exception:
-            return 0.0
+            return 0.0, {"focal": None, "count": 0, "area": 0.0}
 
     representatives: List[dict] = []  # one per cluster that has at least one new photo
     rep_sharpness: Dict[str, float] = {}
@@ -804,19 +872,24 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         await db.photos.update_many({"id": {"$in": anchored_duplicate_ids}}, {"$set": {"is_duplicate": True, "is_selected": False}})
 
     all_candidates = [p for cluster in scoring_clusters for p in cluster]
-    all_scores = await asyncio.gather(*(_sharpness_of(p) for p in all_candidates))
-    score_by_id = dict(zip((p["id"] for p in all_candidates), all_scores))
+    all_signals = await asyncio.gather(*(_signals_of(p) for p in all_candidates))
+    for p, (sharpness, faces) in zip(all_candidates, all_signals):
+        p["ai_score"] = sharpness
+        p["ai_face_count"] = faces["count"]
+        p["ai_face_area"] = faces["area"]
+        p["_focal"] = faces["focal"]
 
     duplicate_ids_to_mark: List[str] = []
     for new_in_cluster in scoring_clusters:
-        scores = [score_by_id[p["id"]] for p in new_in_cluster]
-        rep, rep_score = max(zip(new_in_cluster, scores), key=lambda x: x[1])
-        for d, score in zip(new_in_cluster, scores):
+        # The same shot several times: the one with the people best seen,
+        # well lit and sharp — no longer simply the sharpest.
+        rep = best_photo(new_in_cluster)
+        for d in new_in_cluster:
             if d["id"] != rep["id"]:
                 duplicate_ids_to_mark.append(d["id"])
         duplicates_removed += len(new_in_cluster) - 1
         representatives.append(rep)
-        rep_sharpness[rep["id"]] = rep_score
+        rep_sharpness[rep["id"]] = rep["ai_score"]
 
     if duplicate_ids_to_mark:
         await db.photos.update_many({"id": {"$in": duplicate_ids_to_mark}}, {"$set": {"is_duplicate": True, "is_selected": False}})
@@ -835,14 +908,17 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
     # photos — a scene with naturally low local contrast (sky, water, flat
     # backgrounds) can score low on this metric even in perfect focus, so a
     # value this high risks rejecting plenty of genuinely fine photos, not
-    # just broken ones. Lowered from 15.0 pending real before/after data
-    # from curation_stats. ----
-    SHARPNESS_FLOOR = 8.0
+    # just broken ones. Lowered from 15.0, then to 4: soft photos that are
+    # fine (an evening with friends, a sunset, under water) scored under 8
+    # and were left out while plates and bottles, full of detail, got in.
+    # A photo with people is only left out when really blurred. ----
+    SHARPNESS_FLOOR = 4.0
+    SHARPNESS_FLOOR_WITH_FACES = 1.5
     selected = []
     passing_reps = []
     for rep in representatives:
         score = rep_sharpness.get(rep["id"], 0.0)
-        is_reject = score < SHARPNESS_FLOOR
+        is_reject = score < (SHARPNESS_FLOOR_WITH_FACES if rep.get("ai_face_count") else SHARPNESS_FLOOR)
         rep["ai_score"] = score
         if is_reject:
             await db.photos.update_one({"id": rep["id"]}, {"$set": {"ai_score": score, "ai_is_reject": True, "is_duplicate": True, "is_selected": False}})
@@ -852,27 +928,13 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
 
     _phase_times["sharpness"] = _time.monotonic() - _t0 - _phase_times["clustering"]
 
-    # Face-aware focal point — finds where any people actually are in the
-    # photo (fully locally, via the OpenCV/YuNet model — nothing about the
-    # photo is sent anywhere for this) so the layout can center its crop on
-    # them instead of the raw geometric middle of the frame, which is what
-    # was cropping people out when they weren't centered in the original
-    # shot. Only computed for photos that passed the sharpness gate above —
-    # no point spending the time on ones that won't be used anyway. Falls
-    # back to dead center (the previous, only, behavior) for any photo with
-    # no detected face — a landscape or an object shot, say.
-    async def _focal_point_of(p):
-        try:
-            read_path = p.get("thumbnail_path") or p["storage_path"]
-            # Same reasoning as _sharpness_of's fetch above.
-            data, _ = await loop.run_in_executor(r2_io_executor, get_object, read_path)
-            return await loop.run_in_executor(None, compute_face_focal_point, data)
-        except Exception:
-            return None
-
-    focal_points = await asyncio.gather(*(_focal_point_of(p) for p in passing_reps))
+    # Face-aware focal point — where any people are in the photo (found
+    # locally with the YuNet model in step 2, nothing sent anywhere), so the
+    # layout centres its crop on them instead of the frame's middle, which
+    # cropped people out. Dead centre for a photo without a face.
+    focal_points = [p.get("_focal") for p in passing_reps]
     faces_detected_count = sum(1 for f in focal_points if f)
-    _phase_times["face_detection"] = _time.monotonic() - _t0 - _phase_times["clustering"] - _phase_times["sharpness"]
+    _phase_times["face_detection"] = 0.0  # done with the sharpness, in step 2
 
     for rep, focal in zip(passing_reps, focal_points):
         focal_x, focal_y = focal if focal else (0.5, 0.5)
@@ -890,6 +952,8 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
             # the slot choice itself — not just where within it the crop is
             # centered — is what determines how much has to be cropped away.
             "ai_has_face": bool(focal),
+            "ai_face_count": rep.get("ai_face_count") or 0,
+            "ai_face_area": rep.get("ai_face_area") or 0.0,
         }
         await db.photos.update_one({"id": rep["id"]}, {"$set": {**update, "is_duplicate": False, "is_selected": True}})
         rep.update(update)
@@ -962,7 +1026,8 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
             if len(mc) <= MAX_PER_MOMENT:
                 thinned.extend(mc)
                 continue
-            mc_sorted = sorted(mc, key=lambda x: -(x.get("ai_score") or 0))
+            # The best of the moment (people first, see photo_quality).
+            mc_sorted = sorted(mc, key=lambda x: -photo_quality(x, mc))
             keep, drop = mc_sorted[:MAX_PER_MOMENT], mc_sorted[MAX_PER_MOMENT:]
             for d in drop:
                 await db.photos.update_one({"id": d["id"]}, {"$set": {"is_duplicate": True, "is_selected": False}})
