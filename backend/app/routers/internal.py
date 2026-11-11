@@ -16,8 +16,21 @@ from app.services.delivery import sync_all_deliveries
 from app.services.print_groups import flush_printer_queue
 from app.services.reminders import deletion_at, send_reminders
 from app.services.storage import delete_object
+from app.services.test_pdf import make_test_pdf
 
 router = APIRouter()
+
+
+# ---------- An admin's test PDF of an album (called by the Cloud Tasks queue) ----------
+@router.post("/internal/albums/{album_id}/test-pdf")
+async def internal_make_test_pdf(album_id: str, x_cleanup_secret: str = Header(None)):
+    """Makes the album's test PDF (see services/test_pdf.py). A failure is
+    kept on the album for the admin to see; the queue doesn't retry it."""
+    if not CLEANUP_SECRET:
+        raise HTTPException(status_code=500, detail="CLEANUP_SECRET is not configured on this server")
+    if x_cleanup_secret != CLEANUP_SECRET:
+        raise HTTPException(status_code=401, detail="Not authorized")
+    return {"made": await make_test_pdf(album_id)}
 
 
 # ---------- Order PDF (called by the Cloud Tasks queue) ----------

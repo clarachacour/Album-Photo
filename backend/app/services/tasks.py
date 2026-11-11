@@ -60,3 +60,9 @@ def enqueue_album_layout(album_id: str) -> None:
     open — a weak one used to cut it off half-way. Raises on failure."""
     _enqueue(f"/internal/albums/{album_id}/layout")
     logger.info(f"Album {album_id} : mise en page mise en file d'attente")
+
+
+def enqueue_test_pdf(album_id: str) -> None:
+    """Adds an admin's test PDF of an album to the queue. Raises on failure."""
+    _enqueue(f"/internal/albums/{album_id}/test-pdf")
+    logger.info(f"Album {album_id} : PDF test mis en file d'attente")

@@ -152,6 +152,35 @@ async def start_order_pdf_generation(order: dict) -> bool:
     return False
 
 
+async def prepare_print_photos(interior_pages: list, user_id: str):
+    """Before rendering an album for print: a JPEG copy of every photo on its
+    pages whose format a browser can't draw (HEIC…)."""
+    photo_ids = {
+        it["photo_id"]
+        for pg in interior_pages
+        for it in (pg.get("items") or [])
+        if it.get("type") == "photo" and it.get("photo_id")
+    }
+    # Photos are printed at the full resolution stored at upload. Only
+    # formats a browser can't draw (HEIC…) need a JPEG copy, made here
+    # up front so the page renders don't wait on conversions.
+    if photo_ids:
+        photos_list = await db.photos.find(
+            {"id": {"$in": list(photo_ids)}, "user_id": user_id}, {"_id": 0}
+        ).to_list(len(photo_ids))
+        to_convert = [ph for ph in photos_list if print_needs_conversion(ph) and not ph.get("print_full_path")]
+        loop = asyncio.get_event_loop()
+        semaphore = asyncio.Semaphore(4)
+
+        async def convert(photo):
+            async with semaphore:
+                print_path, _ = await loop.run_in_executor(photo_processing_executor, generate_print_variant, photo)
+            if print_path:
+                await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_full_path": print_path}})
+
+        await asyncio.gather(*(convert(ph) for ph in to_convert))
+
+
 async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_attempt: bool = True) -> bool:
     """Makes the order's print-ready PDF with the same browser renderer as
     the flipbook, so the printer gets exactly what the customer saw.
@@ -164,30 +193,7 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
         digital = order_kind(await db.orders.find_one({"id": order_id}, {"kind": 1}) or {}) == "digital"
         album_doc = await db.albums.find_one({"id": album_id}, {"pages": 1})
         interior_pages = (album_doc or {}).get("pages", [])
-        photo_ids = {
-            it["photo_id"]
-            for pg in interior_pages
-            for it in (pg.get("items") or [])
-            if it.get("type") == "photo" and it.get("photo_id")
-        }
-        # Photos are printed at the full resolution stored at upload. Only
-        # formats a browser can't draw (HEIC…) need a JPEG copy, made here
-        # up front so the page renders don't wait on conversions.
-        if photo_ids:
-            photos_list = await db.photos.find(
-                {"id": {"$in": list(photo_ids)}, "user_id": user_id}, {"_id": 0}
-            ).to_list(len(photo_ids))
-            to_convert = [ph for ph in photos_list if print_needs_conversion(ph) and not ph.get("print_full_path")]
-            loop = asyncio.get_event_loop()
-            semaphore = asyncio.Semaphore(4)
-
-            async def convert(photo):
-                async with semaphore:
-                    print_path, _ = await loop.run_in_executor(photo_processing_executor, generate_print_variant, photo)
-                if print_path:
-                    await db.photos.update_one({"id": photo["id"]}, {"$set": {"print_full_path": print_path}})
-
-            await asyncio.gather(*(convert(ph) for ph in to_convert))
+        await prepare_print_photos(interior_pages, user_id)
 
         token = create_print_token(user_id, album_id)
         # A digital album: the pages as a reader sees them, photos in

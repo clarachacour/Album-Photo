@@ -1,4 +1,5 @@
 """Admin-only order management."""
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -26,12 +27,14 @@ from app.services.orders import (
 from app.services import delivery as deliveries
 from app.services.print_groups import flush_printer_queue, group_of
 from app.services import wakilni
-from app.services import print_format, printer_statement
+from app.services import print_format, printer_statement, test_pdf
+from app.services.tasks import enqueue_test_pdf, pdf_tasks_enabled
 from app.config import FRONTEND_URL
 from app.services.storage import get_r2_client
 from app.core.executors import run_blocking, run_email
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/admin/sentry-test")
@@ -209,6 +212,62 @@ async def admin_download_order_pdf(order_id: str, auth: str = Query(None), autho
         ExpiresIn=3600,
     )
     return RedirectResponse(url)
+
+# ---------- A test PDF of an album in the one-sheet hardcover format ----------
+# For the admin only, to send a printer: no order, nothing to the printer.
+@router.post("/admin/albums/{album_id}/test-pdf")
+async def admin_start_test_pdf(album_id: str, user: dict = Depends(get_current_user)):
+    require_admin(user)
+    if not await db.albums.find_one({"id": album_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Album not found")
+    await test_pdf.mark_making(album_id)
+    if pdf_tasks_enabled():
+        try:
+            await run_blocking(enqueue_test_pdf, album_id)
+            return {"status": "making"}
+        except Exception as e:
+            logger.error(f"PDF test {album_id} : file Cloud Tasks injoignable ({e}), génération directe")
+    await test_pdf.make_test_pdf(album_id)
+    return await admin_test_pdf_state(album_id, user)
+
+
+@router.get("/admin/albums/{album_id}/test-pdf")
+async def admin_test_pdf_state(album_id: str, user: dict = Depends(get_current_user)):
+    require_admin(user)
+    album = await db.albums.find_one({"id": album_id}, {"_id": 0, "id": 1, "test_pdf": 1})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+    state = dict(album.get("test_pdf") or {"status": "none"})
+    state.pop("path", None)
+    return state
+
+
+@router.get("/admin/albums/{album_id}/test-pdf/download")
+async def admin_download_test_pdf(album_id: str, auth: str = Query(None), authorization: str = Header(None)):
+    """A short-lived signed link to the file (as admin_download_order_pdf)."""
+    token = authorization.split(" ", 1)[1] if authorization and authorization.lower().startswith("bearer ") else auth
+    user_id = decode_token(token) if token else None
+    user = await db.users.find_one({"id": user_id}, {"_id": 0}) if user_id else None
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    require_admin(user)
+    album = await db.albums.find_one({"id": album_id}, {"_id": 0, "test_pdf": 1, "title": 1})
+    state = (album or {}).get("test_pdf") or {}
+    if state.get("status") != "ready" or not state.get("path"):
+        raise HTTPException(status_code=404, detail="No test PDF ready for this album")
+    name = "".join(c for c in (album.get("title") or "album") if c.isalnum() or c in " -_").strip() or "album"
+    url = get_r2_client().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": R2_BUCKET_NAME,
+            "Key": state["path"],
+            "ResponseContentDisposition": f'attachment; filename="{name} - test hardcover.pdf"',
+            "ResponseContentType": "application/pdf",
+        },
+        ExpiresIn=3600,
+    )
+    return RedirectResponse(url)
+
 
 @router.post("/admin/orders/{order_id}/regenerate-pdf")
 async def admin_regenerate_order_pdf(order_id: str, user: dict = Depends(get_current_user)):

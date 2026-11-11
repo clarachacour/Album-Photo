@@ -29,6 +29,7 @@ import { editableContent, useAlbumSaving } from "@/hooks/useAlbumSaving";
 import { parseDate } from "@/lib/dates";
 import { snapToSameSize, spreadPhotoFrames } from "@/lib/sizeMatch";
 import { snapSideResize } from "@/lib/sideResizeSnap";
+import TestPdfPanel from "@/components/admin/TestPdfPanel";
 import { spacingSnap } from "@/lib/spacingGuides";
 import { EDITOR_TOUR } from "@/components/tour/tours";
 
@@ -1435,6 +1436,8 @@ export default function AlbumEditor() {
               <div>{t("albumEditor.formatLine", { size: album.size, orientation: albumOrientation })}</div>
             </div>
           </div>
+          {/* Admin only (it shows nothing to anyone else): the edits are saved first. */}
+          <TestPdfPanel albumId={id} beforeMake={async () => !["conflict", "failed"].includes(await saver.save())} />
         </aside>
       </div>
       {tour.element}

@@ -85,6 +85,11 @@ export function adminPrinterStatementUrl() {
   return `${API}/admin/printer-statement.xlsx?auth=${encodeURIComponent(getToken() || "")}`;
 }
 
+/** The admin's test PDF of an album, in the one-sheet hardcover format. */
+export function adminTestPdfUrl(albumId) {
+  return `${API}/admin/albums/${albumId}/test-pdf/download?auth=${encodeURIComponent(getToken() || "")}`;
+}
+
 export function adminOrderPdfUrl(orderId) {
   const t = getToken();
   return `${API}/admin/orders/${orderId}/pdf?auth=${encodeURIComponent(t || "")}`;
