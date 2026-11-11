@@ -19,6 +19,7 @@ from app.services.email import (
     send_pdf_generation_failed_email,
 )
 from app.services.pdf import render_album_pdf_sync
+from app.services.print_format import get_print_format, print_url_suffix
 from app.services.print_groups import queue_for_printer
 from app.services.photos import generate_print_variant, print_needs_conversion
 from app.services.storage import delete_object, put_object
@@ -191,7 +192,8 @@ async def generate_order_pdf(order_id: str, album_id: str, user_id: str, final_a
         token = create_print_token(user_id, album_id)
         # A digital album: the pages as a reader sees them, photos in
         # screen quality (see PrintAlbum's digital mode).
-        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}{'&digital=1' if digital else ''}"
+        # The printer's file in the format chosen in the admin (print_format).
+        print_url = f"{FRONTEND_URL}/print/{album_id}?auth={token}{print_url_suffix(await get_print_format(), digital)}"
         loop = asyncio.get_event_loop()
         pdf_bytes = await loop.run_in_executor(
             pdf_render_executor, render_album_pdf_sync, print_url, len(interior_pages), f"Commande {order_id} :"

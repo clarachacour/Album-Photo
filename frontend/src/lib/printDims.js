@@ -74,20 +74,102 @@ export function printerCoverTemplate(size, orientation, numPages) {
 /**
  * Where everything goes on the cover sheet of a printer template, in mm from
  * the sheet's top-left corner (bleed included): the sheet itself, the
- * trimmed area, and the back cover, spine and front cover boxes.
+ * trimmed area, and the back cover, spine and front cover boxes. With
+ * `marks` (mm), the sheet has that much more all around for the crop marks,
+ * and `folds` gives where the boards, hinges and spine meet (for marks too).
  */
 export function coverSpreadLayout(t) {
+  const m = t.marks || 0;
   const trimW = 2 * t.wrap + 2 * t.panelW + 2 * t.hinge + t.spine;
   const trimH = 2 * t.wrap + t.panelH;
-  const top = t.bleed + t.wrap;
-  const backX = t.bleed + t.wrap;
+  const top = m + t.bleed + t.wrap;
+  const backX = m + t.bleed + t.wrap;
   const spineX = backX + t.panelW + t.hinge;
   const frontX = spineX + t.spine + t.hinge;
   return {
-    sheet: { w: trimW + 2 * t.bleed, h: trimH + 2 * t.bleed },
-    trim: { x: t.bleed, y: t.bleed, w: trimW, h: trimH },
+    sheet: { w: trimW + 2 * (t.bleed + m), h: trimH + 2 * (t.bleed + m) },
+    trim: { x: m + t.bleed, y: m + t.bleed, w: trimW, h: trimH },
+    bleed: t.bleed,
     back: { x: backX, y: top, w: t.panelW, h: t.panelH },
     spine: { x: spineX, y: top, w: t.spine, h: t.panelH },
     front: { x: frontX, y: top, w: t.panelW, h: t.panelH },
+    folds: {
+      x: [backX, backX + t.panelW, spineX, spineX + t.spine, frontX, frontX + t.panelW],
+      y: [top, top + t.panelH],
+    },
   };
+}
+
+// ---------- The one-sheet hardcover format (Template_A4_1-50pgs) ----------
+// The printer's file for a hardcover album, every format and page count:
+// the cover on one sheet (TEMPLATE_A4_1_50's layout — wrap, hinges, boards
+// a little smaller than the page — with the spine from the page count),
+// then the pages, each with a bleed and crop marks, on white. Chosen in the
+// admin (see backend services/print_format.py); the original layout stays
+// for the other printer.
+
+// The cover, from TEMPLATE_A4_1_50: board = page less 5 × 7 mm.
+export const HARDCOVER = { bleed: 5, wrap: 20, hinge: 9, boardLessW: 5, boardLessH: 7, marks: 2.4 };
+
+// A 170 g sheet is about 0.17 mm thick; the boards and the case add about
+// 2.75 mm — which gives the template's 7 mm spine at 50 pages (25 sheets).
+export const PAPER_SHEET_MM = 0.17;
+const SPINE_CASE_MM = 2.75;
+
+/** The spine width for this many pages, rounded up to the half millimetre (7 mm at least). */
+export function hardcoverSpineMm(numPages) {
+  const sheets = Math.ceil((numPages || 0) / 2);
+  // Less a hair before rounding up: 15.5 computed as 15.500000001 stays 15.5.
+  return Math.max(7, Math.ceil((SPINE_CASE_MM + sheets * PAPER_SHEET_MM) * 2 - 1e-9) / 2);
+}
+
+/** The cover sheet template for this album, in the one-sheet hardcover format. */
+export function hardcoverCoverTemplate(size, orientation, numPages) {
+  const page = pageDimsMm(size, orientation);
+  return {
+    bleed: HARDCOVER.bleed,
+    wrap: HARDCOVER.wrap,
+    hinge: HARDCOVER.hinge,
+    marks: HARDCOVER.marks,
+    panelW: page.w - HARDCOVER.boardLessW,
+    panelH: page.h - HARDCOVER.boardLessH,
+    spine: hardcoverSpineMm(numPages),
+  };
+}
+
+// A page's bleed (what's beyond the cut, for photos touching an edge) and
+// the room outside it for the crop marks, in mm.
+export const PAGE_BLEED_MM = 3;
+export const PAGE_MARKS_MM = 5;
+
+/** A page's sheet in the one-sheet hardcover format: the page (trim) in the middle. */
+export function pageSheetLayout(size, orientation) {
+  const page = pageDimsMm(size, orientation);
+  const edge = PAGE_BLEED_MM + PAGE_MARKS_MM;
+  return {
+    sheet: { w: page.w + 2 * edge, h: page.h + 2 * edge },
+    trim: { x: edge, y: edge, w: page.w, h: page.h },
+    bleed: PAGE_BLEED_MM,
+  };
+}
+
+/**
+ * A page's items for print with a bleed: a photo frame touching an edge of
+ * the page goes `bleedMm` past it, so no white line shows if the cut is a
+ * hair off. Other items stay as they are.
+ */
+export function withBleed(items, size, orientation, bleedMm) {
+  const page = pageDimsMm(size, orientation);
+  const bx = bleedMm / page.w;
+  const by = bleedMm / page.h;
+  const EDGE = 0.005; // within half a percent of the edge counts as touching it
+  return (items || []).map((it) => {
+    if (it.type !== "photo" || !it.photo_id || it.frame_rotation || it.w == null || it.h == null) return it;
+    let { x = 0, y = 0, w, h } = it;
+    if (x <= EDGE) { w += x + bx; x = -bx; }
+    if (x + w >= 1 - EDGE) w = 1 + bx - x;
+    if (y <= EDGE) { h += y + by; y = -by; }
+    if (y + h >= 1 - EDGE) h = 1 + by - y;
+    return x === it.x && y === it.y && w === it.w && h === it.h ? it : { ...it, x, y, w, h };
+  });
 }

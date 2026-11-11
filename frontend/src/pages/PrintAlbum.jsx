@@ -6,7 +6,8 @@ import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import { AlbumPage } from "@/components/book/AlbumPage";
 import { CoverSpine } from "@/components/CoverSpine";
-import { coverSpreadLayout, pageDimsMm, printerCoverTemplate, spineWidthMm } from "@/lib/printDims";
+import { coverSpreadLayout, hardcoverCoverTemplate, pageDimsMm, pageSheetLayout, printerCoverTemplate, spineWidthMm, withBleed } from "@/lib/printDims";
+import { CropMarks } from "@/components/print/CropMarks";
 import { withoutPlaceholders } from "@/lib/placeholderText";
 
 /**
@@ -142,8 +143,21 @@ export default function PrintAlbum() {
   // alone, photos in screen quality — rather than the printer's sheets.
   const digital = searchParams.get("digital") === "1";
   const variant = digital ? "medium" : "original";
-  const printerCover = !digital && printerCoverTemplate(album.size, album.orientation, allPages.length);
+  // ?format=hardcover: the one-sheet hardcover format (see printDims.js) —
+  // the cover on one sheet with its wrap and crop marks, then each page
+  // with a bleed and crop marks, on white. Otherwise the original layout.
+  const hardcover = !digital && searchParams.get("format") === "hardcover";
+  const printerCover = !digital && (hardcover
+    ? hardcoverCoverTemplate(album.size, album.orientation, allPages.length)
+    : printerCoverTemplate(album.size, album.orientation, allPages.length));
   const spread = printerCover && coverSpreadLayout(printerCover);
+  const pageSheet = hardcover ? pageSheetLayout(album.size, album.orientation) : null;
+  // Where the cut is on each sheet (mm), read by the server to set the
+  // PDF's trim and bleed boxes (see backend services/pdf.py).
+  const trimData = (layout) => ({
+    "data-trim": [layout.trim.x, layout.trim.y, layout.trim.w, layout.trim.h].join(","),
+    "data-bleed": layout.bleed,
+  });
 
   // A very large album (many hundreds of print-quality photo pages) can
   // produce a PDF whose base64 transfer over the browser's own debugging
@@ -171,7 +185,7 @@ export default function PrintAlbum() {
       <style>{`
         ${spread ? `@page cover-spread { size: ${spread.sheet.w}mm ${spread.sheet.h}mm; margin: 0; }` : ""}
         @page cover-sheet { size: ${pw + spineMm + seamMm}mm ${ph}mm; margin: 0; }
-        @page content-sheet { size: ${pw}mm ${ph}mm; margin: 0; }
+        @page content-sheet { size: ${pageSheet ? pageSheet.sheet.w : pw}mm ${pageSheet ? pageSheet.sheet.h : ph}mm; margin: 0; }
         body { margin: 0; }
         .print-page {
           position: relative;
@@ -206,6 +220,8 @@ export default function PrintAlbum() {
           album={album}
           template={template}
           cover={cover}
+          marks={hardcover}
+          extra={hardcover ? trimData(spread) : {}}
         />
       )}
 
@@ -249,11 +265,35 @@ export default function PrintAlbum() {
           (the flipbook shows one, as the inside of the cover): the
           printer asked for the album's own pages only. Interior pages:
           just this chunk's slice when chunked, every page otherwise. */}
-      {chunkPages.map(({ page, i }) => (
-        <div key={page.id || i} className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
-          <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes={!digital} />
-        </div>
-      ))}
+      {chunkPages.map(({ page, i }) =>
+        pageSheet ? (
+          <div
+            key={page.id || i}
+            className="print-page content-sheet"
+            style={{ width: `${pageSheet.sheet.w}mm`, height: `${pageSheet.sheet.h}mm`, background: "#fff" }}
+            {...trimData(pageSheet)}
+          >
+            <div
+              className="print-fill"
+              style={{ position: "absolute", left: `${pageSheet.trim.x}mm`, top: `${pageSheet.trim.y}mm`, width: `${pw}mm`, height: `${ph}mm` }}
+            >
+              <AlbumPage
+                page={{ ...page, items: withBleed(page.items, album.size, album.orientation, pageSheet.bleed) }}
+                orientation={album.orientation}
+                pageIndex={i}
+                editable={false}
+                highRes
+                plainWhite
+              />
+            </div>
+            <CropMarks sheet={pageSheet.sheet} trim={pageSheet.trim} bleed={pageSheet.bleed} />
+          </div>
+        ) : (
+          <div key={page.id || i} className="print-page content-sheet print-fill" style={{ width: `${pw}mm`, height: `${ph}mm` }}>
+            <AlbumPage page={page} orientation={album.orientation} pageIndex={i} editable={false} highRes={!digital} />
+          </div>
+        )
+      )}
 
       {/* Back cover — only the chunk that reaches the real end of the album,
           and only when it isn't already on the printer's cover sheet. */}
@@ -279,14 +319,24 @@ export default function PrintAlbum() {
  * included, so no white shows at a fold or a cut — with the back cover,
  * spine and front cover placed on their faces.
  */
-function CoverSpread({ layout, album, template, cover }) {
+function CoverSpread({ layout, album, template, cover, marks = false, extra = {} }) {
   const box = (b) => ({ position: "absolute", left: `${b.x}mm`, top: `${b.y}mm`, width: `${b.w}mm`, height: `${b.h}mm` });
+  const bleedEdge = layout.trim && {
+    x: layout.trim.x - layout.bleed,
+    y: layout.trim.y - layout.bleed,
+    w: layout.trim.w + 2 * layout.bleed,
+    h: layout.trim.h + 2 * layout.bleed,
+  };
   return (
     <div
       className="print-page cover-spread"
-      style={{ width: `${layout.sheet.w}mm`, height: `${layout.sheet.h}mm`, background: cover.bg_color || template.bg }}
+      // With crop marks, the cover colour stops at the bleed's edge: the
+      // marks sit on white around it, as on the template.
+      style={{ width: `${layout.sheet.w}mm`, height: `${layout.sheet.h}mm`, background: marks ? "#fff" : cover.bg_color || template.bg }}
       data-testid="print-cover-spread"
+      {...extra}
     >
+      {marks && <div style={{ ...box(bleedEdge), background: cover.bg_color || template.bg }} />}
       <div style={box(layout.back)}>
         <CoverBackPage
           imageVariant="original"
@@ -312,6 +362,7 @@ function CoverSpread({ layout, album, template, cover }) {
           editable={false}
         />
       </div>
+      {marks && <CropMarks sheet={layout.sheet} trim={layout.trim} bleed={layout.bleed} folds={layout.folds} />}
     </div>
   );
 }

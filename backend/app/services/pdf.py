@@ -76,8 +76,11 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
         raise RuntimeError(f"print page reported an error: {error_text}")
     page.evaluate("document.fonts.ready")
     page.wait_for_timeout(500)  # extra buffer for final paint settling, on top of the 1.2s the print page itself now waits before signaling ready (see PrintAlbum.jsx)
+    # Each sheet's size, and where its cut is (data-trim, data-bleed: the
+    # one-sheet hardcover format, see PrintAlbum.jsx) for the PDF's boxes.
     sheets = page.evaluate(
-        "() => [...document.querySelectorAll('.print-page')].map((e) => { const r = e.getBoundingClientRect(); return [(Math.floor(r.width) - 1) * 0.75, (Math.floor(r.height) - 1) * 0.75]; })"
+        "() => [...document.querySelectorAll('.print-page')].map((e) => { const r = e.getBoundingClientRect();"
+        " return [(Math.floor(r.width) - 1) * 0.75, (Math.floor(r.height) - 1) * 0.75, e.dataset.trim || null, e.dataset.bleed || null]; })"
     )
     return trim_to_sheets(page.pdf(print_background=True, prefer_css_page_size=True), sheets)
 
@@ -92,6 +95,8 @@ def _render_pdf_with_page(page, print_url: str) -> bytes:
 # at most about 0.4 mm of the edge goes.
 TRIM_AT_MOST_PT = 2
 
+MM_TO_PT = 72 / 25.4
+
 
 def trim_to_sheets(pdf: bytes, sheets) -> bytes:
     """pdf with each page cut to sheets[i] = (width, height) in points, when
@@ -105,7 +110,9 @@ def trim_to_sheets(pdf: bytes, sheets) -> bytes:
         return pdf
     writer = PdfWriter()
     changed = False
-    for pdf_page, (w, h) in zip(reader.pages, sheets):
+    for pdf_page, sheet in zip(reader.pages, sheets):
+        w, h = sheet[0], sheet[1]
+        trim, bleed = (sheet[2], sheet[3]) if len(sheet) > 3 else (None, None)
         box = pdf_page.mediabox
         left, top = float(box.left), float(box.top)
         width, height = float(box.width), float(box.height)
@@ -115,6 +122,14 @@ def trim_to_sheets(pdf: bytes, sheets) -> bytes:
             rect = RectangleObject([left, top - new_h, left + new_w, top])
             pdf_page.mediabox = rect
             pdf_page.cropbox = rect
+            changed = True
+        if trim:
+            # The printer's software reads where to cut (TrimBox) and how far
+            # the picture goes past it (BleedBox), in points from the bottom.
+            x, y, tw, th = (float(v) * MM_TO_PT for v in str(trim).split(","))
+            b = float(bleed or 0) * MM_TO_PT
+            pdf_page.trimbox = RectangleObject([left + x, top - y - th, left + x + tw, top - y])
+            pdf_page.bleedbox = RectangleObject([left + x - b, top - y - th - b, left + x + tw + b, top - y + b])
             changed = True
         writer.add_page(pdf_page)
     if not changed:

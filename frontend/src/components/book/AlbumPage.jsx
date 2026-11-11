@@ -20,6 +20,10 @@ export function AlbumPage({
   orientation = "portrait",
   pageIndex = 0,
   highRes = false,
+  // The printer's file in the one-sheet hardcover format: plain white paper,
+  // no grain (the screen's warm paper colour printed as a tint around the
+  // page edge).
+  plainWhite = false,
   editable = false,
   onSelectItem,
   onUpdateItem,
@@ -177,13 +181,13 @@ export function AlbumPage({
       ref={containerRef}
       data-tour-page={pageIndex}
       data-tour-selected={items.some((it) => it.id === selectedItemId) || undefined}
-      className={`relative w-full ${aspect} bg-[color:var(--paper)] ${placingText ? "cursor-text" : ""} ${placingPhotoId ? "cursor-copy" : ""}`}
+      className={`relative w-full ${aspect} ${plainWhite ? "bg-white" : "bg-[color:var(--paper)]"} ${placingText ? "cursor-text" : ""} ${placingPhotoId ? "cursor-copy" : ""}`}
       style={{ containerType: "inline-size" }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
     >
-      <div className="absolute inset-0 grain pointer-events-none" />
+      {!plainWhite && <div className="absolute inset-0 grain pointer-events-none" />}
       {items.map((item) => {
         const isSel = selectedItemId === item.id;
         if (item.type === "photo") {

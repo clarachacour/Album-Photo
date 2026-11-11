@@ -26,7 +26,7 @@ from app.services.orders import (
 from app.services import delivery as deliveries
 from app.services.print_groups import flush_printer_queue, group_of
 from app.services import wakilni
-from app.services import printer_statement
+from app.services import print_format, printer_statement
 from app.config import FRONTEND_URL
 from app.services.storage import get_r2_client
 from app.core.executors import run_blocking, run_email
@@ -40,6 +40,25 @@ async def admin_sentry_test(user: dict = Depends(get_current_user)):
     require_admin(user)
     event_id = send_test_error()
     return {"configured": event_id is not None, "event_id": event_id}
+
+
+@router.get("/admin/print-format")
+async def admin_get_print_format(user: dict = Depends(get_current_user)):
+    """The printer's file format (see services/print_format.py)."""
+    require_admin(user)
+    return {"format": await print_format.get_print_format(), "formats": list(print_format.FORMATS)}
+
+
+@router.put("/admin/print-format")
+async def admin_set_print_format(data: dict, user: dict = Depends(get_current_user)):
+    """Changes it for the PDFs made from now on (a PDF already made stays
+    as it is: regenerate it to get the other format)."""
+    require_admin(user)
+    try:
+        value = await print_format.set_print_format(str((data or {}).get("format")))
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"The format is one of: {', '.join(print_format.FORMATS)}")
+    return {"format": value, "formats": list(print_format.FORMATS)}
 
 
 @router.get("/admin/setup-check")
