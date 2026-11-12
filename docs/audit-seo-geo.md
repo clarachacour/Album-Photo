@@ -2,6 +2,12 @@
 
 *Audit en lecture seule du 12 novembre 2026. Aucun fichier du site n'a été modifié, rien n'a été déployé.*
 
+*Révision 2, après ta relecture :*
+
+- *correction 1 : un pré-rendu qui attend les blocs `Suspense`, au lieu d'un délai ;*
+- *correction 3 : une vraie page `/pricing` qui porte le schema Product, au lieu de la FAQ seule ;*
+- *`/auth` : `noindex` gardé, et pas de blocage dans robots.txt.*
+
 **Comment l'audit a été fait :**
 
 - **Le site en prod**, vu comme le voit un robot, sans JavaScript (requêtes avec l'en-tête « Googlebot » et sans suivre les redirections) :
@@ -42,7 +48,7 @@
 |---|---|---|---|---|---|
 | T1 | Les 20 pages du sitemap répondent **200** en 130 à 330 ms, servies depuis le cache Vercel (`x-vercel-cache: HIT`). | VÉRIFIÉ | `crawl.py` : `200 486ms 30940B HIT … /` … `200 216ms … /fr/privacy` | — | — |
 | T2 | **Fausse page 404** : `/pricing`, `/doesnotexist-xyz`, `/fr/doesnotexist` et `/FAQ` répondent **200** avec la coquille vide de l'application (3 085 octets). Cette coquille n'a ni canonical, ni `noindex`, et son `og:url` pointe vers l'accueil. | VÉRIFIÉ | `crawl.py` : `200 189ms 3085B … canon=[] /pricing \| Everbook — your photos, as a printed book`. Cause : `frontend/vercel.json:63-68` renvoie toute adresse vers `/app`, et `frontend/scripts/prerender.mjs:129` écrit `app.html` = `index.html` sans `noindex`. La page 404 n'existe que côté navigateur (`src/App.jsx:280`). | Moyenne | XS |
-| T3 | Les pages de l'application (`/auth`, `/dashboard`, `/cart`, `/create`, `/editor/…`) répondent 200 avec la même coquille vide. Elles sont bloquées dans robots.txt, sauf **`/auth`**, qui reste explorable et n'a pas de `noindex`. | VÉRIFIÉ | `crawl.py` : `200 … /auth`. Liste des chemins bloqués : `frontend/seo.plugin.js:15` (`/auth` absent). | Basse | XS |
+| T3 | Les pages de l'application (`/auth`, `/dashboard`, `/cart`, `/create`, `/editor/…`) répondent 200 avec la même coquille vide. Elles sont bloquées dans robots.txt, sauf **`/auth`**, qui reste explorable et n'a pas de `noindex`. La solution est le `noindex` de la correction 2, **pas** un blocage dans robots.txt : Google doit pouvoir lire la page pour voir la consigne, surtout quand la correction 8 aura ajouté des liens vers `/auth?mode=signup`. | VÉRIFIÉ | `crawl.py` : `200 … /auth`. Liste des chemins bloqués : `frontend/seo.plugin.js:15` (`/auth` absent, et c'est bien ainsi). | Basse | XS (inclus dans la correction 2) |
 | T4 | Redirections propres en **308** : `http://` → `https://`, `/returns` → `/terms`, `/index.html` → `/` et `/faq.html` → `/faq`. `/faq/` et `/fr/` répondent 200 avec le bon canonical (sans la barre finale). | VÉRIFIÉ | `curl -sSI http://everbook-album.com/` → `308 … location: https://everbook-album.com/`. `crawl.py` : `308 loc=/terms /returns`. | — | — |
 | T5 | `www.everbook-album.com` n'a pas pu être testé : le proxy de la session refuse cet hôte. | NON VÉRIFIÉ | `curl https://www.everbook-album.com/` → `CONNECT tunnel failed, response 403` (le proxy, pas le site). | Moyenne | XS (à toi) |
 | T6 | Pré-rendu : toutes les pages publiques sont servies **en HTML complet**, avec texte, titre, description et liens. Les autres adresses sont rendues dans le navigateur. | VÉRIFIÉ | `frontend/scripts/prerender.mjs:131-140`. `audit.py` : `words=261…3666` sur les pages publiques, `words=9` sur la coquille. | — | — |
@@ -133,25 +139,52 @@
 ## 3. Top 10 des corrections (code) — **rien n'est appliqué avant ta validation, et tout passera d'abord par `dev`**
 
 **1. Faire servir la galerie des modèles dans le HTML de l'accueil anglais** (O1, Haute)
-- **Fichiers :** `frontend/src/prerender.jsx` et `frontend/scripts/prerender.mjs:131`
-- **Changement :**
-  1. Ajouter dans `prerender.jsx` une fonction exportée `warmUp()`. Elle fait un premier `renderToString` de `/`, puis attend la fin du chargement de la galerie : `await import("@/components/landing/TemplateGallery")` suivi d'une attente d'un tour (`setTimeout 0`).
-  2. Appeler `await warmUp()` juste avant la boucle de `prerender.mjs:131`. Le composant `lazy` est alors déjà chargé quand l'anglais est rendu.
-- **Vérifier :** `curl -s https://everbook-album.com/ | grep -c 'create?template='` doit afficher **21**, au lieu de 0.
+- **Fichier :** `frontend/src/prerender.jsx:7` et `:40-46`
+- **Changement :** pendant le pré-rendu, remplacer `renderToString` par `prerenderToNodeStream` de `react-dom/static`. Le site est en React 19.0.0 (`node_modules/react-dom/static.node.js` est présent). Contrairement à `renderToString`, cette fonction **attend que tous les blocs `Suspense` soient prêts** (ici la galerie chargée à la demande) avant de rendre le HTML. On lit ensuite le flux jusqu'au bout pour obtenir le texte.
+- **Pourquoi cette solution :** elle ne dépend ni de l'ordre EN/FR ni d'un délai. La version « attendre un tour (`setTimeout 0`) », proposée d'abord, était fragile.
+- **Ce qui ne change pas :** dans le navigateur, la galerie reste chargée à la demande, donc le premier affichage reste aussi léger.
+- **Autre solution possible :** importer la galerie normalement, sans `lazy`, uniquement dans la build de pré-rendu, en lui donnant un alias à part.
+- **Vérifier :**
+  - au build, compter les liens dans `build/index.html` : `grep -c 'create?template=' build/index.html` doit afficher **21**, avant même le déploiement ;
+  - puis en prod : `curl -s https://everbook-album.com/ | grep -c 'create?template='` doit afficher **21**, au lieu de 0.
 
 **2. Dire « page introuvable » aux robots sur les adresses inconnues** (T2, T3, Moyenne)
 - **Fichier :** `frontend/scripts/prerender.mjs:129`
 - **Changement :** écrire `app.html` avec `<meta name="robots" content="noindex" />` ajouté dans `<head>`. Ça ne touche pas les 20 pages publiques, qui ont leurs propres fichiers. La coquille ne sert qu'aux pages privées et aux adresses inconnues.
 - **Option plus complète, plus tard :** un vrai statut 404. Il faudrait lister les routes de l'application dans `vercel.json` à la place de la règle qui renvoie tout vers `/app`.
+- **Ce `noindex` couvre aussi `/auth`**, qui est servie par cette même coquille. Il ne faut **pas** ajouter `/auth` à robots.txt. La correction 8 crée des liens vers `/auth?mode=signup` sur tout le site. Si robots.txt bloquait cette page, Google ne la lirait plus, ne verrait jamais le `noindex`, et pourrait indexer l'adresse quand même à cause des liens. On garde donc le `noindex` et on laisse la page lisible (voir T3).
 - **Vérifier :**
-  - `curl -s https://everbook-album.com/pricing | grep noindex` doit trouver la balise ;
-  - `curl -s https://everbook-album.com/faq | grep -c noindex` doit afficher **0**.
+  - `curl -s https://everbook-album.com/doesnotexist-xyz | grep noindex` doit trouver la balise ;
+  - `curl -s https://everbook-album.com/auth | grep noindex` doit trouver la balise ;
+  - `curl -s https://everbook-album.com/faq | grep -c noindex` doit afficher **0** ;
+  - `/robots.txt` ne doit **pas** contenir `/auth`.
 
-**3. Afficher les prix des albums sur une page publique** (S2, G4, Haute — **ta décision**, voir les questions)
-- **Fichiers :** `frontend/src/locales/en.json` et `fr.json` (`faq.items`), et éventuellement `frontend/src/pages/Landing.jsx`
-- **Changement, version minimale :** ajouter une question « How much does a photo album cost? / Combien coûte un album ? » dans la FAQ, avec la grille A5/A4 et la livraison à 5 $. Elle passe automatiquement dans le FAQPage et dans `llms.txt`.
-- **Option :** un bloc de prix sur l'accueil, où se trouve le schema Product.
-- **Vérifier :** `curl -s https://everbook-album.com/faq | grep -o '\$43'` doit trouver le prix (et le même pour `/fr/faq`).
+**3. Créer une vraie page publique `/pricing` et y déplacer le schema Product** (S2, G4, Haute)
+- **Le problème :** les prix déclarés dans le schema Product sont sur l'accueil, mais l'accueil ne les affiche pas. Une simple question de prix dans la FAQ les afficherait sur `/faq`, et l'accueil continuerait à déclarer des prix invisibles. C'est précisément ce que Google sanctionne : la FAQ seule ne suffit pas.
+- **La solution retenue :** une vraie page `/pricing`. Elle répare aussi la page vide de cette adresse (T2), et l'accueil reste sans prix, comme tu l'avais voulu.
+- **Fichiers et changements :**
+  1. `frontend/src/lib/localePath.js:9-20` et `frontend/src/prerender.jsx:16-27` : ajouter `"/pricing"`, avec la clé `pricing`. Les deux listes doivent rester identiques. La page passe alors automatiquement dans le pré-rendu, le sitemap, le hreflang EN/FR et `/fr/pricing`.
+  2. Créer `frontend/src/pages/PricingPage.jsx` :
+     - un tableau A5/A4 × 24/50/100/150 pages, lu dans `PRICE_TABLE` de `frontend/src/lib/pricing.js` (la même source que le schema, donc toujours identique) ;
+     - la règle au-delà de 100 pages (+0,60 $ par page, 160 pages au maximum) ;
+     - la livraison à 5 $ par commande ;
+     - le PDF « bientôt » ;
+     - un lien vers la FAQ et un vers la création d'album.
+  3. `frontend/src/App.jsx:154-157` : ajouter la route, comme les autres pages publiques.
+  4. Le schema Product :
+     - `frontend/src/prerender.jsx:59` : renvoyer `productData` pour `/pricing` au lieu de `/`. L'accueil garde Organization et WebSite ;
+     - `frontend/scripts/prerender.mjs:89-91` : publier ce bloc sur `/pricing` ;
+     - `frontend/src/lib/seoData.js:43` : mettre `url` des offres à `/pricing`.
+  5. Ajouter le lien « Prices / Tarifs » dans le menu (`frontend/src/components/TopNav.jsx`) et dans le pied de page (`frontend/src/components/Footer.jsx:27-33`).
+  6. Ajouter `meta.pricing.title` et `meta.pricing.description` dans `en.json` et `fr.json`. Exemple : « Photo Book Prices in Lebanon » / « Prix des albums photo au Liban ».
+  7. `frontend/src/lib/seoData.js:107` : dans `llms.txt`, ajouter la page Pricing à la liste des pages.
+- **En complément :** une question « Combien coûte un album ? » dans la FAQ (`faq.items` de `en.json` et `fr.json`), qui renvoie vers `/pricing`. Elle passe dans le FAQPage et dans `llms.txt`. C'est un bon complément, mais pas la correction elle-même.
+- **Vérifier :**
+  - `curl -s -o /dev/null -w '%{http_code}' https://everbook-album.com/pricing` doit afficher `200`, avec un vrai `<title>` et un canonical `https://everbook-album.com/pricing` ;
+  - `curl -s https://everbook-album.com/pricing | grep -o '\$43'` doit trouver le prix, et le JSON-LD de cette page doit contenir `"@type":"Product"` ;
+  - `curl -s https://everbook-album.com/ | grep -c '"@type":"Product"'` doit afficher **0** ;
+  - `/sitemap.xml` doit lister `/pricing` et `/fr/pricing` ;
+  - test des résultats enrichis de Google sur `/pricing` : produits valides, sans erreur.
 
 **4. Relier les 3 pages thématiques au reste du site** (O2, Haute)
 - **Fichiers :**
@@ -205,7 +238,7 @@
 
 **Petits points qui pourront être ajoutés aux corrections ci-dessus :**
 
-- ajouter `/auth` à la liste des pages bloquées (T3) ;
+- ~~ajouter `/auth` à la liste des pages bloquées~~ → **retiré** : ça contredirait les corrections 2 et 8 (voir T3) ;
 - transformer les questions de la FAQ en H2 (O7) ;
 - mettre un lien `<a hreflang>` vers l'autre langue en plus du bouton (O3) ;
 - ajouter `sku` aux offres (S4).
@@ -235,17 +268,14 @@
 ### Ce que MOI je peux faire dans le code (après ta validation, sur `dev`)
 
 - Les corrections 1, 2 et 4 à 10 ci-dessus. La 9 est en partie liée à tes réponses.
-- La correction 3, une fois que tu as tranché la question sur les prix.
+- La correction 3 (page `/pricing`), plus la question de prix dans la FAQ en complément.
 - Vérifier chaque correction avec les commandes indiquées, d'abord sur une build locale, puis sur la prod après ton « mets en prod ».
 
 ---
 
 ## 5. Questions qui bloquent certaines décisions
 
-1. **Prix visibles :** tu avais fait retirer le « à partir de » de l'accueil. Tu préfères :
-   - **a)** une question « Combien coûte un album ? » dans la FAQ seulement ;
-   - **b)** un bloc de prix sur l'accueil ;
-   - **c)** les deux ?
+1. **Prix visibles :** la solution retenue est une page `/pricing`, et l'accueil reste sans prix (correction 3). Une seule question reste ouverte : l'accueil doit-il quand même avoir un petit lien « Voir les tarifs » vers `/pricing`, en plus du menu ?
 2. **WhatsApp / téléphone :** quel numéro afficher (pied de page, page contact, schema), ou préfères-tu ne pas en mettre ?
 3. **Nombre de pages maximum :** le site dit **160**, ton brief dit **200**. Lequel est juste ? Passer à 200 change les prix, l'éditeur et les CGV : ce serait un chantier à part.
 4. **Papier et finition :** quels sont les caractéristiques exactes à publier ? Grammage (170 g ?), mat ou brillant, couverture rigide pelliculée…
