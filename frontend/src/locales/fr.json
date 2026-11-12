@@ -930,11 +930,11 @@
       "description": "Déposez toutes vos photos, on les trie et on met votre album en page. Vous personnalisez, on imprime et on livre au Liban."
     },
     "faq": {
-      "title": "Questions fréquentes",
-      "description": "Tout sur la création, la commande et la livraison de votre livre photo Everbook : formats, pages, délais et plus."
+      "title": "FAQ livre photo : formats, pages, livraison",
+      "description": "Tout sur la création, la commande et la livraison de votre livre photo Everbook : formats, nombre de pages, prix, délais, paiement, PDF et cartes cadeaux."
     },
     "contact": {
-      "title": "Nous contacter",
+      "title": "Contact : questions sur votre livre photo",
       "description": "Une question sur votre livre photo, votre commande ou une carte cadeau ? Écrivez à l'équipe Everbook, par le formulaire ou par email."
     },
     "terms": {
@@ -946,8 +946,8 @@
       "description": "Comment Everbook traite vos photos et vos données personnelles : ce qui est conservé, pourquoi, combien de temps, qui y a accès, et comment supprimer votre compte."
     },
     "shipping": {
-      "title": "Livraison",
-      "description": "Délais de fabrication, zones et frais de livraison de votre livre photo Everbook."
+      "title": "Livraison : délais de fabrication et d'envoi",
+      "description": "Délais de fabrication, zones et frais de livraison de votre livre photo Everbook : environ 3 jours d'impression, puis 2 à 3 jours pour arriver chez vous."
     },
     "auth": {
       "title": "Connexion",
@@ -978,8 +978,8 @@
       "title": "Votre panier"
     },
     "gift": {
-      "title": "Offrir un album",
-      "description": "Offrez un album photo à créer : choisissez le format, écrivez quelques mots, et envoyez une carte cadeau."
+      "title": "Offrir un album photo avec une carte cadeau",
+      "description": "Offrez un album photo à créer : choisissez le format et le nombre de pages, écrivez quelques mots, et envoyez une carte cadeau à utiliser sur Everbook."
     },
     "occasion_travel": {
       "title": "Livre photo de voyage avec vos photos",
@@ -990,11 +990,11 @@
       "description": "Un album photo de votre histoire à deux, du premier voyage au mariage : Everbook garde les meilleures photos, les range par date et met les pages en forme."
     },
     "occasion_family": {
-      "title": "Album photo de famille",
+      "title": "Album photo de famille avec toutes vos photos",
       "description": "Un album photo de famille avec les photos de tous les téléphones : Everbook garde les meilleures, les range par date et met en page un livre à imprimer."
     },
     "pricing": {
-      "title": "Tarifs",
+      "title": "Prix des albums photo A5 et A4, de 24 à 150 pages",
       "description": "Les prix des albums photo Everbook en A5 et A4, de 24 à 150 pages, la livraison partout au Liban, l'album en PDF et le paiement."
     }
   },

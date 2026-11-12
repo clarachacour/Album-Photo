@@ -927,27 +927,27 @@
   "meta": {
     "landing": {
       "title": "Everbook — Photo Book & Photo Album, Laid Out for You",
-      "description": "Drop in all your photos, we sort them and lay out your album. You personalize, we print and deliver in Lebanon."
+      "description": "Drop in all your photos, we sort them and lay out your album. You personalize it, we print it as a hardcover book and deliver it in Lebanon."
     },
     "faq": {
-      "title": "Frequently asked questions",
-      "description": "Everything about creating, ordering and receiving your Everbook photo book: formats, pages, delivery and more."
+      "title": "Photo Book FAQ: Formats, Pages, Delivery",
+      "description": "Everything about creating, ordering and receiving your Everbook photo book: formats, page counts, prices, delivery times, payment, PDF and gift cards."
     },
     "contact": {
-      "title": "Contact us",
+      "title": "Contact Us About Your Photo Book or Order",
       "description": "A question about your photo book, your order or a gift card? Write to the Everbook team, by the contact form or by email."
     },
     "terms": {
-      "title": "Terms of sale",
+      "title": "Terms of Sale for Photo Books and Gift Cards",
       "description": "Everbook's terms of sale: ordering a photo book, prices, delivery, the PDF album, gift cards, and what to do if something goes wrong."
     },
     "privacy": {
-      "title": "Privacy policy",
+      "title": "Privacy Policy: Your Photos and Personal Data",
       "description": "How Everbook handles your photos and personal data: what is stored, why, for how long, who can see it, and how to delete your account."
     },
     "shipping": {
-      "title": "Shipping",
-      "description": "Production times, delivery areas and shipping costs for your Everbook photo book."
+      "title": "Shipping: Printing and Delivery Times",
+      "description": "Production times, delivery areas and shipping costs for your Everbook photo book: about 3 days to print, then 2 to 3 days to reach your door."
     },
     "auth": {
       "title": "Sign in",
@@ -978,24 +978,24 @@
       "title": "Your cart"
     },
     "gift": {
-      "title": "Gift an album",
-      "description": "Give someone a photo album to create: choose the format, write a few words, and send them a gift card."
+      "title": "Gift a Photo Album with a Gift Card",
+      "description": "Give someone a photo album to create: choose the format and number of pages, write a few words, and send them a gift card to use on Everbook."
     },
     "occasion_travel": {
       "title": "Travel Photo Book from Your Trip Photos",
       "description": "Turn your trip photos into a printed travel photo book: drop them all in, Everbook orders them by day and place and lays out the album. Travel covers included."
     },
     "occasion_couple": {
-      "title": "Couple & Wedding Photo Album",
+      "title": "Couple & Wedding Photo Album, Laid Out for You",
       "description": "A photo album of your story together, from the first trip to the wedding: Everbook keeps the best photos, orders them by date and lays out the pages."
     },
     "occasion_family": {
-      "title": "Family Photo Album",
+      "title": "Family Photo Album from All Your Photos",
       "description": "A family photo album from every phone's photos: Everbook keeps the best ones, orders them by date and lays out a hardcover book to print."
     },
     "pricing": {
-      "title": "Prices",
-      "description": "Everbook photo album prices in A5 and A4, from 24 to 150 pages, delivery anywhere in Lebanon, PDF album and payment."
+      "title": "Photo Album Prices: A5 and A4, 24 to 150 Pages",
+      "description": "Everbook photo album prices in A5 and A4, from 24 to 150 pages, with delivery anywhere in Lebanon, the PDF album and how to pay."
     }
   },
   "coverPanel": {
