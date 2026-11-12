@@ -19,7 +19,7 @@ export default function TemplateGallery() {
             data-testid={`landing-template-${tpl.id}`}
           >
             <div className="relative aspect-[3/4] overflow-hidden book-shadow rounded-sm">
-              <img src={tpl.landingImage} alt="" width={480} height={640} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+              <img src={tpl.landingImage} alt={t("landing.templates.coverAlt", { name: tpl.name })} width={480} height={640} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
               <span className="absolute inset-x-0 bottom-0 bg-[color:var(--ink)] text-[color:var(--paper)] text-[11px] font-semibold tracking-widest uppercase text-center py-2 opacity-0 group-hover:opacity-90 group-focus-visible:opacity-90 [@media(hover:none)]:opacity-90 transition-opacity">
                 {t("landing.templates.useThis")}
               </span>

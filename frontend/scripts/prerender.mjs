@@ -85,15 +85,16 @@ function pageHtml(path, lng, { html, title, description }, extraData = []) {
     out = out.replace("</head>", () => `  ${links.join("\n    ")}\n  </head>`);
     // The home page tells search engines who Everbook is (the brand shown
     // for a search on its name, with its logo).
-    // Then the page's own: the albums and their prices (home), the
-    // questions and answers (FAQ).
-    const data = path === "/" ? brandData(siteUrl, description, extraData) : extraData[0];
+    // The other pages give their own: the albums and their prices (pricing,
+    // where the prices are shown: search engines want the data to match
+    // the page), the questions and answers (FAQ).
+    const data = path === "/" ? brandData(siteUrl, description) : extraData[0];
     if (data) out = out.replace("</head>", () => `  <script type="application/ld+json">${JSON.stringify(data).replaceAll("<", "\\u003c")}</script>\n  </head>`);
   }
   return out;
 }
 
-function brandData(siteUrl, description, products = []) {
+function brandData(siteUrl, description) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -108,7 +109,7 @@ function brandData(siteUrl, description, products = []) {
         logo: `${siteUrl}/favicon.png`,
         email: "orders@everbook-album.com",
         // Its accounts: the same business as this site.
-        sameAs: ["https://www.instagram.com/everbook_album/"],
+        sameAs: ["https://www.instagram.com/everbook_album/", "https://www.tiktok.com/@everbook_album"],
         description,
         areaServed: { "@type": "Country", name: "Lebanon" },
       },
@@ -121,12 +122,19 @@ function brandData(siteUrl, description, products = []) {
         inLanguage: ["en", "fr"],
         publisher: { "@id": `${siteUrl}/#organization` },
       },
-      ...products,
     ],
   };
 }
 
-writeFileSync(join(buildDir, "app.html"), template);
+// The empty page answers every address that isn't a public page: the app's
+// pages (sign-in, albums, cart…) and the addresses that don't exist, which
+// would otherwise look like empty pages worth indexing. Not indexed, but
+// readable: robots.txt must not block them, or search engines would never
+// see this tag (the links to /auth would then get it indexed anyway).
+const appHtml = template.includes('name="robots"')
+  ? template
+  : template.replace("</head>", '  <meta name="robots" content="noindex" />\n  </head>');
+writeFileSync(join(buildDir, "app.html"), appHtml);
 const built = [];
 for (const lng of LANGUAGES) {
   for (const path of Object.keys(PUBLIC_PAGES)) {

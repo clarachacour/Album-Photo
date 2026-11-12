@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { textList } from "@/lib/i18n";
+import { PRICE_TEXT } from "@/lib/pricing";
 import { useLocalePath } from "@/components/LocalLink";
 import { ChevronDown } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -11,7 +12,7 @@ export default function FAQPage() {
   const [openIdx, setOpenIdx] = useState(null);
   const { t } = useTranslation();
   const lp = useLocalePath();
-  const faqs = textList(t, "faq.items");
+  const faqs = textList(t, "faq.items", PRICE_TEXT);
 
   return (
     <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12">

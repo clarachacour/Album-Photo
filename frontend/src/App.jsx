@@ -28,6 +28,7 @@ import PrivacyPage from "@/pages/PrivacyPage";
 import ShippingPage from "@/pages/ShippingPage";
 import GiftPage from "@/pages/GiftPage";
 import OccasionPage from "@/pages/OccasionPage";
+import PricingPage from "@/pages/PricingPage";
 const AuthPage = lazyPage(() => import("@/pages/AuthPage"));
 const Dashboard = lazyPage(() => import("@/pages/Dashboard"));
 const CreateAlbum = lazyPage(() => import("@/pages/CreateAlbum"));
@@ -90,10 +91,12 @@ const PUBLIC_ROUTES = [
   ["/terms", <TermsPage />],
   ["/privacy", <PrivacyPage />],
   ["/shipping", <ShippingPage />],
+  ["/pricing", <PricingPage />],
 ];
 
 function AppChrome({ children }) {
   const location = useLocation();
+  const { t } = useTranslation();
   useEffect(() => {
     showPendingFlash();
   }, []);
@@ -119,8 +122,18 @@ function AppChrome({ children }) {
   return (
     <>
       <LocaleSync />
+      {/* For keyboard users: the first Tab offers to jump past the menu. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:bg-[color:var(--ink)] focus:text-[color:var(--paper)] focus:px-4 focus:py-2 focus:text-sm"
+        data-testid="skip-to-content"
+      >
+        {t("common.skipToContent")}
+      </a>
       <TopNav />
-      <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
+      <div id="main" tabIndex={-1} className="outline-none">
+        <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
+      </div>
       <Footer />
       {/* The sign-in page has its own notice, in place of Google's button. */}
       {location.pathname !== "/auth" && <InAppBrowserBanner />}

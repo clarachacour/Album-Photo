@@ -2,10 +2,11 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLocalePath } from "@/components/LocalLink";
-import { Instagram } from "lucide-react";
+import { Instagram, Music2 } from "lucide-react";
 
 // The brand's accounts (also declared to search engines, see scripts/prerender.mjs).
 export const INSTAGRAM_URL = "https://www.instagram.com/everbook_album/";
+export const TIKTOK_URL = "https://www.tiktok.com/@everbook_album";
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -28,8 +29,15 @@ export default function Footer() {
             <li><Link to="/dashboard" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.myAlbums")}</Link></li>
             <li><Link to="/orders" className="hover:text-[color:var(--coral)] transition-colors">{t("nav.orders")}</Link></li>
             <li><Link to={lp("/gift")} className="hover:text-[color:var(--coral)] transition-colors">{t("nav.gift")}</Link></li>
+            <li><Link to={lp("/pricing")} className="hover:text-[color:var(--coral)] transition-colors" data-testid="footer-pricing">{t("footer.pricing")}</Link></li>
             <li><Link to={lp("/faq")} className="hover:text-[color:var(--coral)] transition-colors">{t("nav.faq")}</Link></li>
             <li><Link to={lp("/contact")} className="hover:text-[color:var(--coral)] transition-colors">{t("footer.contact")}</Link></li>
+          </ul>
+          {/* The occasion pages: linked from every page, so search engines find them. */}
+          <ul className="mt-6 space-y-2.5 text-sm" data-testid="footer-occasions">
+            <li><Link to={lp("/travel-photo-book")} className="hover:text-[color:var(--coral)] transition-colors">{t("footer.travel")}</Link></li>
+            <li><Link to={lp("/couple-photo-album")} className="hover:text-[color:var(--coral)] transition-colors">{t("footer.couple")}</Link></li>
+            <li><Link to={lp("/family-photo-album")} className="hover:text-[color:var(--coral)] transition-colors">{t("footer.family")}</Link></li>
           </ul>
         </div>
 
@@ -54,6 +62,11 @@ export default function Footer() {
             <li>
               <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-[color:var(--coral)] transition-colors" data-testid="footer-instagram">
                 <Instagram size={15} /> @everbook_album
+              </a>
+            </li>
+            <li>
+              <a href={TIKTOK_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-[color:var(--coral)] transition-colors" data-testid="footer-tiktok">
+                <Music2 size={15} aria-hidden="true" /> TikTok
               </a>
             </li>
           </ul>

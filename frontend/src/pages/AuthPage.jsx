@@ -95,8 +95,9 @@ export default function AuthPage() {
           <form onSubmit={submit} className="space-y-5">
             {mode === "signup" && (
               <div>
-                <label className="eyebrow block mb-2">{t("auth.name")}</label>
+                <label htmlFor="auth-name" className="eyebrow block mb-2">{t("auth.name")}</label>
                 <input
+                  id="auth-name"
                   data-testid={TID.authNameInput}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -107,8 +108,9 @@ export default function AuthPage() {
               </div>
             )}
             <div>
-              <label className="eyebrow block mb-2">{t("auth.email")}</label>
+              <label htmlFor="auth-email" className="eyebrow block mb-2">{t("auth.email")}</label>
               <input
+                id="auth-email"
                 data-testid={TID.authEmailInput}
                 type="email"
                 value={email}
@@ -119,8 +121,9 @@ export default function AuthPage() {
               />
             </div>
             <div>
-              <label className="eyebrow block mb-2">{t("auth.password")}</label>
+              <label htmlFor="auth-password" className="eyebrow block mb-2">{t("auth.password")}</label>
               <PasswordInput
+                id="auth-password"
                 data-testid={TID.authPasswordInput}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

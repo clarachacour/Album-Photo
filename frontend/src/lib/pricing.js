@@ -99,6 +99,16 @@ export function computeDigitalPrice(size, pageCount, freeTrial = false) {
 // in backend/app/services/pricing.py, which charges it.
 export const SHIPPING_PRICE = 5;
 
+// The prices quoted in texts (the FAQ's "How much does an album cost?"),
+// filled in from the table above so a text never states an old price.
+export const PRICE_TEXT = {
+  a5: PRICE_TABLE.A5[PAGE_TIERS[0]],
+  a4: PRICE_TABLE.A4[PAGE_TIERS[0]],
+  a5Max: PRICE_TABLE.A5[PAGE_TIERS[PAGE_TIERS.length - 1]],
+  a4Max: PRICE_TABLE.A4[PAGE_TIERS[PAGE_TIERS.length - 1]],
+  ship: SHIPPING_PRICE,
+};
+
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
 // Whish Pay and card payment: coming soon (ONLINE_PAYMENT in

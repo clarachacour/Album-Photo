@@ -82,7 +82,8 @@
         "family": "Family",
         "celebrations": "Celebrations"
       },
-      "useThis": "Use this template"
+      "useThis": "Use this template",
+      "coverAlt": "Photo book cover template: {{name}}"
     },
     "footer": {
       "title_line1": "Your best memories",
@@ -173,6 +174,10 @@
       {
         "q": "What formats are available?",
         "a": "A5 and A4, in either portrait or landscape orientation. You choose the format when you create your album, and can see it reflected live in the editor."
+      },
+      {
+        "q": "How much does a photo album cost?",
+        "a": "It depends on the format and the number of pages: from ${{a5}} for an A5 album of 24 pages and ${{a4}} for an A4, up to ${{a5Max}} (A5) and ${{a4Max}} (A4) for 150 pages. Delivery anywhere in Lebanon is ${{ship}} per order. Every price is on the Prices page (everbook-album.com/pricing)."
       },
       {
         "q": "Can I edit my album after placing an order?",
@@ -356,7 +361,8 @@
     "saved": "Saved",
     "uploadFailed": "Upload failed",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "skipToContent": "Skip to content"
   },
   "mobileQr": {
     "title": "Scan with your phone.",
@@ -719,7 +725,11 @@
     "legalName": "EFFET DESIGN - EVERBOOK",
     "email": "orders@everbook-album.com",
     "rightsReserved": "All rights reserved.",
-    "madeIn": "Made in Lebanon"
+    "madeIn": "Made in Lebanon",
+    "pricing": "Prices",
+    "travel": "Travel photo book",
+    "couple": "Couple & wedding album",
+    "family": "Family photo album"
   },
   "legal": {
     "lastUpdated": "Last updated: October 29, 2026",
@@ -982,6 +992,10 @@
     "occasion_family": {
       "title": "Family Photo Album",
       "description": "A family photo album from every phone's photos: Everbook keeps the best ones, orders them by date and lays out a hardcover book to print."
+    },
+    "pricing": {
+      "title": "Prices",
+      "description": "Everbook photo album prices in A5 and A4, from 24 to 150 pages, delivery anywhere in Lebanon, PDF album and payment."
     }
   },
   "coverPanel": {
@@ -1445,5 +1459,28 @@
         }
       ]
     }
+  },
+  "pricing": {
+    "eyebrow": "Prices",
+    "title": "Prices",
+    "intro": "One price per album, set by its format and its number of pages. In US dollars, taxes included.",
+    "caption": "Price of a printed album by format and number of pages",
+    "pages": "Pages",
+    "sizeA5": "A5 (14.8 × 21 cm)",
+    "sizeA4": "A4 (21 × 29.7 cm)",
+    "pageCount": "{{pages}} pages",
+    "pagesTitle": "Between two sizes, and beyond 100 pages",
+    "pagesBody": "Up to {{from}} pages, an album is priced at the nearest size (28 pages as 24, 40 pages as 50). Beyond {{from}} pages, each page beyond the size reached costs ${{perPage}} more. {{max}} pages at most.",
+    "deliveryTitle": "Delivery",
+    "deliveryBody": "${{price}} per order, whatever the number of albums, to your door anywhere in Lebanon.",
+    "deliveryLink": "Delivery times and areas",
+    "pdfTitle": "PDF album",
+    "pdfBody": "${{price}}, whatever its format and number of pages, with no delivery cost.",
+    "pdfSoon": "${{price}}, whatever its format and number of pages — coming soon.",
+    "paymentTitle": "Payment",
+    "paymentCash": "Cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
+    "paymentOnline": "Cash on delivery, or online with Whish Pay or a card.",
+    "faqLink": "Questions? See the FAQ",
+    "price": "${{price}}"
   }
 }

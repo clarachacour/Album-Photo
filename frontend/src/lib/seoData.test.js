@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import i18next from "i18next";
 import en from "@/locales/en.json";
-import { DIGITAL_PRICE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
+import fr from "@/locales/fr.json";
+import { DIGITAL_PRICE, PAGE_TIERS, PRICE_TABLE, PRICE_TEXT, SHIPPING_PRICE } from "@/lib/pricing";
 import { faqData, llmsTxt, productData } from "@/lib/seoData";
 
 const SITE = "https://everbook-album.com";
@@ -41,5 +43,28 @@ describe("what search engines and AI assistants read", () => {
     const text = llmsTxt(SITE, en.faq.items);
     expect(text.startsWith("# Everbook\n")).toBe(true);
     expect(text).toContain("### Can I get my album as a PDF?");
+  });
+
+  it("gives the prices on the pricing page, in its language, where they are shown", () => {
+    const [a5En] = productData(SITE);
+    expect(a5En.offers[0].url).toBe(`${SITE}/pricing`);
+    const [a5Fr] = productData(SITE, "fr");
+    expect(a5Fr.name).toBe("Album photo imprimé Everbook — A5");
+    expect(a5Fr.offers[0].url).toBe(`${SITE}/fr/pricing`);
+    expect(a5Fr.offers.map((o) => o.price)).toEqual(a5En.offers.map((o) => o.price));
+  });
+
+  it("quotes the price table's own prices in the FAQ, in both languages", async () => {
+    for (const [lng, resources] of [["en", en], ["fr", fr]]) {
+      const i18n = i18next.createInstance();
+      await i18n.init({ lng, resources: { [lng]: { translation: resources } }, interpolation: { escapeValue: false } });
+      const items = i18n.t("faq.items", { ...PRICE_TEXT, returnObjects: true });
+      const answer = items.find((it) => /\/pricing/.test(it.a))?.a;
+      expect(answer, lng).toBeTruthy();
+      expect(answer).not.toContain("{{");
+      for (const price of [PRICE_TABLE.A5[24], PRICE_TABLE.A4[24], PRICE_TABLE.A5[150], PRICE_TABLE.A4[150], SHIPPING_PRICE]) {
+        expect(answer).toContain(String(price));
+      }
+    }
   });
 });

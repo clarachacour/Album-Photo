@@ -8,6 +8,7 @@ import { ArrowRight, Sparkles, BookOpen, Wand2, Images, ScanEye, ListChecks, Tru
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { lazyPage } from "@/lib/lazyPage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SignupLink } from "@/components/SignupLink";
 
 // Cheapest album, for the "From $…" on the home page: follows the price table.
 // The lowest price on the site: the PDF album or the smallest printed one.
@@ -33,20 +34,6 @@ export default function Landing() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCreateAlbumClick = () => {
-    // On vérifie la présence de 'album_token' ou 'album_user'
-    const isAuthenticated =
-      localStorage.getItem("album_token") ||
-      localStorage.getItem("album_user");
-
-    if (isAuthenticated) {
-      // Redirection vers le Dashboard si l'utilisateur est connecté
-      navigate("/dashboard");
-    } else {
-      // Redirection vers la page de connexion sinon
-      navigate("/auth");
-    }
-  };
 
   const processIcons = [<Wand2 size={22} />, <Sparkles size={22} />, <BookOpen size={22} />, <Truck size={22} />];
   const sortingIcons = [<Images size={20} />, <ScanEye size={20} />, <ListChecks size={20} />, <Undo2 size={20} />];
@@ -69,14 +56,13 @@ export default function Landing() {
               {t("landing.hero.subtitle")}
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <button
-                onClick={handleCreateAlbumClick}
+              <SignupLink
                 data-testid={TID.landingCta}
                 className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors duration-300"
               >
                 <span className="text-sm font-semibold tracking-widest uppercase">{t("landing.hero.cta")}</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+              </SignupLink>
             </div>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/70" data-testid="landing-perks">
               {textList(t, "landing.hero.perks").map((perk) => (
@@ -185,14 +171,13 @@ export default function Landing() {
           <h2 className="font-serif-display text-5xl md:text-7xl leading-[0.95] max-w-4xl">
             {t("landing.footer.title_line1")}<br />{t("landing.footer.title_line2")}
           </h2>
-          <button
-            onClick={handleCreateAlbumClick}
+          <SignupLink
             className="inline-flex items-center gap-3 bg-[color:var(--coral)] text-[color:var(--ink)] px-8 py-4 hover:bg-[color:var(--paper)] transition-colors duration-300"
             data-testid="footer-cta"
           >
             <span className="text-sm font-semibold tracking-widest uppercase">{t("landing.footer.cta")}</span>
             <ArrowRight size={16} />
-          </button>
+          </SignupLink>
         </div>
       </section>
     </main>

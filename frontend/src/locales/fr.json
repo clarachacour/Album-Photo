@@ -82,7 +82,8 @@
         "family": "Famille",
         "celebrations": "Célébrations"
       },
-      "useThis": "Utiliser ce modèle"
+      "useThis": "Utiliser ce modèle",
+      "coverAlt": "Modèle de couverture de livre photo : {{name}}"
     },
     "footer": {
       "title_line1": "Vos plus beaux souvenirs",
@@ -173,6 +174,10 @@
       {
         "q": "Quels formats sont disponibles ?",
         "a": "A5 et A4, en orientation portrait ou paysage. Vous choisissez le format à la création de votre album, et le voyez reflété en direct dans l'éditeur."
+      },
+      {
+        "q": "Combien coûte un album photo ?",
+        "a": "Cela dépend du format et du nombre de pages : à partir de {{a5}} $ pour un album A5 de 24 pages et {{a4}} $ pour un A4, jusqu'à {{a5Max}} $ (A5) et {{a4Max}} $ (A4) pour 150 pages. La livraison partout au Liban coûte {{ship}} $ par commande. Tous les prix sont sur la page Tarifs (everbook-album.com/fr/pricing)."
       },
       {
         "q": "Puis-je modifier mon album après avoir passé commande ?",
@@ -356,7 +361,8 @@
     "saved": "Enregistré",
     "uploadFailed": "Échec de l'envoi",
     "showPassword": "Afficher le mot de passe",
-    "hidePassword": "Masquer le mot de passe"
+    "hidePassword": "Masquer le mot de passe",
+    "skipToContent": "Aller au contenu"
   },
   "mobileQr": {
     "title": "Scannez avec votre téléphone.",
@@ -719,7 +725,11 @@
     "legalName": "EFFET DESIGN - EVERBOOK",
     "email": "orders@everbook-album.com",
     "rightsReserved": "Tous droits réservés.",
-    "madeIn": "Fabriqué au Liban"
+    "madeIn": "Fabriqué au Liban",
+    "pricing": "Tarifs",
+    "travel": "Livre photo de voyage",
+    "couple": "Album de couple et de mariage",
+    "family": "Album photo de famille"
   },
   "legal": {
     "lastUpdated": "Dernière mise à jour : 29 octobre 2026",
@@ -982,6 +992,10 @@
     "occasion_family": {
       "title": "Album photo de famille",
       "description": "Un album photo de famille avec les photos de tous les téléphones : Everbook garde les meilleures, les range par date et met en page un livre à imprimer."
+    },
+    "pricing": {
+      "title": "Tarifs",
+      "description": "Les prix des albums photo Everbook en A5 et A4, de 24 à 150 pages, la livraison partout au Liban, l'album en PDF et le paiement."
     }
   },
   "coverPanel": {
@@ -1445,5 +1459,28 @@
         }
       ]
     }
+  },
+  "pricing": {
+    "eyebrow": "Tarifs",
+    "title": "Tarifs",
+    "intro": "Un prix par album, selon son format et son nombre de pages. En dollars américains, toutes taxes comprises.",
+    "caption": "Prix d'un album imprimé selon le format et le nombre de pages",
+    "pages": "Pages",
+    "sizeA5": "A5 (14,8 × 21 cm)",
+    "sizeA4": "A4 (21 × 29,7 cm)",
+    "pageCount": "{{pages}} pages",
+    "pagesTitle": "Entre deux tailles, et au-delà de 100 pages",
+    "pagesBody": "Jusqu'à {{from}} pages, un album est compté à la taille la plus proche (28 pages comme 24, 40 pages comme 50). Au-delà de {{from}} pages, chaque page en plus de la taille atteinte coûte {{perPage}} $ de plus. {{max}} pages au maximum.",
+    "deliveryTitle": "Livraison",
+    "deliveryBody": "{{price}} $ par commande, quel que soit le nombre d'albums, chez vous partout au Liban.",
+    "deliveryLink": "Délais et zones de livraison",
+    "pdfTitle": "Album en PDF",
+    "pdfBody": "{{price}} $, quels que soient son format et son nombre de pages, sans frais de livraison.",
+    "pdfSoon": "{{price}} $, quels que soient son format et son nombre de pages — bientôt disponible.",
+    "paymentTitle": "Paiement",
+    "paymentCash": "En espèces à la livraison, au livreur. Whish Pay et la carte bancaire arrivent bientôt.",
+    "paymentOnline": "En espèces à la livraison, ou en ligne avec Whish Pay ou une carte bancaire.",
+    "faqLink": "Des questions ? Voir la FAQ",
+    "price": "{{price}} $"
   }
 }

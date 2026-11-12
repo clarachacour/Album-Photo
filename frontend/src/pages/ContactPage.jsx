@@ -55,20 +55,21 @@ export default function ContactPage() {
           <form onSubmit={submit}>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="eyebrow block mb-2">{t("contact.name")}</label>
-                <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <label htmlFor="contact-name" className="eyebrow block mb-2">{t("contact.name")}</label>
+                <input id="contact-name" className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div>
-                <label className="eyebrow block mb-2">{t("contact.email")}</label>
-                <input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                <label htmlFor="contact-email" className="eyebrow block mb-2">{t("contact.email")}</label>
+                <input id="contact-email" type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               </div>
               <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">{t("contact.subject")}</label>
-                <input className={inputClass} value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
+                <label htmlFor="contact-subject" className="eyebrow block mb-2">{t("contact.subject")}</label>
+                <input id="contact-subject" className={inputClass} value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
               </div>
               <div className="md:col-span-2">
-                <label className="eyebrow block mb-2">{t("contact.message")}</label>
+                <label htmlFor="contact-message" className="eyebrow block mb-2">{t("contact.message")}</label>
                 <textarea
+                  id="contact-message"
                   rows={6}
                   className={inputClass + " resize-none"}
                   value={form.message}

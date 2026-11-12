@@ -281,3 +281,40 @@
 4. **Papier et finition :** quels sont les caractéristiques exactes à publier ? Grammage (170 g ?), mat ou brillant, couverture rigide pelliculée…
 5. **Réseaux sociaux :** donne-moi les adresses exactes TikTok, Facebook et autres, à ajouter dans `sameAs` et dans le pied de page.
 6. **Adresse du site dev :** pour que je vérifie qu'il n'est pas indexable (T8).
+
+---
+
+## 6. Suivi — corrections faites sur `dev` (pas encore en prod)
+
+**Tes décisions :**
+
+| Question | Réponse |
+|---|---|
+| Prix | Option A : page `/pricing` publique, liée seulement dans le pied de page et depuis la FAQ, pas dans le menu ni sur l'accueil |
+| WhatsApp | Pas de numéro |
+| Nombre de pages | 160 au maximum |
+| Papier | Laissé de côté pour l'instant |
+| TikTok | `everbook_album`, dans les données de marque et dans le pied de page |
+| Site de dev | Il affiche bien `Disallow: /` (T8 réglé) |
+| Correction 5 | **Abandonnée** : pas de « Liban » dans les titres |
+
+**Ce qui est fait.** Chaque point a été vérifié sur une build locale en mode production, et dans Chromium :
+
+| # | Fait | Vérification |
+|---|---|---|
+| 1 | Pré-rendu avec `prerenderToNodeStream` (`frontend/src/prerender.jsx`) | `build/index.html` : 21 liens `create?template=`, comme en FR |
+| 2 | `app.html` en `noindex` (`frontend/scripts/prerender.mjs`). `/auth` n'est pas ajouté à robots.txt | `noindex` présent dans `app.html`, absent des 22 pages publiques ; robots.txt sans `/auth` |
+| 3 | Page `/pricing` et `/fr/pricing` (`frontend/src/pages/PricingPage.jsx`), avec les prix lus dans `PRICE_TABLE`. Schema Product déplacé de l'accueil vers cette page, nom et description traduits en FR. Question de prix dans la FAQ, prix remplis depuis la table (`PRICE_TEXT`). Page listée dans `llms.txt` | Tableau 43 $ … 129 $ visible ; 2 Product sur `/pricing`, 0 sur l'accueil ; sitemap avec `/pricing` et `/fr/pricing` ; tests `seoData.test.js` |
+| 4 | Liens vers Tarifs, Voyage, Couple et Famille dans le pied de page (`frontend/src/components/Footer.jsx`) | Présents sur toutes les pages, EN et FR |
+| 6 | `htmlFor`/`id` sur les champs de contact et d'inscription | axe : 0 violation sur `/contact` et `/auth?mode=signup` ; un clic sur une étiquette place le curseur dans le champ |
+| 7 | Lien « Skip to content / Aller au contenu » (`frontend/src/App.jsx`) | Premier arrêt de la touche Tab sur toutes les pages |
+| 8 | Boutons « Create my album » remplacés par de vrais liens vers `/auth` (`frontend/src/components/SignupLink.jsx`). Une cliente connectée va toujours vers `/dashboard` | `<a href="/auth">` dans le HTML ; clic sans compte → `/auth` ; clic connectée → `/dashboard` |
+| 9 | TikTok dans `sameAs`, dans le pied de page et dans `llms.txt` | Présent dans le JSON-LD de l'accueil |
+| 10 | Textes alternatifs des 20 couvertures. Couleur `--coral-text` (#B9472F, contraste 4,9:1) pour les petits textes corail de `/gift` | 0 `alt=""` sur les couvertures ; textes de la page corrigés |
+
+**Résultats des tests :** 221 tests frontend réussis, lint propre. Aucune erreur JavaScript, sauf le script Vercel Analytics, qui n'existe que sur Vercel.
+
+**Ce qui reste :**
+
+- Les petits textes de l'aperçu miniature de la carte cadeau sur `/gift` sont encore peu contrastés. C'est une image de la carte, pas un texte de la page : je n'y ai pas touché.
+- Partie A, de ton côté : Search Console, Bing, fiche Google, liens externes.

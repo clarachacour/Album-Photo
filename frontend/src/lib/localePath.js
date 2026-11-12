@@ -17,6 +17,7 @@ export const PUBLIC_PAGES = [
   "/shipping",
   "/terms",
   "/privacy",
+  "/pricing",
 ];
 
 const PREFIX = { fr: "/fr" };

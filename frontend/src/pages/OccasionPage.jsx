@@ -1,38 +1,27 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { textList } from "@/lib/i18n";
 import { ArrowRight, Check } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import LocalLink from "@/components/LocalLink";
+import { SignupLink } from "@/components/SignupLink";
 import { OCCASIONS } from "@/lib/occasions";
-
-const isSignedIn = () => {
-  try {
-    return Boolean(localStorage.getItem("album_token") || localStorage.getItem("album_user"));
-  } catch {
-    return false;
-  }
-};
 
 export default function OccasionPage({ occasion }) {
   usePageMeta(`occasion_${occasion}`);
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const k = (key, opts) => t(`occasions.${occasion}.${key}`, opts);
   const { covers } = OCCASIONS[occasion];
   const others = Object.entries(OCCASIONS).filter(([name]) => name !== occasion);
-  const start = () => navigate(isSignedIn() ? "/dashboard" : "/auth");
 
   const cta = (
-    <button
-      onClick={start}
+    <SignupLink
       className="group inline-flex items-center gap-3 bg-[color:var(--ink)] text-[color:var(--paper)] px-8 py-4 hover:bg-[color:var(--coral)] transition-colors duration-300"
       data-testid="occasion-cta"
     >
       <span className="text-sm font-semibold tracking-widest uppercase">{t("landing.hero.cta")}</span>
       <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-    </button>
+    </SignupLink>
   );
 
   return (

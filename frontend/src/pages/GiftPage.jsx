@@ -108,7 +108,7 @@ export default function GiftPage() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <h1 className="font-serif-display text-4xl md:text-6xl tracking-tight">{t("gift.title")}</h1>
             {!ONLINE_PAYMENT && (
-              <span style={{ fontFamily: "'Manrope', sans-serif" }} className="text-[11px] md:text-xs font-semibold tracking-widest uppercase text-[color:var(--coral)] border border-[color:var(--coral)] px-2.5 py-1 rounded-full" data-testid="gift-coming-soon">
+              <span style={{ fontFamily: "'Manrope', sans-serif" }} className="text-[11px] md:text-xs font-semibold tracking-widest uppercase text-[color:var(--coral-text)] border border-[color:var(--coral-text)] px-2.5 py-1 rounded-full" data-testid="gift-coming-soon">
                 {t("cart.payment.soon")}
               </span>
             )}
@@ -172,7 +172,7 @@ export default function GiftPage() {
               {adding && <Loader2 size={14} className="animate-spin" />}
               {ONLINE_PAYMENT ? t("cart.add") : t("cart.payment.soon")}
             </button>
-            <p className={`text-xs mt-3 ${ONLINE_PAYMENT ? "text-[color:var(--muted)]" : "text-[color:var(--coral)]"}`} data-testid="gift-soon">
+            <p className={`text-xs mt-3 ${ONLINE_PAYMENT ? "text-[color:var(--muted)]" : "text-[color:var(--coral-text)]"}`} data-testid="gift-soon">
               {ONLINE_PAYMENT ? t("gift.pdfNote") : t("gift.soon")}
             </p>
           </div>

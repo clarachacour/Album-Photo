@@ -8,6 +8,8 @@
     --ink: #1A1A17;
     --muted: #73716A;
     --coral: #E56B55;
+    /* The coral for small text on the paper background: readable (4.9:1). */
+    --coral-text: #B9472F;
     --teal: #0F5A67;
     --sand: #D5C9B3;
     --forest: #2C402E;

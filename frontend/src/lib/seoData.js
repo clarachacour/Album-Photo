@@ -4,11 +4,33 @@
 import { DIGITAL_PRICE, MAX_ALBUM_PAGES, ONLINE_PAYMENT, OVERAGE_FROM, OVERAGE_PER_PAGE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
 
 const SIZES = { A5: "A5 (14.8 × 21 cm)", A4: "A4 (21 × 29.7 cm)" };
+const SIZES_FR = { A5: "A5 (14,8 × 21 cm)", A4: "A4 (21 × 29,7 cm)" };
+
+// The products' names and descriptions, in the page's language.
+const PRODUCT_TEXT = {
+  en: {
+    printed: (size) => `Everbook printed photo album — ${size}`,
+    printedAbout: (size) => `A hardcover photo book in ${SIZES[size]}, portrait or landscape, made from your own photos: laid out for you, printed and delivered in Lebanon.`,
+    offer: (size, pages) => `${size}, ${pages} pages`,
+    digital: "Everbook digital photo album (PDF)",
+    digitalAbout: "Your photo album as a PDF to download and keep: cover, pages and back cover, in screen quality.",
+  },
+  fr: {
+    printed: (size) => `Album photo imprimé Everbook — ${size}`,
+    printedAbout: (size) => `Un livre photo à couverture rigide au format ${SIZES_FR[size]}, portrait ou paysage, fait avec vos propres photos : mis en page pour vous, imprimé et livré au Liban.`,
+    offer: (size, pages) => `${size}, ${pages} pages`,
+    digital: "Album photo numérique Everbook (PDF)",
+    digitalAbout: "Votre album photo en PDF à télécharger et à garder : couverture, pages et quatrième de couverture, en qualité écran.",
+  },
+};
 
 /** The printed albums (and the PDF, once it can be ordered), with their
  * prices, delivered in Lebanon — as Google's merchant listings expect them:
- * an image, a brand, and on each offer the delivery and the return policy. */
-export function productData(siteUrl) {
+ * an image, a brand, and on each offer the delivery and the return policy.
+ * For the pricing page, which shows these prices (lng: its language). */
+export function productData(siteUrl, lng = "en") {
+  const text = PRODUCT_TEXT[lng] || PRODUCT_TEXT.en;
+  const pageUrl = `${siteUrl}${lng === "fr" ? "/fr" : ""}/pricing`;
   const brand = { "@type": "Brand", name: "Everbook" };
   const images = ["og-image.jpg", "theme-covers/travel-beirut.webp", "theme-covers/travel-sicily.webp", "theme-covers/couple-wedding-ivory.webp"].map(
     (f) => `${siteUrl}/${f}`
@@ -40,24 +62,24 @@ export function productData(siteUrl) {
     areaServed: { "@type": "Country", name: "Lebanon" },
     shippingDetails: shipping,
     hasMerchantReturnPolicy: returnPolicy,
-    url: `${siteUrl}/`,
+    url: pageUrl,
     ...extra,
   });
   const printed = Object.entries(PRICE_TABLE).map(([size, prices]) => ({
     "@type": "Product",
-    "@id": `${siteUrl}/#album-${size.toLowerCase()}`,
-    name: `Everbook printed photo album — ${size}`,
-    description: `A hardcover photo book in ${SIZES[size]}, portrait or landscape, made from your own photos: laid out for you, printed and delivered in Lebanon.`,
+    "@id": `${pageUrl}#album-${size.toLowerCase()}`,
+    name: text.printed(size),
+    description: text.printedAbout(size),
     brand,
     image: images,
-    offers: PAGE_TIERS.map((pages) => offer(`${size}, ${pages} pages`, prices[pages])),
+    offers: PAGE_TIERS.map((pages) => offer(text.offer(size, pages), prices[pages])),
   }));
   if (!ONLINE_PAYMENT) return printed; // the PDF can't be ordered yet
   const digital = {
     "@type": "Product",
-    "@id": `${siteUrl}/#album-pdf`,
-    name: "Everbook digital photo album (PDF)",
-    description: "Your photo album as a PDF to download and keep: cover, pages and back cover, in screen quality.",
+    "@id": `${pageUrl}#album-pdf`,
+    name: text.digital,
+    description: text.digitalAbout,
     brand,
     image: images,
     offers: [offer("PDF", DIGITAL_PRICE, { shippingDetails: { ...shipping, shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "USD" }, doesNotShip: true } })],
@@ -100,11 +122,12 @@ export function llmsTxt(siteUrl, faqItems) {
       : "- Payment: cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
     `- Gift cards${ONLINE_PAYMENT ? "" : " (coming soon)"}: offer an album (format and page count chosen), received as a PDF; the recipient creates their own album with the code, delivery included.`,
     "- Languages: English and French.",
-    "- Contact: orders@everbook-album.com · Instagram: https://www.instagram.com/everbook_album/",
+    "- Contact: orders@everbook-album.com · Instagram: https://www.instagram.com/everbook_album/ · TikTok: https://www.tiktok.com/@everbook_album",
     "",
     "## Pages",
     "",
-    `- [Home — create your album](${siteUrl}/): how it works, templates, prices`,
+    `- [Home — create your album](${siteUrl}/): how it works, templates`,
+    `- [Prices](${siteUrl}/pricing): every format and page count, delivery, payment`,
     `- [Gift an album](${siteUrl}/gift): gift cards`,
     `- [FAQ](${siteUrl}/faq): formats, prices, delivery, PDF, gifts`,
     `- [Travel photo book](${siteUrl}/travel-photo-book), [Couple & wedding album](${siteUrl}/couple-photo-album), [Family photo album](${siteUrl}/family-photo-album)`,
