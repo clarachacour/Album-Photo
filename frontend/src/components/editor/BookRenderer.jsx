@@ -6,6 +6,23 @@ import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { CoverBackPage } from "@/components/book/CoverBackPage";
 import Flipbook from "@/components/Flipbook";
 
+/** While "Add text" waits for a click: a layer over a cover part (front,
+ * back, spine) that takes the click, wherever it lands (on the title, an
+ * image…), and tells where on that part it was, as a share of its size. */
+function PlaceTextLayer({ onPlace }) {
+  return (
+    <div
+      className="absolute inset-0 z-[70] cursor-text"
+      data-testid="place-text-layer"
+      onClick={(e) => {
+        e.stopPropagation();
+        const r = e.currentTarget.getBoundingClientRect();
+        onPlace({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+      }}
+    />
+  );
+}
+
 export function BookRenderer({
   album,
   template,
@@ -37,6 +54,7 @@ export function BookRenderer({
   onExitCrop,
   placingText,
   onPlaceText,
+  onPlaceCoverText,
   onStartAddText,
   autoEditItemId,
   onTextEditHandled,
@@ -87,6 +105,7 @@ export function BookRenderer({
           onSelectDivider={() => onSelectSpine && onSelectSpine("spine-divider")}
           onUpdateCover={onUpdateCover}
         />
+        {placingText && !album.was_ordered && <PlaceTextLayer onPlace={(at) => onPlaceCoverText("spine", at)} />}
       </div>
       {/* A thin visible seam between the spine and the cover, matching the
           gap already used in the "Make it yours" flat-spread layout — makes
@@ -95,7 +114,8 @@ export function BookRenderer({
         className="absolute top-0 h-full bg-ink/70"
         style={{ width: "3px", right: "100%" }}
       />
-      <div className="h-full w-full">
+      <div className="relative h-full w-full">
+        {placingText && !album.was_ordered && <PlaceTextLayer onPlace={(at) => onPlaceCoverText("front", at)} />}
         <CoverFrontPage
           template={template}
           title={album.title}
@@ -160,8 +180,9 @@ export function BookRenderer({
       />
     )),
     <React.Fragment key="blank-inner-back">{blank}</React.Fragment>,
-    <CoverBackPage
-      key="cover-back"
+    <div key="cover-back" className="relative h-full w-full">
+      {placingText && !album.was_ordered && <PlaceTextLayer onPlace={(at) => onPlaceCoverText("back", at)} />}
+      <CoverBackPage
       template={template}
       country={album.country}
       orientation={orientation}
@@ -175,7 +196,8 @@ export function BookRenderer({
       onReorderItem={onReorderCoverItem && ((itemId, direction) => onReorderCoverItem(itemId, direction, "back"))}
       onDeleteItem={onDeleteCoverItem && ((itemId) => onDeleteCoverItem(itemId, "back"))}
       selectedItemId={coverSel?.mode === "item" && coverSel?.side === "back" ? coverSel.itemId : null}
-    />,
+      />
+    </div>,
   ];
   return <Flipbook ref={bookRef} pages={pages} orientation={orientation} onFlip={onFlip} />;
 }

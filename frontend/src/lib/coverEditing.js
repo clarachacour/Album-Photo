@@ -201,13 +201,20 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel((prev) => (prev && prev.mode === "item" && prev.itemId === itemId ? { ...prev } : prev));
   };
 
-  const addCoverText = (content = i18n.t("coverPanel.newText"), side = coverSel?.side || "front") => {
+  // at: where it was clicked on the cover (shares of its width and height,
+  // from "Add text"), the box then starts there as on a page; the default
+  // place otherwise.
+  const addCoverText = (content = i18n.t("coverPanel.newText"), side = coverSel?.side || "front", at = null) => {
     const key = side === "back" ? "back_extra_items" : "extra_items";
     const newItem = {
       id: cryptoRandom(),
       type: "text",
       content,
       ...NEW_ITEM_BOX.text,
+      ...(at && {
+        x: Math.min(Math.max(at.x - NEW_ITEM_BOX.text.w / 2, 0), 1 - NEW_ITEM_BOX.text.w),
+        y: Math.min(Math.max(at.y - NEW_ITEM_BOX.text.h / 2, 0), 1 - NEW_ITEM_BOX.text.h),
+      }),
       font: "'Manrope', sans-serif",
       font_size: 22,
       font_weight: "normal",

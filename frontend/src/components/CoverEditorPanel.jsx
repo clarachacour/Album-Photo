@@ -8,8 +8,8 @@ import { DegreesInput } from "@/components/DegreesInput";
 import { FontPicker } from "@/components/FontPicker";
 import {
   Bold,
-  Type,
   Image as ImageIcon,
+  Type,
   Trash2,
   X as XIcon,
   RotateCcw,
@@ -50,11 +50,14 @@ export function CoverEditorPanel({
   coverSel,
   updateCover,
   updateCoverItem,
-  addCoverText,
   addCoverImage,
   removeCoverItem,
   updateAlbumTitle,
+  addCoverText,
   addSpineText,
+  // false in the album editor: its one "Add text" button (then a click on
+  // the page, cover or spine) adds texts; the creation wizard keeps these.
+  textButtons = true,
   onDismiss,
 }) {
   const { t } = useTranslation();
@@ -463,17 +466,20 @@ export function CoverEditorPanel({
         </div>
       )}
 
-      {/* 5. AJOUTER (et remettre ce qui a été supprimé) */}
+      {/* 5. AJOUTER (et remettre ce qui a été supprimé) — not shown when
+          there's nothing in it (the spine, in the album editor). */}
+      {(!onSpine ||
+        (addSpineText && (textButtons || cover.spine_title_hidden || (cover.spine_logo_image && cover.spine_logo_hidden) || (cover.spine_title_caption_divider && cover.spine_divider_hidden)))) && (
       <div className={section}>
         <SmallLabel>{t("coverPanel.add")}</SmallLabel>
         <div className="grid grid-cols-3 gap-1.5">
           {!onSpine && (
             <>
-              <AddButton icon={<Type size={14} />} label={t("coverPanel.text")} onClick={() => addCoverText(undefined, side)} tid="cover-add-text" />
+              {textButtons && <AddButton icon={<Type size={14} />} label={t("coverPanel.text")} onClick={() => addCoverText(undefined, side)} tid="cover-add-text" />}
               <AddButton icon={<ImageIcon size={14} />} label={t("coverPanel.image")} onClick={() => addImageInput.current?.click()} tid="cover-add-image" />
             </>
           )}
-          {addSpineText && (
+          {textButtons && addSpineText && (
             <AddButton
               icon={<Type size={14} />}
               label={t("coverPanel.textOnSpineShort")}
@@ -510,6 +516,7 @@ export function CoverEditorPanel({
           <RestoreButton label={t("coverPanel.restoreDivider")} onClick={() => updateCover({ spine_divider_hidden: false })} tid="spine-restore-divider" />
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -1159,6 +1159,17 @@ export default function AlbumEditor() {
             onExitCrop={() => setCropMode(false)}
             placingText={placingText}
             onPlaceText={placeTextAt}
+            onPlaceCoverText={(where, at) => {
+              // The one "Add text": a click on the cover, the back cover or
+              // the spine adds the text there, as on a page.
+              setPlacingText(false);
+              setSelected(null);
+              if (where === "spine") {
+                if (!addSpineText(album.cover || {})) toast.error(t("coverPanel.spineFull"));
+              } else {
+                addCoverText(undefined, where, at);
+              }
+            }}
             onStartAddText={() => setPlacingText(true)}
             autoEditItemId={autoEditItemId}
             onTextEditHandled={() => setAutoEditItemId(null)}
@@ -1354,21 +1365,7 @@ export default function AlbumEditor() {
             )}
             <button
               data-testid={TID.editorAddText}
-              onClick={() => {
-                // On a cover (the first double-page, the front; the last, the
-                // back), "click on the page" had nothing to place the text in:
-                // the cover's own text is added straight away, selected, as
-                // the cover's "Add" panel does.
-                const lastSpread = Math.ceil(((album.pages || []).length + 2) / 2);
-                const coverSide = pageIndex === 0 ? "front" : pageIndex >= lastSpread ? "back" : null;
-                if (coverSide && !album.was_ordered) {
-                  setPlacingText(false);
-                  setSelected(null);
-                  addCoverText(undefined, coverSide);
-                  return;
-                }
-                setPlacingText((v) => !v);
-              }}
+              onClick={() => setPlacingText((v) => !v)}
               className={`w-full inline-flex items-center justify-center gap-2 border py-2 transition-colors ${
                 placingText
                   ? "bg-[color:var(--coral)] text-[color:var(--paper)] border-[color:var(--coral)]"
@@ -1418,11 +1415,11 @@ export default function AlbumEditor() {
             <div className="eyebrow mb-3">{t("albumEditor.editing")}</div>
             {coverSel ? (
               <CoverEditorPanel
+                textButtons={false}
                 album={album}
                 coverSel={coverSel}
                 updateCover={updateCover}
                 updateCoverItem={updateCoverItem}
-                addCoverText={addCoverText}
                 addCoverShape={addCoverShape}
                 addCoverImage={addCoverImage}
                 removeCoverItem={removeCoverItem}
