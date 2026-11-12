@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { QRCodeSVG } from "qrcode.react";
 import { X, Smartphone } from "lucide-react";
@@ -9,10 +10,15 @@ import { X, Smartphone } from "lucide-react";
  * picks up newly-added phone photos both live in the parent
  * (PhotoUploadMethods), so closing this modal (onClose) never stops an
  * upload that's still coming in from the phone; it only hides the code.
+ *
+ * Drawn on the page's body, not where it's used: the photos step slides in
+ * (animate-fade-up keeps a transform), and a "fixed" box inside a
+ * transformed one is placed against it rather than the screen, so the code
+ * ended up halfway down the long page instead of in front of the visitor.
  */
 export default function MobileUploadQR({ session, onClose }) {
   const { t } = useTranslation();
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-6" onClick={onClose}>
       <div
         className="bg-[color:var(--paper)] max-w-sm w-full p-8 text-center relative"
@@ -35,6 +41,7 @@ export default function MobileUploadQR({ session, onClose }) {
         )}
         <p className="text-xs text-[color:var(--muted)] mt-6">{t("mobileQr.expiry")}</p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
