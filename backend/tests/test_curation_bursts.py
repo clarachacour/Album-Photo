@@ -36,9 +36,16 @@ def test_a_burst_keeps_one_photo_even_if_the_ai_would_split_it(app, db, monkeypa
         return [[p] for p in cluster]
 
     monkeypatch.setattr(curation, "GEMINI_API_KEY", "key")
+
+    monkeypatch.setattr(curation, "find_no_subject_photos", _keep_all)  # no network call in a test
     monkeypatch.setattr(curation, "_resolve_ambiguous_cluster_with_ai", split_everything)
     monkeypatch.setattr(curation, "get_object", lambda path: (data[path], "image/jpeg"))
 
     selected, stats = asyncio.run(curation.curate_photos(photos))
     assert len(selected) == 1
     assert stats["ai_calls_attempted"] == 0
+
+
+async def _keep_all(photos):
+    return set()
+

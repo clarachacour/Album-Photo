@@ -97,7 +97,8 @@ def test_the_dashboard_follows_the_customers(client, db, admin):
     assert after["albums"]["photos_per_album"]["average"] is not None
 
     # Orders: the PDF still to make is listed, the promo code and the area.
-    assert "EB-DASH-ORD" in [o["number"] for o in after["orders"]["pdf_not_ready"]["orders"]]
+    # Counted (the list shows the 20 oldest: other tests' orders can fill it).
+    assert after["orders"]["pdf_not_ready"]["count"] - before["orders"]["pdf_not_ready"]["count"] == 1
     assert {p["code"]: p["discount_cents"] for p in after["orders"]["promo_codes"]}["HELLO"] >= 800
     assert _counts(after["orders"]["areas"])["Hamra"] >= 1
     assert len(after["weekly"]) == 5 and after["weekly"][-1]["orders"] >= 1

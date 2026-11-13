@@ -91,6 +91,8 @@ def test_shots_a_minute_apart_stay_one_moment_even_if_the_ai_splits_them(app, db
         return [[p] for p in cluster]
 
     monkeypatch.setattr(curation, "GEMINI_API_KEY", "key")
+
+    monkeypatch.setattr(curation, "find_no_subject_photos", _keep_all)  # no network call in a test
     monkeypatch.setattr(curation, "_resolve_ambiguous_cluster_with_ai", split_everything)
     monkeypatch.setattr(curation, "get_object", lambda path: (data[path], "image/jpeg"))
 
@@ -113,8 +115,15 @@ def test_the_ai_split_still_holds_for_photos_taken_further_apart(app, db, monkey
         return [[p] for p in cluster]
 
     monkeypatch.setattr(curation, "GEMINI_API_KEY", "key")
+
+    monkeypatch.setattr(curation, "find_no_subject_photos", _keep_all)  # no network call in a test
     monkeypatch.setattr(curation, "_resolve_ambiguous_cluster_with_ai", split_everything)
     monkeypatch.setattr(curation, "get_object", lambda path: (data[path], "image/jpeg"))
 
     selected, _ = asyncio.run(curation.curate_photos(photos))
     assert len(selected) == 2
+
+
+async def _keep_all(photos):
+    return set()
+

@@ -550,6 +550,86 @@ async def _resolve_ambiguous_cluster_with_ai(cluster: List[dict]) -> List[List[d
         logger.warning(f"Résolution IA d'un groupe ambigu échouée (on garde le regroupement classique) : {e}")
         return [cluster]
 
+# ---- Photos without a subject: taken by mistake ----
+# The sharpness gate can't tell what a photo shows: the photographer's feet
+# on cobblestones, the floor or a pocket are full of fine detail, so they
+# pass as "sharp", and alone in their moment nothing better replaces them.
+# Gemini looks at the small versions, a batch at a time, and names the ones
+# with no subject worth an album. Food, landscapes and photos with people
+# are always kept (people aren't even sent). Set aside like a blurry photo:
+# never deleted, the customer finds it in "All your photos".
+NO_SUBJECT_BATCH = 16
+# If the answer names more than this share of a batch, it isn't trusted:
+# an album isn't mostly accidents, a wrong answer is likelier.
+NO_SUBJECT_MAX_SHARE = 0.4
+
+NO_SUBJECT_PROMPT = (
+    "These are {n} photos from someone's phone, numbered 0 to {last} in the order given, "
+    "about to be laid out in a printed photo album. List ONLY the photos that are clearly "
+    "accidental or have no subject worth printing: the photographer's own feet, legs or shoes, "
+    "the ground or floor, the inside of a pocket or bag, a ceiling, a finger over the lens, "
+    "an almost blank or black frame, a screenshot, a photo of a screen, a receipt, ticket, "
+    "document, form or QR code. NEVER list: food, dishes, plates, drinks or desserts; "
+    "landscapes, sea, beaches, sky, sunsets, mountains, nature, cityscapes, streets, "
+    "buildings, monuments, churches, interiors of places; animals; people; or any photo with "
+    "an intentional subject, even a simple or artistic one. When in doubt, keep the photo. "
+    "Respond with ONLY a JSON array of the numbers to leave out, e.g. [2,5], or [] if none. No other text."
+)
+
+
+async def _no_subject_in_batch(batch: List[dict]) -> set:
+    """Ids of the photos in this batch Gemini names as having no subject;
+    none on any failure (no key, network, odd answer): the photos stay."""
+    if not GEMINI_API_KEY or not batch:
+        return set()
+    try:
+        loop = asyncio.get_event_loop()
+        parts = []
+        for p in batch:
+            read_path = p.get("thumbnail_path") or p["storage_path"]
+            data, _ = await loop.run_in_executor(r2_io_executor, get_object, read_path)
+            parts.append({"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(data).decode("ascii")}})
+        parts.append({"text": NO_SUBJECT_PROMPT.format(n=len(batch), last=len(batch) - 1)})
+        resp = await loop.run_in_executor(
+            None,
+            lambda: requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+                headers={"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"},
+                json={"contents": [{"parts": parts}], "generationConfig": {"responseMimeType": "application/json"}},
+                timeout=30,
+            ),
+        )
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        numbers, _ = json.JSONDecoder().raw_decode(text.strip())
+        if not isinstance(numbers, list) or any(not isinstance(i, int) or i < 0 or i >= len(batch) for i in numbers):
+            raise ValueError(f"Réponse inattendue : {text[:200]}")
+        if len(set(numbers)) > len(batch) * NO_SUBJECT_MAX_SHARE:
+            logger.warning(f"Photos sans sujet : {len(set(numbers))}/{len(batch)} désignées, réponse ignorée")
+            return set()
+        return {batch[i]["id"] for i in numbers}
+    except Exception as e:
+        logger.warning(f"Tri des photos sans sujet échoué (on les garde toutes) : {e}")
+        return set()
+
+
+async def find_no_subject_photos(photos: List[dict]) -> set:
+    """Ids of the photos without a subject (see NO_SUBJECT_PROMPT) among
+    these, photos with people left out of the question."""
+    candidates = [p for p in photos if not p.get("ai_face_count")]
+    batches = [candidates[i : i + NO_SUBJECT_BATCH] for i in range(0, len(candidates), NO_SUBJECT_BATCH)]
+    semaphore = asyncio.Semaphore(GEMINI_CONCURRENCY)
+
+    async def bounded(batch):
+        async with semaphore:
+            return await _no_subject_in_batch(batch)
+
+    found = set()
+    for ids in await asyncio.gather(*(bounded(b) for b in batches)):
+        found |= ids
+    return found
+
+
 UNDATED = "9999-12-31"
 
 
@@ -928,6 +1008,22 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
 
     _phase_times["sharpness"] = _time.monotonic() - _t0 - _phase_times["clustering"]
 
+    # ---- 3a. Photos without a subject (feet, floor, pocket, screenshot…),
+    # which the sharpness gate lets through: set aside the same way. ----
+    no_subject_removed = 0
+    no_subject_ids = await find_no_subject_photos(passing_reps)
+    if no_subject_ids:
+        await db.photos.update_many(
+            {"id": {"$in": list(no_subject_ids)}},
+            {"$set": {"ai_is_reject": True, "ai_no_subject": True, "is_duplicate": True, "is_selected": False}},
+        )
+        for rep in passing_reps:
+            if rep["id"] in no_subject_ids:
+                rep["ai_is_reject"] = True
+        passing_reps = [rep for rep in passing_reps if rep["id"] not in no_subject_ids]
+        no_subject_removed = len(no_subject_ids)
+    _phase_times["no_subject"] = _time.monotonic() - _t0 - _phase_times["clustering"] - _phase_times["sharpness"]
+
     # Face-aware focal point — where any people are in the photo (found
     # locally with the YuNet model in step 2, nothing sent anywhere), so the
     # layout centres its crop on them instead of the frame's middle, which
@@ -1043,6 +1139,7 @@ async def curate_photos(new_photos: List[dict], existing_selected: Optional[List
         "total_in": len(new_photos),
         "duplicates_removed": duplicates_removed,
         "low_sharpness_removed": low_sharpness_removed,
+        "no_subject_removed": no_subject_removed,
         "redundant_removed": redundant_removed,
         "ai_clusters_resolved": ai_clusters_resolved,
         "ai_calls_attempted": ai_calls_attempted,

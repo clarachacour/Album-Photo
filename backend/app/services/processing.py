@@ -179,6 +179,7 @@ async def _full_layout(album_id: str):
         f"AI processing complete for album {album_id}: {curation_stats.get('total_in')} photos in "
         f"→ {curation_stats.get('duplicates_removed')} duplicates removed, "
         f"{curation_stats.get('low_sharpness_removed')} rejected for low sharpness, "
+        f"{curation_stats.get('no_subject_removed', 0)} set aside as having no subject, "
         f"{curation_stats.get('redundant_removed')} thinned as visually redundant, "
         f"{curation_stats.get('ai_calls_attempted')} ambiguous clusters sent to AI, "
         f"{curation_stats.get('ai_clusters_resolved')} split by AI "
