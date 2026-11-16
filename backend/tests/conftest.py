@@ -95,6 +95,57 @@ def paid_albums(request, monkeypatch):
 def online_payment(app, monkeypatch):
     """Whish Pay / card switched on: the PDF and gift cards can be ordered
     (for now they're "coming soon", see services/payments.py)."""
-    from app.services import payments
+    from app.services import payments, whish
 
     monkeypatch.setattr(payments, "ONLINE_PAYMENT", True)
+    fake = FakeWhish()
+    monkeypatch.setattr(whish, "create_payment", fake.create_payment)
+    monkeypatch.setattr(whish, "payment_status", fake.payment_status)
+    return fake
+
+
+class FakeWhish:
+    """Whish Pay in the tests: every payment link is paid ("success") unless
+    a test sets `outcome` ("pending", "failed") or `down` (unreachable)."""
+
+    def __init__(self):
+        self.outcome = "success"
+        self.down = False
+        self.created = []  # the payments asked for (their arguments)
+        self.status_calls = 0
+
+    def create_payment(self, **kwargs):
+        from app.services.whish import WhishError
+
+        if self.down:
+            raise WhishError("unreachable")
+        self.created.append(kwargs)
+        return f"https://whish.example/pay/{kwargs['external_id']}"
+
+    def payment_status(self, external_id):
+        self.status_calls += 1
+        return self.outcome
+
+
+class _Placed:
+    def __init__(self, status_code, body):
+        self.status_code, self._body = status_code, body
+
+    def json(self):
+        return self._body
+
+
+def checkout(client, json, headers):
+    """POST /cart/checkout as the site does it — and when it gives a Whish
+    payment link, the customer pays and comes back (Whish's callback, then
+    the return page): the answer is then what was ordered."""
+    res = client.post("/api/cart/checkout", json=json, headers=headers)
+    if res.status_code != 200 or "payment" not in res.json():
+        return res
+    payment_id = res.json()["payment"]["id"]
+    client.get(f"/api/payments/whish/callback?payment={payment_id}&outcome=success")
+    back = client.get(f"/api/payments/{payment_id}", headers=headers)
+    body = back.json()
+    if body.get("status") != "placed":
+        return _Placed(402, body)
+    return _Placed(200, {"checkout_id": body["checkout_id"], "orders": body["orders"], "gift_cards": body["gift_cards"]})

@@ -171,5 +171,9 @@ async def internal_sync_deliveries(x_cleanup_secret: str = Header(None)):
     # The printer's emails waiting to group a customer's albums go first.
     printer_emails = await flush_printer_queue()
     result = {**(await sync_all_deliveries()), "printer_emails": printer_emails}
+    # Whish Pay payments nobody came back for (see routers/payments.py).
+    from app.routers.payments import reconcile_payments
+
+    result.update(await reconcile_payments())
     # The customers' reminders (cart, album not ordered), when due.
     return {**result, **(await send_reminders())}

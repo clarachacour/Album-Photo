@@ -31,6 +31,8 @@ INDEXES = [
     ("orders", "created_at", {}),  # admin order list
     ("orders", "checkout_id", {"sparse": True}),  # a cart's orders, together
     ("carts", "user_id", {"unique": True}),
+    ("payments", "id", {"unique": True}),
+    ("payments", "status", {}),  # the scheduled check of pending payments
     ("gift_cards", "id", {"unique": True}),
     ("gift_cards", "code", {"unique": True}),
     ("gift_cards", "buyer_user_id", {}),

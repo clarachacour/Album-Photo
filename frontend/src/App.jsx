@@ -56,6 +56,7 @@ const PrinterStatementRedirect = lazyPage(() =>
   import("@/pages/PrinterOrderPage").then((m) => ({ default: m.PrinterStatementRedirect }))
 );
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
+const PaymentReturnPage = lazyPage(() => import("@/pages/PaymentReturnPage"));
 
 // The public pages' language follows their address: /fr/… is French. A
 // visitor reading in French who opens the English address of a public page
@@ -220,6 +221,14 @@ export function AppRoutes() {
               element={
                 <ProtectedRoute>
                   <OrderFeedback />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment/return"
+              element={
+                <ProtectedRoute>
+                  <PaymentReturnPage />
                 </ProtectedRoute>
               }
             />

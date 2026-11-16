@@ -154,6 +154,9 @@ class CheckoutInput(BaseModel):
     # Needed when the cart holds a printed album.
     shipping_address: Optional[ShippingAddress] = None
     accepted_terms_version: str = Field(default="", max_length=20)
+    # "cod": cash on delivery (printed albums only); "whish": Whish Pay.
+    # None: Whish when the cart holds a gift card or a PDF, otherwise cod.
+    payment_method: Optional[Literal["cod", "whish"]] = None
 
 class AuthResponse(BaseModel):
     token: str

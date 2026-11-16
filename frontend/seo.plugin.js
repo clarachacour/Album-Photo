@@ -13,7 +13,7 @@ import { PUBLIC_PAGES, localePath } from "./src/lib/localePath.js";
 // Public pages listed in the sitemap: each in English and in French.
 const LANGUAGES = ["en", "fr"];
 // Pages behind a login or for machines: never worth indexing.
-const PRIVATE_PATHS = ["/dashboard", "/editor/", "/create", "/choose-template", "/order/", "/orders", "/cart", "/account", "/admin/", "/print/", "/mobile-upload/", "/everbook-statement", "/printer/", "/verify-email", "/reset-password", "/forgot-password"];
+const PRIVATE_PATHS = ["/dashboard", "/editor/", "/create", "/choose-template", "/order/", "/orders", "/cart", "/account", "/admin/", "/print/", "/mobile-upload/", "/everbook-statement", "/printer/", "/payment/", "/verify-email", "/reset-password", "/forgot-password"];
 
 export function siteInfo(env = process.env) {
   const raw = env.REACT_APP_SITE_URL || (env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${env.VERCEL_PROJECT_PRODUCTION_URL}` : "");

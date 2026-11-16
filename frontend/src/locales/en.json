@@ -311,7 +311,8 @@
     "downloadPdf": "Download PDF",
     "downloadError": "Couldn't download the album, please try again.",
     "followCourier": "Follow the courier →",
-    "promo": "Promo code {{code}}"
+    "promo": "Promo code {{code}}",
+    "paidWithWhish": "Paid with Whish Pay: {{amount}}"
   },
   "account": {
     "eyebrow": "Account",
@@ -996,6 +997,9 @@
     "pricing": {
       "title": "Photo Album Prices: A5 and A4, 24 to 150 Pages",
       "description": "Everbook photo album prices in A5 and A4, from 24 to 150 pages, with delivery anywhere in Lebanon, the PDF album and how to pay."
+    },
+    "paymentReturn": {
+      "title": "Payment"
     }
   },
   "coverPanel": {
@@ -1321,7 +1325,13 @@
       "codHint": "You pay the courier in cash when your album arrives.",
       "whish": "Whish Pay",
       "card": "Card payment",
-      "soon": "Coming soon"
+      "soon": "Coming soon",
+      "whishHint": "Pay now in the Whish app: scan a QR code or type a 6-digit code. Nothing to pay on delivery.",
+      "whishNote": "You'll be taken to Whish's page to pay with the Whish app (QR code or 6-digit code). Your order is placed as soon as the payment is confirmed.",
+      "payWithWhish": "Pay with Whish",
+      "whishDown": "Whish Pay can't be reached right now. Please try again in a moment, or choose cash on delivery.",
+      "toWhishTitle": "On to Whish Pay…",
+      "toWhish": "Opening Whish's payment page. Keep the Whish app at hand."
     },
     "credit": "Gift card credit",
     "creditLeft": "{{amount}} of gift card credit stays on your account for a next order.",
@@ -1479,8 +1489,26 @@
     "pdfSoon": "${{price}}, whatever its format and number of pages — coming soon.",
     "paymentTitle": "Payment",
     "paymentCash": "Cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
-    "paymentOnline": "Cash on delivery, or online with Whish Pay or a card.",
+    "paymentOnline": "Cash on delivery, or online with Whish Pay. Card payment is coming soon.",
     "faqLink": "Questions? See the FAQ",
     "price": "${{price}}"
+  },
+  "paymentReturn": {
+    "checking": "Checking your payment…",
+    "checkingBody": "We're confirming your payment with Whish. This takes a few seconds — please keep this page open.",
+    "paid": "Payment received, thank you!",
+    "paidBody": "Your order is confirmed and on its way to the printer. A confirmation email is on its way too.",
+    "paidGifts": "Your gift card is ready: we've emailed it to you as a PDF, to print or send on.",
+    "giftCode": "Gift card code:",
+    "failed": "The payment didn't go through",
+    "failedBody": "Nothing was charged and nothing was ordered. Your cart is still there: you can try again or choose another way to pay.",
+    "review": "Payment received — we're checking one thing",
+    "reviewBody": "Your cart changed while you were paying. We've been told and will contact you very soon to sort it out — nothing is lost.",
+    "unknown": "Payment not found",
+    "unknownBody": "We couldn't find this payment on your account. Check your orders, or go back to your cart.",
+    "slow": "Still waiting for Whish",
+    "slowBody": "Whish hasn't confirmed your payment yet. We keep checking on our side: if it went through, your order will appear in your orders and you'll get an email.",
+    "toOrders": "See my orders",
+    "toCart": "Back to my cart"
   }
 }

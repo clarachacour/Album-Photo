@@ -7,6 +7,7 @@ import pytest
 
 from app.services.pricing import DIGITAL_PRICE_CENTS, SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
 from tests.test_wakilni import ADDRESS, _order, _ready, courier  # noqa: F401  (fixture)
+from tests.conftest import checkout
 
 
 @pytest.fixture()
@@ -34,7 +35,7 @@ def _add(client, shop, album_id, kind="print", quantity=1):
 
 def _checkout(client, shop, **extra):
     body = {"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION, **extra}
-    return client.post("/api/cart/checkout", json=body, headers=shop["headers"])
+    return checkout(client, json=body, headers=shop["headers"])
 
 
 def test_the_cart_prices_everything_with_one_delivery(client, shop, online_payment):
@@ -65,7 +66,7 @@ def test_a_pdf_only_cart_has_no_delivery_and_needs_no_address(client, shop, onli
     a = shop["album"]("Byblos")
     cart = _add(client, shop, a, "digital").json()
     assert cart["shipping_cents"] == 0 and cart["total_cents"] == DIGITAL_PRICE_CENTS
-    res = client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    res = checkout(client, json={"accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     assert res.status_code == 200, res.text
     (order,) = res.json()["orders"]
     assert order["kind"] == "digital" and order["status"] == "available"
@@ -79,7 +80,7 @@ def test_checkout_orders_everything_at_once(client, db, shop, online_payment):
     _add(client, shop, b, quantity=2)
     _add(client, shop, b, "digital")
     # Not without the address (printed albums) nor the terms.
-    assert client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=shop["headers"]).status_code == 400
+    assert checkout(client, json={"accepted_terms_version": TERMS_VERSION}, headers=shop["headers"]).status_code == 400
     assert _checkout(client, shop, accepted_terms_version="old").status_code == 400
 
     res = _checkout(client, shop)
@@ -106,8 +107,10 @@ def test_checkout_orders_everything_at_once(client, db, shop, online_payment):
     assert _ready(client, lead["id"]).status_code == 200
     adds = [body for _, path, body in shop["courier"]["fake"].calls if "/add_delivery/" in path]
     assert len(adds) == 1 and len(adds[0]["packages"]) == 2
-    totals = sum(_order(db, o["id"])["total_price_cents"] for o in prints)
-    assert adds[0]["collection_amount"] == totals / 100 == (compute_order_price_cents("A4", 24) * 3 + SHIPPING_PRICE_CENTS) / 100
+    # With a PDF in it, the whole cart was paid with Whish Pay: nothing
+    # for the courier to collect.
+    assert all(_order(db, o["id"])["payment"]["provider"] == "whish" for o in orders)
+    assert adds[0]["collection_amount"] == 0
 
 
 def test_a_cart_album_still_being_made_is_waited_for(client, db, shop):
@@ -139,7 +142,7 @@ def test_only_the_owners_albums_and_not_twice(client, db, shop):
     a = shop["album"]("Byblos")
     _, stranger = _signup(client, db=db)
     assert client.post("/api/cart/items", json={"album_id": a, "kind": "print"}, headers=stranger).status_code == 404
-    assert client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=stranger).status_code == 400  # empty
+    assert checkout(client, json={"accepted_terms_version": TERMS_VERSION}, headers=stranger).status_code == 400  # empty
     _add(client, shop, a)
     # Ordered meanwhile on its own: the cart says so, checkout refuses.
     asyncio.run(db.orders.insert_one({"id": "x-1", "album_id": a, "kind": "print", "user_id": "u", "status": "printing"}))
@@ -180,7 +183,7 @@ def test_cash_on_delivery_only_for_now(client, shop):
     assert single.status_code == 400
     cart = client.post("/api/cart/items", json={"album_id": album_id, "kind": "print", "quantity": 1}, headers=shop["headers"]).json()
     assert cart["cash_cents"] == cart["total_cents"] > 0
-    placed = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    placed = checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     assert placed.status_code == 200
     # Not paid: printed, then the courier collects the total.
     order = placed.json()["orders"][0]
@@ -200,7 +203,7 @@ def test_a_pdf_left_in_a_cart_is_shown_as_coming_soon(client, db, shop):
     cart = client.get("/api/cart", headers=shop["headers"]).json()
     assert {i["kind"]: i["problem"] for i in cart["items"]} == {"print": None, "digital": "payment_soon"}
     assert cart["subtotal_cents"] == compute_order_price_cents("A4", 24)
-    placed = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    placed = checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     assert placed.status_code == 409
 
 

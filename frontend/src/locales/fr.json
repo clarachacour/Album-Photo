@@ -311,7 +311,8 @@
     "downloadPdf": "Télécharger le PDF",
     "downloadError": "Impossible de télécharger l'album, réessayez.",
     "followCourier": "Suivre le livreur →",
-    "promo": "Code promo {{code}}"
+    "promo": "Code promo {{code}}",
+    "paidWithWhish": "Payé avec Whish Pay : {{amount}}"
   },
   "account": {
     "eyebrow": "Compte",
@@ -996,6 +997,9 @@
     "pricing": {
       "title": "Prix des albums photo A5 et A4, de 24 à 150 pages",
       "description": "Les prix des albums photo Everbook en A5 et A4, de 24 à 150 pages, la livraison partout au Liban, l'album en PDF et le paiement."
+    },
+    "paymentReturn": {
+      "title": "Paiement"
     }
   },
   "coverPanel": {
@@ -1321,7 +1325,13 @@
       "codHint": "Vous réglez le livreur en espèces à la réception de votre album.",
       "whish": "Whish Pay",
       "card": "Paiement par carte",
-      "soon": "Bientôt disponible"
+      "soon": "Bientôt disponible",
+      "whishHint": "Payez maintenant dans l'application Whish : scannez un QR code ou tapez un code à 6 chiffres. Rien à payer à la livraison.",
+      "whishNote": "Vous allez être redirigé vers la page de Whish pour payer avec l'application Whish (QR code ou code à 6 chiffres). Votre commande est passée dès que le paiement est confirmé.",
+      "payWithWhish": "Payer avec Whish",
+      "whishDown": "Whish Pay est injoignable pour le moment. Réessayez dans un instant, ou choisissez le paiement à la livraison.",
+      "toWhishTitle": "Direction Whish Pay…",
+      "toWhish": "Ouverture de la page de paiement Whish. Gardez l'application Whish à portée de main."
     },
     "credit": "Avoir carte cadeau",
     "creditLeft": "{{amount}} d'avoir de carte cadeau restent sur votre compte pour une prochaine commande.",
@@ -1479,8 +1489,26 @@
     "pdfSoon": "{{price}} $, quels que soient son format et son nombre de pages — bientôt disponible.",
     "paymentTitle": "Paiement",
     "paymentCash": "En espèces à la livraison, au livreur. Whish Pay et la carte bancaire arrivent bientôt.",
-    "paymentOnline": "En espèces à la livraison, ou en ligne avec Whish Pay ou une carte bancaire.",
+    "paymentOnline": "En espèces à la livraison, ou en ligne avec Whish Pay. Le paiement par carte arrive bientôt.",
     "faqLink": "Des questions ? Voir la FAQ",
     "price": "{{price}} $"
+  },
+  "paymentReturn": {
+    "checking": "Vérification de votre paiement…",
+    "checkingBody": "Nous confirmons votre paiement auprès de Whish. Cela prend quelques secondes — gardez cette page ouverte.",
+    "paid": "Paiement reçu, merci !",
+    "paidBody": "Votre commande est confirmée et part chez l'imprimeur. Un e-mail de confirmation arrive aussi.",
+    "paidGifts": "Votre carte cadeau est prête : nous vous l'avons envoyée par e-mail en PDF, à imprimer ou à transférer.",
+    "giftCode": "Code de la carte cadeau :",
+    "failed": "Le paiement n'a pas abouti",
+    "failedBody": "Rien n'a été débité et rien n'a été commandé. Votre panier est toujours là : vous pouvez réessayer ou choisir un autre mode de paiement.",
+    "review": "Paiement reçu — une vérification en cours",
+    "reviewBody": "Votre panier a changé pendant le paiement. Nous sommes prévenus et vous contactons très vite pour régler ça — rien n'est perdu.",
+    "unknown": "Paiement introuvable",
+    "unknownBody": "Nous ne trouvons pas ce paiement sur votre compte. Consultez vos commandes, ou revenez à votre panier.",
+    "slow": "En attente de Whish",
+    "slowBody": "Whish n'a pas encore confirmé votre paiement. Nous continuons à vérifier de notre côté : s'il est passé, votre commande apparaîtra dans vos commandes et vous recevrez un e-mail.",
+    "toOrders": "Voir mes commandes",
+    "toCart": "Retour au panier"
   }
 }

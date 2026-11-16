@@ -327,6 +327,11 @@ def send_password_changed_email(to_email: str, name: str):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
+def _paid_online(order: dict) -> bool:
+    """Paid with Whish Pay at checkout (nothing to pay on delivery)."""
+    return (order.get("payment") or {}).get("provider") == "whish"
+
+
 def send_order_confirmation_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
     total = order.get("total_price_cents", 0) / 100
@@ -336,7 +341,9 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     body = (
         f"Hi {name or ''},\n\n"
         f"Thanks for your order! We've received it and will start preparing your book.\n\n"
-        + (f"Your album is free. Only the delivery, {total:.2f} {order.get('currency', 'usd').upper()}, is to be paid in cash to the courier.\n"
+        + (f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), paid with Whish Pay: nothing to pay on delivery.\n"
+           if _paid_online(order) else
+           f"Your album is free. Only the delivery, {total:.2f} {order.get('currency', 'usd').upper()}, is to be paid in cash to the courier.\n"
            if not order.get("unit_price_cents") else
            f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.\n")
         +
@@ -349,7 +356,9 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
-            + (f"<p>Your album is free. Only the delivery, <strong>{total:.2f} {order.get('currency', 'usd').upper()}</strong>, is to be paid in cash to the courier.<br>"
+            + (f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), paid with Whish Pay: nothing to pay on delivery.<br>"
+               if _paid_online(order) else
+               f"<p>Your album is free. Only the delivery, <strong>{total:.2f} {order.get('currency', 'usd').upper()}</strong>, is to be paid in cash to the courier.<br>"
                if not order.get("unit_price_cents") else
                f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.<br>")
             +
@@ -376,13 +385,18 @@ def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
         return f"{o.get('album_title', 'Album')} — {what} ({order_number(o)})"
 
     notes = []
+    paid_online = any(_paid_online(o) for o in orders)
     if prints:
         notes.append(
+            "Your printed albums are delivered together, in one package. Paid with Whish Pay: nothing to pay on delivery."
+            if paid_online else
             f"Your printed albums are delivered together, in one package. Payment is cash on delivery: "
             f"the total, {cash:.2f} {currency} (delivery included), is paid to the courier."
         )
     if digitals:
         notes.append(
+            "Paid with Whish Pay: we'll email you the moment your PDF is ready to download, in a few minutes."
+            if paid_online else
             "Online payment isn't set up yet, so there's nothing to pay for your PDF for now: "
             "we'll email you the moment it's ready to download, in a few minutes."
         )
@@ -451,8 +465,10 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
 def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float):
     subject = "Your Everbook digital album is ordered"
     free = total == 0
-    # Online payment isn't set up yet: the PDF is handed over at once either way.
+    # Paid with Whish Pay; before online payment, handed over at once.
     intro = (
+        "Thanks for your order! It's paid with Whish Pay: your album will be ready to download as a PDF in a few minutes."
+        if _paid_online(order) else
         "Thanks for your order! Your digital album is free: it will be ready to download as a PDF in a few minutes."
         if free else
         "Thanks for your order! Online payment isn't set up yet, so there's nothing to pay for now: your album will be ready to download as a PDF in a few minutes."
@@ -862,6 +878,32 @@ def send_delivery_pickup_email(order: dict, group: list = None):
     send_email(DELIVERY_EMAIL, subject, body, html_body=html_body)
 
 
+def send_payment_review_email(payment: dict, customer: dict, problem: str):
+    """To the admin: a Whish Pay payment went through but the cart couldn't
+    be ordered as paid for (it changed meanwhile…): to order by hand, or to
+    refund in the Whish account."""
+    if not ADMIN_EMAIL:
+        logger.warning(f"ADMIN_EMAIL non configuré — paiement {payment.get('id')} à vérifier : {problem}")
+        return
+    amount = (payment.get("amount_cents") or 0) / 100
+    subject = f"Whish payment to check — {amount:.2f} USD"
+    lines = [
+        f"A Whish Pay payment of {amount:.2f} USD was paid, but nothing was ordered: {problem}.",
+        f"Customer: {customer.get('name') or ''} {customer.get('email') or ''}".strip(),
+        f"Whish reference (externalId): {payment.get('external_id')}",
+        f"Paid at: {payment.get('paid_at') or ''}",
+        "Order it by hand with the customer, or refund it from the Whish account.",
+    ]
+    body = "\n".join(lines)
+    html_body = _email_wrapper(
+        title="A payment to check.",
+        body_html="".join(f"<p>{_h(line)}</p>" for line in lines),
+        cta_label="Open the orders",
+        cta_url=f"{FRONTEND_URL}/admin/orders",
+    )
+    send_email(ADMIN_EMAIL, subject, body, html_body=html_body)
+
+
 def send_delivery_problem_email(order: dict, problem: str):
     """To the admin: a Wakilni delivery couldn't be created, or the courier
     reports a problem (failed, declined, postponed, rejected…)."""
@@ -925,7 +967,10 @@ def send_team_new_order_email(orders: list, customer: dict):
     credit = sum(int(o.get("gift_credit_cents") or 0) for o in orders)
     if credit:
         lines.append(f"Gift card credit: −{money(credit)}")
-    cash = sum(cash_due(o) for o in prints)
+    paid_online = [o for o in orders if _paid_online(o)]
+    if paid_online:
+        lines.append(f"Paid with Whish Pay: {money(sum(int(o.get('total_price_cents') or 0) for o in paid_online))}")
+    cash = sum(cash_due(o) for o in prints if not _paid_online(o))
     if prints:
         lines.append(f"To collect in cash by the courier: {money(cash)}")
     subject = f"[New order] {number} — {name or customer.get('email', '')} — {money(cash) if prints else 'PDF'}"

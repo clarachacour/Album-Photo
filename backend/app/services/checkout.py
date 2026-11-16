@@ -30,11 +30,13 @@ async def build_order_doc(
     now: Optional[str] = None,
     promo_code: Optional[str] = None,
     promo_percent: int = 0,
+    paid_online: Optional[dict] = None,
 ) -> dict:
     """A new order, priced on the server. `shipping`: what this order pays
     for delivery (a cart's printed albums pay it once, on the first).
     `promo_percent`: a promo code's percentage off the album (not the
-    delivery)."""
+    delivery). `paid_online`: the online payment (Whish Pay) that paid for
+    it — the order starts "paid", nothing for the courier to collect."""
     digital = kind == "digital"
     unit_price = unit_price_cents(album, kind)
     quantity = 1 if digital else quantity
@@ -60,14 +62,15 @@ async def build_order_doc(
         "terms_accepted_at": now,
         "currency": "usd",
         "shipping_address": shipping_address if not digital else None,
-        # A digital album: online payment isn't set up yet, so it's handed
-        # over at once — the PDF is sent as soon as it's made, with nothing
-        # to do on the admin side. A printed one is paid in cash to the
-        # courier.
-        "status": "paid" if digital else "pending_payment",
+        # Paid online (Whish Pay): "paid" — a digital album is sent as soon
+        # as its PDF is made, a printed one goes to the printer and the
+        # courier collects nothing. Otherwise a printed one is paid in cash
+        # to the courier; a digital one (only before online payment) was
+        # handed over at once.
+        "status": "paid" if (digital or paid_online) else "pending_payment",
         # No credit on a printed copy for a PDF nobody paid for.
-        "handed_over_unpaid": digital,
-        "status_history": [{"status": "paid" if digital else "pending_payment", "at": now}],
+        "handed_over_unpaid": digital and not paid_online,
+        "status_history": [{"status": "paid" if (digital or paid_online) else "pending_payment", "at": now}],
         "pdf_ready": False,
         "pdf_path": None,
         "tracking_number": None,
@@ -76,6 +79,8 @@ async def build_order_doc(
     }
     if checkout_id:
         doc["checkout_id"] = checkout_id
+    if paid_online and paid_online.get("provider"):
+        doc["payment"] = {k: paid_online.get(k) for k in ("provider", "reference", "payment_id", "at")}
     if promo_code:
         doc["promo_code"] = promo_code
         doc["promo_discount_cents"] = discount

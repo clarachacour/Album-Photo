@@ -167,11 +167,14 @@ export default function OrderDetailPage() {
               {order.promo_discount_cents > 0 && <div className="text-[color:var(--coral)]">{t("orderDetail.promo", { code: order.promo_code })}: −{formatPrice(order.promo_discount_cents, order.currency)}</div>}
               {order.gift_credit_cents > 0 && <div className="text-[color:var(--coral)]">{t("cart.credit")}: −{formatPrice(order.gift_credit_cents, order.currency)}</div>}
               {order.credit_cents > 0 && !albumOffered(order) && <div>{t("checkout.digitalCredit")}: −{formatPrice(order.credit_cents, order.currency)}</div>}
-              {/* A printed album is paid in cash to the courier (only the
-                  delivery when the album is offered); a PDF has nothing to
-                  pay while online payment isn't set up. */}
-              <div className="font-medium text-[color:var(--ink)] pt-1">
-                {amountDueCents(order) === 0
+              {/* Paid with Whish Pay; otherwise a printed album is paid in
+                  cash to the courier (only the delivery when the album is
+                  offered), and a PDF had nothing to pay before online
+                  payment. */}
+              <div className="font-medium text-[color:var(--ink)] pt-1" data-testid="order-payment">
+                {order.payment?.provider === "whish"
+                  ? t("orderDetail.paidWithWhish", { amount: formatPrice(order.total_price_cents, order.currency) })
+                  : amountDueCents(order) === 0
                   ? t("checkout.free")
                   : `${t("checkout.cashToCourier")}: ${formatPrice(amountDueCents(order), order.currency)}`}
               </div>

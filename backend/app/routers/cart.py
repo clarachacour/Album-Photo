@@ -4,6 +4,7 @@ ordered all at once, in one checkout (see services/checkout.py)."""
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -25,7 +26,7 @@ from app.services.email import (
     send_team_new_order_email,
 )
 from app.services import payments
-from app.services.payments import NEEDS_ONLINE_PAYMENT, collect_payment
+from app.services.payments import MIN_ONLINE_CENTS, NEEDS_ONLINE_PAYMENT
 from app.services.orders import start_order_pdf_generation
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count
 
@@ -143,7 +144,12 @@ async def _view(user: dict) -> dict:
             "total_cents": subtotal + shipping - discount - credit["applied"],
             # What's paid through the payment step (gift cards), and what the
             # courier collects in cash (the printed albums).
-            "pay_now_cents": gifts, "cash_cents": credit["cash"], "currency": "usd"}
+            "pay_now_cents": gifts, "cash_cents": credit["cash"], "currency": "usd",
+            # Whish Pay: whether it's on, and whether this cart can only be
+            # paid with it (a gift card or a PDF: nothing for a courier to
+            # collect the money on delivery).
+            "online_payment": payments.ONLINE_PAYMENT,
+            "needs_online_payment": any(line["kind"] in ("gift", "digital") for line in valid)}
 
 
 @router.get("/cart")
@@ -240,7 +246,13 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     version (so the PDF, printer, delivery and admin work as for a single
     one), grouped under one checkout. The delivery is paid once, on the
     first printed album; the printed albums go to the printer and the
-    courier together (see services/print_groups.py)."""
+    courier together (see services/print_groups.py).
+
+    Paid on delivery (payment_method "cod", printed albums only): ordered
+    at once. With Whish Pay ("whish", the only way for a gift card or a
+    PDF): nothing is ordered yet — the answer is the Whish payment link,
+    and the orders are placed once Whish confirms the payment (see
+    routers/payments.py)."""
     view = await _view(user)
     if not view["items"]:
         raise HTTPException(status_code=400, detail="Your cart is empty")
@@ -255,18 +267,37 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     # used in another tab): the customer sees why and removes it.
     if view["promo"] and view["promo"]["problem"]:
         raise HTTPException(status_code=409, detail="Your promo code can't be used any more — please remove it")
+    method = data.payment_method or ("whish" if view["needs_online_payment"] else "cod")
+    if method == "cod" and view["needs_online_payment"]:
+        raise HTTPException(status_code=400, detail="A gift card or a PDF is paid online, with Whish Pay")
+    address = data.shipping_address.dict() if data.shipping_address else None
+    if method == "whish":
+        if not payments.ONLINE_PAYMENT:
+            raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
+        if view["total_cents"] > 0:
+            if view["total_cents"] < MIN_ONLINE_CENTS:
+                raise HTTPException(status_code=400, detail="Whish Pay takes at least $1 — please choose payment on delivery")
+            from app.routers.payments import start_whish_payment
+
+            return {"payment": await start_whish_payment(user, view, address, data.accepted_terms_version)}
+        # Nothing left to pay (all on the customer's credit): ordered at once.
+        return await place_checkout(user, view, address, paid={"status": "paid", "provider": None, "reference": None,
+                                                               "amount_cents": 0, "at": datetime.now(timezone.utc).isoformat()})
+    return await place_checkout(user, view, address)
+
+
+async def place_checkout(user: dict, view: dict, address: Optional[dict], paid: Optional[dict] = None, start_pdfs: bool = True) -> dict:
+    """Creates the cart's orders and gift cards, empties the cart, sends the
+    emails and starts the PDFs. `paid`: the online payment that paid for
+    all of it (the orders then start "paid": nothing for the courier to
+    collect); None: paid on delivery. start_pdfs=False: the caller starts
+    the PDFs itself (start_order_pdf_generation), once it has recorded
+    what was ordered."""
     promo = view["promo"]
-    checkout_id = str(uuid.uuid4())
+    checkout_id = (paid or {}).get("checkout_id") or str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     gift_lines = [line for line in view["items"] if line["kind"] == "gift"]
     album_lines = [line for line in view["items"] if line["kind"] != "gift"]
-    # The payment step (gift cards for now; see services/payments.py).
-    payment = None
-    if gift_lines:
-        payment = await collect_payment(user, checkout_id, view["pay_now_cents"], f"{len(gift_lines)} gift card(s)")
-        if payment["status"] != "paid":
-            raise HTTPException(status_code=402, detail="The payment didn't go through — nothing was ordered")
-    address = data.shipping_address.dict() if data.shipping_address else None
     orders, shipping_paid = [], False
     # Printed albums first: the first one carries the delivery.
     for line in sorted(album_lines, key=lambda i: i["kind"] != "print"):
@@ -276,7 +307,8 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         if line["kind"] == "print" and not shipping_paid:
             shipping, shipping_paid = SHIPPING_PRICE_CENTS, True
         doc = await build_order_doc(user, album, line["kind"], line["quantity"], address, shipping, checkout_id, now,
-                                    promo_code=promo["code"] if promo else None, promo_percent=promo["percent"] if promo else 0)
+                                    promo_code=promo["code"] if promo else None, promo_percent=promo["percent"] if promo else 0,
+                                    paid_online=paid)
         try:
             await db.orders.insert_one(doc)
         except DuplicateKeyError:
@@ -290,7 +322,7 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=409, detail="An order already exists for these albums")
     if not promo:
         await _apply_credit(user, orders)
-    cards = [await gift_cards.create_gift_card(user, line, checkout_id, payment) for line in gift_lines]
+    cards = [await gift_cards.create_gift_card(user, line, checkout_id, paid or {}) for line in gift_lines]
     ordered = {(o["album_id"], o["kind"]) for o in orders}
     gift_ids = {line["id"] for line in gift_lines}
     await _save(user, [i for i in await _items(user) if (i.get("album_id"), i["kind"]) not in ordered and i["id"] not in gift_ids])
@@ -307,10 +339,11 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     if cards:
         pdfs = [(f"Everbook gift card {c['code']}.pdf", gift_cards.render_gift_card_pdf(c), "application/pdf") for c in cards]
         await run_email(send_gift_cards_email, user.get("email"), user.get("name"), cards, pdfs)
-    logger.info(f"Panier {checkout_id} : {len(orders)} commande(s), {len(cards)} carte(s) cadeau")
+    logger.info(f"Panier {checkout_id} : {len(orders)} commande(s), {len(cards)} carte(s) cadeau{' — payé avec Whish Pay' if paid and paid.get('provider') else ''}")
     # Each album's PDF (through the Cloud Tasks queue when configured).
-    for order in orders:
-        await start_order_pdf_generation(order)
+    if start_pdfs:
+        for order in orders:
+            await start_order_pdf_generation(order)
     fresh = await db.orders.find({"checkout_id": checkout_id}, {"_id": 0}).to_list(50)
     return {"checkout_id": checkout_id, "orders": fresh, "gift_cards": cards}
 

@@ -13,6 +13,7 @@ from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_or
 from tests.test_api import _signup
 from tests.test_cart import shop  # noqa: F401  (fixture)
 from tests.test_wakilni import ADDRESS, _ready, courier  # noqa: F401  (fixture)
+from tests.conftest import checkout
 
 
 @pytest.fixture()
@@ -28,7 +29,7 @@ def gifts(client, db, shop, monkeypatch):  # noqa: F811
 def _buy(client, headers, size="A4", page_tier=50, **extra):
     body = {"size": size, "page_tier": page_tier, "recipient_name": "Sarah", "message": "Happy birthday!", "from_name": "Karim", **extra}
     cart = client.post("/api/cart/gifts", json=body, headers=headers).json()
-    res = client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=headers)
+    res = checkout(client, json={"accepted_terms_version": TERMS_VERSION}, headers=headers)
     assert res.status_code == 200, res.text
     return cart, res.json()["gift_cards"]
 
@@ -107,7 +108,7 @@ def test_the_offered_album_costs_nothing_more(client, db, gifts, shop, courier):
     client.post("/api/cart/items", json={"album_id": album, "kind": "print"}, headers=shop["headers"])
     cart = client.get("/api/cart", headers=shop["headers"]).json()
     assert cart["credit_applied_cents"] == VALUE_A4_50 and cart["total_cents"] == 0 and cart["cash_cents"] == 0
-    res = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    res = checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     (order,) = res.json()["orders"]
     assert order["gift_credit_cents"] == VALUE_A4_50 and order["total_price_cents"] == 0
     assert _credit_of(client, shop["headers"]) == 0
@@ -130,7 +131,7 @@ def test_a_dearer_album_pays_the_difference_a_cheaper_one_keeps_the_rest(client,
     client.delete(f"/api/cart/items/{line['id']}", headers=shop["headers"])
     small = shop["album"]("Small", pages=24)
     client.post("/api/cart/items", json={"album_id": small, "kind": "print"}, headers=shop["headers"])
-    client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     assert _credit_of(client, shop["headers"]) == VALUE_A4_50 - (compute_order_price_cents("A4", 24) + SHIPPING_PRICE_CENTS)
 
 
@@ -140,13 +141,13 @@ def test_a_delivery_paid_with_credit_then_shared_comes_back_as_credit(client, db
     # A first order, on its own (pays the delivery)…
     first = shop["album"]("First", pages=24)
     client.post("/api/cart/items", json={"album_id": first, "kind": "print"}, headers=shop["headers"])
-    client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
     # …then a second, paid with a gift card, delivery included.
     _, (card,) = _buy(client, gifts["buyer"], page_tier=24)
     _redeem(client, shop["headers"], card["code"])
     second = shop["album"]("Second", pages=24)
     client.post("/api/cart/items", json={"album_id": second, "kind": "print"}, headers=shop["headers"])
-    (order,) = client.post("/api/cart/checkout", json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION},
+    (order,) = checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION},
                            headers=shop["headers"]).json()["orders"]
     assert order["total_price_cents"] == 0 and _credit_of(client, shop["headers"]) == 0
     # Sent together: one delivery, paid by the first — the 5 $ come back.

@@ -103,6 +103,14 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "no-reply@albumai.local")
+# Whish Pay (whish-partners.pages.dev, "Whish Pay"): the keys Whish gives,
+# set on Cloud Run — never in the code. WHISH_ENV: "sandbox" (tests, no real
+# money) or "production". Online payment is on only once all three are set.
+WHISH_CHANNEL = os.environ.get("WHISH_CHANNEL")
+WHISH_SECRET = os.environ.get("WHISH_SECRET")
+WHISH_WEBSITE_URL = os.environ.get("WHISH_WEBSITE_URL")
+WHISH_ENV = os.environ.get("WHISH_ENV", "sandbox")
+
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 # The print shop and delivery company's own inboxes — neither is a user of
