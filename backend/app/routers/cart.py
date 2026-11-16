@@ -55,7 +55,7 @@ async def _save(user: dict, items: list):
 
 async def _problem(album: dict, kind: str):
     """Why this album can't be ordered in this version (None: it can)."""
-    if kind == "digital" and not payments.ONLINE_PAYMENT:
+    if kind == "digital" and not payments.any_online():
         return "payment_soon"
     if not album.get("pages") or album.get("status") == "draft":
         return "no_pages"
@@ -67,7 +67,7 @@ async def _problem(album: dict, kind: str):
 def _gift_line(item: dict) -> dict:
     value = gift_cards.gift_value_cents(item["size"], int(item["page_tier"]))
     return {**item, "quantity": 1, "unit_price_cents": value, "line_total_cents": value,
-            "problem": None if payments.ONLINE_PAYMENT else "payment_soon"}
+            "problem": None if payments.any_online() else "payment_soon"}
 
 
 def _due(line: dict) -> int:
@@ -149,6 +149,7 @@ async def _view(user: dict) -> dict:
             # paid with it (a gift card or a PDF: nothing for a courier to
             # collect the money on delivery).
             "online_payment": payments.ONLINE_PAYMENT,
+            "card_payment": payments.CARD_PAYMENT,
             "needs_online_payment": any(line["kind"] in ("gift", "digital") for line in valid)}
 
 
@@ -191,7 +192,7 @@ async def add_to_cart(data: CartItemInput, user: dict = Depends(get_current_user
 async def add_gift_to_cart(data: GiftCardInput, user: dict = Depends(get_current_user)):
     """A gift card: an album (format, page count) offered to someone, with
     the words written on the card."""
-    if not payments.ONLINE_PAYMENT:
+    if not payments.any_online():
         raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
     if not gift_cards.valid_choice(data.size, data.page_tier):
         raise HTTPException(status_code=400, detail="Please choose a format and a page count")
@@ -267,18 +268,20 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     # used in another tab): the customer sees why and removes it.
     if view["promo"] and view["promo"]["problem"]:
         raise HTTPException(status_code=409, detail="Your promo code can't be used any more — please remove it")
-    method = data.payment_method or ("whish" if view["needs_online_payment"] else "cod")
+    method = data.payment_method or (("whish" if payments.ONLINE_PAYMENT else "card") if view["needs_online_payment"] else "cod")
     if method == "cod" and view["needs_online_payment"]:
-        raise HTTPException(status_code=400, detail="A gift card or a PDF is paid online, with Whish Pay")
+        raise HTTPException(status_code=400, detail="A gift card or a PDF is paid online, with Whish Pay or a card")
     address = data.shipping_address.dict() if data.shipping_address else None
-    if method == "whish":
-        if not payments.ONLINE_PAYMENT:
+    if method in ("whish", "card"):
+        if not (payments.ONLINE_PAYMENT if method == "whish" else payments.CARD_PAYMENT):
             raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
         if view["total_cents"] > 0:
             if view["total_cents"] < MIN_ONLINE_CENTS:
-                raise HTTPException(status_code=400, detail="Whish Pay takes at least $1 — please choose payment on delivery")
-            from app.routers.payments import start_whish_payment
+                raise HTTPException(status_code=400, detail="Online payment takes at least $1 — please choose payment on delivery")
+            from app.routers.payments import start_card_payment, start_whish_payment
 
+            if method == "card":
+                return {"payment": await start_card_payment(user, view, address, data.accepted_terms_version, data.lang)}
             return {"payment": await start_whish_payment(user, view, address, data.accepted_terms_version)}
         # Nothing left to pay (all on the customer's credit): ordered at once.
         return await place_checkout(user, view, address, paid={"status": "paid", "provider": None, "reference": None,

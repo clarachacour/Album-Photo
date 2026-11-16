@@ -180,7 +180,7 @@ def test_cash_on_delivery_only_for_now(client, shop):
     assert gift.status_code == 400
     single = client.post("/api/orders", json={"album_id": album_id, "kind": "digital", "quantity": 1, "accepted_terms_version": TERMS_VERSION},
                          headers=shop["headers"])
-    assert single.status_code == 400
+    assert single.status_code == 400  # and never through the single-album route
     cart = client.post("/api/cart/items", json={"album_id": album_id, "kind": "print", "quantity": 1}, headers=shop["headers"]).json()
     assert cart["cash_cents"] == cart["total_cents"] > 0
     placed = checkout(client, json={"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])

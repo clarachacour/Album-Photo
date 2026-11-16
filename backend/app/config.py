@@ -110,6 +110,16 @@ WHISH_CHANNEL = os.environ.get("WHISH_CHANNEL")
 WHISH_SECRET = os.environ.get("WHISH_SECRET")
 WHISH_WEBSITE_URL = os.environ.get("WHISH_WEBSITE_URL")
 WHISH_ENV = os.environ.get("WHISH_ENV", "sandbox")
+# Card payment: Cybersource Unified Checkout, through areeba. The keys
+# areeba gives for the outlet (merchant ID, API key ID, shared secret), set
+# on Cloud Run — never in the code. CYBS_ENV: "test" or "production".
+CYBS_MERCHANT_ID = os.environ.get("CYBS_MERCHANT_ID")
+CYBS_KEY_ID = os.environ.get("CYBS_KEY_ID")
+CYBS_SHARED_SECRET = os.environ.get("CYBS_SHARED_SECRET")
+CYBS_ENV = os.environ.get("CYBS_ENV", "test")
+# Other sites the card form may be shown on, besides FRONTEND_URL
+# (comma-separated full origins, e.g. the dev site).
+CYBS_TARGET_ORIGINS = os.environ.get("CYBS_TARGET_ORIGINS", "")
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")

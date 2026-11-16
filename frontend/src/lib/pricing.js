@@ -125,10 +125,11 @@ export const TERMS_VERSION = "2026-10-29";
 
 // What the customer still pays for an order (to the courier), in cents:
 // its total — but only the delivery when the album is offered (same as
-// cash_due in backend/app/services/wakilni.py); nothing once paid with Whish
-// Pay, nor for a PDF (paid online, or handed over before online payment).
+// cash_due in backend/app/services/wakilni.py); nothing once paid online
+// (Whish Pay or card), nor for a PDF (paid online, or handed over before
+// online payment).
 export function amountDueCents(order) {
-  if (order?.kind === "digital" || order?.payment?.provider === "whish") return 0;
+  if (order?.kind === "digital" || order?.payment?.provider) return 0;
   if (!albumOffered(order)) return order?.total_price_cents || 0;
   return order?.shipping_price_cents ?? SHIPPING_PRICE * 100;
 }

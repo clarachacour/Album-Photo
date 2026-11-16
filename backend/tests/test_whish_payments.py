@@ -225,7 +225,7 @@ def test_the_emails_say_it_is_paid_not_to_pay_the_courier(app, monkeypatch):
     assert all("Whish Pay" in body and "cash to the courier" not in body and "cash on delivery" not in body for body in sent)
     monkeypatch.setattr(email, "ADMIN_EMAIL", "team@example.com")
     email.send_team_new_order_email([paid], {"name": "C", "email": "c@example.com"})
-    assert "To collect in cash by the courier: 0.00 USD" in sent[-1] and "Paid with Whish Pay" in sent[-1]
+    assert "To collect in cash by the courier: 0.00 USD" in sent[-1] and "Paid online (Whish Pay)" in sent[-1]
 
 
 def test_a_failed_attempt_is_closed_at_once_but_a_late_success_still_orders(client, db, shop, online_payment):  # noqa: F811

@@ -312,7 +312,8 @@
     "downloadError": "Impossible de télécharger l'album, réessayez.",
     "followCourier": "Suivre le livreur →",
     "promo": "Code promo {{code}}",
-    "paidWithWhish": "Payé avec Whish Pay : {{amount}}"
+    "paidWithWhish": "Payé avec Whish Pay : {{amount}}",
+    "paidByCard": "Payé par carte : {{amount}}"
   },
   "account": {
     "eyebrow": "Compte",
@@ -1331,7 +1332,14 @@
       "payWithWhish": "Payer avec Whish",
       "whishDown": "Whish Pay est injoignable pour le moment. Réessayez dans un instant, ou choisissez le paiement à la livraison.",
       "toWhishTitle": "Direction Whish Pay…",
-      "toWhish": "Ouverture de la page de paiement Whish. Gardez l'application Whish à portée de main."
+      "toWhish": "Ouverture de la page de paiement Whish. Gardez l'application Whish à portée de main.",
+      "cardHint": "Visa, Mastercard… sur le formulaire sécurisé de notre banque (areeba). Rien à payer à la livraison.",
+      "cardNote": "Le formulaire sécurisé de paiement par carte s'ouvre ici. Votre commande est passée dès que la banque confirme le paiement.",
+      "payByCard": "Payer par carte",
+      "cardDown": "Le paiement par carte est injoignable pour le moment. Réessayez dans un instant, ou choisissez un autre mode de paiement.",
+      "cardNotDone": "Le paiement par carte n'a pas abouti. Rien n'a été débité : vous pouvez réessayer ou choisir un autre mode de paiement.",
+      "cardTitle": "Paiement par carte…",
+      "cardWindow": "Saisissez votre carte dans la fenêtre sécurisée. Gardez cette page ouverte."
     },
     "credit": "Avoir carte cadeau",
     "creditLeft": "{{amount}} d'avoir de carte cadeau restent sur votre compte pour une prochaine commande.",

@@ -156,7 +156,9 @@ class CheckoutInput(BaseModel):
     accepted_terms_version: str = Field(default="", max_length=20)
     # "cod": cash on delivery (printed albums only); "whish": Whish Pay.
     # None: Whish when the cart holds a gift card or a PDF, otherwise cod.
-    payment_method: Optional[Literal["cod", "whish"]] = None
+    payment_method: Optional[Literal["cod", "whish", "card"]] = None
+    # The card form's language.
+    lang: Literal["en", "fr"] = "en"
 
 class AuthResponse(BaseModel):
     token: str

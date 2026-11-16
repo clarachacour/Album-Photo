@@ -1,4 +1,5 @@
-"""Paying a cart with Whish Pay (services/whish.py).
+"""Paying a cart online: Whish Pay (services/whish.py) or a card
+(Cybersource through areeba, services/cybersource.py).
 
 1. Checkout (routers/cart.py) calls start_whish_payment: a payment is
    recorded (db.payments) with what the cart holds and its total, Whish
@@ -16,7 +17,13 @@
 If the cart changed between paying and ordering (another tab), nothing is
 ordered on a guess: the payment is marked "needs_review" and the team is
 emailed to sort it out with the customer (order by hand or refund in the
-Whish account)."""
+Whish account).
+
+A card: checkout gets a Cybersource session for the card form, shown on
+the cart page; its result (through the customer's browser) only says which
+transaction to look up — confirm() reads it from Cybersource (authorized,
+amount, currency, our reference), captures it if it's only authorized,
+then orders the same way."""
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -24,12 +31,14 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel, Field
 
+from app import config
 from app.config import BACKEND_URL, FRONTEND_URL
 from app.core.auth import get_current_user
 from app.core.executors import run_blocking, run_email
 from app.db import db
-from app.services import whish
+from app.services import cybersource, whish
 from app.services.email import send_payment_review_email
 from app.services.orders import start_order_pdf_generation
 
@@ -54,17 +63,15 @@ def _cart_signature(view: dict) -> list:
 
 
 def _public(payment: dict) -> dict:
-    return {k: payment.get(k) for k in ("id", "status", "amount_cents", "checkout_id", "redirect_url", "created_at")}
+    return {k: payment.get(k) for k in ("id", "provider", "status", "amount_cents", "checkout_id", "redirect_url", "created_at")}
 
 
-async def start_whish_payment(user: dict, view: dict, address: Optional[dict], terms_version: str) -> dict:
-    """Records the payment and gets its Whish link: {"id", "redirect_url", …}."""
-    payment_id = str(uuid.uuid4())
-    external_id = str(uuid.uuid4())
-    payment = {
-        "id": payment_id,
-        "provider": "whish",
-        "external_id": external_id,
+def _record(user: dict, view: dict, address: Optional[dict], terms_version: str, provider: str) -> dict:
+    """A payment as recorded before paying: what the cart holds, its total."""
+    return {
+        "id": str(uuid.uuid4()),
+        "provider": provider,
+        "external_id": str(uuid.uuid4()),
         "user_id": user["id"],
         "amount_cents": view["total_cents"],
         "currency": "usd",
@@ -76,6 +83,12 @@ async def start_whish_payment(user: dict, view: dict, address: Optional[dict], t
         "checkout_id": str(uuid.uuid4()),
         "created_at": _now().isoformat(),
     }
+
+
+async def start_whish_payment(user: dict, view: dict, address: Optional[dict], terms_version: str) -> dict:
+    """Records the payment and gets its Whish link: {"id", "redirect_url", …}."""
+    payment = _record(user, view, address, terms_version, "whish")
+    payment_id, external_id = payment["id"], payment["external_id"]
     await db.payments.insert_one(dict(payment))
     names = [line.get("album", {}).get("title") or ("Gift card" if line["kind"] == "gift" else "Album") for line in view["items"]]
     invoice = "Everbook — " + ", ".join(names)
@@ -96,7 +109,74 @@ async def start_whish_payment(user: dict, view: dict, address: Optional[dict], t
     return _public({**payment, "redirect_url": url})
 
 
-async def confirm(payment: dict, attempt_failed: bool = False) -> dict:
+def card_target_origins() -> list:
+    """The sites the card form may be shown on: the site, and any other
+    listed (CYBS_TARGET_ORIGINS, e.g. the dev site)."""
+    origins = [FRONTEND_URL.rstrip("/")] + [o.strip().rstrip("/") for o in config.CYBS_TARGET_ORIGINS.split(",") if o.strip()]
+    return list(dict.fromkeys(origins))
+
+
+async def start_card_payment(user: dict, view: dict, address: Optional[dict], terms_version: str, lang: str = "en") -> dict:
+    """Records the payment and opens a Cybersource checkout session: {"id",
+    "session", …} — the page shows the card form with the session."""
+    payment = _record(user, view, address, terms_version, "card")
+    await db.payments.insert_one(dict(payment))
+    try:
+        session = await run_blocking(lambda: cybersource.create_session(
+            view["total_cents"], card_target_origins(), payment["id"], "fr_FR" if lang == "fr" else "en_US"))
+    except cybersource.CybersourceError as e:
+        logger.error(f"Paiement {payment['id']} : session carte non créée ({e})")
+        await db.payments.update_one({"id": payment["id"]}, {"$set": {"status": "not_started", "error": e.code}})
+        raise HTTPException(status_code=502, detail="Card payment can't be reached right now — please try again in a moment")
+    logger.info(f"Paiement {payment['id']} : session carte créée, {view['total_cents'] / 100:.2f} USD")
+    return {**_public(payment), "session": session}
+
+
+async def _card_status(payment: dict) -> str:
+    """"success", "pending", "failed" — or "mismatch" (paid, but not what
+    this payment is: amount, currency, reference) — from Cybersource."""
+    transaction_id = payment.get("transaction_id")
+    if not transaction_id and payment.get("status") == "pending":
+        # The browser never sent the result back (page closed): looked for
+        # at Cybersource with our reference, a few minutes on.
+        try:
+            age = _now() - datetime.fromisoformat(payment["created_at"])
+        except (KeyError, TypeError, ValueError):
+            age = timedelta(0)
+        if age > timedelta(minutes=5):
+            transaction_id = await run_blocking(cybersource.find_by_reference, payment["id"])
+            if transaction_id:
+                await db.payments.update_one({"id": payment["id"], "transaction_id": {"$exists": False}},
+                                             {"$set": {"transaction_id": transaction_id}})
+                logger.info(f"Paiement {payment['id']} : transaction carte {transaction_id} retrouvée par la référence")
+    if not transaction_id:
+        return "pending"
+    tx = await run_blocking(cybersource.transaction, transaction_id)
+    if tx is None:
+        return "pending"  # not listed yet: it takes a few seconds
+    info = cybersource.read_transaction(tx)
+    logger.info(f"Paiement {payment['id']} : transaction carte {transaction_id} — {info}")
+    if info["declined"]:
+        return "failed"
+    if not info["authorized"]:
+        return "pending"
+    if (info["amount_cents"] != payment["amount_cents"] or info["currency"] != "USD"
+            or (info["reference"] and info["reference"] != payment["id"])):
+        return "mismatch"
+    if not info["captured"]:
+        # An authorization only holds the money: it's collected now.
+        await run_blocking(cybersource.capture, transaction_id, payment["amount_cents"], payment["id"])
+        logger.info(f"Paiement {payment['id']} : transaction {transaction_id} autorisée seulement — encaissement demandé")
+    return "success"
+
+
+async def _provider_status(payment: dict) -> str:
+    if payment.get("provider") == "card":
+        return await _card_status(payment)
+    return await run_blocking(whish.payment_status, payment["external_id"])
+
+
+async def confirm(payment: dict, attempt_failed: bool = False, background: Optional[BackgroundTasks] = None) -> dict:
     """Asks Whish where the payment stands and acts on it (see the module's
     docstring). Returns the payment as it is now.
 
@@ -105,22 +185,32 @@ async def confirm(payment: dict, attempt_failed: bool = False) -> dict:
     "pending" until its link expires, but a link takes one attempt only:
     it's then marked failed here — unless Whish says it's paid. A "failed"
     payment is still looked at again (by the scheduled check): paid after
-    all, it's ordered."""
+    all, it's ordered.
+
+    background: the request's background tasks, when a customer waits on
+    the answer — the albums' PDFs are then started after it's sent."""
     if payment.get("status") not in ("pending", "failed"):
         return payment
     try:
-        status = await run_blocking(whish.payment_status, payment["external_id"])
-    except whish.WhishError as e:
-        logger.warning(f"Paiement {payment['id']} : statut Whish non lu ({e.code})")
+        status = await _provider_status(payment)
+    except (whish.WhishError, cybersource.CybersourceError) as e:
+        logger.warning(f"Paiement {payment['id']} : statut non lu ({e.code})")
         return payment
     now = _now().isoformat()
-    if status == "success":
+    if status == "mismatch":
+        claimed = await db.payments.update_one({"id": payment["id"], "status": {"$in": ["pending", "failed"]}},
+                                               {"$set": {"status": "needs_review", "problem": "the card transaction doesn't match this payment"}})
+        if claimed.modified_count:
+            user = await db.users.find_one({"id": payment["user_id"]}, {"_id": 0}) or {}
+            await run_email(send_payment_review_email, {**payment, "paid_at": now}, user,
+                            f"the card transaction {payment.get('transaction_id')} doesn't match this payment")
+    elif status == "success":
         # Claimed first: only one caller (callback, return page, scheduled
         # check) goes on to order.
         claimed = await db.payments.update_one({"id": payment["id"], "status": {"$in": ["pending", "failed"]}},
                                                {"$set": {"status": "placing", "paid_at": now}})
         if claimed.modified_count:
-            await _place(payment, now)
+            await _place(payment, now, background)
     elif status in ("failed", "refunded") or attempt_failed:
         await db.payments.update_one({"id": payment["id"], "status": "pending"}, {"$set": {"status": "failed", "checked_at": now}})
     else:
@@ -128,7 +218,7 @@ async def confirm(payment: dict, attempt_failed: bool = False) -> dict:
     return await db.payments.find_one({"id": payment["id"]}, {"_id": 0})
 
 
-async def _place(payment: dict, paid_at: str):
+async def _place(payment: dict, paid_at: str, background: Optional[BackgroundTasks] = None):
     """The cart, as paid for, becomes orders — or, if it changed, a review."""
     from app.routers.cart import _view, place_checkout
 
@@ -146,7 +236,8 @@ async def _place(payment: dict, paid_at: str):
     if problem is None:
         try:
             result = await place_checkout(user, view, payment.get("shipping_address"), paid={
-                "status": "paid", "provider": "whish", "reference": payment["external_id"], "payment_id": payment["id"],
+                "status": "paid", "provider": payment.get("provider") or "whish",
+                "reference": payment.get("transaction_id") or payment["external_id"], "payment_id": payment["id"],
                 "amount_cents": payment["amount_cents"], "at": paid_at, "checkout_id": payment["checkout_id"],
             }, start_pdfs=False)
             await db.payments.update_one({"id": payment["id"]}, {"$set": {
@@ -159,7 +250,10 @@ async def _place(payment: dict, paid_at: str):
             # Recorded as ordered first (the customer's page shows it), then
             # each album's PDF (through the Cloud Tasks queue when configured).
             for order in result["orders"]:
-                await start_order_pdf_generation(order)
+                if background is not None:
+                    background.add_task(start_order_pdf_generation, order)
+                else:
+                    await start_order_pdf_generation(order)
             return
     logger.error(f"Paiement {payment['id']} payé mais non commandé : {problem}")
     await db.payments.update_one({"id": payment["id"]}, {"$set": {"status": "needs_review", "problem": problem}})
@@ -178,8 +272,40 @@ async def whish_callback(background: BackgroundTasks, payment: str = Query(...),
     return "OK"
 
 
+class CardResult(BaseModel):
+    # The card form's result (a JWT), or the customer closing it.
+    result: Optional[str] = Field(default=None, max_length=20000)
+    cancelled: bool = False
+
+
+@router.post("/payments/{payment_id}/card")
+async def card_result(payment_id: str, data: CardResult, background: BackgroundTasks, user: dict = Depends(get_current_user)):
+    """The card form is done: its result names the transaction, which is
+    then checked with Cybersource (confirm) — the result itself is never
+    taken as proof of payment."""
+    payment = await db.payments.find_one({"id": payment_id, "user_id": user["id"], "provider": "card"}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if data.cancelled or not data.result:
+        await db.payments.update_one({"id": payment_id, "status": "pending", "transaction_id": {"$exists": False}},
+                                     {"$set": {"status": "cancelled"}})
+        return _public(await db.payments.find_one({"id": payment_id}, {"_id": 0}))
+    transaction_id = cybersource.result_transaction_id(data.result)
+    if not transaction_id:
+        raise HTTPException(status_code=400, detail="Unreadable card payment result")
+    # One transaction pays for one payment only.
+    if await db.payments.find_one({"transaction_id": transaction_id, "id": {"$ne": payment_id}}, {"_id": 1}):
+        raise HTTPException(status_code=409, detail="This card payment was already used")
+    await db.payments.update_one({"id": payment_id, "transaction_id": {"$exists": False}}, {"$set": {"transaction_id": transaction_id}})
+    payment = await db.payments.find_one({"id": payment_id}, {"_id": 0})
+    if payment.get("transaction_id") != transaction_id:
+        raise HTTPException(status_code=409, detail="This payment already has a card transaction")
+    payment = await confirm(payment, background=background)
+    return _public(payment)
+
+
 @router.get("/payments/{payment_id}")
-async def get_payment(payment_id: str, outcome: str = Query(""), user: dict = Depends(get_current_user)):
+async def get_payment(payment_id: str, background: BackgroundTasks, outcome: str = Query(""), user: dict = Depends(get_current_user)):
     """Where the customer's payment stands (the site's return page asks
     until it's settled): pending, placed, failed, needs_review. outcome:
     where Whish sent the customer back ("failure": the attempt failed)."""
@@ -192,7 +318,7 @@ async def get_payment(payment_id: str, outcome: str = Query(""), user: dict = De
     except (TypeError, ValueError):
         recent = False
     if payment["status"] == "pending" and (not recent or outcome == "failure"):
-        payment = await confirm(payment, outcome == "failure")
+        payment = await confirm(payment, outcome == "failure", background)
     out = _public(payment)
     if payment["status"] == "placed":
         # What was ordered, to show on the return page.

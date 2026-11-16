@@ -172,8 +172,8 @@ export default function OrderDetailPage() {
                   offered), and a PDF had nothing to pay before online
                   payment. */}
               <div className="font-medium text-[color:var(--ink)] pt-1" data-testid="order-payment">
-                {order.payment?.provider === "whish"
-                  ? t("orderDetail.paidWithWhish", { amount: formatPrice(order.total_price_cents, order.currency) })
+                {order.payment?.provider
+                  ? t(order.payment.provider === "card" ? "orderDetail.paidByCard" : "orderDetail.paidWithWhish", { amount: formatPrice(order.total_price_cents, order.currency) })
                   : amountDueCents(order) === 0
                   ? t("checkout.free")
                   : `${t("checkout.cashToCourier")}: ${formatPrice(amountDueCents(order), order.currency)}`}

@@ -59,8 +59,10 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     existing_order = await db.orders.find_one({"album_id": data.album_id, "kind": same_kind})
     if existing_order:
         raise HTTPException(status_code=409, detail="An order already exists for this album")
-    if data.kind == "digital" and not payments.ONLINE_PAYMENT:
-        raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
+    # A PDF is paid online, so it's ordered through the cart (POST
+    # /cart/checkout), never here: this route takes no payment.
+    if data.kind == "digital":
+        raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT if not payments.any_online() else "A PDF is ordered from the cart")
     if data.kind == "print" and not data.shipping_address:
         raise HTTPException(status_code=400, detail="A delivery address is needed for a printed album")
     # The terms must have been accepted, in the version the site shows now

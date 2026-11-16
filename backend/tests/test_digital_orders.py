@@ -1,6 +1,6 @@
-"""The digital album: the PDF to download, priced at the printed album's
-price is fixed (DIGITAL_PRICE_CENTS), made at once but handed over only once
-the payment is confirmed in the admin."""
+"""The digital album: the PDF to download, at a fixed price
+(DIGITAL_PRICE_CENTS), ordered from the cart and paid online, made at once
+and handed over once paid."""
 import asyncio
 
 import pytest
@@ -34,6 +34,9 @@ def shop(client, db, monkeypatch):
     monkeypatch.setattr(print_groups, "send_printer_order_email", lambda order, group=None: sent["printer"].append(order["id"]))
     monkeypatch.setattr(orders, "send_digital_album_ready_email", lambda to, name, order: sent["ready"].append(order["id"]))
     monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda to, name, order: sent["confirmation"].append(order.get("kind")))
+    from app.routers import cart as cart_router
+
+    monkeypatch.setattr(cart_router, "send_order_confirmation_email", lambda to, name, order: sent["confirmation"].append(order.get("kind")))
     monkeypatch.setattr(orders_router, "get_r2_client", lambda: type("R2", (), {"generate_presigned_url": lambda self, *a, **k: "https://r2/album.pdf"})())
 
     admin_email, admin = _signup(client, db=db)
@@ -46,13 +49,33 @@ def shop(client, db, monkeypatch):
 
 
 def _order(client, shop, kind, **extra):
-    body = {"album_id": shop["album_id"], "kind": kind, "accepted_terms_version": TERMS_VERSION, **extra}
-    return client.post("/api/orders", json=body, headers=shop["customer"])
+    """The album ordered from the cart, as the site does it — the PDF paid
+    with Whish Pay (the fake one: paid), a printed book on delivery."""
+    from tests.conftest import _Placed, checkout
+
+    added = client.post("/api/cart/items", json={"album_id": shop["album_id"], "kind": kind, "quantity": 1}, headers=shop["customer"])
+    if added.status_code != 200:
+        return added
+    body = {"accepted_terms_version": TERMS_VERSION, **extra}
+    if kind == "print":
+        body["payment_method"] = "cod"
+    res = checkout(client, json=body, headers=shop["customer"])
+    if res.status_code != 200:
+        for item in client.get("/api/cart", headers=shop["customer"]).json()["items"]:
+            client.delete(f"/api/cart/items/{item['id']}", headers=shop["customer"])
+        return res
+    return _Placed(200, res.json()["orders"][0])
+
+
+def test_a_pdf_is_never_ordered_outside_the_cart(client, shop):
+    """The old single-album route takes no payment: no PDF through it."""
+    body = {"album_id": shop["album_id"], "kind": "digital", "accepted_terms_version": TERMS_VERSION}
+    assert client.post("/api/orders", json=body, headers=shop["customer"]).status_code == 400
 
 
 def test_a_digital_album_is_handed_over_at_once(client, db, shop):
-    """Online payment isn't set up yet: the PDF is made and handed over
-    without anything to do on the admin side."""
+    """Paid online: the PDF is made and handed over without anything to do
+    on the admin side."""
     res = _order(client, shop, "digital")
     assert res.status_code == 200, res.text
     order = res.json()

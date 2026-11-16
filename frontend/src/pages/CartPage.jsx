@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart";
 import { TERMS_VERSION } from "@/lib/pricing";
 import { isLebanesePhone } from "@/lib/phone";
 import { getCover, getTemplate } from "@/lib/coverTemplates";
+import { payByCard } from "@/lib/cardCheckout";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
@@ -23,7 +24,7 @@ const money = (cents) => `$${(cents / 100).toFixed(2)}`;
  */
 export default function CartPage() {
   usePageMeta("cart");
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const lp = useLocalePath();
   const nav = useNavigate();
   const { user } = useAuth();
@@ -62,7 +63,9 @@ export default function CartPage() {
   // collect the money on); Whish Pay is on once the server has its keys.
   const onlineOnly = Boolean(cart?.needs_online_payment);
   const whishOn = Boolean(cart?.online_payment);
-  const payment = onlineOnly ? "whish" : method;
+  const cardOn = Boolean(cart?.card_payment);
+  // A gift card or a PDF: an online way only (Whish first when both are on).
+  const payment = onlineOnly && method === "cod" ? (whishOn ? "whish" : "card") : method;
 
   const placeOrder = async (e) => {
     e.preventDefault();
@@ -98,11 +101,29 @@ export default function CartPage() {
         ...(hasPrint ? { shipping_address: address } : {}),
         accepted_terms_version: TERMS_VERSION,
         payment_method: payment,
+        lang: i18n.resolvedLanguage === "fr" ? "fr" : "en",
       });
       // Whish Pay: nothing is ordered yet — the customer pays on Whish's
       // page and comes back to /payment/return (PaymentReturnPage).
       if (data?.payment?.redirect_url) {
         window.location.assign(data.payment.redirect_url);
+        return;
+      }
+      // A card: Cybersource's form, here; its result goes to our server,
+      // which checks the payment with Cybersource before ordering.
+      if (data?.payment?.session) {
+        const paymentId = data.payment.id;
+        let result;
+        try {
+          result = await payByCard(data.payment.session);
+        } catch {
+          api.post(`/payments/${paymentId}/card`, { cancelled: true }).catch(() => {});
+          setPlacing(false);
+          toast.error(t("cart.payment.cardNotDone"), { duration: 8000 });
+          return;
+        }
+        await api.post(`/payments/${paymentId}/card`, { result: typeof result === "string" ? result : JSON.stringify(result) }).catch(() => {});
+        nav(`/payment/return?payment=${paymentId}`);
         return;
       }
       setCart({ ...cart, items: [], count: 0 });
@@ -116,7 +137,7 @@ export default function CartPage() {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail || "";
       if (status === 502) {
-        toast.error(t("cart.payment.whishDown"), { duration: 10000 });
+        toast.error(t(payment === "card" ? "cart.payment.cardDown" : "cart.payment.whishDown"), { duration: 10000 });
         return;
       }
       if (status === 409) {
@@ -147,8 +168,8 @@ export default function CartPage() {
       <main className="min-h-screen bg-[color:var(--paper)] pt-28 pb-24 px-6 md:px-12 flex items-center justify-center">
         <div className="max-w-[500px] mx-auto text-center animate-fade-up">
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-6 text-[color:var(--muted)]" />
-          <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t(payment === "whish" ? "cart.payment.toWhishTitle" : "checkout.placedTitle")}</h1>
-          <p className="text-ink/70">{t(payment === "whish" ? "cart.payment.toWhish" : "cart.placing")}</p>
+          <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t(payment === "whish" ? "cart.payment.toWhishTitle" : payment === "card" ? "cart.payment.cardTitle" : "checkout.placedTitle")}</h1>
+          <p className="text-ink/70">{t(payment === "whish" ? "cart.payment.toWhish" : payment === "card" ? "cart.payment.cardWindow" : "cart.placing")}</p>
         </div>
       </main>
     );
@@ -281,7 +302,16 @@ export default function CartPage() {
                       soon={!whishOn && t("cart.payment.soon")}
                       tid="cart-payment-whish"
                     />
-                    <PaymentOption disabled Icon={CreditCard} label={t("cart.payment.card")} soon={t("cart.payment.soon")} tid="cart-payment-card" />
+                    <PaymentOption
+                      selected={payment === "card"}
+                      onSelect={() => setMethod("card")}
+                      disabled={!cardOn}
+                      Icon={CreditCard}
+                      label={t("cart.payment.card")}
+                      hint={cardOn ? t("cart.payment.cardHint") : null}
+                      soon={!cardOn && t("cart.payment.soon")}
+                      tid="cart-payment-card"
+                    />
                   </div>
                 </div>
               )}
@@ -357,15 +387,16 @@ export default function CartPage() {
               <button
                 type="submit"
                 form="cart-form"
-                disabled={hasProblem || placing || (onlineOnly && !whishOn)}
+                disabled={hasProblem || placing || (onlineOnly && !whishOn && !cardOn)}
                 className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-50"
                 data-testid="place-order-btn"
               >
-                {placing ? <Loader2 size={16} className="animate-spin" /> : payment === "whish" && cart.total_cents > 0 ? t("cart.payment.payWithWhish") : t("checkout.placeOrder")}
+                {placing ? <Loader2 size={16} className="animate-spin" /> : payment === "whish" && cart.total_cents > 0 ? t("cart.payment.payWithWhish") : payment === "card" && cart.total_cents > 0 ? t("cart.payment.payByCard") : t("checkout.placeOrder")}
               </button>
               <div className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed space-y-2">
                 {hasPrint && payment === "cod" && cart.cash_cents > 0 && <p>{t("checkout.noPayment")}</p>}
                 {payment === "whish" && whishOn && cart.total_cents > 0 && <p data-testid="cart-whish-note">{t("cart.payment.whishNote")}</p>}
+                {payment === "card" && cardOn && cart.total_cents > 0 && <p data-testid="cart-card-note">{t("cart.payment.cardNote")}</p>}
               </div>
             </aside>
           </div>
