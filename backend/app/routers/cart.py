@@ -13,7 +13,7 @@ from app.core.auth import get_current_user
 from app.core.executors import run_email
 from app.db import db
 from app.routers.albums import _slim_stored_cover
-from app.schemas import CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput, PromoApplyInput
+from app.schemas import CardSessionInput, CartItemInput, CartQuantityInput, CheckoutInput, GiftCardInput, PromoApplyInput
 from app.services.activity import mark_step
 from app.services.checkout import build_order_doc, unit_price_cents
 from app.config import FRONTEND_URL
@@ -25,7 +25,7 @@ from app.services.email import (
     send_team_new_order_email,
 )
 from app.services import payments
-from app.services.payments import NEEDS_ONLINE_PAYMENT, collect_payment
+from app.services.payments import NEEDS_CARD, NEEDS_ONLINE_PAYMENT, PaymentError
 from app.services.orders import start_order_pdf_generation
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, billed_page_count
 
@@ -136,14 +136,16 @@ async def _view(user: dict) -> dict:
     # A promo code and gift card credit don't add up: with a code, the
     # credit isn't used (it stays on the account for a next order).
     credit = plan_credit(valid, shipping, 0 if percent else balance)
-    gifts = sum(line["line_total_cents"] for line in valid if line["kind"] == "gift")
+    total = subtotal + shipping - discount - credit["applied"]
     return {"items": lines, "count": len(lines), "subtotal_cents": subtotal, "shipping_cents": shipping,
             "promo": promo, "discount_cents": discount,
             "credit_balance_cents": balance, "credit_applied_cents": credit["applied"],
-            "total_cents": subtotal + shipping - discount - credit["applied"],
-            # What's paid through the payment step (gift cards), and what the
-            # courier collects in cash (the printed albums).
-            "pay_now_cents": gifts, "cash_cents": credit["cash"], "currency": "usd"}
+            "total_cents": total,
+            # Paying in cash: what the courier collects (the printed albums
+            # and their delivery), and what has to be paid online anyway
+            # (the PDFs and gift cards). By card, the whole total is paid.
+            "pay_now_cents": total - credit["cash"], "cash_cents": credit["cash"], "currency": "usd",
+            "card_payment": payments.ONLINE_PAYMENT}
 
 
 @router.get("/cart")
@@ -234,14 +236,8 @@ async def remove_promo_code(user: dict = Depends(get_current_user)):
     return await _view(user)
 
 
-@router.post("/cart/checkout")
-async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
-    """Orders everything in the cart at once: one order per album and
-    version (so the PDF, printer, delivery and admin work as for a single
-    one), grouped under one checkout. The delivery is paid once, on the
-    first printed album; the printed albums go to the printer and the
-    courier together (see services/print_groups.py)."""
-    view = await _view(user)
+def _check_can_order(view: dict, data) -> None:
+    """Why the cart can't be ordered as asked (an HTTPException), if so."""
     if not view["items"]:
         raise HTTPException(status_code=400, detail="Your cart is empty")
     if any(line["problem"] for line in view["items"]):
@@ -255,17 +251,54 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     # used in another tab): the customer sees why and removes it.
     if view["promo"] and view["promo"]["problem"]:
         raise HTTPException(status_code=409, detail="Your promo code can't be used any more — please remove it")
+
+
+@router.post("/cart/card-session")
+async def open_card_payment(data: CardSessionInput, user: dict = Depends(get_current_user)):
+    """Opens a card payment for the cart's total: the capture context the
+    browser shows Cybersource's card form with (see services/payments.py).
+    The order itself is placed with POST /cart/checkout."""
+    if not payments.ONLINE_PAYMENT:
+        raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
+    view = await _view(user)
+    _check_can_order(view, data)
+    try:
+        return await payments.start_card_payment(user, view, data.lang)
+    except PaymentError as exc:
+        raise HTTPException(status_code=exc.code, detail=exc.message)
+
+
+@router.post("/cart/checkout")
+async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
+    """Orders everything in the cart at once: one order per album and
+    version (so the PDF, printer, delivery and admin work as for a single
+    one), grouped under one checkout. The delivery is paid once, on the
+    first printed album; the printed albums go to the printer and the
+    courier together (see services/print_groups.py).
+
+    Paid in cash to the courier (printed albums only), or by card — the
+    whole total, charged here before anything is ordered."""
+    view = await _view(user)
+    _check_can_order(view, data)
     promo = view["promo"]
     checkout_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     gift_lines = [line for line in view["items"] if line["kind"] == "gift"]
     album_lines = [line for line in view["items"] if line["kind"] != "gift"]
-    # The payment step (gift cards for now; see services/payments.py).
     payment = None
-    if gift_lines:
-        payment = await collect_payment(user, checkout_id, view["pay_now_cents"], f"{len(gift_lines)} gift card(s)")
-        if payment["status"] != "paid":
-            raise HTTPException(status_code=402, detail="The payment didn't go through — nothing was ordered")
+    if data.payment_method == "card" and view["total_cents"] > 0:
+        if not payments.ONLINE_PAYMENT:
+            raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
+        if not data.payment_id or not data.transient_token:
+            raise HTTPException(status_code=400, detail="Please enter your card")
+        try:
+            payment = await payments.charge_card(user, data.payment_id, data.transient_token, view,
+                                                 data.shipping_address.dict() if data.shipping_address else None)
+        except PaymentError as exc:
+            raise HTTPException(status_code=exc.code, detail=exc.message)
+    elif view["pay_now_cents"] > 0:
+        # The PDFs and gift cards can't be paid in cash (nothing delivered).
+        raise HTTPException(status_code=400, detail=NEEDS_CARD if payments.ONLINE_PAYMENT else NEEDS_ONLINE_PAYMENT)
     address = data.shipping_address.dict() if data.shipping_address else None
     orders, shipping_paid = [], False
     # Printed albums first: the first one carries the delivery.
@@ -276,7 +309,8 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
         if line["kind"] == "print" and not shipping_paid:
             shipping, shipping_paid = SHIPPING_PRICE_CENTS, True
         doc = await build_order_doc(user, album, line["kind"], line["quantity"], address, shipping, checkout_id, now,
-                                    promo_code=promo["code"] if promo else None, promo_percent=promo["percent"] if promo else 0)
+                                    promo_code=promo["code"] if promo else None, promo_percent=promo["percent"] if promo else 0,
+                                    payment=payment)
         try:
             await db.orders.insert_one(doc)
         except DuplicateKeyError:
@@ -286,11 +320,14 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
             continue
         doc.pop("_id", None)
         orders.append(doc)
+    if payment and len(orders) < len(album_lines):
+        # Ordered meanwhile in another tab, after the card was charged for it.
+        await payments.refund_needed(payment, f"{len(album_lines) - len(orders)} album(s) of checkout {checkout_id} were already ordered")
     if album_lines and not orders and not gift_lines:
         raise HTTPException(status_code=409, detail="An order already exists for these albums")
     if not promo:
         await _apply_credit(user, orders)
-    cards = [await gift_cards.create_gift_card(user, line, checkout_id, payment) for line in gift_lines]
+    cards = [await gift_cards.create_gift_card(user, line, checkout_id, payment or {}) for line in gift_lines]
     ordered = {(o["album_id"], o["kind"]) for o in orders}
     gift_ids = {line["id"] for line in gift_lines}
     await _save(user, [i for i in await _items(user) if (i.get("album_id"), i["kind"]) not in ordered and i["id"] not in gift_ids])

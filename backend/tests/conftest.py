@@ -93,8 +93,40 @@ def paid_albums(request, monkeypatch):
 
 @pytest.fixture()
 def online_payment(app, monkeypatch):
-    """Whish Pay / card switched on: the PDF and gift cards can be ordered
-    (for now they're "coming soon", see services/payments.py)."""
-    from app.services import payments
+    """Card payment switched on (see services/payments.py), with a fake
+    Cybersource: every card is accepted, unless the test sets
+    gateway["answer"] (what authorize_and_capture returns) or
+    gateway["error"] (a GatewayError it raises)."""
+    from app.services import cybersource, payments
 
     monkeypatch.setattr(payments, "ONLINE_PAYMENT", True)
+    gateway = {"contexts": [], "charges": [], "answer": None, "error": None}
+
+    def capture_context(amount_cents, lang="en"):
+        gateway["contexts"].append(amount_cents)
+        return f"capture.context.{len(gateway['contexts'])}"
+
+    def authorize_and_capture(token, amount_cents, reference, bill_to):
+        gateway["charges"].append({"token": token, "amount_cents": amount_cents, "reference": reference, "bill_to": bill_to})
+        if gateway["error"]:
+            raise gateway["error"]
+        return gateway["answer"] or {"approved": True, "status": "AUTHORIZED", "id": f"tx-{len(gateway['charges'])}",
+                                     "message": "", "reason": "", "raw": {"status": "AUTHORIZED"}}
+
+    monkeypatch.setattr(cybersource, "capture_context", capture_context)
+    monkeypatch.setattr(cybersource, "authorize_and_capture", authorize_and_capture)
+    return gateway
+
+
+def pay_by_card(client, headers, body=None):
+    """The cart's checkout paid by card, as the site does it: the card form
+    opened (POST /cart/card-session), then the order placed with the token
+    it gave. Returns the checkout's response (or the card session's, when
+    that one is refused)."""
+    body = body or {}
+    session = client.post("/api/cart/card-session", json={k: v for k, v in body.items() if k in ("shipping_address", "accepted_terms_version")},
+                          headers=headers)
+    if session.status_code != 200:
+        return session
+    return client.post("/api/cart/checkout", json={**body, "payment_method": "card", "payment_id": session.json()["payment_id"],
+                                                   "transient_token": "transient.token.jwt"}, headers=headers)

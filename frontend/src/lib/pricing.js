@@ -111,10 +111,12 @@ export const PRICE_TEXT = {
 
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
-// Whish Pay and card payment: coming soon (ONLINE_PAYMENT in
-// backend/app/services/payments.py). Until then printed albums are paid
-// cash on delivery, and the PDF and gift cards can't be ordered.
-export const ONLINE_PAYMENT = false;
+// Card payment (Cybersource / areeba): on when REACT_APP_ONLINE_PAYMENT is
+// "true" — set it on Vercel together with the CYBERSOURCE_* keys of the
+// backend (ONLINE_PAYMENT in backend/app/services/payments.py). Off, the PDF
+// and gift cards are "coming soon" and printed albums are paid cash on
+// delivery. Whish Pay: still to come.
+export const ONLINE_PAYMENT = import.meta.env?.REACT_APP_ONLINE_PAYMENT === "true";
 
 // TERMS_VERSION in backend/app/services/pricing.py.
 export const TERMS_VERSION = "2026-10-29";

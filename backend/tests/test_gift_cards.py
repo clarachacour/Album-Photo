@@ -1,4 +1,4 @@
-"""Gift cards: bought through the cart (a PDF, through the payment step),
+"""Gift cards: bought through the cart (a PDF, paid by card),
 used with their code, their value taken off the album ordered — the
 difference paid on a dearer one, the rest kept as credit on a cheaper one."""
 import asyncio
@@ -10,6 +10,7 @@ import pytest
 pytestmark = pytest.mark.usefixtures("online_payment")
 
 from app.services.pricing import SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
+from tests.conftest import pay_by_card
 from tests.test_api import _signup
 from tests.test_cart import shop  # noqa: F401  (fixture)
 from tests.test_wakilni import ADDRESS, _ready, courier  # noqa: F401  (fixture)
@@ -28,7 +29,7 @@ def gifts(client, db, shop, monkeypatch):  # noqa: F811
 def _buy(client, headers, size="A4", page_tier=50, **extra):
     body = {"size": size, "page_tier": page_tier, "recipient_name": "Sarah", "message": "Happy birthday!", "from_name": "Karim", **extra}
     cart = client.post("/api/cart/gifts", json=body, headers=headers).json()
-    res = client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=headers)
+    res = pay_by_card(client, headers, {"accepted_terms_version": TERMS_VERSION})
     assert res.status_code == 200, res.text
     return cart, res.json()["gift_cards"]
 

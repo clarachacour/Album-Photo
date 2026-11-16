@@ -327,6 +327,29 @@ def send_password_changed_email(to_email: str, name: str):
     )
     send_email(to_email, subject, body, html_body=html_body)
 
+def paid_by_card(order: dict) -> bool:
+    return (order.get("payment") or {}).get("method") == "card"
+
+
+def send_team_payment_problem_email(payment: dict, customer: dict, what: str):
+    """To the team's order inbox: a card payment to look at in the
+    Cybersource Business Center (not confirmed, or to refund)."""
+    if not ORDERS_EMAIL:
+        return
+    amount = f"{(payment.get('amount_cents') or 0) / 100:.2f} USD"
+    lines = [
+        what,
+        f"Customer: {customer.get('name') or ''} — {customer.get('email') or ''}",
+        f"Amount: {amount}",
+        f"Our reference (Cybersource \"client reference\"): {payment.get('id') or payment.get('payment_id')}",
+    ]
+    if payment.get("transaction_id") or payment.get("reference"):
+        lines.append(f"Cybersource transaction: {payment.get('transaction_id') or payment.get('reference')}")
+    subject = f"[Card payment] {what.split(':')[0]} — {customer.get('email') or ''} — {amount}"
+    html_body = _email_wrapper(title="Card payment to check.", body_html="".join(f"<p>{_h(line)}</p>" for line in lines))
+    send_email(ORDERS_EMAIL, subject, "\n".join(lines), html_body=html_body)
+
+
 def send_order_confirmation_email(to_email: str, name: str, order: dict):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
     total = order.get("total_price_cents", 0) / 100
@@ -336,7 +359,9 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
     body = (
         f"Hi {name or ''},\n\n"
         f"Thanks for your order! We've received it and will start preparing your book.\n\n"
-        + (f"Your album is free. Only the delivery, {total:.2f} {order.get('currency', 'usd').upper()}, is to be paid in cash to the courier.\n"
+        + (f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), paid by card.\n"
+           if paid_by_card(order) else
+           f"Your album is free. Only the delivery, {total:.2f} {order.get('currency', 'usd').upper()}, is to be paid in cash to the courier.\n"
            if not order.get("unit_price_cents") else
            f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.\n")
         +
@@ -349,7 +374,9 @@ def send_order_confirmation_email(to_email: str, name: str, order: dict):
         body_html=(
             f"<p>Hi {_h(name or '')},</p>"
             f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
-            + (f"<p>Your album is free. Only the delivery, <strong>{total:.2f} {order.get('currency', 'usd').upper()}</strong>, is to be paid in cash to the courier.<br>"
+            + (f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), paid by card.<br>"
+               if paid_by_card(order) else
+               f"<p>Your album is free. Only the delivery, <strong>{total:.2f} {order.get('currency', 'usd').upper()}</strong>, is to be paid in cash to the courier.<br>"
                if not order.get("unit_price_cents") else
                f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.<br>")
             +
@@ -368,6 +395,7 @@ def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
     prints = [o for o in orders if o.get("kind") != "digital"]
     digitals = [o for o in orders if o.get("kind") == "digital"]
     cash = sum(int(o.get("total_price_cents") or 0) for o in prints) / 100
+    card = any(paid_by_card(o) for o in orders)
     subject = f"Your Everbook order is confirmed — {len(orders)} items"
     orders_url = f"{FRONTEND_URL}/orders"
 
@@ -376,12 +404,19 @@ def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
         return f"{o.get('album_title', 'Album')} — {what} ({order_number(o)})"
 
     notes = []
+    if card:
+        paid = sum(int(o.get("total_price_cents") or 0) for o in orders) / 100
+        notes.append(f"Paid by card: {paid:.2f} {currency}" + (" (delivery included)." if prints else "."))
     if prints:
         notes.append(
+            "Your printed albums are delivered together, in one package."
+            if card else
             f"Your printed albums are delivered together, in one package. Payment is cash on delivery: "
             f"the total, {cash:.2f} {currency} (delivery included), is paid to the courier."
         )
-    if digitals:
+    if digitals and card:
+        notes.append("We'll email you the moment your PDF is ready to download, in a few minutes.")
+    elif digitals:
         notes.append(
             "Online payment isn't set up yet, so there's nothing to pay for your PDF for now: "
             "we'll email you the moment it's ready to download, in a few minutes."
@@ -453,6 +488,9 @@ def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict
     free = total == 0
     # Online payment isn't set up yet: the PDF is handed over at once either way.
     intro = (
+        f"Thanks for your order! Your payment of {total:.2f} {order.get('currency', 'usd').upper()} by card went through: "
+        "your album will be ready to download as a PDF in a few minutes."
+        if paid_by_card(order) else
         "Thanks for your order! Your digital album is free: it will be ready to download as a PDF in a few minutes."
         if free else
         "Thanks for your order! Online payment isn't set up yet, so there's nothing to pay for now: your album will be ready to download as a PDF in a few minutes."
@@ -925,7 +963,11 @@ def send_team_new_order_email(orders: list, customer: dict):
     credit = sum(int(o.get("gift_credit_cents") or 0) for o in orders)
     if credit:
         lines.append(f"Gift card credit: −{money(credit)}")
-    cash = sum(cash_due(o) for o in prints)
+    cash = sum(cash_due(o) for o in prints if not paid_by_card(o))
+    card = next((o["payment"] for o in orders if paid_by_card(o)), None)
+    if card:
+        lines.append(f"Paid by card: {money(sum(int(o.get('total_price_cents') or 0) for o in orders))} "
+                     f"(Cybersource {card.get('reference') or ''})")
     if prints:
         lines.append(f"To collect in cash by the courier: {money(cash)}")
     subject = f"[New order] {number} — {name or customer.get('email', '')} — {money(cash) if prints else 'PDF'}"

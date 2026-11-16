@@ -76,7 +76,7 @@ async def _cart_still_making(orders: list) -> bool:
         "checkout_id": {"$in": list(checkouts)},
         "id": {"$nin": [o["id"] for o in orders]},
         "kind": "print",
-        "status": "pending_payment",
+        "status": {"$in": ["pending_payment", "paid"]},  # paid: by card
         "pdf_ready": False,
         "pdf_error": {"$in": [None, ""]},
         "created_at": {"$gte": since},

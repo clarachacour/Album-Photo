@@ -6,6 +6,7 @@ import asyncio
 import pytest
 
 from app.services.pricing import DIGITAL_PRICE_CENTS, SHIPPING_PRICE_CENTS, TERMS_VERSION, compute_order_price_cents
+from tests.conftest import pay_by_card
 from tests.test_wakilni import ADDRESS, _order, _ready, courier  # noqa: F401  (fixture)
 
 
@@ -65,10 +66,14 @@ def test_a_pdf_only_cart_has_no_delivery_and_needs_no_address(client, shop, onli
     a = shop["album"]("Byblos")
     cart = _add(client, shop, a, "digital").json()
     assert cart["shipping_cents"] == 0 and cart["total_cents"] == DIGITAL_PRICE_CENTS
+    # A PDF can't be paid in cash: by card.
     res = client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=shop["headers"])
+    assert res.status_code == 400 and "card" in res.json()["detail"]
+    res = pay_by_card(client, shop["headers"], {"accepted_terms_version": TERMS_VERSION})
     assert res.status_code == 200, res.text
     (order,) = res.json()["orders"]
     assert order["kind"] == "digital" and order["status"] == "available"
+    assert order["payment"]["method"] == "card" and order["payment"]["amount_cents"] == DIGITAL_PRICE_CENTS
 
 
 def test_checkout_orders_everything_at_once(client, db, shop, online_payment):
@@ -82,7 +87,8 @@ def test_checkout_orders_everything_at_once(client, db, shop, online_payment):
     assert client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION}, headers=shop["headers"]).status_code == 400
     assert _checkout(client, shop, accepted_terms_version="old").status_code == 400
 
-    res = _checkout(client, shop)
+    # With a PDF in it, paid by card — everything, the printed albums too.
+    res = pay_by_card(client, shop["headers"], {"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION})
     assert res.status_code == 200, res.text
     orders = res.json()["orders"]
     assert len(orders) == 3 and len({o["checkout_id"] for o in orders}) == 1
@@ -106,8 +112,8 @@ def test_checkout_orders_everything_at_once(client, db, shop, online_payment):
     assert _ready(client, lead["id"]).status_code == 200
     adds = [body for _, path, body in shop["courier"]["fake"].calls if "/add_delivery/" in path]
     assert len(adds) == 1 and len(adds[0]["packages"]) == 2
-    totals = sum(_order(db, o["id"])["total_price_cents"] for o in prints)
-    assert adds[0]["collection_amount"] == totals / 100 == (compute_order_price_cents("A4", 24) * 3 + SHIPPING_PRICE_CENTS) / 100
+    # Paid by card: the courier collects nothing.
+    assert adds[0]["collection_amount"] == 0
 
 
 def test_a_cart_album_still_being_made_is_waited_for(client, db, shop):

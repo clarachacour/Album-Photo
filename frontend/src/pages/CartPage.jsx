@@ -7,6 +7,7 @@ import { Banknote, CreditCard, Gift, Loader2, Plus, Smartphone, Tag, Trash2 } fr
 import { api, coverImageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { showCardForm } from "@/lib/unifiedCheckout";
 import { TERMS_VERSION } from "@/lib/pricing";
 import { isLebanesePhone } from "@/lib/phone";
 import { getCover, getTemplate } from "@/lib/coverTemplates";
@@ -23,7 +24,7 @@ const money = (cents) => `$${(cents / 100).toFixed(2)}`;
  */
 export default function CartPage() {
   usePageMeta("cart");
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const lp = useLocalePath();
   const nav = useNavigate();
   const { user } = useAuth();
@@ -45,6 +46,11 @@ export default function CartPage() {
   const [termsError, setTermsError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
   const [placing, setPlacing] = useState(false);
+  // "cash" (on delivery) or "card"; the card payment opened, while its
+  // form is shown ({ payment_id, capture_context, amount_cents }).
+  const [method, setMethod] = useState("cash");
+  const [cardSession, setCardSession] = useState(null);
+  const [openingCard, setOpeningCard] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -56,6 +62,70 @@ export default function CartPage() {
   const items = cart?.items || [];
   const hasPrint = items.some((i) => i.kind === "print" && !i.problem);
   const hasProblem = items.some((i) => i.problem);
+  // How it's paid: cash on delivery for printed albums only; the PDFs and
+  // gift cards (pay_now_cents) by card. Nothing to pay: no choice.
+  const toPay = cart?.total_cents || 0;
+  const cardAvailable = !!cart?.card_payment;
+  const cashPossible = hasPrint && (cart?.pay_now_cents || 0) === 0;
+  const payMethod = toPay === 0 ? "cash" : !cardAvailable ? "cash" : !cashPossible ? "card" : method;
+  const orderBody = () => ({
+    ...(hasPrint ? { shipping_address: address } : {}),
+    accepted_terms_version: TERMS_VERSION,
+  });
+
+  // A refusal while ordering or paying: the customer is told why. `placed`:
+  // the order may have gone through (a slow or dropped connection).
+  const orderFailed = (err, { placed }) => {
+    setPlacing(false);
+    setCardSession(null);
+    setOpeningCard(false);
+    const status = err?.response?.status;
+    const detail = err?.response?.data?.detail || "";
+    if (status === 402) {
+      toast.error(t("cart.payment.declined"), { duration: 10000 });
+      return;
+    }
+    if (status === 502) {
+      toast.error(t(/pay again/i.test(detail) ? "cart.payment.unconfirmed" : "cart.payment.unavailable"), { duration: 15000 });
+      if (/pay again/i.test(detail)) nav("/orders", { replace: true });
+      return;
+    }
+    if (status === 409) {
+      toast.error(/cart changed/i.test(detail) ? t("cart.payment.changed") : t("cart.fixProblems"));
+      refresh();
+      return;
+    }
+    if (status === 400 && /terms of sale/i.test(detail)) {
+      toast.error(t("checkout.termsChanged"), { duration: 10000 });
+      return;
+    }
+    if (status === 400 || status === 404 || !placed) {
+      toast.error(detail || t("checkout.checkAlbum"));
+      refresh();
+      return;
+    }
+    toast.info(t("checkout.slow"));
+    refresh();
+    nav("/orders", { replace: true });
+  };
+
+  const ordered = () => {
+    setCart({ ...cart, items: [], count: 0 });
+    refresh();
+    nav("/orders");
+  };
+
+  // The card form gave its token: the order is placed and the card charged.
+  const payWithToken = async (token) => {
+    const session = cardSession;
+    setPlacing(true);
+    try {
+      await api.post("/cart/checkout", { ...orderBody(), payment_method: "card", payment_id: session.payment_id, transient_token: token });
+      ordered();
+    } catch (err) {
+      orderFailed(err, { placed: true });
+    }
+  };
 
   const placeOrder = async (e) => {
     e.preventDefault();
@@ -85,39 +155,29 @@ export default function CartPage() {
       toast.error(t("checkout.mustAcceptTerms"));
       return;
     }
+    if (payMethod === "card") {
+      // The card form first; the order is placed once it gives its token.
+      if (openingCard) return;
+      setOpeningCard(true);
+      try {
+        const { data } = await api.post("/cart/card-session", { ...orderBody(), lang: i18n.language?.startsWith("fr") ? "fr" : "en" });
+        setCardSession(data);
+      } catch (err) {
+        orderFailed(err, { placed: false });
+      } finally {
+        setOpeningCard(false);
+      }
+      return;
+    }
     setPlacing(true);
     try {
-      await api.post("/cart/checkout", {
-        ...(hasPrint ? { shipping_address: address } : {}),
-        accepted_terms_version: TERMS_VERSION,
-      });
-      setCart({ ...cart, items: [], count: 0 });
-      refresh();
-      nav("/orders");
+      await api.post("/cart/checkout", orderBody());
+      ordered();
     } catch (err) {
       // The orders are created first, before the PDFs are started: past the
-      // known refusals below, they're almost always placed already (a slow
-      // or dropped connection) — the customer is sent to their orders.
-      setPlacing(false);
-      const status = err?.response?.status;
-      const detail = err?.response?.data?.detail || "";
-      if (status === 409) {
-        toast.error(t("cart.fixProblems"));
-        refresh();
-        return;
-      }
-      if (status === 400 && /terms of sale/i.test(detail)) {
-        toast.error(t("checkout.termsChanged"), { duration: 10000 });
-        return;
-      }
-      if (status === 400 || status === 404) {
-        toast.error(detail || t("checkout.checkAlbum"));
-        refresh();
-        return;
-      }
-      toast.info(t("checkout.slow"));
-      refresh();
-      nav("/orders", { replace: true });
+      // known refusals, they're almost always placed already (a slow or
+      // dropped connection) — the customer is sent to their orders.
+      orderFailed(err, { placed: true });
     }
   };
 
@@ -236,29 +296,37 @@ export default function CartPage() {
                 </>
               )}
 
-              {/* How it's paid: cash on delivery for now; Whish Pay and card
-                  payment come later (ONLINE_PAYMENT in lib/pricing.js). */}
-              {hasPrint && (
-                <div className="mt-12" data-testid="cart-payment">
+              {/* How it's paid: cash on delivery (printed albums only) or by
+                  card (Cybersource, see lib/unifiedCheckout.js); Whish Pay
+                  later. */}
+              {toPay > 0 && (
+                <div className="mt-12" data-testid="cart-payment" role="radiogroup" aria-label={t("cart.payment.title")}>
                   <div className="eyebrow mb-3">{t("cart.payment.title")}</div>
                   <div className="space-y-2">
-                    <div className="border border-[color:var(--ink)] bg-white px-4 py-3 flex items-start gap-3" data-testid="cart-payment-cod">
-                      <span className="mt-1 w-3.5 h-3.5 rounded-full border-[4px] border-[color:var(--ink)] shrink-0" aria-hidden="true" />
-                      <div className="flex-1 text-sm">
-                        <p className="font-medium flex items-center gap-2"><Banknote size={16} className="text-[color:var(--coral)]" /> {t("cart.payment.cod")}</p>
-                        <p className="text-xs text-[color:var(--muted)] mt-0.5">{t("cart.payment.codHint")}</p>
-                      </div>
-                    </div>
-                    {[
-                      { key: "whish", Icon: Smartphone },
-                      { key: "card", Icon: CreditCard },
-                    ].map(({ key, Icon }) => (
-                      <div key={key} className="border border-ink/15 px-4 py-3 flex items-center gap-3 opacity-60" aria-disabled="true" data-testid={`cart-payment-${key}`}>
-                        <span className="w-3.5 h-3.5 rounded-full border border-ink/40 shrink-0" aria-hidden="true" />
-                        <p className="flex-1 text-sm flex items-center gap-2"><Icon size={16} /> {t(`cart.payment.${key}`)}</p>
-                        <span className="text-[10px] font-semibold tracking-widest uppercase text-[color:var(--muted)]">{t("cart.payment.soon")}</span>
-                      </div>
-                    ))}
+                    {hasPrint && (
+                      <PaymentOption
+                        selected={payMethod === "cash"}
+                        disabled={!cashPossible}
+                        onSelect={() => setMethod("cash")}
+                        Icon={Banknote}
+                        label={t("cart.payment.cod")}
+                        hint={cashPossible ? t("cart.payment.codHint") : t("cart.payment.cardOnly")}
+                        testId="cart-payment-cod"
+                      />
+                    )}
+                    {cardAvailable ? (
+                      <PaymentOption
+                        selected={payMethod === "card"}
+                        onSelect={() => setMethod("card")}
+                        Icon={CreditCard}
+                        label={t("cart.payment.card")}
+                        hint={t("cart.payment.cardHint")}
+                        testId="cart-payment-card"
+                      />
+                    ) : (
+                      <SoonOption Icon={CreditCard} label={t("cart.payment.card")} soon={t("cart.payment.soon")} testId="cart-payment-card" />
+                    )}
+                    <SoonOption Icon={Smartphone} label={t("cart.payment.whish")} soon={t("cart.payment.soon")} testId="cart-payment-whish" />
                   </div>
                 </div>
               )}
@@ -299,7 +367,7 @@ export default function CartPage() {
               {/* What the courier collects: the printed albums and the
                   delivery (a PDF has nothing to pay while online payment
                   isn't set up). */}
-              {hasPrint && cart.cash_cents !== cart.total_cents && (
+              {hasPrint && payMethod === "cash" && cart.cash_cents !== cart.total_cents && (
                 <div className="flex justify-between text-sm -mt-3 mb-6" data-testid="cart-cash">
                   <span className="text-[color:var(--muted)]">{t("checkout.cashToCourier")}</span>
                   <span>{money(cart.cash_cents)}</span>
@@ -334,20 +402,110 @@ export default function CartPage() {
               <button
                 type="submit"
                 form="cart-form"
-                disabled={hasProblem}
+                disabled={hasProblem || openingCard}
                 className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-3 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-50"
                 data-testid="place-order-btn"
               >
-                {t("checkout.placeOrder")}
+                {openingCard && <Loader2 size={14} className="animate-spin" />}
+                {payMethod === "card" ? t("cart.payment.payButton", { amount: money(toPay) }) : t("checkout.placeOrder")}
               </button>
               <div className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed space-y-2">
-                {hasPrint && cart.cash_cents > 0 && <p>{t("checkout.noPayment")}</p>}
+                {hasPrint && payMethod === "cash" && cart.cash_cents > 0 && <p>{t("checkout.noPayment")}</p>}
+                {payMethod === "card" && <p>{t("cart.payment.cardNote")}</p>}
               </div>
             </aside>
           </div>
         )}
       </div>
+      {cardSession && !placing && (
+        <CardPaymentDialog
+          session={cardSession}
+          onToken={payWithToken}
+          onFail={() => {
+            setCardSession(null);
+            toast.error(t("cart.payment.formError"));
+          }}
+          onClose={() => setCardSession(null)}
+        />
+      )}
     </main>
+  );
+}
+
+function PaymentOption({ selected, disabled, onSelect, Icon, label, hint, testId }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={onSelect}
+      className={`w-full text-left px-4 py-3 flex items-start gap-3 border transition-colors ${
+        selected ? "border-[color:var(--ink)] bg-white" : "border-ink/15 hover:border-ink/40"
+      } disabled:opacity-60 disabled:cursor-not-allowed`}
+      data-testid={testId}
+    >
+      <span
+        className={`mt-1 w-3.5 h-3.5 rounded-full shrink-0 ${selected ? "border-[4px] border-[color:var(--ink)]" : "border border-ink/40"}`}
+        aria-hidden="true"
+      />
+      <span className="flex-1 text-sm">
+        <span className="font-medium flex items-center gap-2"><Icon size={16} className="text-[color:var(--coral)]" /> {label}</span>
+        <span className="block text-xs text-[color:var(--muted)] mt-0.5">{hint}</span>
+      </span>
+    </button>
+  );
+}
+
+function SoonOption({ Icon, label, soon, testId }) {
+  return (
+    <div className="border border-ink/15 px-4 py-3 flex items-center gap-3 opacity-60" aria-disabled="true" data-testid={testId}>
+      <span className="w-3.5 h-3.5 rounded-full border border-ink/40 shrink-0" aria-hidden="true" />
+      <p className="flex-1 text-sm flex items-center gap-2"><Icon size={16} /> {label}</p>
+      <span className="text-[10px] font-semibold tracking-widest uppercase text-[color:var(--muted)]">{soon}</span>
+    </div>
+  );
+}
+
+// Cybersource's card form, over the page: the card number is typed in their
+// frames; the token they give back places the order (see CartPage).
+function CardPaymentDialog({ session, onToken, onFail, onClose }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    let live = true;
+    showCardForm(session.capture_context, { paymentSelection: "#card-payment-selection", paymentScreen: "#card-payment-screen" })
+      .then((token) => live && onToken(token))
+      .catch((err) => {
+        // Left by the customer, or the form couldn't load.
+        if (!live) return;
+        if (/cancel/i.test(String(err?.reason || err?.message || ""))) onClose();
+        else onFail(err);
+      });
+    return () => {
+      live = false;
+    };
+    // Once per card payment opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.payment_id]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="card-payment-title">
+      <div className="bg-[color:var(--paper)] w-full max-w-[460px] max-h-[90vh] overflow-y-auto p-6" data-testid="card-payment-dialog">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 id="card-payment-title" className="font-serif-display text-2xl">{t("cart.payment.formTitle")}</h2>
+            <p className="text-sm text-[color:var(--muted)]">{t("cart.payment.formAmount", { amount: money(session.amount_cents) })}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-xs underline text-[color:var(--muted)] hover:text-[color:var(--ink)]">
+            {t("cart.payment.cancel")}
+          </button>
+        </div>
+        {/* Filled by Cybersource's script: nothing of React's inside. */}
+        <div id="card-payment-selection" className="min-h-[48px]" />
+        <div id="card-payment-screen" className="mt-4" />
+        <p className="text-[11px] text-[color:var(--muted)] mt-4 leading-relaxed">{t("cart.payment.secure")}</p>
+      </div>
+    </div>
   );
 }
 

@@ -1321,7 +1321,20 @@
       "codHint": "You pay the courier in cash when your album arrives.",
       "whish": "Whish Pay",
       "card": "Card payment",
-      "soon": "Coming soon"
+      "soon": "Coming soon",
+      "cardHint": "Visa or Mastercard, paid now on Cybersource's secure form (areeba).",
+      "cardOnly": "Not with a PDF or a gift card in your cart: those are paid by card.",
+      "cardNote": "Your card is charged when you confirm on the card form. The card number goes to Cybersource (areeba) only, never to Everbook.",
+      "payButton": "Pay {{amount}} by card",
+      "formTitle": "Card payment",
+      "formAmount": "Amount: {{amount}}",
+      "cancel": "Cancel",
+      "secure": "Secure payment by Cybersource (areeba). Your card number is never seen or kept by Everbook.",
+      "formError": "The card form couldn't open — nothing was charged. Please try again.",
+      "declined": "Your card was declined — nothing was ordered. Please check your card details or try another card.",
+      "changed": "Your cart changed meanwhile — nothing was charged. Please check it and pay again.",
+      "unavailable": "Card payment isn't available right now — nothing was charged. Please try again in a moment.",
+      "unconfirmed": "We couldn't confirm your payment. Please don't pay again: we'll check and contact you very soon."
     },
     "credit": "Gift card credit",
     "creditLeft": "{{amount}} of gift card credit stays on your account for a next order.",
@@ -1479,7 +1492,7 @@
     "pdfSoon": "${{price}}, whatever its format and number of pages — coming soon.",
     "paymentTitle": "Payment",
     "paymentCash": "Cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
-    "paymentOnline": "Cash on delivery, or online with Whish Pay or a card.",
+    "paymentOnline": "Cash on delivery for printed albums, or online by card (Visa, Mastercard). The PDF and gift cards are paid by card.",
     "faqLink": "Questions? See the FAQ",
     "price": "${{price}}"
   }

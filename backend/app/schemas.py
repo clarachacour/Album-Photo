@@ -154,6 +154,17 @@ class CheckoutInput(BaseModel):
     # Needed when the cart holds a printed album.
     shipping_address: Optional[ShippingAddress] = None
     accepted_terms_version: str = Field(default="", max_length=20)
+    # "cash": on delivery (printed albums only); "card": the card payment
+    # opened with POST /cart/card-session, and the transient token the
+    # card form gave (see services/payments.py).
+    payment_method: Literal["cash", "card"] = "cash"
+    payment_id: Optional[str] = Field(default=None, max_length=64)
+    transient_token: Optional[str] = Field(default=None, max_length=20000)
+
+class CardSessionInput(BaseModel):
+    shipping_address: Optional[ShippingAddress] = None
+    accepted_terms_version: str = Field(default="", max_length=20)
+    lang: Literal["en", "fr"] = "en"
 
 class AuthResponse(BaseModel):
     token: str

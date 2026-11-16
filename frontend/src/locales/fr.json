@@ -1321,7 +1321,20 @@
       "codHint": "Vous réglez le livreur en espèces à la réception de votre album.",
       "whish": "Whish Pay",
       "card": "Paiement par carte",
-      "soon": "Bientôt disponible"
+      "soon": "Bientôt disponible",
+      "cardHint": "Visa ou Mastercard, payé maintenant sur le formulaire sécurisé de Cybersource (areeba).",
+      "cardOnly": "Pas avec un PDF ou une carte cadeau dans votre panier : ils se paient par carte.",
+      "cardNote": "Votre carte est débitée quand vous validez le formulaire de carte. Le numéro de carte va uniquement à Cybersource (areeba), jamais à Everbook.",
+      "payButton": "Payer {{amount}} par carte",
+      "formTitle": "Paiement par carte",
+      "formAmount": "Montant : {{amount}}",
+      "cancel": "Annuler",
+      "secure": "Paiement sécurisé par Cybersource (areeba). Everbook ne voit ni ne garde jamais votre numéro de carte.",
+      "formError": "Le formulaire de carte n'a pas pu s'ouvrir — rien n'a été débité. Merci de réessayer.",
+      "declined": "Votre carte a été refusée — rien n'a été commandé. Vérifiez les informations de votre carte ou essayez-en une autre.",
+      "changed": "Votre panier a changé entre-temps — rien n'a été débité. Vérifiez-le et payez à nouveau.",
+      "unavailable": "Le paiement par carte n'est pas disponible pour le moment — rien n'a été débité. Merci de réessayer dans un instant.",
+      "unconfirmed": "Nous n'avons pas pu confirmer votre paiement. Ne payez pas une seconde fois : nous vérifions et vous recontactons très vite."
     },
     "credit": "Avoir carte cadeau",
     "creditLeft": "{{amount}} d'avoir de carte cadeau restent sur votre compte pour une prochaine commande.",
@@ -1479,7 +1492,7 @@
     "pdfSoon": "{{price}} $, quels que soient son format et son nombre de pages — bientôt disponible.",
     "paymentTitle": "Paiement",
     "paymentCash": "En espèces à la livraison, au livreur. Whish Pay et la carte bancaire arrivent bientôt.",
-    "paymentOnline": "En espèces à la livraison, ou en ligne avec Whish Pay ou une carte bancaire.",
+    "paymentOnline": "En espèces à la livraison pour les albums imprimés, ou en ligne par carte (Visa, Mastercard). Le PDF et les cartes cadeaux se paient par carte.",
     "faqLink": "Des questions ? Voir la FAQ",
     "price": "{{price}} $"
   }

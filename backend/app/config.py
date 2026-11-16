@@ -168,3 +168,20 @@ R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "album-photo")
 # Websites allowed to call the API from a browser — see app/main.py.
 CORS_ORIGINS = parse_cors_origins(os.environ.get("CORS_ORIGINS"), FRONTEND_URL)
 CORS_ORIGIN_REGEX = os.environ.get("CORS_ORIGIN_REGEX") or None
+
+# ---------- Card payment (Cybersource Unified Checkout, through areeba) ----------
+# See services/cybersource.py. The three keys come from the Cybersource
+# Business Center areeba opened (Payment Configuration → Key Management →
+# REST – Shared Secret): the merchant id, the key's id and the shared secret
+# (base64, as shown). Without them card payment stays "coming soon".
+CYBERSOURCE_MERCHANT_ID = os.environ.get("CYBERSOURCE_MERCHANT_ID")
+CYBERSOURCE_KEY_ID = os.environ.get("CYBERSOURCE_KEY_ID")
+CYBERSOURCE_SECRET_KEY = os.environ.get("CYBERSOURCE_SECRET_KEY")
+# apitest.cybersource.com for the test account, api.cybersource.com once live.
+CYBERSOURCE_HOST = os.environ.get("CYBERSOURCE_HOST", "apitest.cybersource.com")
+# Cards accepted (as Cybersource names them), comma-separated.
+CYBERSOURCE_CARD_NETWORKS = [n.strip().upper() for n in (os.environ.get("CYBERSOURCE_CARD_NETWORKS") or "VISA,MASTERCARD").split(",") if n.strip()]
+# The sites allowed to show the card form (https, no path): the site's own
+# address by default, comma-separated to add others (www., the dev site).
+CYBERSOURCE_TARGET_ORIGINS = [o.strip().rstrip("/") for o in (os.environ.get("CYBERSOURCE_TARGET_ORIGINS") or FRONTEND_URL).split(",") if o.strip()]
+CYBERSOURCE_CLIENT_VERSION = os.environ.get("CYBERSOURCE_CLIENT_VERSION", "0.31")
