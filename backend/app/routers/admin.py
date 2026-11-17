@@ -213,14 +213,16 @@ async def admin_download_order_pdf(order_id: str, auth: str = Query(None), autho
     )
     return RedirectResponse(url)
 
-# ---------- A test PDF of an album in the one-sheet hardcover format ----------
-# For the admin only, to send a printer: no order, nothing to the printer.
+# ---------- A PDF of an album, with no order (Bookstop or hardcover) ----------
+# For the admin only: no order, nothing to the printer.
 @router.post("/admin/albums/{album_id}/test-pdf")
-async def admin_start_test_pdf(album_id: str, user: dict = Depends(get_current_user)):
+async def admin_start_test_pdf(album_id: str, format: str = Query("hardcover"), user: dict = Depends(get_current_user)):
     require_admin(user)
+    if format not in print_format.FORMATS:
+        raise HTTPException(status_code=400, detail=f"The format is one of: {', '.join(print_format.FORMATS)}")
     if not await db.albums.find_one({"id": album_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Album not found")
-    await test_pdf.mark_making(album_id)
+    await test_pdf.mark_making(album_id, format)
     if pdf_tasks_enabled():
         try:
             await run_blocking(enqueue_test_pdf, album_id)
@@ -261,7 +263,7 @@ async def admin_download_test_pdf(album_id: str, auth: str = Query(None), author
         Params={
             "Bucket": R2_BUCKET_NAME,
             "Key": state["path"],
-            "ResponseContentDisposition": f'attachment; filename="{name} - test hardcover.pdf"',
+            "ResponseContentDisposition": f'attachment; filename="{name} - {state.get("format") or "hardcover"}.pdf"',
             "ResponseContentType": "application/pdf",
         },
         ExpiresIn=3600,

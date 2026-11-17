@@ -54,3 +54,30 @@ def test_no_one_else_can_ask_for_it_or_download_it(client, db, setup):
     assert client.get(f"/api/admin/albums/{album_id}/test-pdf/download", params={"auth": token}, follow_redirects=False).status_code == 403
     assert client.get(f"/api/admin/albums/{album_id}/test-pdf/download", follow_redirects=False).status_code == 401
     assert setup["rendered"] == []
+
+
+def test_the_admin_gets_the_bookstop_file_without_any_order(client, db, setup):
+    """The same file as sent to Bookstop with an order — but no order."""
+    album_id, admin = setup["album_id"], setup["admin"]
+    state = client.post(f"/api/admin/albums/{album_id}/test-pdf", params={"format": "bookstop"}, headers=admin).json()
+    assert state["status"] == "ready" and state["format"] == "bookstop"
+    url, _ = setup["rendered"][0]
+    # The print page as an order's PDF has it in the Bookstop format: no
+    # hardcover, no digital version.
+    assert "format=hardcover" not in url and "digital=1" not in url
+    assert asyncio.run(db.orders.count_documents({"album_id": album_id})) == 0
+    res = client.get(f"/api/admin/albums/{album_id}/test-pdf/download", params={"auth": setup["token"]}, follow_redirects=False)
+    assert res.status_code in (302, 307)
+    assert client.post(f"/api/admin/albums/{album_id}/test-pdf", params={"format": "nope"}, headers=admin).status_code == 400
+
+
+def test_the_bookstop_file_is_for_the_admin_only(client, db, setup):
+    album_id, customer = setup["album_id"], setup["customer"]
+    # A customer, even on their own album, and someone not logged in.
+    own = client.post("/api/albums", json={"title": "Mine", "size": "A5", "target_pages": 24}, headers=customer).json()["id"]
+    for target in (album_id, own):
+        assert client.post(f"/api/admin/albums/{target}/test-pdf", params={"format": "bookstop"}, headers=customer).status_code == 403
+        assert client.post(f"/api/admin/albums/{target}/test-pdf", params={"format": "bookstop"}).status_code == 401
+    # The queue's route needs the server's secret.
+    assert client.post(f"/api/internal/albums/{own}/test-pdf").status_code in (401, 500)
+    assert setup["rendered"] == []
