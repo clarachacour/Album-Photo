@@ -138,6 +138,30 @@ def test_the_session_request_follows_the_guide(app, monkeypatch):
     assert method == "POST" and url == "https://apitest.cybersource.com/uc/v1/sessions"
     assert body["targetOrigins"] == ["https://everbook-album.com"] and body["country"] == "LB"
     assert body["data"]["orderInformation"]["amountDetails"] == {"totalAmount": "53.00", "currency": "USD"}
+    assert body["captureMandate"]["billingType"] == "NONE"  # no postal code to type
+
+
+def test_a_session_refused_without_billing_address_asks_with_one(app, monkeypatch):
+    from app import config
+    from app.services import cybersource
+
+    monkeypatch.setattr(config, "CYBS_MERCHANT_ID", "m")
+    monkeypatch.setattr(config, "CYBS_KEY_ID", "k")
+    monkeypatch.setattr(config, "CYBS_SHARED_SECRET", base64.b64encode(b"s").decode())
+    sent = []
+
+    class Resp:
+        def __init__(self, status, text, headers=None):
+            self.status_code, self.text, self.headers = status, text, headers or {}
+
+    def request(method, url, data=None, headers=None, timeout=None):
+        body = json.loads(data)
+        sent.append(body["captureMandate"]["billingType"])
+        return Resp(201, "aaa.bbb.ccc") if body["captureMandate"]["billingType"] == "PARTIAL" else Resp(400, '{"reason":"INVALID_DATA"}')
+
+    monkeypatch.setattr(cybersource.requests, "request", request)
+    assert cybersource.create_session(5300, ["https://everbook-album.com"], "pay-1") == "aaa.bbb.ccc"
+    assert sent == ["NONE", "PARTIAL"]
 
 
 def test_a_refused_session_is_logged_whole_without_the_secret(app, monkeypatch, caplog):

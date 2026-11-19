@@ -118,13 +118,20 @@ def create_session(amount_cents: int, target_origins: list, reference: str, loca
         "targetOrigins": target_origins,
         "country": "LB",
         "locale": locale,
-        "captureMandate": {"billingType": "PARTIAL", "requestShipping": False, "showConfirmationStep": False, "requestSaveCredentials": False},
+        # No billing address (no postal code to type: most customers in
+        # Lebanon have none). If the account requires one, the session is
+        # refused and asked again with the partial address (country + code).
+        "captureMandate": {"billingType": "NONE", "requestShipping": False, "showConfirmationStep": False, "requestSaveCredentials": False},
         "data": {
             "clientReferenceInformation": {"code": reference},
             "orderInformation": {"amountDetails": {"totalAmount": f"{amount_cents / 100:.2f}", "currency": "USD"}},
         },
     }
     resp = _call("POST", "/uc/v1/sessions", payload)
+    if resp.status_code == 400:
+        logger.warning(f"Session carte refusée sans adresse de facturation ({resp.text[:200]}), nouvel essai avec")
+        payload["captureMandate"]["billingType"] = "PARTIAL"
+        resp = _call("POST", "/uc/v1/sessions", payload)
     if resp.status_code == 400:
         # Our reference isn't in areeba's guide: if the session refuses it,
         # one without (the transaction is then matched by its id and amount).
