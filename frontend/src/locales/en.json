@@ -1505,6 +1505,7 @@
   "paymentReturn": {
     "checking": "Checking your payment…",
     "checkingBody": "We're confirming your payment with Whish. This takes a few seconds — please keep this page open.",
+    "checkingBodyCard": "We're confirming your payment with the bank. This takes a few seconds — please keep this page open.",
     "paid": "Payment received, thank you!",
     "paidBody": "Your order is confirmed and on its way to the printer. A confirmation email is on its way too.",
     "paidGifts": "Your gift card is ready: we've emailed it to you as a PDF, to print or send on.",
@@ -1517,6 +1518,8 @@
     "unknownBody": "We couldn't find this payment on your account. Check your orders, or go back to your cart.",
     "slow": "Still waiting for Whish",
     "slowBody": "Whish hasn't confirmed your payment yet. We keep checking on our side: if it went through, your order will appear in your orders and you'll get an email.",
+    "slowCard": "Still waiting for the bank",
+    "slowBodyCard": "The bank hasn't confirmed your payment yet. We keep checking on our side: if it went through, your order will appear in your orders and you'll get an email.",
     "toOrders": "See my orders",
     "toCart": "Back to my cart"
   }

@@ -139,7 +139,7 @@ export default function CartPage() {
         }
         cardAbort.current = null;
         await api.post(`/payments/${paymentId}/card`, { result: typeof result === "string" ? result : JSON.stringify(result) }).catch(() => {});
-        nav(`/payment/return?payment=${paymentId}`);
+        nav(`/payment/return?payment=${paymentId}&via=card`);
         return;
       }
       setCart({ ...cart, items: [], count: 0 });

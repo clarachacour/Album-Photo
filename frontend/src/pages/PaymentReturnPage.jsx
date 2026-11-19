@@ -13,8 +13,9 @@ const ASK_EVERY_MS = 3000;
 const ASK_FOR_MS = 3 * 60 * 1000;
 
 /**
- * Back from Whish Pay (/payment/return?payment=…&outcome=…): the server
- * checks the payment with Whish (GET /payments/:id) — the "outcome" in the
+ * Back from Whish Pay (/payment/return?payment=…&outcome=…), or from the
+ * card form (…&via=card): the server checks the payment with Whish or the
+ * bank (GET /payments/:id) — the "outcome" in the
  * address is only where Whish sent the customer, never trusted on its own.
  * Paid: the cart was ordered. Failed: nothing ordered, the cart is still
  * there to try again.
@@ -27,6 +28,9 @@ export default function PaymentReturnPage() {
   // Where Whish sent the customer back: "failure" helps the server close a
   // failed attempt at once (it still asks Whish whether it was paid).
   const outcome = params.get("outcome") === "failure" ? "failure" : "";
+  // Paid by card (the cart adds via=card): the texts name the bank, not
+  // Whish, even before the first answer.
+  const viaCard = params.get("via") === "card";
   const { refresh } = useCart();
   const [payment, setPayment] = useState(null);
   const [gaveUp, setGaveUp] = useState(false);
@@ -73,9 +77,10 @@ export default function PaymentReturnPage() {
   const orders = payment?.orders || [];
   const cards = payment?.gift_cards || [];
 
+  const card = payment?.provider ? payment.provider === "card" : viaCard;
   let Icon = Loader2;
   let title = t("paymentReturn.checking");
-  let body = t("paymentReturn.checkingBody");
+  let body = t(card ? "paymentReturn.checkingBodyCard" : "paymentReturn.checkingBody");
   if (status === "placed") {
     Icon = CheckCircle2;
     title = t("paymentReturn.paid");
@@ -94,8 +99,8 @@ export default function PaymentReturnPage() {
     body = t("paymentReturn.unknownBody");
   } else if (gaveUp) {
     Icon = Clock;
-    title = t("paymentReturn.slow");
-    body = t("paymentReturn.slowBody");
+    title = t(card ? "paymentReturn.slowCard" : "paymentReturn.slow");
+    body = t(card ? "paymentReturn.slowBodyCard" : "paymentReturn.slowBody");
   }
 
   return (
