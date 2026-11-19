@@ -84,7 +84,17 @@ export default function PaymentReturnPage() {
   if (status === "placed") {
     Icon = CheckCircle2;
     title = t("paymentReturn.paid");
-    body = cards.length && !orders.length ? t("paymentReturn.paidGifts") : t("paymentReturn.paidBody");
+    // What was ordered: printed albums go to the printer; a PDF is made
+    // and downloaded from the orders page.
+    const digital = orders.filter((o) => o.kind === "digital").length;
+    const printed = orders.length - digital;
+    body = cards.length && !orders.length
+      ? t("paymentReturn.paidGifts")
+      : digital && !printed
+        ? t("paymentReturn.paidBodyDigital")
+        : digital
+          ? t("paymentReturn.paidBodyMixed")
+          : t("paymentReturn.paidBody");
   } else if (status === "failed" || status === "expired" || status === "not_started") {
     Icon = XCircle;
     title = t("paymentReturn.failed");

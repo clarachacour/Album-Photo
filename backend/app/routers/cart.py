@@ -342,7 +342,7 @@ async def place_checkout(user: dict, view: dict, address: Optional[dict], paid: 
     if cards:
         pdfs = [(f"Everbook gift card {c['code']}.pdf", gift_cards.render_gift_card_pdf(c), "application/pdf") for c in cards]
         await run_email(send_gift_cards_email, user.get("email"), user.get("name"), cards, pdfs)
-    logger.info(f"Panier {checkout_id} : {len(orders)} commande(s), {len(cards)} carte(s) cadeau{' — payé avec Whish Pay' if paid and paid.get('provider') else ''}")
+    logger.info(f"Panier {checkout_id} : {len(orders)} commande(s), {len(cards)} carte(s) cadeau{(' — payé par carte' if paid.get('provider') == 'card' else ' — payé avec Whish Pay') if paid and paid.get('provider') else ''}")
     # Each album's PDF (through the Cloud Tasks queue when configured).
     if start_pdfs:
         for order in orders:

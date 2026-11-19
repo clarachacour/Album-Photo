@@ -1508,6 +1508,8 @@
     "checkingBodyCard": "Nous confirmons votre paiement auprès de la banque. Cela prend quelques secondes — gardez cette page ouverte.",
     "paid": "Paiement reçu, merci !",
     "paidBody": "Votre commande est confirmée et part chez l'imprimeur. Un e-mail de confirmation arrive aussi.",
+    "paidBodyDigital": "Votre commande est confirmée. Votre album PDF sera prêt à télécharger depuis vos commandes dans quelques minutes. Un e-mail de confirmation arrive aussi.",
+    "paidBodyMixed": "Votre commande est confirmée : votre album imprimé part chez l'imprimeur, et votre album PDF sera prêt à télécharger depuis vos commandes dans quelques minutes. Un e-mail de confirmation arrive aussi.",
     "paidGifts": "Votre carte cadeau est prête : nous vous l'avons envoyée par e-mail en PDF, à imprimer ou à transférer.",
     "giftCode": "Code de la carte cadeau :",
     "failed": "Le paiement n'a pas abouti",

@@ -1508,6 +1508,8 @@
     "checkingBodyCard": "We're confirming your payment with the bank. This takes a few seconds — please keep this page open.",
     "paid": "Payment received, thank you!",
     "paidBody": "Your order is confirmed and on its way to the printer. A confirmation email is on its way too.",
+    "paidBodyDigital": "Your order is confirmed. Your PDF album will be ready to download from your orders in a few minutes. A confirmation email is on its way too.",
+    "paidBodyMixed": "Your order is confirmed: your printed album is on its way to the printer, and your PDF album will be ready to download from your orders in a few minutes. A confirmation email is on its way too.",
     "paidGifts": "Your gift card is ready: we've emailed it to you as a PDF, to print or send on.",
     "giftCode": "Gift card code:",
     "failed": "The payment didn't go through",
