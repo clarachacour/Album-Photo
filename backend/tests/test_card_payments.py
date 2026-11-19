@@ -140,6 +140,32 @@ def test_the_session_request_follows_the_guide(app, monkeypatch):
     assert body["data"]["orderInformation"]["amountDetails"] == {"totalAmount": "53.00", "currency": "USD"}
 
 
+def test_a_refused_session_is_logged_whole_without_the_secret(app, monkeypatch, caplog):
+    from app import config
+    from app.services import cybersource
+
+    secret = base64.b64encode(b"never-in-the-logs").decode()
+    monkeypatch.setattr(config, "CYBS_MERCHANT_ID", "m")
+    monkeypatch.setattr(config, "CYBS_KEY_ID", "k")
+    monkeypatch.setattr(config, "CYBS_SHARED_SECRET", secret)
+
+    class Resp:
+        status_code = 404
+        text = '{"responseStatus":{"status":404,"reason":"NOT_FOUND","message":"Profile for merchant not found"}}'
+        headers = {"v-c-correlation-id": "corr-1"}
+
+    monkeypatch.setattr(cybersource.requests, "request", lambda *a, **k: Resp())
+    with caplog.at_level("WARNING"), pytest.raises(cybersource.CybersourceError):
+        cybersource.create_session(5300, ["https://everbook-album.com"], "pay-1")
+    (line,) = [r.getMessage() for r in caplog.records if "Diagnostic Cybersource" in r.getMessage()]
+    logged = json.loads(line.split(": ", 1)[1])
+    assert logged["endpoint"] == "POST https://apitest.cybersource.com/uc/v1/sessions"
+    assert logged["request_body"]["targetOrigins"] == ["https://everbook-album.com"]
+    assert "signature" in logged["request_headers"] and logged["response_headers"]["v-c-correlation-id"] == "corr-1"
+    assert "Profile for merchant not found" in logged["response_body"]
+    assert secret not in line and "never-in-the-logs" not in line
+
+
 def test_reading_a_transaction(app):
     from app.services import cybersource
 

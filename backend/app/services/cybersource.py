@@ -81,10 +81,34 @@ def signed_headers(method: str, path: str, body: Optional[str] = None, date: Opt
 def _call(method: str, path: str, payload: Optional[dict] = None) -> requests.Response:
     body = json.dumps(payload, separators=(",", ":")) if payload is not None else None
     headers = signed_headers(method, path, body)
+    url = f"https://{host()}{path}"
     try:
-        return requests.request(method, f"https://{host()}{path}", data=body, headers=headers, timeout=25)
+        resp = requests.request(method, url, data=body, headers=headers, timeout=25)
     except Exception as e:
         raise CybersourceError("unreachable", str(e)[:200]) from None
+    # (A transaction looked up and not found yet is expected, not a refusal.)
+    if resp.status_code >= 300 and not (method == "GET" and resp.status_code == 404):
+        _log_refused(method, url, headers, body, resp)
+    return resp
+
+
+def _log_refused(method: str, url: str, headers: dict, body: Optional[str], resp) -> None:
+    """The whole exchange of a refused call, as areeba's support asks for it
+    (endpoint, request headers and body, full response). Nothing secret: the
+    shared secret is never sent, only the signature made with it, which
+    expires with its date."""
+    try:
+        resp_headers = dict(resp.headers or {})
+    except Exception:
+        resp_headers = {}
+    logger.warning("Diagnostic Cybersource: " + json.dumps({
+        "endpoint": f"{method} {url}",
+        "request_headers": headers,
+        "request_body": json.loads(body) if body else None,
+        "response_status": resp.status_code,
+        "response_headers": resp_headers,
+        "response_body": (resp.text or "")[:4000],
+    }, ensure_ascii=False))
 
 
 def create_session(amount_cents: int, target_origins: list, reference: str, locale: str = "en_US") -> str:
