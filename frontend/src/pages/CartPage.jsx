@@ -116,8 +116,19 @@ export default function CartPage() {
         let result;
         try {
           result = await payByCard(data.payment.session);
-        } catch {
-          api.post(`/payments/${paymentId}/card`, { cancelled: true }).catch(() => {});
+        } catch (cardErr) {
+          // Closed by the customer, or the form failed to show: its reason
+          // goes to the server's logs (never shown as is to the customer).
+          let reason = "";
+          try {
+            // The SDK's errors carry a reason and details besides the message.
+            const parts = [cardErr?.reason, cardErr?.message, cardErr?.details && JSON.stringify(cardErr.details)].filter(Boolean);
+            reason = parts.length ? parts.join(" | ") : typeof cardErr === "string" ? cardErr : JSON.stringify(cardErr);
+          } catch {
+            reason = String(cardErr);
+          }
+          console.error("Card form:", cardErr);
+          api.post(`/payments/${paymentId}/card`, { cancelled: true, error: String(reason || "unknown").slice(0, 900) }).catch(() => {});
           setPlacing(false);
           toast.error(t("cart.payment.cardNotDone"), { duration: 8000 });
           return;

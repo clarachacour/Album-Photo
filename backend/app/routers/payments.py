@@ -276,6 +276,9 @@ class CardResult(BaseModel):
     # The card form's result (a JWT), or the customer closing it.
     result: Optional[str] = Field(default=None, max_length=20000)
     cancelled: bool = False
+    # Why the card form closed, when it failed rather than being closed by
+    # the customer (the SDK's message: for the logs only).
+    error: Optional[str] = Field(default=None, max_length=1000)
 
 
 @router.post("/payments/{payment_id}/card")
@@ -287,6 +290,8 @@ async def card_result(payment_id: str, data: CardResult, background: BackgroundT
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     if data.cancelled or not data.result:
+        if data.error:
+            logger.warning(f"Paiement {payment_id} : formulaire carte en échec côté site ({data.error}), sites autorisés {card_target_origins()}")
         await db.payments.update_one({"id": payment_id, "status": "pending", "transaction_id": {"$exists": False}},
                                      {"$set": {"status": "cancelled"}})
         return _public(await db.payments.find_one({"id": payment_id}, {"_id": 0}))
