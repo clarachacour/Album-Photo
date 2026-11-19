@@ -35,13 +35,49 @@ function loadScript({ url, integrity }) {
   });
 }
 
-/** Shows the card form for this session; resolves with its result (a JWT)
- *  once the customer has paid, rejects if the form is closed or fails. */
-export async function payByCard(sessionJwt) {
+/** The element the payment buttons go in, once the page has drawn it. */
+async function waitForElement(selector, ms = 3000) {
+  const until = Date.now() + ms;
+  while (!document.querySelector(selector)) {
+    if (Date.now() > until) throw new Error(`Container not found: ${selector}`);
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
+/** The SDK's mount options for the sidebar: its payment buttons (card,
+ *  wallets) in our container, and no paymentScreen — the card form then
+ *  opens as Cybersource's own side panel. (Its current SDK needs the
+ *  paymentSelection container: a bare mount() fails, despite the guide's
+ *  4.2 sample.) */
+export function sidebarMountOptions(container) {
+  return { paymentSelection: container };
+}
+
+/** Shows the payment buttons in `container`, then the card form in a side
+ *  panel; resolves with its result (a JWT) once the customer has paid,
+ *  rejects if the form fails — or as soon as `signal` aborts (the
+ *  customer's "Cancel": the error then has cancelled = true). */
+export async function payByCard(sessionJwt, { container = "#uc-payment-buttons", signal } = {}) {
   await loadScript(sessionLibrary(sessionJwt));
   if (!window.VAS?.UnifiedCheckout) throw new Error("VAS.UnifiedCheckout was not found");
   const client = await window.VAS.UnifiedCheckout(sessionJwt);
   const checkout = await client.createCheckout({ autoProcessing: true });
-  // No containers: Cybersource's own sidebar (guide, 4.2).
-  return checkout.mount();
+  await waitForElement(container);
+  const mounted = checkout.mount(sidebarMountOptions(container));
+  if (!signal) return mounted;
+  const cancelled = new Promise((_, reject) => {
+    const stop = () => {
+      try {
+        checkout.destroy?.();
+      } catch {
+        // Already gone.
+      }
+      const err = new Error("Cancelled by the customer");
+      err.cancelled = true;
+      reject(err);
+    };
+    if (signal.aborted) stop();
+    else signal.addEventListener("abort", stop, { once: true });
+  });
+  return Promise.race([mounted, cancelled]);
 }

@@ -1339,7 +1339,8 @@
       "cardDown": "Le paiement par carte est injoignable pour le moment. Réessayez dans un instant, ou choisissez un autre mode de paiement.",
       "cardNotDone": "Le paiement par carte n'a pas abouti. Rien n'a été débité : vous pouvez réessayer ou choisir un autre mode de paiement.",
       "cardTitle": "Paiement par carte…",
-      "cardWindow": "Saisissez votre carte dans la fenêtre sécurisée. Gardez cette page ouverte."
+      "cardWindow": "Choisissez votre moyen de paiement ci-dessous, puis saisissez votre carte dans la fenêtre sécurisée. Gardez cette page ouverte.",
+      "cardCancel": "Annuler et revenir au panier"
     },
     "credit": "Avoir carte cadeau",
     "creditLeft": "{{amount}} d'avoir de carte cadeau restent sur votre compte pour une prochaine commande.",

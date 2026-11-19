@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { useLocalePath } from "@/components/LocalLink";
@@ -46,6 +46,8 @@ export default function CartPage() {
   const [termsError, setTermsError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
   const [placing, setPlacing] = useState(false);
+  // The card form being shown: its "Cancel" (aborts payByCard).
+  const cardAbort = useRef(null);
   // "cod": cash on delivery (printed albums only); "whish": Whish Pay.
   const [method, setMethod] = useState("cod");
 
@@ -114,9 +116,11 @@ export default function CartPage() {
       if (data?.payment?.session) {
         const paymentId = data.payment.id;
         let result;
+        cardAbort.current = new AbortController();
         try {
-          result = await payByCard(data.payment.session);
+          result = await payByCard(data.payment.session, { container: "#uc-payment-buttons", signal: cardAbort.current.signal });
         } catch (cardErr) {
+          cardAbort.current = null;
           // Closed by the customer, or the form failed to show: its reason
           // goes to the server's logs (never shown as is to the customer).
           let reason = "";
@@ -127,12 +131,13 @@ export default function CartPage() {
           } catch {
             reason = String(cardErr);
           }
-          console.error("Card form:", cardErr);
-          api.post(`/payments/${paymentId}/card`, { cancelled: true, error: String(reason || "unknown").slice(0, 900) }).catch(() => {});
+          if (!cardErr?.cancelled) console.error("Card form:", cardErr);
+          api.post(`/payments/${paymentId}/card`, cardErr?.cancelled ? { cancelled: true } : { cancelled: true, error: String(reason || "unknown").slice(0, 900) }).catch(() => {});
           setPlacing(false);
           toast.error(t("cart.payment.cardNotDone"), { duration: 8000 });
           return;
         }
+        cardAbort.current = null;
         await api.post(`/payments/${paymentId}/card`, { result: typeof result === "string" ? result : JSON.stringify(result) }).catch(() => {});
         nav(`/payment/return?payment=${paymentId}`);
         return;
@@ -181,6 +186,21 @@ export default function CartPage() {
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-6 text-[color:var(--muted)]" />
           <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight mb-4">{t(payment === "whish" ? "cart.payment.toWhishTitle" : payment === "card" ? "cart.payment.cardTitle" : "checkout.placedTitle")}</h1>
           <p className="text-ink/70">{t(payment === "whish" ? "cart.payment.toWhish" : payment === "card" ? "cart.payment.cardWindow" : "cart.placing")}</p>
+          {payment === "card" && (
+            <>
+              {/* Cybersource's payment buttons (card, wallets) are drawn here;
+                  the card form then opens as its side panel. */}
+              <div id="uc-payment-buttons" className="mt-8 text-left" data-testid="card-payment-buttons" />
+              <button
+                type="button"
+                onClick={() => cardAbort.current?.abort()}
+                className="mt-6 text-sm underline text-ink/70 hover:text-ink"
+                data-testid="card-cancel"
+              >
+                {t("cart.payment.cardCancel")}
+              </button>
+            </>
+          )}
         </div>
       </main>
     );

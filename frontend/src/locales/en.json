@@ -1339,7 +1339,8 @@
       "cardDown": "Card payment can't be reached right now. Please try again in a moment, or choose another way to pay.",
       "cardNotDone": "The card payment wasn't completed. Nothing was charged: you can try again or choose another way to pay.",
       "cardTitle": "Card payment…",
-      "cardWindow": "Fill in your card in the secure window. Keep this page open."
+      "cardWindow": "Choose how to pay below, then fill in your card in the secure window. Keep this page open.",
+      "cardCancel": "Cancel and go back to my cart"
     },
     "credit": "Gift card credit",
     "creditLeft": "{{amount}} of gift card credit stays on your account for a next order.",
