@@ -206,8 +206,11 @@ def test_the_email_confirmation_link_leads_to_the_home_page(client, db):
     res = client.get(f"/api/auth/verify-email?token={token}", follow_redirects=False)
     assert res.status_code == 303 and res.headers["location"].endswith("/?verified=1")
     assert asyncio.run(db.users.find_one({"email": email}))["email_verified"] is True
+    # A second click (often a mail security filter opened it first): still
+    # "confirmed", not "this link can't be used".
     again = client.get(f"/api/auth/verify-email?token={token}", follow_redirects=False)
-    assert again.headers["location"].endswith("/?verified=0")
+    assert again.headers["location"].endswith("/?verified=1")
+    assert client.get("/api/auth/verify-email?token=not-a-token", follow_redirects=False).headers["location"].endswith("/?verified=0")
     # Signed up on the French site: the French home page.
     fr = f"{uuid.uuid4().hex[:10]}@example.com"
     client.post("/api/auth/signup", json={"email": fr, "password": "secret123", "name": "T", "lang": "fr"})

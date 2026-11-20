@@ -12,6 +12,7 @@ INDEXES = [
     ("users", "email", {"unique": True}),
     ("users", "id", {"unique": True}),  # read on every logged-in request
     ("users", "verify_email_token", {"sparse": True}),
+    ("users", "verified_email_token", {"sparse": True}),
     ("users", "reset_token", {"sparse": True}),
     ("albums", "id", {"unique": True}),
     ("albums", "user_id", {}),

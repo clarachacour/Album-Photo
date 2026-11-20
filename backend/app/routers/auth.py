@@ -154,15 +154,24 @@ async def verify_email(token: str = Query(...)):
     """Reached by a direct click from send_verification_email's link — no
     login involved, the token itself (stored on the user doc at signup) is
     the only proof needed. Sends the person on to the site's home page,
-    which says the address is confirmed (?verified=1) — or, for a link
-    already used or no longer valid, that it can't be used (?verified=0)."""
+    which says the address is confirmed (?verified=1) — or, for a link no
+    longer valid, that it can't be used (?verified=0).
+
+    The token is kept once used (as verified_email_token): mail security
+    filters (company mailboxes, Outlook…) open every link of an email
+    before the person does, so the person's own click is often the second
+    one — it must still say "confirmed", not "this link can't be used"."""
     user = await db.users.find_one({"verify_email_token": token})
     if not user:
+        used = await db.users.find_one({"verified_email_token": token, "email_verified": True})
+        if used:
+            home = "/fr" if used.get("lang") == "fr" else "/"
+            return RedirectResponse(f"{FRONTEND_URL}{home}?verified=1", status_code=303)
         return RedirectResponse(f"{FRONTEND_URL}/?verified=0", status_code=303)
     home = "/fr" if user.get("lang") == "fr" else "/"
     await db.users.update_one(
         {"id": user["id"]},
-        {"$set": {"email_verified": True}, "$unset": {"verify_email_token": ""}},
+        {"$set": {"email_verified": True, "verified_email_token": token}, "$unset": {"verify_email_token": ""}},
     )
     return RedirectResponse(f"{FRONTEND_URL}{home}?verified=1", status_code=303)
 
