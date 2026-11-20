@@ -44,7 +44,7 @@ async def _set_status(order_id: str, status: str):
 
 
 async def _customer(order: dict) -> dict:
-    return await db.users.find_one({"id": order["user_id"]}, {"_id": 0, "email": 1, "name": 1}) or {}
+    return await db.users.find_one({"id": order["user_id"]}, {"_id": 0, "email": 1, "name": 1, "lang": 1}) or {}
 
 
 async def dispatch_delivery(order_id: str) -> dict:
@@ -130,14 +130,14 @@ async def sync_delivery(order_id: str) -> dict:
             await _set_status(o["id"], "shipped")
         if moving:
             fresh = await _fresh(moving)
-            await run_email(send_order_shipped_email, customer.get("email"), customer.get("name"), fresh[0], fresh)
+            await run_email(send_order_shipped_email, customer.get("email"), customer.get("name"), fresh[0], fresh, lang=customer.get("lang"))
     elif code == wakilni.SUCCESS and not status.get("rejected"):
         arrived = [o for o in members if o["status"] != "delivered"]
         for o in arrived:
             await _set_status(o["id"], "delivered")
         if arrived:
             fresh = await _fresh(arrived)
-            await run_email(send_order_delivered_feedback_email, customer.get("email"), customer.get("name"), fresh[0], fresh)
+            await run_email(send_order_delivered_feedback_email, customer.get("email"), customer.get("name"), fresh[0], fresh, lang=customer.get("lang"))
             for o in fresh:
                 await run_email(send_team_order_update_email, o, "delivered")
     if code == wakilni.CANCELED:

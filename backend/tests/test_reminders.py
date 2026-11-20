@@ -120,7 +120,7 @@ def test_the_emails_read_well_in_both_languages(monkeypatch):
     monkeypatch.setattr(email, "send_email", lambda to, subject, body, html_body=None, **k: out.append((subject, body, html_body)))
     email.send_cart_reminder_email("a@b.c", "Rita", [("Byblos <3", "print"), ("A4 · 50 pages", "gift")], "fr", "https://api/stop")
     subject, body, html = out[-1]
-    assert subject == "Votre album vous attend dans votre panier"
+    assert subject == "Votre panier Everbook vous attend"
     assert "Bonjour Rita," in body and "• Byblos <3 — album imprimé" in body and "• A4 · 50 pages — carte cadeau" in body
     assert "Byblos &lt;3" in html and "https://api/stop" in html and "/cart" in html
     email.send_unfinished_album_reminder_email("a@b.c", "", {"id": "x1", "title": "Paros", "lang": "en"}, "https://api/stop")

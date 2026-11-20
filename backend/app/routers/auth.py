@@ -97,7 +97,7 @@ async def signup(data: SignupInput):
         # silently issuing a token here would skip that check entirely.
         raise HTTPException(status_code=400, detail="This email is already in use")
     token = create_token(user_id)
-    await run_email(send_verification_email, data.email.lower(), data.name, verify_token, welcome=True)
+    await run_email(send_verification_email, data.email.lower(), data.name, verify_token, welcome=True, lang=data.lang)
     return AuthResponse(token=token, user=UserOut(id=user_id, email=data.email.lower(), name=data.name, is_admin=bool(ADMIN_EMAIL) and data.email.lower() == ADMIN_EMAIL, email_verified=False))
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -131,7 +131,7 @@ async def forgot_password(data: ForgotPasswordInput, request: Request):
             {"$set": {"reset_token": reset_token, "reset_token_expires": expires.isoformat()}},
         )
         reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
-        await run_email(send_password_reset_email, user["email"], user.get("name", ""), reset_link)
+        await run_email(send_password_reset_email, user["email"], user.get("name", ""), reset_link, lang=data.lang or user.get("lang"))
     return {"message": "If an account exists for this email, a reset link has been sent."}
 
 @router.post("/auth/reset-password")
@@ -146,7 +146,7 @@ async def reset_password(data: ResetPasswordInput):
         {"id": user["id"]},
         {"$set": {"password_hash": hash_password(data.new_password)}, "$unset": {"reset_token": "", "reset_token_expires": ""}},
     )
-    await run_email(send_password_changed_email, user["email"], user.get("name", ""))
+    await run_email(send_password_changed_email, user["email"], user.get("name", ""), lang=user.get("lang"))
     return {"message": "Password updated"}
 
 @router.get("/auth/verify-email")
@@ -188,7 +188,7 @@ async def resend_verification_email(user: dict = Depends(get_current_user_raw)):
         return {"message": "Your email is already verified."}
     verify_token = str(uuid.uuid4())
     await db.users.update_one({"id": user["id"]}, {"$set": {"verify_email_token": verify_token}})
-    await run_email(send_verification_email, user["email"], user.get("name", ""), verify_token)
+    await run_email(send_verification_email, user["email"], user.get("name", ""), verify_token, lang=user.get("lang"))
     return {"message": "Verification email sent."}
 
 @router.post("/auth/google", response_model=AuthResponse)
@@ -204,10 +204,10 @@ async def google_auth(data: GoogleAuthInput):
     email = idinfo.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="Could not read the email address of this Google account")
-    user, is_new = await upsert_oauth_user(email, idinfo.get("name"), "google")
+    user, is_new = await upsert_oauth_user(email, idinfo.get("name"), "google", data.lang)
     token = create_token(user["id"])
     if is_new:
-        await run_email(send_welcome_email, user["email"], user["name"])
+        await run_email(send_welcome_email, user["email"], user["name"], lang=user.get("lang"))
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @router.post("/auth/apple", response_model=AuthResponse)
@@ -230,10 +230,10 @@ async def apple_auth(data: AppleAuthInput):
     email = payload.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="Could not read the email address of this Apple account")
-    user, is_new = await upsert_oauth_user(email, data.name, "apple")
+    user, is_new = await upsert_oauth_user(email, data.name, "apple", data.lang)
     token = create_token(user["id"])
     if is_new:
-        await run_email(send_welcome_email, user["email"], user["name"])
+        await run_email(send_welcome_email, user["email"], user["name"], lang=user.get("lang"))
     return AuthResponse(token=token, user=UserOut(id=user["id"], email=user["email"], name=user["name"], is_admin=bool(ADMIN_EMAIL) and user["email"] == ADMIN_EMAIL))
 
 @router.get("/auth/me", response_model=UserOut)
@@ -277,7 +277,7 @@ async def delete_my_account(data: DeleteAccountInput, user: dict = Depends(get_c
     if full_user.get("password_hash") and not verify_password(data.password or "", full_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect password")
     result = await delete_account(full_user)
-    await run_email(send_account_deleted_email, full_user["email"], full_user.get("name", ""))
+    await run_email(send_account_deleted_email, full_user["email"], full_user.get("name", ""), lang=full_user.get("lang"))
     return {"deleted": True, **result}
 
 @router.put("/auth/password")
@@ -286,5 +286,5 @@ async def change_password(data: ChangePasswordInput, user: dict = Depends(get_cu
     if not full_user or not full_user.get("password_hash") or not verify_password(data.current_password, full_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
     await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": hash_password(data.new_password)}})
-    await run_email(send_password_changed_email, full_user["email"], full_user.get("name", ""))
+    await run_email(send_password_changed_email, full_user["email"], full_user.get("name", ""), lang=full_user.get("lang"))
     return {"message": "Password updated"}

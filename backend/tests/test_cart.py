@@ -15,8 +15,8 @@ def shop(client, db, courier, monkeypatch):  # noqa: F811
     from app.routers import cart as cart_router
 
     emails = []
-    monkeypatch.setattr(cart_router, "send_checkout_confirmation_email", lambda to, name, orders: emails.append([o["id"] for o in orders]))
-    monkeypatch.setattr(cart_router, "send_order_confirmation_email", lambda to, name, order: emails.append([order["id"]]))
+    monkeypatch.setattr(cart_router, "send_checkout_confirmation_email", lambda to, name, orders, **k: emails.append([o["id"] for o in orders]))
+    monkeypatch.setattr(cart_router, "send_order_confirmation_email", lambda to, name, order, **k: emails.append([order["id"]]))
     headers = courier["customer"]
     # The fixture's own order isn't part of these tests' packages.
     asyncio.run(db.orders.update_one({"id": courier["order"]["id"]}, {"$unset": {"printer_pending_at": ""}}))
@@ -166,7 +166,29 @@ def test_one_confirmation_email_lists_everything(app, monkeypatch):
     assert "3 items" in subject
     assert "Byblos — printed album × 2 (EB-5F4C0509)" in body and "Tyre — PDF to download (EB-7C2D0000)" in body
     assert "Payment is cash on delivery" in body and "164.00 USD (delivery included), is paid to the courier" in body and "one package" in body
-    assert "nothing to pay for your PDF" in body and "Byblos" in html
+    assert "We'll email you as soon as your PDF is ready to download" in body and "Byblos" in html
+    assert "Here's what you ordered:" in body and "Your printed albums will be delivered together" in body
+
+
+def test_the_order_emails_are_in_the_customers_language(monkeypatch):
+    from app.services import email as email_module
+
+    sent = []
+    monkeypatch.setattr(email_module, "send_email", lambda to, subject, body, html_body=None, reply_to=None, attachments=None: sent.append((subject, body)))
+    paid = {"provider": "card", "reference": "tx-1"}
+    orders = [
+        {"id": "5f4c0509-1", "album_title": "Byblos", "kind": "print", "quantity": 1, "total_price_cents": 5800, "currency": "usd", "payment": paid},
+        {"id": "7c2d0000-3", "album_title": "Tyre", "kind": "digital", "quantity": 1, "total_price_cents": 2200, "currency": "usd", "payment": paid},
+    ]
+    email_module.send_checkout_confirmation_email("rita@example.com", "Rita", orders, lang="fr")
+    email_module.send_order_confirmation_email("rita@example.com", "Rita", orders[0], lang="fr")
+    email_module.send_order_confirmation_email("rita@example.com", "Rita", orders[1], lang="en")
+    (fr_subject, fr_body), (one_subject, one_body), (pdf_subject, pdf_body) = sent
+    assert fr_subject == "Votre commande Everbook est confirmée — 2 articles" and fr_body.startswith("Bonjour Rita,")
+    assert "Byblos — album imprimé × 1" in fr_body and "Commande payée par carte : rien à payer à la livraison." in fr_body
+    assert "Total de la commande : 58,00 USD (livraison comprise), payé par carte." in one_body
+    assert pdf_subject == "Your Everbook digital album order is confirmed"
+    assert "Your payment by card has been received." in pdf_body and "paid with card" not in pdf_body
 
 
 def test_cash_on_delivery_only_for_now(client, shop):

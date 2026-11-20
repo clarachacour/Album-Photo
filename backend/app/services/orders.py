@@ -79,7 +79,7 @@ async def deliver_digital_if_ready(order_id: str) -> bool:
         await db.orders.update_one({"id": order_id}, {"$push": {"status_history": {"status": "available", "at": now}}})
     customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
     if customer:
-        await run_email(send_digital_album_ready_email, customer.get("email"), customer.get("name"), {**order, "status": "available"})
+        await run_email(send_digital_album_ready_email, customer.get("email"), customer.get("name"), {**order, "status": "available"}, lang=customer.get("lang"))
     return True
 
 # (MAX_CONCURRENT_PDF_GENERATIONS is defined earlier, alongside the other

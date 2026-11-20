@@ -64,8 +64,11 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  // The site's language: the account's emails are written in it.
+  const siteLang = () => ((i18n.language || "en").startsWith("fr") ? "fr" : "en");
+
   const signup = async (name, email, password) => {
-    const lang = (i18n.language || "en").startsWith("fr") ? "fr" : "en";
+    const lang = siteLang();
     const { data } = await api.post("/auth/signup", { name, email, password, lang });
     saveSession(data);
     setUser(data.user);
@@ -79,21 +82,21 @@ export function AuthProvider({ children }) {
   };
 
   const loginWithGoogle = async (credential) => {
-    const { data } = await api.post("/auth/google", { credential });
+    const { data } = await api.post("/auth/google", { credential, lang: siteLang() });
     saveSession(data);
     setUser(data.user);
     return data.user;
   };
 
   const loginWithApple = async (idToken, name) => {
-    const { data } = await api.post("/auth/apple", { id_token: idToken, name });
+    const { data } = await api.post("/auth/apple", { id_token: idToken, name, lang: siteLang() });
     saveSession(data);
     setUser(data.user);
     return data.user;
   };
 
   const forgotPassword = async (email) => {
-    const { data } = await api.post("/auth/forgot-password", { email });
+    const { data } = await api.post("/auth/forgot-password", { email, lang: siteLang() });
     return data;
   };
 

@@ -157,7 +157,7 @@ class CheckoutInput(BaseModel):
     # "cod": cash on delivery (printed albums only); "whish": Whish Pay.
     # None: Whish when the cart holds a gift card or a PDF, otherwise cod.
     payment_method: Optional[Literal["cod", "whish", "card"]] = None
-    # The card form's language.
+    # The site's language: the card form's, and the order emails'.
     lang: Literal["en", "fr"] = "en"
 
 class AuthResponse(BaseModel):
@@ -166,6 +166,7 @@ class AuthResponse(BaseModel):
 
 class ForgotPasswordInput(BaseModel):
     email: EmailStr
+    lang: Optional[Literal["en", "fr"]] = None  # the site's language: the email's one
 
 class ResetPasswordInput(BaseModel):
     token: Token
@@ -173,10 +174,12 @@ class ResetPasswordInput(BaseModel):
 
 class GoogleAuthInput(BaseModel):
     credential: Token  # ID token from Google Identity Services
+    lang: Literal["en", "fr"] = "en"  # the site's language: the emails' one
 
 class AppleAuthInput(BaseModel):
     id_token: Token
     name: OptName  # Apple only ever sends the name on first authorization
+    lang: Literal["en", "fr"] = "en"
 
 class AlbumCreate(BaseModel):
     title: str = Field(default="Untitled", max_length=200)

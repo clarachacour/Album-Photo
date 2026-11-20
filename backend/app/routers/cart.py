@@ -272,6 +272,11 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     if method == "cod" and view["needs_online_payment"]:
         raise HTTPException(status_code=400, detail="A gift card or a PDF is paid online, with Whish Pay or a card")
     address = data.shipping_address.dict() if data.shipping_address else None
+    # The site's language at checkout: this order's emails (and the next
+    # ones: shipping, delivery…) are written in it.
+    if user.get("lang") != data.lang:
+        await db.users.update_one({"id": user["id"]}, {"$set": {"lang": data.lang}})
+        user = {**user, "lang": data.lang}
     if method in ("whish", "card"):
         if not (payments.ONLINE_PAYMENT if method == "whish" else payments.CARD_PAYMENT):
             raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
@@ -334,9 +339,9 @@ async def place_checkout(user: dict, view: dict, address: Optional[dict], paid: 
     if orders:
         orders = await db.orders.find({"checkout_id": checkout_id}, {"_id": 0}).to_list(50)
         if len(orders) == 1:
-            await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), orders[0])
+            await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), orders[0], lang=user.get("lang"))
         else:
-            await run_email(send_checkout_confirmation_email, user.get("email"), user.get("name"), orders)
+            await run_email(send_checkout_confirmation_email, user.get("email"), user.get("name"), orders, lang=user.get("lang"))
         # The team hears of it too: one email for the whole checkout.
         await run_email(send_team_new_order_email, orders, user)
     if cards:

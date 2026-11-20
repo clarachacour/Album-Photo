@@ -119,7 +119,7 @@ def verify_google_token(credential: str, client_id: str) -> dict:
         _google_request.cache.clear()
         return google_id_token.verify_oauth2_token(credential, _google_request, client_id)
 
-async def upsert_oauth_user(email: str, name: str, provider: str) -> tuple:
+async def upsert_oauth_user(email: str, name: str, provider: str, lang: str = "en") -> tuple:
     """Returns (user, is_new) — is_new is what callers use to decide
     whether to send the welcome email (only on a genuinely new account,
     never on a routine sign-in to an existing one)."""
@@ -134,6 +134,8 @@ async def upsert_oauth_user(email: str, name: str, provider: str) -> tuple:
         "password_hash": None,
         "name": name or email.split("@")[0],
         "auth_provider": provider,
+        # The site's language at signup: the emails are written in it.
+        "lang": "fr" if lang == "fr" else "en",
         # Google/Apple have already confirmed this address belongs to the
         # person signing in — asking them to also click a verification
         # link we'd send would be a redundant, confusing extra step for

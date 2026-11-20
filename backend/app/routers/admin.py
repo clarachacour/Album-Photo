@@ -376,7 +376,7 @@ async def admin_update_order_status(order_id: str, data: OrderStatusUpdate, user
     if email_fn:
         customer = await db.users.find_one({"id": order["user_id"]}, {"_id": 0})
         if customer:
-            await run_email(email_fn, customer.get("email"), customer.get("name"), fresh)
+            await run_email(email_fn, customer.get("email"), customer.get("name"), fresh, lang=customer.get("lang"))
     return fresh
 
 

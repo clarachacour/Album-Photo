@@ -156,69 +156,85 @@ def _email_wrapper(title: str, body_html: str, cta_label: str = None, cta_url: s
 </body>
 </html>"""
 
-def send_welcome_email(to_email: str, name: str):
-    subject = "Welcome to Everbook"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"Welcome to Everbook — you're all set to start turning your photos into a printed book.\n\n"
-        f"Upload your photos, let us help lay them out, and order a copy whenever you're ready.\n\n"
-        f"{FRONTEND_URL}"
-    )
+def _fr(lang) -> bool:
+    return lang == "fr"
+
+
+def _hi(name, lang) -> str:
+    """ "Hi Maya," / "Bonjour Maya," (no stray space without a name)."""
+    return f"{'Bonjour' if _fr(lang) else 'Hi'} {name or ''},".replace(" ,", ",")
+
+
+def _amount(value: float, currency: str, lang: str) -> str:
+    """58.00 USD in English, 58,00 USD in French."""
+    text = f"{value:.2f}"
+    return f"{text.replace('.', ',') if _fr(lang) else text} {currency}"
+
+
+def _home(lang) -> str:
+    return f"{FRONTEND_URL}/fr" if _fr(lang) else FRONTEND_URL
+
+
+def send_welcome_email(to_email: str, name: str, lang: str = "en"):
+    """For a Google/Apple account (already confirmed): the welcome."""
+    if _fr(lang):
+        subject, title, cta = "Bienvenue sur Everbook", "Bienvenue sur Everbook.", "Commencer"
+        text = ("Tout est prêt pour transformer vos photos en album imprimé. Importez vos photos, "
+                "laissez-nous vous aider à les mettre en page, et commandez quand vous le souhaitez.")
+    else:
+        subject, title, cta = "Welcome to Everbook", "Welcome to Everbook.", "Get started"
+        text = ("You're all set to start turning your photos into a printed album. Upload your photos, "
+                "let us help you lay them out, and order whenever you're ready.")
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{text}\n\n{_home(lang)}"
     html_body = _email_wrapper(
-        title="Welcome to Everbook.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>You're all set to start turning your photos into a printed book. "
-            f"Upload your photos, let us help lay them out, and order a copy whenever you're ready.</p>"
-        ),
-        cta_label="Get started",
-        cta_url=FRONTEND_URL,
+        title=title,
+        body_html=f"<p>{_h(hi)}</p><p>{_h(text)}</p>",
+        cta_label=cta,
+        cta_url=_home(lang),
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_verification_email(to_email: str, name: str, verify_token: str, welcome: bool = False):
+def send_verification_email(to_email: str, name: str, verify_token: str, welcome: bool = False, lang: str = "en"):
     """Sent right at signup (welcome=True — see signup) and again whenever
     resend_verification_email is called (welcome=False, a plain reminder
     rather than a second "welcome") — never for Google/Apple accounts,
     whose provider has already confirmed the address (see
     upsert_oauth_user). The link goes straight to a backend endpoint
-    (verify_email) rather than a frontend page, since there's nothing for
-    the person to fill in or decide — one click is the whole interaction,
-    the same shape as the printer/delivery action links (sign_order_action)
-    elsewhere in this file, just without needing HMAC signing since the
-    token itself is the single-use credential, stored and cleared server-
-    side rather than reconstructed from a signature.
-
-    welcome=True folds the account's very first email into this one
-    single message instead of sending a separate "Welcome to Everbook"
-    right alongside it — two emails at once meant the welcome one's own
-    "Get started" link took someone straight past the confirmation step
-    entirely (the site still blocks them once there, but arriving at a
-    page that looks ready before confirming anything is confusing on its
-    own). One email, one action, matches what a click from an inbox
-    should actually lead to."""
+    (verify_email) rather than a frontend page: one click is the whole
+    interaction. welcome=True folds the account's very first email into
+    this one, instead of a separate "Welcome to Everbook" alongside it."""
     verify_link = f"{BACKEND_URL}/api/auth/verify-email?token={verify_token}"
-    subject = "Welcome to Everbook — confirm your email" if welcome else "Confirm your email address"
-    intro = (
-        "Welcome to Everbook — you're almost set up. Please confirm this is your email address to finish creating your account and start turning your photos into a printed book."
-        if welcome
-        else "Please confirm this is your email address to finish setting up your account."
-    )
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"{intro}\n\n"
-        f"{verify_link}\n\n"
-        f"If you didn't create an Everbook account, you can safely ignore this email."
-    )
+    if _fr(lang):
+        subject = "Bienvenue sur Everbook — confirmez votre adresse e-mail" if welcome else "Confirmez votre adresse e-mail"
+        title = "Bienvenue sur Everbook." if welcome else "Confirmez votre adresse e-mail."
+        intro = (
+            "Bienvenue sur Everbook, vous y êtes presque. Confirmez votre adresse e-mail pour finir de créer votre compte et commencer à transformer vos photos en album imprimé."
+            if welcome else
+            "Confirmez votre adresse e-mail pour finir de configurer votre compte."
+        )
+        ignore = "Si vous n'avez pas créé de compte Everbook, vous pouvez ignorer cet e-mail."
+        cta = "Confirmer mon adresse e-mail"
+    else:
+        subject = "Welcome to Everbook — confirm your email" if welcome else "Confirm your email address"
+        title = "Welcome to Everbook." if welcome else "Confirm your email address."
+        intro = (
+            "Welcome to Everbook — you're almost there. Please confirm your email address to finish creating your account and start turning your photos into a printed album."
+            if welcome else
+            "Please confirm your email address to finish setting up your account."
+        )
+        ignore = "If you didn't create an Everbook account, you can safely ignore this email."
+        cta = "Confirm my email address"
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{intro}\n\n{verify_link}\n\n{ignore}"
     html_body = _email_wrapper(
-        title="Welcome to Everbook." if welcome else "Confirm your email address.",
+        title=title,
         body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>{intro}</p>"
-            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't create an Everbook account, "
-            f"you can safely ignore this email.</p>"
+            f"<p>{_h(hi)}</p>"
+            f"<p>{_h(intro)}</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">{_h(ignore)}</p>"
         ),
-        cta_label="Confirm email address",
+        cta_label=cta,
         cta_url=verify_link,
     )
     send_email(to_email, subject, body, html_body=html_body)
@@ -260,70 +276,74 @@ def send_pdf_generation_failed_email(order: dict, error: str):
     )
     send_email(ADMIN_EMAIL, subject, body, html_body=html_body)
 
-def send_password_reset_email(to_email: str, name: str, reset_link: str):
-    subject = "Reset your password"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"Click the link below to reset your password (valid for 1 hour):\n{reset_link}\n\n"
-        f"If you didn't request this, you can safely ignore this email."
-    )
+def send_password_reset_email(to_email: str, name: str, reset_link: str, lang: str = "en"):
+    if _fr(lang):
+        subject, title, cta = "Réinitialisez votre mot de passe", "Réinitialisez votre mot de passe.", "Réinitialiser mon mot de passe"
+        plain = "Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe (valable 1 heure) :"
+        text = "Cliquez sur le bouton ci-dessous pour réinitialiser votre mot de passe. Ce lien est valable 1 heure."
+        ignore = "Si vous n'avez pas fait cette demande, vous pouvez ignorer cet e-mail."
+    else:
+        subject, title, cta = "Reset your password", "Reset your password.", "Reset my password"
+        plain = "Click the link below to reset your password (valid for 1 hour):"
+        text = "Click the button below to reset your password. This link is valid for 1 hour."
+        ignore = "If you didn't request this, you can safely ignore this email."
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{plain}\n{reset_link}\n\n{ignore}"
     html_body = _email_wrapper(
-        title="Reset your password.",
+        title=title,
         body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Click the button below to reset your password. This link is valid for 1 hour.</p>"
-            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't request this, "
-            f"you can safely ignore this email.</p>"
+            f"<p>{_h(hi)}</p>"
+            f"<p>{_h(text)}</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">{_h(ignore)}</p>"
         ),
-        cta_label="Reset password",
+        cta_label=cta,
         cta_url=reset_link,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_account_deleted_email(to_email: str, name: str):
+def send_account_deleted_email(to_email: str, name: str, lang: str = "en"):
     """Confirms an account deletion, so the owner knows it happened (and
     can reach us if it wasn't them)."""
-    subject = "Your Everbook account was deleted"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"Your Everbook account has been deleted, along with your albums and photos.\n\n"
-        f"If you didn't ask for this, please contact us right away."
-    )
+    if _fr(lang):
+        subject, title = "Votre compte Everbook a été supprimé", "Votre compte a été supprimé."
+        text = "Votre compte Everbook a été supprimé, ainsi que vos albums et vos photos."
+        warn = "Si vous n'avez pas demandé cette suppression, contactez-nous immédiatement."
+    else:
+        subject, title = "Your Everbook account was deleted", "Your account was deleted."
+        text = "Your Everbook account has been deleted, along with your albums and photos."
+        warn = "If you didn't ask for this, please contact us right away."
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{text}\n\n{warn}"
     html_body = _email_wrapper(
-        title="Your account was deleted.",
+        title=title,
         body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Your Everbook account has been deleted, along with your albums and photos.</p>"
-            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If you didn't ask for this, please contact us right away.</p>"
+            f"<p>{_h(hi)}</p>"
+            f"<p>{_h(text)}</p>"
+            f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">{_h(warn)}</p>"
         ),
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_password_changed_email(to_email: str, name: str):
+def send_password_changed_email(to_email: str, name: str, lang: str = "en"):
     """A simple security notice, sent after a password change goes through
-    successfully — via the "I know my current password" flow (change_password)
-    or the "I forgot it" one (reset_password) alike, so either path leaves
-    the same trace in the account owner's inbox. Never blocks or reverses
-    the change itself if sending fails — this is a notification, not a
-    confirmation step the change waits on. Deliberately doesn't link
-    anywhere or ask the person to click anything: if this wasn't them, the
-    account may already be compromised, and a suspicious link is exactly
-    what a real phishing follow-up would look like."""
-    subject = "Your Everbook password was changed"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"This is a confirmation that your Everbook account password was just changed.\n\n"
-        f"If this was you, no action is needed. If you didn't make this change, "
-        f"please contact us right away so we can help secure your account."
-    )
+    (change_password or reset_password alike). Deliberately links nowhere:
+    if this wasn't them, a link is what a phishing follow-up would look
+    like."""
+    if _fr(lang):
+        subject, title = "Votre mot de passe Everbook a été modifié", "Votre mot de passe a été modifié."
+        text = "Nous vous confirmons que le mot de passe de votre compte Everbook vient d'être modifié."
+        warn = ("Si c'est bien vous, vous n'avez rien à faire. Sinon, contactez-nous immédiatement "
+                "pour que nous vous aidions à sécuriser votre compte.")
+    else:
+        subject, title = "Your Everbook password was changed", "Your password was changed."
+        text = "This is a confirmation that your Everbook account password was just changed."
+        warn = ("If this was you, no action is needed. If you didn't make this change, "
+                "please contact us right away so we can help secure your account.")
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{text}\n\n{warn}"
     html_body = _email_wrapper(
-        title="Your password was changed.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>This is a confirmation that your Everbook account password was just changed.</p>"
-            f"<p>If this was you, no action is needed. If you didn't make this change, "
-            f"please contact us right away so we can help secure your account.</p>"
-        ),
+        title=title,
+        body_html=f"<p>{_h(hi)}</p><p>{_h(text)}</p><p>{_h(warn)}</p>",
     )
     send_email(to_email, subject, body, html_body=html_body)
 
@@ -332,96 +352,124 @@ def _paid_online(order: dict) -> bool:
     return bool((order.get("payment") or {}).get("provider"))
 
 
-def _paid_how(orders) -> str:
-    """"Whish Pay" or "card", as the email says it was paid."""
+def _paid_how(orders, lang: str = "en") -> str:
+    """How it was paid, as the email says it: "by card" / "with Whish Pay"
+    ("par carte" / "avec Whish Pay")."""
     orders = orders if isinstance(orders, list) else [orders]
-    return "card" if any((o.get("payment") or {}).get("provider") == "card" for o in orders) else "Whish Pay"
+    card = any((o.get("payment") or {}).get("provider") == "card" for o in orders)
+    if _fr(lang):
+        return "par carte" if card else "avec Whish Pay"
+    return "by card" if card else "with Whish Pay"
 
 
-def send_order_confirmation_email(to_email: str, name: str, order: dict):
+def send_order_confirmation_email(to_email: str, name: str, order: dict, lang: str = "en"):
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
     total = order.get("total_price_cents", 0) / 100
     if order.get("kind") == "digital":
-        return _send_digital_order_confirmation_email(to_email, name, order, order_url, total)
-    subject = "Your Everbook order is confirmed"
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"Thanks for your order! We've received it and will start preparing your book.\n\n"
-        + (f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), paid with {_paid_how(order)}: nothing to pay on delivery.\n"
-           if _paid_online(order) else
-           f"Your album is free. Only the delivery, {total:.2f} {order.get('currency', 'usd').upper()}, is to be paid in cash to the courier.\n"
-           if not order.get("unit_price_cents") else
-           f"Order total: {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.\n")
-        +
-        f"Quantity: {order.get('quantity', 1)}\n\n"
-        f"You can follow its status here:\n{order_url}\n\n"
-        f"We'll email you again once it ships."
-    )
+        return _send_digital_order_confirmation_email(to_email, name, order, order_url, total, lang)
+    money = _amount(total, order.get("currency", "usd").upper(), lang)
+    quantity = order.get("quantity", 1)
+    if _fr(lang):
+        subject, title, cta = "Votre commande Everbook est confirmée", "Votre commande est confirmée.", "Suivre ma commande"
+        thanks = "Merci pour votre commande ! Nous l'avons bien reçue et commençons à préparer votre album."
+        paid = (
+            f"Total de la commande : {money} (livraison comprise), payé {_paid_how(order, lang)}. Rien à payer à la livraison."
+            if _paid_online(order) else
+            f"Votre album est offert : vous ne payez que la livraison, {money}, en espèces au livreur."
+            if not order.get("unit_price_cents") else
+            f"Total de la commande : {money} (livraison comprise), à régler en espèces au livreur."
+        )
+        qty, follow, next_ = f"Quantité : {quantity}", "Suivez son avancement ici :", "Nous vous écrirons à nouveau dès son expédition."
+    else:
+        subject, title, cta = "Your Everbook order is confirmed", "Your order is confirmed.", "Track my order"
+        thanks = "Thanks for your order! We've received it and will start preparing your album."
+        paid = (
+            f"Order total: {money} (delivery included), paid {_paid_how(order, lang)}. Nothing to pay on delivery."
+            if _paid_online(order) else
+            f"Your album is free: you only pay for delivery, {money}, in cash to the courier."
+            if not order.get("unit_price_cents") else
+            f"Order total: {money} (delivery included), to be paid in cash to the courier."
+        )
+        qty, follow, next_ = f"Quantity: {quantity}", "You can follow its status here:", "We'll email you again once it ships."
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{thanks}\n\n{paid}\n{qty}\n\n{follow}\n{order_url}\n\n{next_}"
     html_body = _email_wrapper(
-        title="Your order is confirmed.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Thanks for your order! We've received it and will start preparing your book.</p>"
-            + (f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), paid with {_paid_how(order)}: nothing to pay on delivery.<br>"
-               if _paid_online(order) else
-               f"<p>Your album is free. Only the delivery, <strong>{total:.2f} {order.get('currency', 'usd').upper()}</strong>, is to be paid in cash to the courier.<br>"
-               if not order.get("unit_price_cents") else
-               f"<p><strong>Order total:</strong> {total:.2f} {order.get('currency', 'usd').upper()} (delivery included), to be paid in cash to the courier.<br>")
-            +
-            f"<strong>Quantity:</strong> {order.get('quantity', 1)}</p>"
-            f"<p>We'll email you again once it ships.</p>"
-        ),
-        cta_label="Track your order",
+        title=title,
+        body_html=f"<p>{_h(hi)}</p><p>{_h(thanks)}</p><p>{_h(paid)}<br>{_h(qty)}</p><p>{_h(next_)}</p>",
+        cta_label=cta,
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_checkout_confirmation_email(to_email: str, name: str, orders: list):
+def send_checkout_confirmation_email(to_email: str, name: str, orders: list, lang: str = "en"):
     """One email for everything ordered together from the cart: each album
     and version, the total, how it's paid and what happens next."""
+    fr = _fr(lang)
     currency = (orders[0].get("currency") or "usd").upper()
     prints = [o for o in orders if o.get("kind") != "digital"]
     digitals = [o for o in orders if o.get("kind") == "digital"]
-    cash = sum(int(o.get("total_price_cents") or 0) for o in prints) / 100
-    subject = f"Your Everbook order is confirmed — {len(orders)} items"
+    cash = _amount(sum(int(o.get("total_price_cents") or 0) for o in prints) / 100, currency, lang)
+    paid_online = any(_paid_online(o) for o in orders)
+    how = _paid_how(orders, lang)
     orders_url = f"{FRONTEND_URL}/orders"
 
     def line(o):
-        what = "PDF to download" if o.get("kind") == "digital" else f"printed album × {o.get('quantity', 1)}"
+        if o.get("kind") == "digital":
+            what = "PDF à télécharger" if fr else "PDF to download"
+        else:
+            what = f"{'album imprimé' if fr else 'printed album'} × {o.get('quantity', 1)}"
         return f"{o.get('album_title', 'Album')} — {what} ({order_number(o)})"
 
     notes = []
-    paid_online = any(_paid_online(o) for o in orders)
     if prints:
-        notes.append(
-            f"Your printed albums are delivered together, in one package. Paid with {_paid_how(orders)}: nothing to pay on delivery."
-            if paid_online else
-            f"Your printed albums are delivered together, in one package. Payment is cash on delivery: "
-            f"the total, {cash:.2f} {currency} (delivery included), is paid to the courier."
-        )
+        many = len(prints) > 1
+        if fr:
+            where = "Vos albums imprimés seront livrés ensemble, dans un seul colis." if many else "Votre album imprimé vous sera livré à domicile."
+            pay = (f"Commande payée {how} : rien à payer à la livraison." if paid_online else
+                   f"Paiement à la livraison : le total, {cash} (livraison comprise), est à régler en espèces au livreur.")
+        else:
+            where = "Your printed albums will be delivered together, in one package." if many else "Your printed album will be delivered to your door."
+            pay = (f"Paid {how}: nothing to pay on delivery." if paid_online else
+                   f"Payment is cash on delivery: the total, {cash} (delivery included), is paid to the courier.")
+        notes.append(f"{where} {pay}")
     if digitals:
-        notes.append(
-            f"Paid with {_paid_how(orders)}: we'll email you the moment your PDF is ready to download, in a few minutes."
-            if paid_online else
-            "Online payment isn't set up yet, so there's nothing to pay for your PDF for now: "
-            "we'll email you the moment it's ready to download, in a few minutes."
-        )
+        many = len(digitals) > 1
+        free = not paid_online and not any(int(o.get("total_price_cents") or 0) for o in digitals)
+        if fr:
+            ready = ("Nous vous écrirons dès que vos PDF seront prêts à télécharger, dans quelques minutes." if many else
+                     "Nous vous écrirons dès que votre PDF sera prêt à télécharger, dans quelques minutes.")
+            lead = ("Vos PDF sont offerts. " if many else "Votre PDF est offert. ") if free else (f"Commande payée {how}. " if paid_online and not prints else "")
+        else:
+            ready = ("We'll email you as soon as your PDFs are ready to download, in a few minutes." if many else
+                     "We'll email you as soon as your PDF is ready to download, in a few minutes.")
+            lead = ("Your PDFs are free. " if many else "Your PDF is free. ") if free else (f"Paid {how}. " if paid_online and not prints else "")
+        notes.append(lead + ready)
+    if fr:
+        subject = f"Votre commande Everbook est confirmée — {len(orders)} articles"
+        title, cta = "Votre commande est confirmée.", "Suivre mes commandes"
+        thanks = "Merci pour votre commande ! Nous l'avons bien reçue. Voici ce que vous avez commandé :"
+        follow = "Suivez chacune d'elles ici :"
+    else:
+        subject = f"Your Everbook order is confirmed — {len(orders)} items"
+        title, cta = "Your order is confirmed.", "Track my orders"
+        thanks = "Thanks for your order! We've received it. Here's what you ordered:"
+        follow = "You can follow each of them here:"
+    hi = _hi(name, lang)
     body = (
-        f"Hi {name or ''},\n\n"
-        f"Thanks for your order! We've received it and are starting on it:\n\n"
+        f"{hi}\n\n{thanks}\n\n"
         + "\n".join(f"- {line(o)}" for o in orders)
         + "\n\n" + "\n\n".join(notes)
-        + f"\n\nYou can follow each of them here:\n{orders_url}"
+        + f"\n\n{follow}\n{orders_url}"
     )
     html_body = _email_wrapper(
-        title="Your order is confirmed.",
+        title=title,
         body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Thanks for your order! We've received it and are starting on it:</p>"
+            f"<p>{_h(hi)}</p>"
+            f"<p>{_h(thanks)}</p>"
             "<ul>" + "".join(f"<li>{_h(line(o))}</li>" for o in orders) + "</ul>"
             + "".join(f"<p>{_h(n)}</p>" for n in notes)
         ),
-        cta_label="Track your orders",
+        cta_label=cta,
         cta_url=orders_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
@@ -439,10 +487,14 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
             if many else
             "Merci ! Voici votre carte cadeau, en PDF : imprimez-la ou envoyez-la telle quelle."
         )
-        how = f"La personne qui la reçoit saisit le code sur {FRONTEND_URL}/gift et crée son album. Valable 12 mois."
-        line = lambda c: f"{c['code']} — album {c['size']} de {c['page_tier']} pages, pour {c.get('recipient_name') or '…'}"  # noqa: E731
-        again = "Vous les retrouvez aussi dans « Mes commandes »."
-        cta = "Mes commandes"
+        how = (
+            f"La personne qui reçoit chaque carte saisit son code sur {FRONTEND_URL}/gift pour créer son album. Chaque carte est valable 12 mois."
+            if many else
+            f"La personne qui la reçoit saisit le code sur {FRONTEND_URL}/gift pour créer son album. Valable 12 mois."
+        )
+        line = lambda c: f"{c['code']} — album {c['size']} de {c['page_tier']} pages" + (f", pour {c['recipient_name']}" if c.get("recipient_name") else "")  # noqa: E731
+        again = "Vous les retrouvez aussi dans « Commandes »." if many else "Vous la retrouvez aussi dans « Commandes »."
+        cta = "Voir mes commandes"
     else:
         subject = "Your Everbook gift cards" if many else "Your Everbook gift card"
         intro = (
@@ -450,11 +502,15 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
             if many else
             "Thank you! Here's your gift card, as a PDF: print it or send it on as it is."
         )
-        how = f"Whoever gets it enters the code on {FRONTEND_URL}/gift and creates their album. Valid for 12 months."
-        line = lambda c: f"{c['code']} — {c['page_tier']}-page {c['size']} album, for {c.get('recipient_name') or '…'}"  # noqa: E731
-        again = "You'll also find them in \"My orders\"."
-        cta = "My orders"
-    hello = f"{'Bonjour' if fr else 'Hi'} {name or ''},"
+        how = (
+            f"Each recipient enters their code on {FRONTEND_URL}/gift to create their album. Each card is valid for 12 months."
+            if many else
+            f"The recipient enters the code on {FRONTEND_URL}/gift to create their album. Valid for 12 months."
+        )
+        line = lambda c: f"{c['code']} — {c['page_tier']}-page {c['size']} album" + (f", for {c['recipient_name']}" if c.get("recipient_name") else "")  # noqa: E731
+        again = "You'll also find them in \"Orders\"." if many else "You'll also find it in \"Orders\"."
+        cta = "See my orders"
+    hello = _hi(name, "fr" if fr else "en")
     body = f"{hello}\n\n{intro}\n\n" + "".join(f"- {line(c)}\n" for c in cards) + f"\n{how}\n\n{again}\n{page_url}"
     html_body = _email_wrapper(
         title=subject + ".",
@@ -468,140 +524,160 @@ def send_gift_cards_email(to_email: str, name: str, cards: list, pdfs: list):
     )
     send_email(to_email, subject, body, html_body=html_body, attachments=pdfs)
 
-def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float):
-    subject = "Your Everbook digital album is ordered"
+def _send_digital_order_confirmation_email(to_email: str, name: str, order: dict, order_url: str, total: float, lang: str = "en"):
     free = total == 0
-    # Paid with Whish Pay; before online payment, handed over at once.
-    intro = (
-        f"Thanks for your order! It's paid with {_paid_how(order)}: your album will be ready to download as a PDF in a few minutes."
-        if _paid_online(order) else
-        "Thanks for your order! Your digital album is free: it will be ready to download as a PDF in a few minutes."
-        if free else
-        "Thanks for your order! Online payment isn't set up yet, so there's nothing to pay for now: your album will be ready to download as a PDF in a few minutes."
-    )
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"{intro}\n\n"
-        f"You can follow your order here:\n{order_url}\n\n"
-        f"We'll email you again the moment your PDF is ready."
-    )
+    if _fr(lang):
+        subject, title, cta = "Votre commande d'album numérique Everbook est confirmée", "Votre commande est confirmée.", "Voir ma commande"
+        intro = (
+            f"Merci pour votre commande ! Votre paiement {_paid_how(order, lang)} a bien été reçu. Votre album sera prêt à télécharger en PDF dans quelques minutes."
+            if _paid_online(order) else
+            "Merci pour votre commande ! Votre album numérique est offert : il sera prêt à télécharger en PDF dans quelques minutes."
+            if free else
+            "Merci pour votre commande ! Votre album sera prêt à télécharger en PDF dans quelques minutes."
+        )
+        follow, next_ = "Suivez votre commande ici :", "Nous vous écrirons à nouveau dès que votre PDF sera prêt."
+    else:
+        subject, title, cta = "Your Everbook digital album order is confirmed", "Your order is confirmed.", "View my order"
+        intro = (
+            f"Thanks for your order! Your payment {_paid_how(order, lang)} has been received. Your album will be ready to download as a PDF in a few minutes."
+            if _paid_online(order) else
+            "Thanks for your order! Your digital album is free: it will be ready to download as a PDF in a few minutes."
+            if free else
+            "Thanks for your order! Your album will be ready to download as a PDF in a few minutes."
+        )
+        follow, next_ = "You can follow your order here:", "We'll email you again as soon as your PDF is ready."
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{intro}\n\n{follow}\n{order_url}\n\n{next_}"
     html_body = _email_wrapper(
-        title="Your digital album is ordered.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>{intro}</p>"
-            f"<p>We'll email you again the moment your PDF is ready.</p>"
-        ),
-        cta_label="View your order",
+        title=title,
+        body_html=f"<p>{_h(hi)}</p><p>{_h(intro)}</p><p>{_h(next_)}</p>",
+        cta_label=cta,
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_digital_album_ready_email(to_email: str, name: str, order: dict):
+def send_digital_album_ready_email(to_email: str, name: str, order: dict, lang: str = "en"):
     """Sent once a digital album is paid and its PDF made (see
     deliver_digital_if_ready): the download is on the order's page."""
     order_url = f"{FRONTEND_URL}/orders/{order['id']}"
-    title = order.get("album_title", "Your album")
-    subject = f"Your Everbook album is ready to download — {title}"
-    intro = f"Your album \"{title}\" is ready! You can download it as a PDF from your order, as many times as you like."
-    body = (
-        f"Hi {name or ''},\n\n"
-        f"{intro}\n\n"
-        f"Download it here:\n{order_url}\n\n"
-        f"Thanks for choosing Everbook."
-    )
+    album_title = order.get("album_title") or "Album"
+    if _fr(lang):
+        subject = f"Votre album Everbook est prêt à télécharger — {album_title}"
+        title, cta = "Votre album est prêt à télécharger.", "Télécharger mon album"
+        intro = f"Votre album « {album_title} » est prêt ! Vous pouvez le télécharger en PDF depuis votre commande, autant de fois que vous le souhaitez."
+        here, thanks = "Téléchargez-le ici :", "Merci d'avoir choisi Everbook."
+    else:
+        subject = f"Your Everbook album is ready to download — {album_title}"
+        title, cta = "Your album is ready to download.", "Download my album"
+        intro = f"Your album “{album_title}” is ready! You can download it as a PDF from your order, as many times as you like."
+        here, thanks = "Download it here:", "Thanks for choosing Everbook."
+    hi = _hi(name, lang)
+    body = f"{hi}\n\n{intro}\n\n{here}\n{order_url}\n\n{thanks}"
     html_body = _email_wrapper(
-        title="Your album is ready to download.",
-        body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>Your album <strong>\u201c{_h(title)}\u201d</strong> is ready! You can download it as a PDF from your order, as many times as you like.</p>"
-            f"<p>Thanks for choosing Everbook.</p>"
-        ),
-        cta_label="Download my album",
+        title=title,
+        body_html=f"<p>{_h(hi)}</p><p>{_h(intro)}</p><p>{_h(thanks)}</p>",
+        cta_label=cta,
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_order_shipped_email(to_email: str, name: str, order: dict, group: list = None):
-    """The book is on its way — or, for albums delivered together (`group`,
+def send_order_shipped_email(to_email: str, name: str, order: dict, group: list = None, lang: str = "en"):
+    """The album is on its way — or, for albums delivered together (`group`,
     see services/print_groups.py), all of them: one email for the package."""
     group = group or [order]
     many = len(group) > 1
+    n = len(group)
     order_url = f"{FRONTEND_URL}/orders" if many else f"{FRONTEND_URL}/orders/{order['id']}"
     tracking = order.get("tracking_number")
     # The courier's own tracking page, when the delivery is a Wakilni one.
     tracking_url = (order.get("delivery") or {}).get("tracking_url")
-    subject = f"Your {len(group)} Everbook albums are on their way" if many else "Your Everbook order is on its way"
-    news = (
-        f"Good news — your {len(group)} books have shipped, together in one package!"
-        if many else
-        "Good news — your book has shipped!"
-    )
+    if _fr(lang):
+        subject = f"Vos {n} albums Everbook sont en route" if many else "Votre commande Everbook est en route"
+        news = (f"Bonne nouvelle : vos {n} albums ont été expédiés, ensemble dans un seul colis !" if many else
+                "Bonne nouvelle : votre album a été expédié !")
+        tracking_label, courier, courier_link = "Numéro de suivi :", "Suivez le livreur ici :", "Suivre le livreur"
+        follow = "Suivez-les ici :" if many else "Suivez son avancement ici :"
+        title, cta = "Votre commande a été expédiée.", ("Suivre mes commandes" if many else "Suivre ma commande")
+    else:
+        subject = f"Your {n} Everbook albums are on their way" if many else "Your Everbook order is on its way"
+        news = (f"Good news — your {n} albums have shipped, together in one package!" if many else
+                "Good news — your album has shipped!")
+        tracking_label, courier, courier_link = "Tracking number:", "Follow the courier here:", "Follow the courier"
+        follow = "You can follow them here:" if many else "You can follow its status here:"
+        title, cta = "Your order has shipped.", ("Track my orders" if many else "Track my order")
     titles = [f"{o.get('album_title', 'Album')} ({order_number(o)})" for o in group]
+    hi = _hi(name, lang)
     body = (
-        f"Hi {name or ''},\n\n"
-        f"{news}\n\n"
+        f"{hi}\n\n{news}\n\n"
         + ("".join(f"- {t}\n" for t in titles) + "\n" if many else "")
-        + (f"Tracking number: {tracking}\n\n" if tracking else "")
-        + (f"Follow the courier here:\n{tracking_url}\n\n" if tracking_url else "")
-        + f"You can follow {'them' if many else 'its status'} here:\n{order_url}"
+        + (f"{tracking_label} {tracking}\n\n" if tracking else "")
+        + (f"{courier}\n{tracking_url}\n\n" if tracking_url else "")
+        + f"{follow}\n{order_url}"
     )
     html_body = _email_wrapper(
-        title="Your order has shipped.",
+        title=title,
         body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>{news}</p>"
+            f"<p>{_h(hi)}</p>"
+            f"<p>{_h(news)}</p>"
             + ("<ul>" + "".join(f"<li>{_h(t)}</li>" for t in titles) + "</ul>" if many else "")
-            + (f"<p><strong>Tracking number:</strong> {_h(tracking)}</p>" if tracking else "")
-            + (f'<p><a href="{_h(tracking_url)}">Follow the courier</a></p>' if tracking_url else "")
+            + (f"<p><strong>{_h(tracking_label)}</strong> {_h(tracking)}</p>" if tracking else "")
+            + (f'<p><a href="{_h(tracking_url)}">{_h(courier_link)}</a></p>' if tracking_url else "")
         ),
-        cta_label="Track your orders" if many else "Track your order",
+        cta_label=cta,
         cta_url=order_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
 
-def send_order_delivered_feedback_email(to_email: str, name: str, order: dict, group: list = None):
+def send_order_delivered_feedback_email(to_email: str, name: str, order: dict, group: list = None, lang: str = "en"):
     """Delivered: we ask how it turned out — for albums delivered together
     (`group`), one email with a feedback link per album."""
     group = group or [order]
     many = len(group) > 1
+    n = len(group)
     feedback_url = f"{FRONTEND_URL}/orders/{order['id']}/feedback"
-    contact_url = f"{FRONTEND_URL}/contact"
-    subject = "How did your Everbook albums turn out?" if many else "How did your Everbook turn out?"
-    arrived = (
-        f"Your {len(group)} books should have arrived by now — we hope you love them!"
-        if many else
-        "Your book should have arrived by now — we hope you love it!"
-    )
+    contact_url = f"{FRONTEND_URL}/fr/contact" if _fr(lang) else f"{FRONTEND_URL}/contact"
     links = [(o.get("album_title", "Album"), f"{FRONTEND_URL}/orders/{o['id']}/feedback") for o in group]
+    if _fr(lang):
+        subject = "Vos albums Everbook vous plaisent ?" if many else "Votre album Everbook vous plaît ?"
+        title = subject
+        arrived = (f"Vos {n} albums devraient être arrivés : nous espérons qu'ils vous plaisent !" if many else
+                   "Votre album devrait être arrivé : nous espérons qu'il vous plaît !")
+        ask = "Nous aimerions beaucoup avoir votre avis sur chacun d'eux :" if many else "Nous aimerions beaucoup avoir votre avis :"
+        problem_plain = "Si quelque chose ne va pas, contactez-nous et nous trouverons une solution :"
+        problem_html = (f"Si quelque chose ne va pas, <a href=\"{contact_url}\" style=\"color:{_EMAIL_MUTED};\">contactez-nous</a> "
+                        "et nous trouverons une solution.")
+        thanks, cta = "Merci d'avoir choisi Everbook.", "Donner mon avis"
+    else:
+        subject = "How did your Everbook albums turn out?" if many else "How did your Everbook album turn out?"
+        title = "How did your albums turn out?" if many else "How did your album turn out?"
+        arrived = (f"Your {n} albums should have arrived by now — we hope you love them!" if many else
+                   "Your album should have arrived by now — we hope you love it!")
+        ask = "We'd love to hear what you thought of each one:" if many else "We'd love to hear what you thought:"
+        problem_plain = "If anything wasn't right, please contact us and we'll sort it out:"
+        problem_html = (f"If anything wasn't right, please <a href=\"{contact_url}\" style=\"color:{_EMAIL_MUTED};\">contact us</a> "
+                        "and we'll sort it out.")
+        thanks, cta = "Thank you for printing with Everbook.", "Share my feedback"
+    hi = _hi(name, lang)
     body = (
-        f"Hi {name or ''},\n\n"
-        f"{arrived}\n\n"
-        + (
-            "We'd love to hear what you thought of each one:\n" + "".join(f"- {t}: {u}\n" for t, u in links) + "\n"
-            if many else
-            f"We'd love to hear what you thought:\n{feedback_url}\n\n"
-        )
-        + f"If anything wasn't right, contact us instead:\n{contact_url}\n\n"
-        f"Thank you for printing with Everbook."
+        f"{hi}\n\n{arrived}\n\n"
+        + (f"{ask}\n" + "".join(f"- {t}: {u}\n" for t, u in links) + "\n" if many else f"{ask}\n{feedback_url}\n\n")
+        + f"{problem_plain}\n{contact_url}\n\n{thanks}"
     )
     html_body = _email_wrapper(
-        title="How did your books turn out?" if many else "How did your book turn out?",
+        title=title,
         body_html=(
-            f"<p>Hi {_h(name or '')},</p>"
-            f"<p>{arrived}</p>"
+            f"<p>{_h(hi)}</p>"
+            f"<p>{_h(arrived)}</p>"
             + (
-                "<p>We'd love to hear what you thought of each one:</p><ul>"
+                f"<p>{_h(ask)}</p><ul>"
                 + "".join(f'<li><a href="{_h(u)}">{_h(t)}</a></li>' for t, u in links)
                 + "</ul>"
                 if many else
-                "<p>We'd love to hear what you thought.</p>"
+                f"<p>{_h(ask.rstrip(':').rstrip())}.</p>"
             )
-            + f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">If anything wasn't right, "
-            f"<a href=\"{contact_url}\" style=\"color:{_EMAIL_MUTED};\">contact us</a> instead — "
-            f"we'll get back to you directly.</p>"
+            + f"<p style=\"font-size:13px; color:{_EMAIL_MUTED};\">{problem_html}</p>"
         ),
-        cta_label="Share your feedback",
+        cta_label=cta,
         cta_url=feedback_url,
     )
     send_email(to_email, subject, body, html_body=html_body)
@@ -611,13 +687,13 @@ def send_order_delivered_feedback_email(to_email: str, name: str, order: dict, g
 _REMINDER_TEXT = {
     "en": {
         "hi": "Hi {name},",
-        "stop": "Don't want these reminders? <a href=\"{url}\" style=\"color:inherit;\">Stop them</a>.",
-        "stop_plain": "Don't want these reminders? Stop them: {url}",
+        "stop": "Don't want these reminders anymore? <a href=\"{url}\" style=\"color:inherit;\">Unsubscribe</a>.",
+        "stop_plain": "Don't want these reminders anymore? Unsubscribe: {url}",
         "album_subject": "Finish your Everbook album — {title}",
         "album_title": "Finish your album.",
-        "album_body": "You started \"{title}\" but haven't ordered it yet. It's saved just as you left it: a few minutes are enough to finish it and order your printed book.",
+        "album_body": "You started \"{title}\" but haven't ordered it yet. It's saved just as you left it: it only takes a few minutes to finish it and order your printed album.",
         "album_cta": "Pick up where you left off",
-        "cart_subject": "Your album is waiting in your cart",
+        "cart_subject": "Your Everbook cart is waiting",
         "cart_title": "Your cart is waiting.",
         "cart_body": "You left this in your cart:",
         "cart_after": "Everything is saved: you can order whenever you like.",
@@ -626,13 +702,13 @@ _REMINDER_TEXT = {
     },
     "fr": {
         "hi": "Bonjour {name},",
-        "stop": "Vous ne voulez plus ces rappels ? <a href=\"{url}\" style=\"color:inherit;\">Arrêter</a>.",
-        "stop_plain": "Vous ne voulez plus ces rappels ? Arrêter : {url}",
+        "stop": "Vous ne souhaitez plus recevoir ces rappels ? <a href=\"{url}\" style=\"color:inherit;\">Se désabonner</a>.",
+        "stop_plain": "Vous ne souhaitez plus recevoir ces rappels ? Se désabonner : {url}",
         "album_subject": "Terminez votre album Everbook — {title}",
         "album_title": "Terminez votre album.",
-        "album_body": "Vous avez commencé « {title} » mais ne l'avez pas encore commandé. Il est enregistré tel que vous l'avez laissé : quelques minutes suffisent pour le terminer et commander votre livre imprimé.",
+        "album_body": "Vous avez commencé « {title} » mais ne l'avez pas encore commandé. Il est enregistré tel que vous l'avez laissé : quelques minutes suffisent pour le terminer et commander votre album imprimé.",
         "album_cta": "Reprendre mon album",
-        "cart_subject": "Votre album vous attend dans votre panier",
+        "cart_subject": "Votre panier Everbook vous attend",
         "cart_title": "Votre panier vous attend.",
         "cart_body": "Vous avez laissé dans votre panier :",
         "cart_after": "Tout est enregistré : vous pouvez commander quand vous voulez.",
@@ -690,15 +766,15 @@ _EXPIRING_TEXT = {
     "en": {
         "subject": "\"{title}\" will be deleted in {days}",
         "title": "Your album will be deleted soon.",
-        "body": "\"{title}\" hasn't been ordered or changed for {retention} days or more. To free up space, albums that are never ordered are then deleted, with their photos.",
-        "when": "It will be deleted in {days}. To keep it, open it and make a change (or order it) before then. If you don't need it anymore, there's nothing to do.",
+        "body": "\"{title}\" hasn't been ordered or changed for {retention} days or more. To free up space, albums that are never ordered are deleted, along with their photos.",
+        "when": "It will be deleted in {days}. To keep it, open it and make a change (or order it) before then. If you don't need it anymore, you don't need to do anything.",
         "cta": "Open my album",
         "day": "1 day", "days": "{n} days",
     },
     "fr": {
         "subject": "« {title} » sera supprimé dans {days}",
         "title": "Votre album sera bientôt supprimé.",
-        "body": "« {title} » n'a été ni commandé ni modifié depuis {retention} jours ou plus. Pour libérer de la place, les albums jamais commandés sont alors supprimés, avec leurs photos.",
+        "body": "« {title} » n'a été ni commandé ni modifié depuis {retention} jours ou plus. Pour libérer de la place, les albums jamais commandés sont supprimés, avec leurs photos.",
         "when": "Il sera supprimé dans {days}. Pour le garder, ouvrez-le et faites une modification (ou commandez-le) d'ici là. Si vous n'en avez plus besoin, vous n'avez rien à faire.",
         "cta": "Ouvrir mon album",
         "day": "1 jour", "days": "{n} jours",
@@ -895,7 +971,7 @@ def send_payment_review_email(payment: dict, customer: dict, problem: str):
     how = "card" if payment.get("provider") == "card" else "Whish Pay"
     subject = f"{'Card' if how == 'card' else 'Whish'} payment to check — {amount:.2f} USD"
     lines = [
-        f"A {how} payment of {amount:.2f} USD was paid, but nothing was ordered: {problem}.",
+        f"A {how} payment of {amount:.2f} USD went through, but nothing was ordered: {problem}.",
         f"Customer: {customer.get('name') or ''} {customer.get('email') or ''}".strip(),
         f"Reference: {payment.get('transaction_id') or payment.get('external_id')} (payment {payment.get('id')})",
         f"Paid at: {payment.get('paid_at') or ''}",
@@ -976,7 +1052,7 @@ def send_team_new_order_email(orders: list, customer: dict):
         lines.append(f"Gift card credit: −{money(credit)}")
     paid_online = [o for o in orders if _paid_online(o)]
     if paid_online:
-        lines.append(f"Paid online ({_paid_how(paid_online)}): {money(sum(int(o.get('total_price_cents') or 0) for o in paid_online))}")
+        lines.append(f"Paid online ({'card' if any((o.get('payment') or {}).get('provider') == 'card' for o in paid_online) else 'Whish Pay'}): {money(sum(int(o.get('total_price_cents') or 0) for o in paid_online))}")
     cash = sum(cash_due(o) for o in prints if not _paid_online(o))
     if prints:
         lines.append(f"To collect in cash by the courier: {money(cash)}")

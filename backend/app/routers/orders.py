@@ -91,7 +91,7 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # own wording already fits this ("we've received it and will start
     # preparing your book" — never claims the PDF is done), so only the
     # trigger moved, not the text.
-    await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), order_doc)
+    await run_email(send_order_confirmation_email, user.get("email"), user.get("name"), order_doc, lang=user.get("lang"))
     await run_email(send_team_new_order_email, [order_doc], user)
     # Through the Cloud Tasks queue when configured: the customer gets
     # their answer at once and a failed generation is retried (background

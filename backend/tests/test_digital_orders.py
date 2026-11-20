@@ -32,11 +32,11 @@ def shop(client, db, monkeypatch):
     from app.services import print_groups
 
     monkeypatch.setattr(print_groups, "send_printer_order_email", lambda order, group=None: sent["printer"].append(order["id"]))
-    monkeypatch.setattr(orders, "send_digital_album_ready_email", lambda to, name, order: sent["ready"].append(order["id"]))
-    monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda to, name, order: sent["confirmation"].append(order.get("kind")))
+    monkeypatch.setattr(orders, "send_digital_album_ready_email", lambda to, name, order, **k: sent["ready"].append(order["id"]))
+    monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda to, name, order, **k: sent["confirmation"].append(order.get("kind")))
     from app.routers import cart as cart_router
 
-    monkeypatch.setattr(cart_router, "send_order_confirmation_email", lambda to, name, order: sent["confirmation"].append(order.get("kind")))
+    monkeypatch.setattr(cart_router, "send_order_confirmation_email", lambda to, name, order, **k: sent["confirmation"].append(order.get("kind")))
     monkeypatch.setattr(orders_router, "get_r2_client", lambda: type("R2", (), {"generate_presigned_url": lambda self, *a, **k: "https://r2/album.pdf"})())
 
     admin_email, admin = _signup(client, db=db)

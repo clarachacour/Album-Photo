@@ -89,8 +89,8 @@ def courier(client, db, monkeypatch):
     sent = {"courier": [], "problem": [], "shipped": [], "delivered": []}
     monkeypatch.setattr(delivery, "send_delivery_pickup_email", lambda order, group=None: sent["courier"].append(order["id"]))
     monkeypatch.setattr(delivery, "send_delivery_problem_email", lambda order, problem: sent["problem"].append(problem))
-    monkeypatch.setattr(delivery, "send_order_shipped_email", lambda to, name, order, group=None: (sent["shipped"].append(order["delivery"]["tracking_url"]), sent.setdefault("shipped_groups", []).append([o["id"] for o in group or [order]])))
-    monkeypatch.setattr(delivery, "send_order_delivered_feedback_email", lambda to, name, order, group=None: (sent["delivered"].append(order["id"]), sent.setdefault("delivered_groups", []).append([o["id"] for o in group or [order]])))
+    monkeypatch.setattr(delivery, "send_order_shipped_email", lambda to, name, order, group=None, **k: (sent["shipped"].append(order["delivery"]["tracking_url"]), sent.setdefault("shipped_groups", []).append([o["id"] for o in group or [order]])))
+    monkeypatch.setattr(delivery, "send_order_delivered_feedback_email", lambda to, name, order, group=None, **k: (sent["delivered"].append(order["id"]), sent.setdefault("delivered_groups", []).append([o["id"] for o in group or [order]])))
     monkeypatch.setattr(orders, "pdf_tasks_enabled", lambda: False)
     monkeypatch.setattr(orders, "render_album_pdf_sync", lambda *a: b"%PDF")
     monkeypatch.setattr(orders, "put_object", lambda *a, **k: {"path": a[0]})
@@ -98,7 +98,7 @@ def courier(client, db, monkeypatch):
     from app.services import print_groups
 
     monkeypatch.setattr(print_groups, "send_printer_order_email", lambda order, group=None: sent.setdefault("printer", []).append([o["id"] for o in (group or [order])]))
-    monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda *a: None)
+    monkeypatch.setattr(orders_router, "send_order_confirmation_email", lambda *a, **k: None)
 
     _, customer = _signup(client, db=db)
     album_id = client.post("/api/albums", json={"title": "Byblos", "size": "A5", "target_pages": 24}, headers=customer).json()["id"]
@@ -326,7 +326,7 @@ def test_putting_an_order_back_doesnt_email_the_customer_again(client, db, couri
     from app.routers import admin as admin_router
 
     sent = []
-    monkeypatch.setitem(admin_router.STATUS_CUSTOMER_EMAIL, "printing", lambda to, name, order: sent.append(order["status"]))
+    monkeypatch.setitem(admin_router.STATUS_CUSTOMER_EMAIL, "printing", lambda to, name, order, **k: sent.append(order["status"]))
     order_id = courier["order"]["id"]
     asyncio.run(db.orders.update_one({"id": order_id}, {"$set": {"status": "ready_for_delivery"}}))
     email, admin = _signup(client, db=db)
