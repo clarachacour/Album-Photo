@@ -12,6 +12,7 @@ import { isLebanesePhone } from "@/lib/phone";
 import { getCover, getTemplate } from "@/lib/coverTemplates";
 import { payByCard } from "@/lib/cardCheckout";
 import { CoverFrontPage } from "@/components/book/CoverFrontPage";
+import AreaPicker from "@/components/AreaPicker";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 const money = (cents) => `$${(cents / 100).toFixed(2)}`;
@@ -280,17 +281,14 @@ export default function CartPage() {
                     </div>
                     <div>
                       <label className="eyebrow block mb-2">{t(areas.length ? "checkout.areaRequired" : "checkout.area")}</label>
-                      <input
+                      <AreaPicker
+                        areas={areas}
                         className={inputClass}
-                        list="delivery-areas"
                         value={address.area}
-                        onChange={(e) => setAddress({ ...address, area: e.target.value })}
+                        onChange={(area) => setAddress((prev) => ({ ...prev, area }))}
                         placeholder={t("checkout.areaPlaceholder")}
-                        data-testid="checkout-area"
+                        testId="checkout-area"
                       />
-                      <datalist id="delivery-areas">
-                        {areas.map((a) => <option key={a} value={a} />)}
-                      </datalist>
                     </div>
                     <div>
                       <label className="eyebrow block mb-2">{t("checkout.country")}</label>

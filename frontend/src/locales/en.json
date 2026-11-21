@@ -1123,6 +1123,7 @@
     "area": "Area",
     "areaRequired": "Area *",
     "areaPlaceholder": "E.g. Hamra, Achrafieh, Jounieh…",
+    "areaNoMatch": "No area matches — check the spelling, or pick the nearest one.",
     "areaFromList": "Pick your area from the list, so the courier can find your address.",
     "kindDigitalSoon": "Coming soon, with Whish Pay and card payment.",
     "coverBlurry": "The photo on your cover may print blurry (marked ⚠ in the editor): it's small for the size of its frame. Make the frame smaller or choose a sharper photo. If you keep it, you accept that risk.",
