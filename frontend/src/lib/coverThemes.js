@@ -779,8 +779,8 @@ export const COVER_THEMES = [
           spine_caption_weight: "600",
           spine_caption_y: 0.62,
           extra_items: [
-            textItem("year-start", "20", { x: 0.07, y: 0.04, w: 0.66, h: 0.4, font: CORMORANT, font_weight: "400", font_size: 205, lining_numerals: true, color: "#EFE6D6" }),
-            textItem("year-end", "26", { x: 0.3, y: 0.38, w: 0.66, h: 0.4, font: CORMORANT, font_weight: "400", font_size: 205, lining_numerals: true, color: "#EFE6D6" }),
+            textItem("year-start", "20", { x: 0.06, y: 0.0, w: 0.8, h: 0.5, font: CORMORANT, font_weight: "400", font_size: 262, color: "#EFE6D6" }),
+            textItem("year-end", "26", { x: 0.28, y: 0.3, w: 0.7, h: 0.5, font: CORMORANT, font_weight: "400", font_size: 262, color: "#EFE6D6" }),
             textItem("name", "THE KHOURY FAMILY", { x: 0.09, y: 0.885, w: 0.8, h: 0.035, font: MANROPE, font_weight: "500", font_size: 11, letter_spacing: 0.4, color: "#EFE6D6" }),
           ],
         },
