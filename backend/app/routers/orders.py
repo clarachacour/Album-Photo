@@ -63,6 +63,10 @@ async def create_order(data: OrderCreate, background_tasks: BackgroundTasks, use
     # /cart/checkout), never here: this route takes no payment.
     if data.kind == "digital":
         raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT if not payments.any_online() else "A PDF is ordered from the cart")
+    # Cash on delivery switched off: every order is paid online, from the
+    # cart (this route takes no payment).
+    if not payments.CASH_ON_DELIVERY:
+        raise HTTPException(status_code=400, detail="Orders are placed from the cart, paid with Whish Pay or by card")
     if data.kind == "print" and not data.shipping_address:
         raise HTTPException(status_code=400, detail="A delivery address is needed for a printed album")
     # The terms must have been accepted, in the version the site shows now

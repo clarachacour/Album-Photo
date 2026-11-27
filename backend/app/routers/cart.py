@@ -150,7 +150,8 @@ async def _view(user: dict) -> dict:
             # collect the money on delivery).
             "online_payment": payments.ONLINE_PAYMENT,
             "card_payment": payments.CARD_PAYMENT,
-            "needs_online_payment": any(line["kind"] in ("gift", "digital") for line in valid)}
+            "cash_on_delivery": payments.CASH_ON_DELIVERY,
+            "needs_online_payment": not payments.CASH_ON_DELIVERY or any(line["kind"] in ("gift", "digital") for line in valid)}
 
 
 @router.get("/cart")
@@ -249,11 +250,12 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     first printed album; the printed albums go to the printer and the
     courier together (see services/print_groups.py).
 
-    Paid on delivery (payment_method "cod", printed albums only): ordered
-    at once. With Whish Pay ("whish", the only way for a gift card or a
-    PDF): nothing is ordered yet — the answer is the Whish payment link,
-    and the orders are placed once Whish confirms the payment (see
-    routers/payments.py)."""
+    Paid online, with Whish Pay ("whish") or a card ("card"): nothing is
+    ordered yet — the answer is the payment (Whish's link, or the card
+    form's session), and the orders are placed once the payment is
+    confirmed (see routers/payments.py). Nothing left to pay (credit, a
+    100% code): ordered at once. Cash on delivery ("cod", printed albums)
+    only while payments.CASH_ON_DELIVERY is on."""
     view = await _view(user)
     if not view["items"]:
         raise HTTPException(status_code=400, detail="Your cart is empty")
@@ -269,28 +271,34 @@ async def checkout(data: CheckoutInput, user: dict = Depends(get_current_user)):
     if view["promo"] and view["promo"]["problem"]:
         raise HTTPException(status_code=409, detail="Your promo code can't be used any more — please remove it")
     method = data.payment_method or (("whish" if payments.ONLINE_PAYMENT else "card") if view["needs_online_payment"] else "cod")
-    if method == "cod" and view["needs_online_payment"]:
-        raise HTTPException(status_code=400, detail="A gift card or a PDF is paid online, with Whish Pay or a card")
+    # Nothing left to pay (a code or gift card credit covers it all): no
+    # payment step, whatever the method.
+    if method == "cod" and view["total_cents"] > 0:
+        if not payments.CASH_ON_DELIVERY:
+            raise HTTPException(status_code=400, detail="Payment on delivery isn't offered any more — please pay with Whish Pay or by card")
+        if view["needs_online_payment"]:
+            raise HTTPException(status_code=400, detail="A gift card or a PDF is paid online, with Whish Pay or a card")
     address = data.shipping_address.dict() if data.shipping_address else None
     # The site's language at checkout: this order's emails (and the next
     # ones: shipping, delivery…) are written in it.
     if user.get("lang") != data.lang:
         await db.users.update_one({"id": user["id"]}, {"$set": {"lang": data.lang}})
         user = {**user, "lang": data.lang}
+    if view["total_cents"] <= 0:
+        # Nothing left to pay (all on the customer's credit, or a 100% code
+        # on a PDF): ordered at once, as paid.
+        return await place_checkout(user, view, address, paid={"status": "paid", "provider": None, "reference": None,
+                                                               "amount_cents": 0, "at": datetime.now(timezone.utc).isoformat()})
     if method in ("whish", "card"):
         if not (payments.ONLINE_PAYMENT if method == "whish" else payments.CARD_PAYMENT):
             raise HTTPException(status_code=400, detail=NEEDS_ONLINE_PAYMENT)
-        if view["total_cents"] > 0:
-            if view["total_cents"] < MIN_ONLINE_CENTS:
-                raise HTTPException(status_code=400, detail="Online payment takes at least $1 — please choose payment on delivery")
-            from app.routers.payments import start_card_payment, start_whish_payment
+        if view["total_cents"] < MIN_ONLINE_CENTS:
+            raise HTTPException(status_code=400, detail="Online payment takes at least $1")
+        from app.routers.payments import start_card_payment, start_whish_payment
 
-            if method == "card":
-                return {"payment": await start_card_payment(user, view, address, data.accepted_terms_version, data.lang)}
-            return {"payment": await start_whish_payment(user, view, address, data.accepted_terms_version)}
-        # Nothing left to pay (all on the customer's credit): ordered at once.
-        return await place_checkout(user, view, address, paid={"status": "paid", "provider": None, "reference": None,
-                                                               "amount_cents": 0, "at": datetime.now(timezone.utc).isoformat()})
+        if method == "card":
+            return {"payment": await start_card_payment(user, view, address, data.accepted_terms_version, data.lang)}
+        return {"payment": await start_whish_payment(user, view, address, data.accepted_terms_version)}
     return await place_checkout(user, view, address)
 
 

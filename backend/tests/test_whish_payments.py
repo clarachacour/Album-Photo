@@ -253,3 +253,52 @@ def test_the_failure_page_closes_the_attempt_unless_whish_says_paid(client, db, 
     # Sent to the failure page, but Whish says paid: paid wins.
     res = client.get(f"/api/payments/{payment['id']}?outcome=failure", headers=shop["headers"]).json()
     assert res["status"] == "placed"
+
+
+# ---------- Cash on delivery switched off (the site now) ----------
+
+from app.services.pricing import TERMS_VERSION  # noqa: E402
+
+
+def _no_cash_on_delivery(monkeypatch):
+    """As the site is now (the fixtures' own orders are placed before)."""
+    from app.services import payments
+
+    monkeypatch.setattr(payments, "CASH_ON_DELIVERY", False)
+
+
+def test_without_cash_on_delivery_a_printed_album_is_paid_online(client, db, shop, online_payment, monkeypatch):  # noqa: F811
+    from tests.conftest import checkout as pay
+
+    _no_cash_on_delivery(monkeypatch)
+
+    album_id = shop["album"]("Byblos")
+    cart = client.post("/api/cart/items", json={"album_id": album_id, "kind": "print", "quantity": 1}, headers=shop["headers"]).json()
+    assert cart["cash_on_delivery"] is False and cart["needs_online_payment"] is True
+    body = {"shipping_address": ADDRESS, "accepted_terms_version": TERMS_VERSION}
+    # Asking to pay on delivery: refused, nothing ordered.
+    cod = client.post("/api/cart/checkout", json={**body, "payment_method": "cod"}, headers=shop["headers"])
+    assert cod.status_code == 400 and "on delivery" in cod.json()["detail"]
+    # Nor through the old single-album route.
+    single = client.post("/api/orders", json={"album_id": album_id, **body}, headers=shop["headers"])
+    assert single.status_code == 400
+    # No method given: Whish Pay, and once paid, nothing for the courier.
+    placed = pay(client, json=body, headers=shop["headers"])
+    assert placed.status_code == 200
+    (order,) = placed.json()["orders"]
+    assert order["status_history"][0]["status"] == "paid" and order["payment"]["provider"] == "whish"
+    from app.services.wakilni import delivery_payload
+
+    assert delivery_payload(order, {})["collection_amount"] == 0
+
+
+def test_without_cash_on_delivery_a_cart_with_nothing_to_pay_is_ordered_at_once(client, db, shop, online_payment, monkeypatch):  # noqa: F811
+    _no_cash_on_delivery(monkeypatch)
+    album_id = shop["album"]("Tyre")
+    client.post("/api/cart/items", json={"album_id": album_id, "kind": "digital"}, headers=shop["headers"])
+    asyncio.run(db.promo_codes.insert_one({"code": "ALLFREE", "percent": 100, "active": True}))
+    assert client.post("/api/cart/promo", json={"code": "ALLFREE"}, headers=shop["headers"]).status_code == 200
+    res = client.post("/api/cart/checkout", json={"accepted_terms_version": TERMS_VERSION, "payment_method": "cod"}, headers=shop["headers"])
+    assert res.status_code == 200 and "payment" not in res.json()
+    (order,) = res.json()["orders"]
+    assert order["status_history"][0]["status"] == "paid"

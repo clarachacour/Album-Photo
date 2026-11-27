@@ -161,11 +161,11 @@
       },
       {
         "q": "Comment payer ?",
-        "a": "À la livraison : vous réglez le livreur en espèces à la réception de votre album, livraison comprise. Whish Pay et le paiement par carte arrivent bientôt."
+        "a": "En ligne, au moment de la commande : avec Whish Pay (dans l'application Whish) ou par carte bancaire (Visa, Mastercard), sur le formulaire sécurisé de notre banque. Rien à payer à la livraison."
       },
       {
         "q": "Puis-je offrir un album photo ?",
-        "a": "Oui, avec une carte cadeau. Choisissez le format et le nombre de pages, écrivez quelques mots, et vous recevez la carte en PDF, à imprimer ou à envoyer. La personne qui la reçoit saisit le code sur everbook-album.com, crée l'album avec ses propres photos, et il lui est livré au Liban — livraison incluse. Bientôt disponible, avec Whish Pay et le paiement par carte."
+        "a": "Oui, avec une carte cadeau. Choisissez le format et le nombre de pages, écrivez quelques mots, et vous recevez la carte en PDF, à imprimer ou à envoyer. La personne qui la reçoit saisit le code sur everbook-album.com, crée l'album avec ses propres photos, et il lui est livré au Liban — livraison incluse. Elle se paie en ligne, avec Whish Pay ou par carte."
       },
       {
         "q": "Combien de temps faut-il pour recevoir mon album ?",
@@ -193,7 +193,7 @@
       },
       {
         "q": "Puis-je recevoir mon album en PDF ?",
-        "a": "Oui : choisissez « Album numérique (PDF) » en ajoutant votre album au panier — seul, ou avec le livre imprimé. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » quelques minutes après la commande. Bientôt disponible, avec Whish Pay et le paiement par carte."
+        "a": "Oui : choisissez « Album numérique (PDF) » en ajoutant votre album au panier — seul, ou avec le livre imprimé. Il n'y a ni impression ni livraison. Vous le téléchargez depuis « Mes commandes » quelques minutes après la commande. Il se paie en ligne, avec Whish Pay ou par carte."
       },
       {
         "q": "Que faire si quelque chose arrive endommagé ou incorrect ?",
@@ -781,7 +781,7 @@
         },
         {
           "heading": "11. Paiement",
-          "body": "Le paiement s'effectue en espèces à la livraison : le client règle le livreur à la réception de l'album. D'autres modes de paiement, notamment Whish Pay et la carte bancaire, seront proposés ultérieurement sur le Site ; les modes disponibles sont ceux indiqués sur le Site au moment de la commande.\n\nUne fois proposé, le paiement en ligne pourra être traité par un prestataire de paiement tiers. La Société n'a pas vocation à conserver les données bancaires complètes du client lorsque le paiement est directement traité par ce prestataire.\n\nLa commande peut être suspendue ou annulée en cas de refus ou d'échec du paiement, notamment si le client refuse de régler le livreur à la livraison."
+          "body": "Le paiement s'effectue en ligne, au moment de la commande, avec Whish Pay ou par carte bancaire (Visa, Mastercard), selon les modes indiqués sur le Site au moment de la commande. Aucun paiement n'est demandé à la livraison.\n\nLe paiement en ligne est traité par des prestataires de paiement tiers : Whish pour Whish Pay, et areeba (par l'intermédiaire de Cybersource) pour la carte bancaire. Les données bancaires du client sont saisies et traitées directement par ces prestataires ; la Société ne les conserve pas.\n\nLa commande n'est enregistrée qu'une fois le paiement confirmé par le prestataire. En cas de refus ou d'échec du paiement, la commande n'est pas passée."
         },
         {
           "heading": "12. Fabrication",
@@ -1331,7 +1331,7 @@
       "whishHint": "Payez maintenant dans l'application Whish : scannez un QR code ou tapez un code à 6 chiffres. Rien à payer à la livraison.",
       "whishNote": "Vous allez être redirigé vers la page de Whish pour payer avec l'application Whish (QR code ou code à 6 chiffres). Votre commande est passée dès que le paiement est confirmé.",
       "payWithWhish": "Payer avec Whish",
-      "whishDown": "Whish Pay est injoignable pour le moment. Réessayez dans un instant, ou choisissez le paiement à la livraison.",
+      "whishDown": "Whish Pay est injoignable pour le moment. Réessayez dans un instant, ou payez par carte.",
       "toWhishTitle": "Direction Whish Pay…",
       "toWhish": "Ouverture de la page de paiement Whish. Gardez l'application Whish à portée de main.",
       "cardHint": "Visa, Mastercard… sur le formulaire sécurisé de notre banque (areeba). Rien à payer à la livraison.",
@@ -1499,7 +1499,7 @@
     "pdfSoon": "{{price}} $, quels que soient son format et son nombre de pages — bientôt disponible.",
     "paymentTitle": "Paiement",
     "paymentCash": "En espèces à la livraison, au livreur. Whish Pay et la carte bancaire arrivent bientôt.",
-    "paymentOnline": "En espèces à la livraison, ou en ligne avec Whish Pay. Le paiement par carte arrive bientôt.",
+    "paymentOnline": "En ligne, au moment de la commande : avec Whish Pay ou par carte bancaire (Visa, Mastercard). Rien à payer à la livraison.",
     "faqLink": "Des questions ? Voir la FAQ",
     "price": "{{price}} $"
   },

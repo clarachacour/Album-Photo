@@ -1,9 +1,10 @@
-"""Online payment: Whish Pay (see services/whish.py and routers/payments.py).
+"""How orders are paid: online, with Whish Pay (services/whish.py) or a card
+(services/cybersource.py), each on once its keys are set on the server.
 
-On once the Whish keys are set on the server (config.WHISH_*). Until then
-printed albums are paid cash on delivery (the courier collects the total),
-and what can't be — the PDF and gift cards, with nothing delivered — is
-shown as "coming soon" and can't be ordered (routers/cart.py)."""
+Cash on delivery is switched off (CASH_ON_DELIVERY): everything is paid
+online. Orders placed on delivery before that keep their cash collection by
+the courier (services/wakilni.py). Without any online payment on, nothing
+paid can be ordered."""
 from app.services import cybersource, whish
 
 ONLINE_PAYMENT = whish.enabled()
@@ -11,10 +12,15 @@ ONLINE_PAYMENT = whish.enabled()
 CARD_PAYMENT = cybersource.enabled()
 
 
+# Paying the courier on delivery (printed albums only). Off: every order is
+# paid online (Whish Pay or card) — unless there's nothing left to pay.
+CASH_ON_DELIVERY = False
+
+
 def any_online() -> bool:
     """Something online is on (Whish Pay or card): gift cards and PDFs can
     be ordered."""
     return ONLINE_PAYMENT or CARD_PAYMENT
-NEEDS_ONLINE_PAYMENT = "Coming soon: the PDF and gift cards will be available with Whish Pay"
+NEEDS_ONLINE_PAYMENT = "Online payment is unavailable right now — please try again in a moment"
 # Whish takes at least this much (USD 1.00).
 MIN_ONLINE_CENTS = 100

@@ -161,11 +161,11 @@
       },
       {
         "q": "How do I pay?",
-        "a": "Cash on delivery: you pay the courier in cash when your album arrives, delivery included. Whish Pay and card payment are coming soon."
+        "a": "Online, when you order: with Whish Pay (in the Whish app) or by card (Visa, Mastercard), on our bank's secure form. Nothing to pay on delivery."
       },
       {
         "q": "Can I give a photo album as a gift?",
-        "a": "Yes: with a gift card. Choose the format and number of pages, write a few words, and you receive the card as a PDF to print or send. The person who receives it enters the code on everbook-album.com, creates the album with their own photos, and it's delivered to them in Lebanon — delivery included. Coming soon, with Whish Pay and card payment."
+        "a": "Yes: with a gift card. Choose the format and number of pages, write a few words, and you receive the card as a PDF to print or send. The person who receives it enters the code on everbook-album.com, creates the album with their own photos, and it's delivered to them in Lebanon — delivery included. It's paid online, with Whish Pay or by card."
       },
       {
         "q": "How long does it take to receive my album?",
@@ -193,7 +193,7 @@
       },
       {
         "q": "Can I get my album as a PDF?",
-        "a": "Yes: choose \"Digital album (PDF)\" when you add your album to your cart — on its own, or together with the printed book. There's no printing or delivery. You download it from \"My orders\" a few minutes after ordering. Coming soon, with Whish Pay and card payment."
+        "a": "Yes: choose \"Digital album (PDF)\" when you add your album to your cart — on its own, or together with the printed book. There's no printing or delivery. You download it from \"My orders\" a few minutes after ordering. It's paid online, with Whish Pay or by card."
       },
       {
         "q": "What if something arrives damaged or wrong?",
@@ -781,7 +781,7 @@
         },
         {
           "heading": "11. Payment",
-          "body": "Payment is made in cash on delivery: the customer pays the courier when the album is delivered. Other payment methods, in particular Whish Pay and bank card, will be offered on the Site later; the methods available are those shown on the Site at the time of ordering.\n\nOnce offered, online payment may be processed by a third-party payment provider. The Company does not intend to keep the customer's full card details when payment is processed directly by that provider.\n\nThe order may be suspended or cancelled if payment is refused or fails, in particular if the customer refuses to pay the courier on delivery."
+          "body": "Payment is made online, when ordering, with Whish Pay or by bank card (Visa, Mastercard), according to the methods shown on the Site at the time of ordering. No payment is requested on delivery.\n\nOnline payment is processed by third-party payment providers: Whish for Whish Pay, and areeba (through Cybersource) for bank cards. The customer's card details are entered and processed directly by these providers; the Company does not keep them.\n\nThe order is only placed once the payment is confirmed by the provider. If the payment is refused or fails, the order is not placed."
         },
         {
           "heading": "12. Manufacturing",
@@ -1331,7 +1331,7 @@
       "whishHint": "Pay now in the Whish app: scan a QR code or type a 6-digit code. Nothing to pay on delivery.",
       "whishNote": "You'll be taken to Whish's page to pay with the Whish app (QR code or 6-digit code). Your order is placed as soon as the payment is confirmed.",
       "payWithWhish": "Pay with Whish",
-      "whishDown": "Whish Pay can't be reached right now. Please try again in a moment, or choose cash on delivery.",
+      "whishDown": "Whish Pay can't be reached right now. Please try again in a moment, or pay by card.",
       "toWhishTitle": "On to Whish Pay…",
       "toWhish": "Opening Whish's payment page. Keep the Whish app at hand.",
       "cardHint": "Visa, Mastercard… on our bank's secure form (areeba). Nothing to pay on delivery.",
@@ -1499,7 +1499,7 @@
     "pdfSoon": "${{price}}, whatever its format and number of pages — coming soon.",
     "paymentTitle": "Payment",
     "paymentCash": "Cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
-    "paymentOnline": "Cash on delivery, or online with Whish Pay. Card payment is coming soon.",
+    "paymentOnline": "Online, when you order: with Whish Pay or by card (Visa, Mastercard). Nothing to pay on delivery.",
     "faqLink": "Questions? See the FAQ",
     "price": "${{price}}"
   },

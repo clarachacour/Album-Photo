@@ -91,6 +91,19 @@ def paid_albums(request, monkeypatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def cash_on_delivery(request, monkeypatch):
+    """Cash on delivery is switched off on the site (payments.CASH_ON_DELIVERY),
+    but orders placed on delivery before that are still collected by the
+    courier: most tests still place their printed orders that way, with it
+    on. The tests of the site as it is now switch it off themselves."""
+    request.getfixturevalue("app")
+    from app.services import payments
+
+    monkeypatch.setattr(payments, "CASH_ON_DELIVERY", True)
+    yield
+
+
 @pytest.fixture()
 def online_payment(app, monkeypatch):
     """Whish Pay / card switched on: the PDF and gift cards can be ordered

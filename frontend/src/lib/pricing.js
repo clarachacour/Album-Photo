@@ -121,7 +121,7 @@ export const ONLINE_PAYMENT = import.meta.env.REACT_APP_ONLINE_PAYMENT === "true
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
 // TERMS_VERSION in backend/app/services/pricing.py.
-export const TERMS_VERSION = "2026-10-29";
+export const TERMS_VERSION = "2026-11-27";
 
 // What the customer still pays for an order (to the courier), in cents:
 // its total — but only the delivery when the album is offered (same as

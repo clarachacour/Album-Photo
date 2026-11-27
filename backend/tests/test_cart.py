@@ -196,7 +196,7 @@ def test_cash_on_delivery_only_for_now(client, shop):
     delivery; the PDF and gift cards are "coming soon" and can't be ordered."""
     album_id = shop["album"]("Summer")
     pdf = client.post("/api/cart/items", json={"album_id": album_id, "kind": "digital"}, headers=shop["headers"])
-    assert pdf.status_code == 400 and "Whish" in pdf.json()["detail"]
+    assert pdf.status_code == 400 and "Online payment" in pdf.json()["detail"]
     gift = client.post("/api/cart/gifts", json={"size": "A4", "page_tier": 24, "recipient_name": "Maya", "message": "", "from_name": "", "lang": "en"},
                        headers=shop["headers"])
     assert gift.status_code == 400

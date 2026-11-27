@@ -118,8 +118,8 @@ export function llmsTxt(siteUrl, faqItems) {
     `- Page count: up to ${OVERAGE_FROM} pages, an album between two sizes is priced at the nearest one (28 pages as 24, 40 pages as 50); beyond ${OVERAGE_FROM} pages, each page beyond the size reached costs $${OVERAGE_PER_PAGE.toFixed(2)} more. ${MAX_ALBUM_PAGES} pages at most.`,
     "- Timing: about a week in all — printing about 3 days, then delivery 2 to 3 days.",
     ONLINE_PAYMENT
-      ? "- Payment: printed albums are paid in cash on delivery, or online with Whish Pay; the PDF and gift cards online with Whish Pay. Card payment is coming soon."
-      : "- Payment: cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
+      ? "- Payment: online, when ordering, with Whish Pay or by card (Visa, Mastercard). Nothing to pay on delivery."
+      : "- Payment: online payment (Whish Pay, card) is being set up.",
     `- Gift cards${ONLINE_PAYMENT ? "" : " (coming soon)"}: offer an album (format and page count chosen), received as a PDF; the recipient creates their own album with the code, delivery included.`,
     "- Languages: English and French.",
     "- Contact: orders@everbook-album.com · Instagram: https://www.instagram.com/everbook_album/ · TikTok: https://www.tiktok.com/@everbook_album",

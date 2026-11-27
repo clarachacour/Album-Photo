@@ -49,8 +49,9 @@ export default function CartPage() {
   const [placing, setPlacing] = useState(false);
   // The card form being shown: its "Cancel" (aborts payByCard).
   const cardAbort = useRef(null);
-  // "cod": cash on delivery (printed albums only); "whish": Whish Pay.
-  const [method, setMethod] = useState("cod");
+  // "whish": Whish Pay; "card": a card. ("cod", cash on delivery, only if
+  // the server still offers it: cart.cash_on_delivery.)
+  const [method, setMethod] = useState("whish");
 
   useEffect(() => {
     refresh();
@@ -67,8 +68,10 @@ export default function CartPage() {
   const onlineOnly = Boolean(cart?.needs_online_payment);
   const whishOn = Boolean(cart?.online_payment);
   const cardOn = Boolean(cart?.card_payment);
-  // A gift card or a PDF: an online way only (Whish first when both are on).
-  const payment = onlineOnly && method === "cod" ? (whishOn ? "whish" : "card") : method;
+  // Paid online (everything, now that cash on delivery is off): the way
+  // chosen if it's on, otherwise the one that is (Whish first).
+  const unavailable = (method === "cod" && onlineOnly) || (method === "whish" && !whishOn) || (method === "card" && !cardOn);
+  const payment = unavailable ? (whishOn ? "whish" : cardOn ? "card" : onlineOnly ? "whish" : "cod") : method;
 
   const placeOrder = async (e) => {
     e.preventDefault();
