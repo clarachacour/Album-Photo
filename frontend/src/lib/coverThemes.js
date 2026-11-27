@@ -92,6 +92,8 @@ function textItem(id, content, opts = {}) {
     ...(opts.font_scale != null ? { font_scale: opts.font_scale } : {}),
     // Space between letters, in em (spaced capitals).
     ...(opts.letter_spacing != null ? { letter_spacing: opts.letter_spacing } : {}),
+    // Full-height figures (see CoverFrontPage).
+    ...(opts.lining_numerals ? { lining_numerals: true } : {}),
   };
 }
 
@@ -743,6 +745,43 @@ export const COVER_THEMES = [
             { ...photoGridItem(0, { x: 0.203, y: 0.096, w: 0.593, h: 0.54 }), photo_shape: "arch" },
             lineItem({ x: 0.424, y: 0.873, w: 0.153, h: 0.0025 }, "#F0D9C8", "line"),
             textItem("names", "OUR YEAR", { x: 0.1, y: 0.895, w: 0.8, h: 0.035, font: MANROPE, font_weight: "500", font_size: 11, letter_spacing: 0.4, color: "#F6ECE0", text_align: "center" }),
+          ],
+        },
+      },
+      {
+        // The year's album, graphic: "20" and "26" very large, offset on
+        // two lines, "our year" in italics and the family's name. No photo.
+        id: "year-2026-numbers",
+        name: "2026 Big Numbers",
+        landingImage: "/theme-covers/year-2026-numbers.webp",
+        title: "our year",
+        cover: {
+          bg_color: "#263A4F",
+          accent_color: "#EFE6D6",
+          text_color: "#EFE6D6",
+          title_font: CORMORANT,
+          title_font_weight: "400",
+          title_font_style: "italic",
+          title_single_line: true,
+          title_uppercase: false,
+          title_text_align: "left",
+          title_font_size: 30,
+          title_fit_height: true,
+          title_x: 0.09, title_y: 0.8, title_w: 0.5, title_h: 0.075,
+          spine_title_text: "2026",
+          spine_title_font: CORMORANT,
+          spine_title_size: 26,
+          spine_title_weight: "500",
+          spine_title_y: 0.3,
+          spine_caption: "OUR YEAR",
+          spine_caption_font: CORMORANT,
+          spine_caption_size: 12,
+          spine_caption_weight: "600",
+          spine_caption_y: 0.62,
+          extra_items: [
+            textItem("year-start", "20", { x: 0.07, y: 0.04, w: 0.66, h: 0.4, font: CORMORANT, font_weight: "400", font_size: 205, lining_numerals: true, color: "#EFE6D6" }),
+            textItem("year-end", "26", { x: 0.3, y: 0.38, w: 0.66, h: 0.4, font: CORMORANT, font_weight: "400", font_size: 205, lining_numerals: true, color: "#EFE6D6" }),
+            textItem("name", "THE KHOURY FAMILY", { x: 0.09, y: 0.885, w: 0.8, h: 0.035, font: MANROPE, font_weight: "500", font_size: 11, letter_spacing: 0.4, color: "#EFE6D6" }),
           ],
         },
       },

@@ -389,6 +389,9 @@ export function CoverFrontPage({
                 fontFamily: item.font || titleFont,
                 fontWeight: item.font_weight || "normal",
                 fontStyle: item.font_style || "normal",
+                // Full-height figures (a year in very large type): the
+                // serif's default old-style ones are as short as lowercase.
+                fontVariantNumeric: item.lining_numerals ? "lining-nums" : undefined,
                 lineHeight: 1.15,
                 overflow: "hidden",
                 wordBreak: "break-word",
