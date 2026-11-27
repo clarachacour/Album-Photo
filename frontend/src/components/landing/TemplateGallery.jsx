@@ -24,7 +24,8 @@ export default function TemplateGallery() {
                 {t("landing.templates.useThis")}
               </span>
             </div>
-            <p className="mt-2 text-xs text-ink/70 text-center group-hover:text-[color:var(--ink)]">{tpl.name}</p>
+            {/* No name under the cover: the picture says it (the name stays
+                in its alt text, for screen readers and search engines). */}
           </Link>
         ))}
       </div>
