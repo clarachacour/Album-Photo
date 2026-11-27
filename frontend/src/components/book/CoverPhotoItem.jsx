@@ -14,6 +14,16 @@ import { useNaturalSize } from "@/lib/useNaturalSize";
 // Template logos and drawings stay plain images.
 export const isCoverPhoto = isCoverPhotoItem;
 
+/** The frame's shape: "arch" rounds its top into a half circle (the arch
+ *  of the "2026 Arch" cover), whatever its size — the round's height is
+ *  the frame's half width, as a share of its height (frameAspect: width ÷
+ *  height). Otherwise square corners. */
+export function photoShapeStyle(item, frameAspect) {
+  if (item.photo_shape !== "arch") return undefined;
+  const v = Math.min(100, Math.max(0, (frameAspect || 1) * 50)).toFixed(2);
+  return { borderRadius: `50% 50% 0 0 / ${v}% ${v}% 0 0` };
+}
+
 /**
  * A photo on the front or back cover, edited the same way as a photo inside
  * the album (see AlbumPage): resizing from a side or corner crops it,
@@ -84,7 +94,7 @@ export function CoverPhotoItem({
         extraStyle={{ transform: frameRotation ? `rotate(${frameRotation}deg)` : undefined }}
       >
         {/* The photo is clipped to its frame; the handles aren't. */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden" style={photoShapeStyle(item, frameAspect)}>
           {isEmpty ? (
             <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-black/5 border-2 border-dashed border-current opacity-60 pointer-events-none">
               <ImagePlus size={18} />
