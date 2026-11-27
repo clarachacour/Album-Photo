@@ -679,7 +679,7 @@ export const COVER_THEMES = [
     templates: [
       {
         // The year's album, sober: a photo, the year very large, "CHAPTER"
-        // in spaced capitals under it, the family's name in italics.
+        // in spaced capitals under it.
         id: "year-2026-chapter",
         name: "2026 Chapter",
         landingImage: "/theme-covers/year-2026-chapter.webp",
@@ -695,7 +695,7 @@ export const COVER_THEMES = [
           title_text_align: "center",
           title_font_size: 96,
           title_fit_height: true,
-          title_x: 0.08, title_y: 0.56, title_w: 0.84, title_h: 0.2,
+          title_x: 0.08, title_y: 0.61, title_w: 0.84, title_h: 0.2,
           spine_title_font: CORMORANT,
           spine_title_size: 26,
           spine_title_weight: "500",
@@ -706,10 +706,9 @@ export const COVER_THEMES = [
           spine_caption_weight: "600",
           spine_caption_y: 0.62,
           extra_items: [
-            textItem("eyebrow", "OUR YEAR IN PICTURES", { x: 0.1, y: 0.07, w: 0.8, h: 0.035, font: MANROPE, font_weight: "500", font_size: 11, letter_spacing: 0.42, color: "#2B2A26", text_align: "center" }),
-            photoGridItem(0, { x: 0.161, y: 0.148, w: 0.678, h: 0.4 }),
-            textItem("chapter", "CHAPTER", { x: 0.1, y: 0.765, w: 0.8, h: 0.045, font: CORMORANT, font_weight: "600", font_size: 17, letter_spacing: 0.5, color: "#2B2A26", text_align: "center" }),
-            textItem("name", "The Haddad family", { x: 0.1, y: 0.895, w: 0.8, h: 0.045, font: CORMORANT, font_style: "italic", font_weight: "500", font_size: 18, color: "#6D6558", text_align: "center" }),
+            textItem("eyebrow", "OUR YEAR IN PICTURES", { x: 0.1, y: 0.12, w: 0.8, h: 0.035, font: MANROPE, font_weight: "500", font_size: 11, letter_spacing: 0.42, color: "#2B2A26", text_align: "center" }),
+            photoGridItem(0, { x: 0.161, y: 0.198, w: 0.678, h: 0.4 }),
+            textItem("chapter", "CHAPTER", { x: 0.1, y: 0.815, w: 0.8, h: 0.045, font: CORMORANT, font_weight: "600", font_size: 17, letter_spacing: 0.5, color: "#2B2A26", text_align: "center" }),
           ],
         },
       },
@@ -750,11 +749,11 @@ export const COVER_THEMES = [
       },
       {
         // The year's album, graphic: "20" and "26" very large, offset on
-        // two lines, "our year" in italics and the family's name. No photo.
+        // two lines, "in a book" in italics. No photo.
         id: "year-2026-numbers",
         name: "2026 Big Numbers",
         landingImage: "/theme-covers/year-2026-numbers.webp",
-        title: "our year",
+        title: "in a book",
         cover: {
           bg_color: "#263A4F",
           accent_color: "#EFE6D6",
@@ -767,13 +766,13 @@ export const COVER_THEMES = [
           title_text_align: "left",
           title_font_size: 30,
           title_fit_height: true,
-          title_x: 0.09, title_y: 0.8, title_w: 0.5, title_h: 0.075,
+          title_x: 0.09, title_y: 0.84, title_w: 0.5, title_h: 0.075,
           spine_title_text: "2026",
           spine_title_font: CORMORANT,
           spine_title_size: 26,
           spine_title_weight: "500",
           spine_title_y: 0.3,
-          spine_caption: "OUR YEAR",
+          spine_caption: "IN A BOOK",
           spine_caption_font: CORMORANT,
           spine_caption_size: 12,
           spine_caption_weight: "600",
@@ -781,7 +780,6 @@ export const COVER_THEMES = [
           extra_items: [
             textItem("year-start", "20", { x: 0.06, y: 0.0, w: 0.8, h: 0.5, font: CORMORANT, font_weight: "400", font_size: 262, color: "#EFE6D6" }),
             textItem("year-end", "26", { x: 0.28, y: 0.3, w: 0.7, h: 0.5, font: CORMORANT, font_weight: "400", font_size: 262, color: "#EFE6D6" }),
-            textItem("name", "THE KHOURY FAMILY", { x: 0.09, y: 0.885, w: 0.8, h: 0.035, font: MANROPE, font_weight: "500", font_size: 11, letter_spacing: 0.4, color: "#EFE6D6" }),
           ],
         },
       },
