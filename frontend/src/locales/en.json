@@ -630,7 +630,16 @@
     "pagesShortTitle_other": "Your album has {{count}} pages instead of the {{target}} you chose.",
     "coverColor": "Cover color",
     "pageLimit": "An album can have at most {{count}} pages.",
-    "showPhotoPage": "Click to see it on its page, drag to move it"
+    "showPhotoPage": "Click to see it on its page, drag to move it",
+    "overview": {
+      "button": "See all the pages and change their order",
+      "short": "All pages",
+      "title": "All the pages",
+      "hint": "{{count}} pages. Drag a page to another place to change the order, or click a page to open it.",
+      "hintReadOnly": "{{count}} pages. Click a page to open it.",
+      "open": "Open page {{page}}",
+      "close": "Close"
+    }
   },
   "toolbars": {
     "editPhoto": "Edit the photo: crop, zoom, turn",

@@ -9,3 +9,11 @@ export function spreadNumberToPageCount(spreadNumber) {
   if (spreadNumber <= 1) return 0;
   return Math.max(0, 2 * spreadNumber - 3);
 }
+
+// The flipbook view (spread) showing the album's page `pageIdx` (an index
+// in album.pages): the cover alone is view 0, then [blank + page 0], then
+// [page 1 + page 2], [page 3 + page 4]… (see buildViews in Flipbook.jsx,
+// whose pages are the cover, a blank, then album.pages).
+export function viewForPage(pageIdx) {
+  return 1 + Math.floor((Math.max(0, pageIdx) + 1) / 2);
+}

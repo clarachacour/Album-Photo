@@ -15,11 +15,12 @@ import PhotoUploadMethods from "@/components/PhotoUploadMethods";
 import { TID } from "@/constants/testIds";
 import { useDeselectOutside } from "@/lib/useDeselectOutside";
 import { isTouchScreen } from "@/lib/device";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShoppingBag, Save, Type, Loader2, Undo2, Redo2, Plus, LayoutGrid } from "lucide-react";
 import { BookRenderer } from "@/components/editor/BookRenderer";
 import { ProcessingScreen } from "@/components/editor/ProcessingScreen";
 import { RepackPagesForm } from "@/components/editor/RepackPagesForm";
-import { spreadNumberToPageCount } from "@/components/editor/spreads";
+import { spreadNumberToPageCount, viewForPage } from "@/components/editor/spreads";
+import PageOverview from "@/components/editor/PageOverview";
 import { cryptoRandom } from "@/lib/cryptoRandom";
 import { MAX_ALBUM_PAGES } from "@/lib/pricing";
 import { fitItemToPhoto } from "@/lib/photoFit";
@@ -75,6 +76,8 @@ export default function AlbumEditor() {
     });
   }, [album?.photos]);
   const [pageIndex, setPageIndex] = useState(0);
+  // Every page at once, to see the whole album and change the page order.
+  const [showOverview, setShowOverview] = useState(false);
   const [selected, setSelected] = useState(null);
   const [cropMode, setCropMode] = useState(false);
   const [processing, setProcessing] = useState(params.get("processing") === "1");
@@ -1230,6 +1233,16 @@ export default function AlbumEditor() {
               <ChevronsRight size={16} />
               <span className="text-[9px] leading-none uppercase tracking-wider">{t("toolbars.short.end")}</span>
             </button>
+            <button
+              data-testid="editor-overview"
+              onClick={() => setShowOverview(true)}
+              className="flex flex-col items-center gap-1 px-3 py-2 border border-ink/20 hover:bg-white transition-colors"
+              aria-label={t("albumEditor.overview.button")}
+              title={t("albumEditor.overview.button")}
+            >
+              <LayoutGrid size={16} />
+              <span className="text-[9px] leading-none uppercase tracking-wider">{t("albumEditor.overview.short")}</span>
+            </button>
           </div>
 
           <div className="mt-4">
@@ -1452,6 +1465,22 @@ export default function AlbumEditor() {
         </aside>
       </div>
       {tour.element}
+      {showOverview && (
+        <PageOverview
+          album={album}
+          editable={!album.was_ordered}
+          // Undoable like any edit (the album's history), saved with it.
+          onReorder={(pages) => {
+            setSelected(null);
+            setAlbum((prev) => (prev ? { ...prev, pages } : prev));
+          }}
+          onOpenPage={(i) => {
+            setShowOverview(false);
+            bookRef.current?.goTo(viewForPage(i));
+          }}
+          onClose={() => setShowOverview(false)}
+        />
+      )}
     </main>
     </HistoryPreviewContext.Provider>
   );

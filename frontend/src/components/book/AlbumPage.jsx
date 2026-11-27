@@ -20,6 +20,9 @@ export function AlbumPage({
   orientation = "portrait",
   pageIndex = 0,
   highRes = false,
+  // Photo size to load when not printing: "medium", or "thumb" for small
+  // previews (the page overview).
+  imageVariant = "medium",
   // The printer's file in the one-sheet hardcover format: plain white paper,
   // no grain (the screen's warm paper colour printed as a tint around the
   // page edge).
@@ -248,7 +251,7 @@ export function AlbumPage({
                   </div>
                 ) : (
                   <FramedPhoto
-                    src={photoImageUrl(item.photo_id, highRes ? "print" : "medium")}
+                    src={photoImageUrl(item.photo_id, highRes ? "print" : imageVariant)}
                     frameAspect={frameAspect}
                     photoAspect={item.photo_aspect}
                     zoom={scale}
