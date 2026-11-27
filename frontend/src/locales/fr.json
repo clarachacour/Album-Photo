@@ -429,7 +429,8 @@
         "pay": "Cet album (livraison comprise) coûte {{diff}} $ de plus que votre cadeau : vous paierez la différence.",
         "left": "Couvert par votre cadeau — {{left}} $ resteront en avoir sur votre compte.",
         "covered": "Entièrement couvert par votre cadeau."
-      }
+      },
+      "portraitOnly": "Ce modèle est conçu pour les albums en portrait."
     },
     "edit": {
       "title": "Faites-le vôtre.",

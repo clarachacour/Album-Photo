@@ -753,6 +753,9 @@ export const COVER_THEMES = [
         id: "year-2026-numbers",
         name: "2026 Big Numbers",
         landingImage: "/theme-covers/year-2026-numbers.webp",
+        // "20" over "26": drawn for a portrait cover (in landscape the
+        // numbers are small and pushed left) — no landscape offered.
+        portrait_only: true,
         title: "in a book",
         cover: {
           bg_color: "#263A4F",

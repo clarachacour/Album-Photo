@@ -98,7 +98,8 @@ export default function CreateAlbum() {
   }, [step]);
   const startFormat = templateFormat(params.get("template"));
   const [size, setSize] = useState(startFormat?.size || "A4");
-  const [orientation, setOrientation] = useState(startFormat?.orientation || "portrait");
+  // A template drawn for portrait only starts (and stays) in portrait.
+  const [orientation, setOrientation] = useState(chosenTemplate?.portrait_only ? "portrait" : startFormat?.orientation || "portrait");
   const [targetPages, setTargetPages] = useState(50);
   const [album, setAlbum, albumHistory] = useHistoryState(null); // created once we leave the Format step
   const [coverSel, setCoverSel] = useState(null);
@@ -374,7 +375,7 @@ export default function CreateAlbum() {
           ))}
         </div>
 
-        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} targetPages={targetPages} setTargetPages={setTargetPages} gift={gift} />}
+        {step === 0 && <StepFormat size={size} setSize={setSize} orientation={orientation} setOrientation={setOrientation} targetPages={targetPages} setTargetPages={setTargetPages} gift={gift} portraitOnly={!!chosenTemplate?.portrait_only} />}
 
         {step === 1 && album && (
           <StepEdit
@@ -446,7 +447,7 @@ export default function CreateAlbum() {
 
 
 
-function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages, gift }) {
+function StepFormat({ size, setSize, orientation, setOrientation, targetPages, setTargetPages, gift, portraitOnly = false }) {
   const { t, i18n } = useTranslation();
   // The page's real size, in cm (21 × 29.7 for an A4 portrait).
   const dims = pageDimsMm(size, orientation);
@@ -508,8 +509,10 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
                 key={o.v}
                 data-testid={TID.orientationOption}
                 data-orientation={o.v}
+                // A template drawn for portrait only (portrait_only): no landscape.
+                disabled={portraitOnly && o.v === "landscape"}
                 onClick={() => setOrientation(o.v)}
-                className={`px-3 md:px-6 py-3 border ${
+                className={`px-3 md:px-6 py-3 border disabled:opacity-35 disabled:cursor-not-allowed ${
                   orientation === o.v
                     ? "bg-[color:var(--ink)] text-[color:var(--paper)] border-[color:var(--ink)]"
                     : "border-ink/30 text-[color:var(--ink)] hover:border-[color:var(--ink)]"
@@ -519,6 +522,7 @@ function StepFormat({ size, setSize, orientation, setOrientation, targetPages, s
               </button>
             ))}
           </div>
+          {portraitOnly && <p className="text-xs text-[color:var(--muted)] mt-3" data-testid="portrait-only-note">{t("createAlbum.format.portraitOnly")}</p>}
         </div>
       </div>
       <div className="col-span-2 md:col-span-1 md:col-start-1">

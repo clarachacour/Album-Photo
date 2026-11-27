@@ -429,7 +429,8 @@
         "pay": "This album (delivery included) is ${{diff}} more than your gift: you'll pay the difference.",
         "left": "Covered by your gift — ${{left}} will stay as credit on your account.",
         "covered": "Fully covered by your gift."
-      }
+      },
+      "portraitOnly": "This template is made for portrait albums."
     },
     "edit": {
       "title": "Make it yours.",
