@@ -8,7 +8,8 @@ import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import { Upload, Smartphone } from "lucide-react";
 import { TID } from "@/constants/testIds";
 import { isMobileDevice } from "@/lib/device";
-import { postBatch, uploadInBatches } from "@/lib/uploadBatches";
+import { postBatch } from "@/lib/uploadBatches";
+import { useUploadQueue } from "@/lib/useUploadQueue";
 import { preparePhoto } from "@/lib/preparePhoto";
 
 /**
@@ -30,11 +31,46 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
   const [phoneSession, setPhoneSession] = useState(null);
   // True while the phone that scanned the QR code says it's sending photos.
   const [phoneUploading, setPhoneUploading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(null); // { done, total } while sending
-  // Photos the connection didn't let through, offered to be sent again.
-  const [failedFiles, setFailedFiles] = useState([]);
   const [googleImporting, setGoogleImporting] = useState(false);
+  // One queue for every photo chosen: photos chosen while others are being
+  // sent are added to it (see useUploadQueue). The album's photos are read
+  // again once the queue is empty.
+  const endpoint = mode === "editor" ? `/albums/${albumId}/add-photos` : `/albums/${albumId}/photos`;
+  const queue = useUploadQueue({
+    // The new pages go onto the saved album: edits in progress go first.
+    beforeStart: mode === "editor" && beforeAlbumChange ? beforeAlbumChange : undefined,
+    send: async (batch, { onSent }) => {
+      const form = new FormData();
+      // Heavy photos are made lighter first (see preparePhoto).
+      (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
+      const { data } = await postBatch(api, endpoint, form, { onSent, config: { headers: { "Content-Type": "multipart/form-data" } } });
+      return { uploaded: mode === "editor" ? data?.added : data?.uploaded, limitReached: data?.limit_reached };
+    },
+    onFinished: async (sum) => {
+      if (sum.errorDetail) toast.error(sum.errorDetail);
+      if (sum.limitReached) toast.warning(t("photoUpload.limitReached"), { duration: 8000 });
+      if (sum.rejected > 0) toast.warning(t("photoUpload.unreadable", { count: sum.rejected }), { duration: 8000 });
+      try {
+        if (mode === "editor") {
+          // The server has already placed them (or said the album is full):
+          // show the album as it is now, like after a Google Photos import.
+          if (sum.uploaded > 0) {
+            const data = await handlePhoneOrGoogleUpdate();
+            if (data?.status !== "processing" && !(data?.unplaced_added > 0)) {
+              toast.success(t("photoUpload.addedToAlbum", { count: sum.uploaded }));
+            }
+          }
+        } else {
+          await refreshAlbum();
+        }
+      } catch (err) {
+        toast.error(err?.response?.data?.detail || t("photoUpload.addError"));
+      }
+    },
+  });
+  const uploading = queue.uploading;
+  const progress = queue.progress;
+  const failedFiles = queue.failedFiles;
   const fileInput = React.useRef();
   // Doesn't change for the lifetime of a page load, so no need for this to
   // be reactive state — just computed once. "From your phone" (scan a QR
@@ -164,51 +200,12 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
     return data;
   };
 
-  const handleFiles = async (fileList) => {
+
+  const handleFiles = (fileList) => {
     const files = Array.from(fileList).filter(isImageFile);
-    if (files.length === 0 || !albumId || uploading) return;
-    setUploading(true);
-    setFailedFiles([]);
-    setProgress({ done: 0, total: files.length });
-    try {
-      // The new pages go onto the saved album: edits in progress go first.
-      if (mode === "editor" && beforeAlbumChange) await beforeAlbumChange();
-      const endpoint = mode === "editor" ? `/albums/${albumId}/add-photos` : `/albums/${albumId}/photos`;
-      // Batching, retries after a dropped connection and how many batches
-      // go at once: see uploadInBatches.
-      const res = await uploadInBatches(
-        files,
-        async (batch, { onSent }) => {
-          const form = new FormData();
-          // Heavy photos are made lighter first (see preparePhoto).
-          (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
-          const { data } = await postBatch(api, endpoint, form, { onSent, config: { headers: { "Content-Type": "multipart/form-data" } } });
-          return { uploaded: mode === "editor" ? data?.added : data?.uploaded, limitReached: data?.limit_reached };
-        },
-        { onProgress: setProgress }
-      );
-      if (res.errorDetail) toast.error(res.errorDetail);
-      if (res.limitReached) toast.warning(t("photoUpload.limitReached"), { duration: 8000 });
-      if (res.rejected > 0) toast.warning(t("photoUpload.unreadable", { count: res.rejected }), { duration: 8000 });
-      setFailedFiles(res.failedFiles);
-      if (mode === "editor") {
-        // The server has already placed them (or said the album is full):
-        // show the album as it is now, like after a Google Photos import.
-        if (res.uploaded > 0) {
-          const data = await handlePhoneOrGoogleUpdate();
-          if (data?.status !== "processing" && !(data?.unplaced_added > 0)) {
-            toast.success(t("photoUpload.addedToAlbum", { count: res.uploaded }));
-          }
-        }
-      } else {
-        await refreshAlbum();
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || t("photoUpload.addError"));
-    } finally {
-      setUploading(false);
-      setProgress(null);
-    }
+    if (files.length === 0 || !albumId) return;
+    // Chosen while others are being sent: they follow right after.
+    if (queue.add(files)) toast.success(t("photoUpload.queued", { count: files.length }));
   };
 
   // Closing the page (or reloading it) in the middle would stop the upload.
@@ -251,7 +248,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           setDrag(false);
           handleFiles(e.dataTransfer.files);
         }}
-        onClick={() => !uploading && fileInput.current?.click()}
+        onClick={() => fileInput.current?.click()}
         className={`border-2 border-dashed cursor-pointer p-16 text-center transition-colors ${
           drag ? "border-[color:var(--coral)] bg-coral/5" : "border-ink/20 hover:border-ink/50"
         }`}
@@ -270,6 +267,7 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
             </div>
             <p className="text-sm mt-3">{t("photoUpload.progress", progress)}</p>
             <p className="text-[color:var(--muted)] text-xs mt-1">{t("photoUpload.keepOpen")}</p>
+            <p className="text-[color:var(--muted)] text-xs mt-1">{t("photoUpload.addMoreWhileSending")}</p>
           </div>
         ) : (
           <p className="text-[color:var(--muted)] text-sm">{onPhone ? t("photoUpload.cameraRoll") : t("photoUpload.clickToBrowse")}</p>
@@ -293,13 +291,20 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           <span>{t("photoUpload.failed", { count: failedFiles.length })}</span>
           <button
             type="button"
-            onClick={() => handleFiles(failedFiles)}
+            onClick={queue.resend}
             className="text-xs font-semibold tracking-widest uppercase underline underline-offset-4 hover:text-[color:var(--ink)]"
             data-testid="upload-resend"
           >
             {t("photoUpload.resend", { count: failedFiles.length })}
           </button>
         </div>
+      )}
+
+      {queue.summary && !uploading && queue.summary.uploaded > 0 && (
+        <p className="mt-4 text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-4 py-3" data-testid="upload-summary">
+          {/* "All received" only when every photo chosen was counted and got in. */}
+          {t(queue.summary.checked && queue.summary.uploaded === queue.summary.chosen ? "photoUpload.allReceived" : "photoUpload.someReceived", { count: queue.summary.uploaded })}
+        </p>
       )}
 
       <div className="mt-6 flex flex-wrap gap-3">

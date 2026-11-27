@@ -83,6 +83,8 @@ describe("uploadInBatches", () => {
     expect(calls).toBe(1);
     expect(res.limitReached).toBe(true);
     expect(res.rejected).toBe(0);
+    // The photos left out are counted, so none goes missing from the tally.
+    expect(res.uploaded + res.skipped).toBe(80);
   });
 
   it("starts with 4 batches in flight and slows down after failures", async () => {

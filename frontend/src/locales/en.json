@@ -467,7 +467,7 @@
     "addedSoFar_one": "{{count}} photo added so far",
     "addedSoFar_other": "{{count}} photos added so far",
     "progress": "{{done}} / {{total}} photos sent",
-    "keepOpen": "Keep this page open until the upload is finished. If the connection drops, it picks up again by itself.",
+    "keepOpen": "Keep this page open, and the screen on, until the upload is finished. If the connection drops, it picks up again by itself.",
     "failed_one": "{{count}} photo couldn't be sent because of the connection.",
     "failed_other": "{{count}} photos couldn't be sent because of the connection.",
     "resend_one": "Send the missing photo again",
@@ -476,7 +476,14 @@
     "unreadable_other": "{{count}} photos couldn't be read (damaged files or unsupported format) and were skipped.",
     "addedToAlbum_one": "{{count}} photo added at the end of your album",
     "addedToAlbum_other": "{{count}} photos added at the end of your album",
-    "androidTip": "Tip: from an Android phone, sending many photos can take several minutes. For a faster, more comfortable experience, we recommend using a computer, or the “From Google Photos” button below, which transfers your photos directly without going through your phone."
+    "androidTip": "Tip: from an Android phone, sending many photos can take several minutes. For a faster, more comfortable experience, we recommend using a computer, or the “From Google Photos” button below, which transfers your photos directly without going through your phone.",
+    "addMoreWhileSending": "You can already choose more photos: they'll be sent right after.",
+    "queued_one": "{{count}} more photo will be sent right after the others.",
+    "queued_other": "{{count}} more photos will be sent right after the others.",
+    "allReceived_one": "✓ {{count}} photo received.",
+    "allReceived_other": "✓ All {{count}} photos received.",
+    "someReceived_one": "✓ {{count}} photo received.",
+    "someReceived_other": "✓ {{count}} photos received."
   },
   "googlePhotos": {
     "accessDenied": "Google Photos access was not granted",
@@ -1156,13 +1163,14 @@
     "added_one": "{{count}} photo added — you can add more or close this page.",
     "added_other": "{{count}} photos added — you can add more or close this page.",
     "progress": "{{done}} / {{total}} photos sent",
-    "keepOpen": "Keep this page open until it's finished. If the connection drops, it picks up again by itself.",
+    "keepOpen": "Keep this page open, and the screen on, until it's finished. If the connection drops, it picks up again by itself.",
     "failed_one": "{{count}} photo couldn't be sent because of the connection.",
     "failed_other": "{{count}} photos couldn't be sent because of the connection.",
     "resend_one": "Send the missing photo again",
     "resend_other": "Send the {{count}} missing photos again",
     "unreadable_one": "{{count}} photo couldn't be read and was skipped.",
-    "unreadable_other": "{{count}} photos couldn't be read and were skipped."
+    "unreadable_other": "{{count}} photos couldn't be read and were skipped.",
+    "addMore": "Choose more photos"
   },
   "tour": {
     "help": "Guide",

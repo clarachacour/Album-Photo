@@ -5,7 +5,8 @@ import { API } from "@/lib/api";
 import { Upload, Check, Loader2 } from "lucide-react";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 import axios from "axios";
-import { postBatch, uploadInBatches } from "@/lib/uploadBatches";
+import { postBatch } from "@/lib/uploadBatches";
+import { useUploadQueue } from "@/lib/useUploadQueue";
 import { isImageFile } from "@/lib/imageFiles";
 import { preparePhoto } from "@/lib/preparePhoto";
 
@@ -14,13 +15,31 @@ export default function MobileUpload() {
   const { t } = useTranslation();
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [googleImporting, setGoogleImporting] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
-  const [progress, setProgress] = useState(null); // { done, total } while sending
-  // Photos the connection didn't let through, offered to be sent again.
-  const [failedFiles, setFailedFiles] = useState([]);
   const [notices, setNotices] = useState([]);
+  // One queue for every photo chosen, also while others are being sent
+  // (see useUploadQueue): nothing lost, everything counted.
+  const queue = useUploadQueue({
+    beforeStart: () => setNotices([]),
+    send: async (batch, { onSent }) => {
+      const form = new FormData();
+      // Heavy photos are made lighter first (see preparePhoto).
+      (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
+      // Plain axios: the phone isn't signed in, the link's token is the key.
+      const { data } = await postBatch(axios, `${API}/mobile-upload/${token}/photos`, form, { onSent });
+      return { uploaded: data?.uploaded || 0, limitReached: data?.limit_reached };
+    },
+    onFinished: (sum) => {
+      setAddedCount((c) => c + sum.uploaded);
+      const list = [];
+      if (sum.errorDetail) list.push(sum.errorDetail);
+      if (sum.limitReached) list.push(t("photoUpload.limitReached"));
+      if (sum.rejected > 0) list.push(t("mobileUpload.unreadable", { count: sum.rejected }));
+      setNotices(list);
+    },
+  });
+  const { uploading, progress, failedFiles } = queue;
   const fileInput = useRef();
 
   useEffect(() => {
@@ -99,35 +118,11 @@ export default function MobileUpload() {
     return () => clearInterval(heartbeat);
   }, [sending, info, token]);
 
-  const handleFiles = async (fileList) => {
+  const handleFiles = (fileList) => {
     const files = Array.from(fileList).filter(isImageFile);
     if (files.length === 0) return;
-    setUploading(true);
-    setNotices([]);
-    setFailedFiles([]);
-    setProgress({ done: 0, total: files.length });
-    // Same batching and retries as the computer upload (see uploadInBatches).
-    const res = await uploadInBatches(
-      files,
-      async (batch, { onSent }) => {
-        const form = new FormData();
-        // Heavy photos are made lighter first (see preparePhoto).
-        (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
-        // Plain axios: the phone isn't signed in, the link's token is the key.
-        const { data } = await postBatch(axios, `${API}/mobile-upload/${token}/photos`, form, { onSent });
-        return { uploaded: data?.uploaded || 0, limitReached: data?.limit_reached };
-      },
-      { onProgress: setProgress }
-    );
-    setAddedCount((c) => c + res.uploaded);
-    setFailedFiles(res.failedFiles);
-    const notices = [];
-    if (res.errorDetail) notices.push(res.errorDetail);
-    if (res.limitReached) notices.push(t("photoUpload.limitReached"));
-    if (res.rejected > 0) notices.push(t("mobileUpload.unreadable", { count: res.rejected }));
-    setNotices(notices);
-    setUploading(false);
-    setProgress(null);
+    // Chosen while others are being sent: they follow right after.
+    queue.add(files);
   };
 
   // Closing the page (or reloading it) in the middle would stop the upload.
@@ -162,12 +157,12 @@ export default function MobileUpload() {
 
         <button
           onClick={() => fileInput.current?.click()}
-          disabled={uploading || googleImporting || !info}
+          disabled={googleImporting || !info}
           className="w-full inline-flex flex-col items-center justify-center gap-3 border-2 border-dashed border-ink/30 py-12 hover:border-ink/60 transition-colors disabled:opacity-60"
         >
           {uploading ? <Loader2 size={28} className="animate-spin" /> : <Upload size={28} />}
           <span className="text-sm font-semibold tracking-widest uppercase">
-            {uploading ? t("mobileUpload.uploading") : t("mobileUpload.choose")}
+            {uploading ? t("mobileUpload.addMore") : t("mobileUpload.choose")}
           </span>
         </button>
         {progress && (
@@ -180,12 +175,16 @@ export default function MobileUpload() {
             </div>
             <p className="text-sm mt-3">{t("mobileUpload.progress", progress)}</p>
             <p className="text-[color:var(--muted)] text-xs mt-1">{t("mobileUpload.keepOpen")}</p>
+            <p className="text-[color:var(--muted)] text-xs mt-1">{t("photoUpload.addMoreWhileSending")}</p>
           </div>
         )}
         <input
           ref={fileInput}
           type="file"
-          accept="image/*"
+          // The formats the server reads (the iPhone's HEIC included): listed
+          // like this, an iPhone hands over its photos as they are, instead
+          // of converting each one to JPEG first (slow with many photos).
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -210,7 +209,7 @@ export default function MobileUpload() {
             <p>{t("mobileUpload.failed", { count: failedFiles.length })}</p>
             <button
               type="button"
-              onClick={() => handleFiles(failedFiles)}
+              onClick={queue.resend}
               className="mt-2 text-xs font-semibold tracking-widest uppercase underline underline-offset-4"
               data-testid="upload-resend"
             >

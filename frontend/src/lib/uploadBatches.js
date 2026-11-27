@@ -32,6 +32,7 @@
  *   refused      photos in batches the server refused outright (retrying
  *                wouldn't help)
  *   limitReached the album hit its photo limit; the rest wasn't sent
+ *   skipped      photos not sent because the album was full (limitReached)
  *   errorDetail  the server's message for a refusal that retrying can't fix
  */
 
@@ -127,7 +128,7 @@ export async function uploadInBatches(files, send, options = {}) {
 
   const queue = makeBatches(files).map((batch) => ({ files: batch, attempts: 0 }));
   const total = files.length;
-  const result = { uploaded: 0, rejected: 0, refused: 0, failedFiles: [], limitReached: false, errorDetail: null };
+  const result = { uploaded: 0, rejected: 0, refused: 0, skipped: 0, failedFiles: [], limitReached: false, errorDetail: null };
   let done = 0;
   let concurrency = startConcurrency;
   let active = 0;
@@ -144,7 +145,12 @@ export async function uploadInBatches(files, send, options = {}) {
   };
 
   const pump = () => {
-    if (result.limitReached) queue.length = 0; // no room left: don't send the rest
+    if (result.limitReached && queue.length) {
+      // No room left: the rest isn't sent (counted, so none goes missing).
+      const left = queue.splice(0, queue.length).reduce((n, job) => n + job.files.length, 0);
+      result.skipped += left;
+      done += left;
+    }
     while (active < concurrency && queue.length) run(queue.shift());
     if (active === 0 && queue.length === 0) finish();
   };

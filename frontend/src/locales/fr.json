@@ -467,7 +467,7 @@
     "addedSoFar_one": "{{count}} photo ajoutée pour l'instant",
     "addedSoFar_other": "{{count}} photos ajoutées pour l'instant",
     "progress": "{{done}} / {{total}} photos envoyées",
-    "keepOpen": "Gardez cette page ouverte jusqu'à la fin de l'envoi. Si la connexion coupe, l'envoi reprend tout seul.",
+    "keepOpen": "Gardez cette page ouverte, écran allumé, jusqu'à la fin de l'envoi. Si la connexion coupe, l'envoi reprend tout seul.",
     "failed_one": "{{count}} photo n'a pas pu être envoyée à cause de la connexion.",
     "failed_other": "{{count}} photos n'ont pas pu être envoyées à cause de la connexion.",
     "resend_one": "Renvoyer la photo manquante",
@@ -476,7 +476,14 @@
     "unreadable_other": "{{count}} photos n'ont pas pu être lues (fichier abîmé ou format non pris en charge) et ont été ignorées.",
     "addedToAlbum_one": "{{count}} photo ajoutée à la fin de votre album",
     "addedToAlbum_other": "{{count}} photos ajoutées à la fin de votre album",
-    "androidTip": "Conseil : depuis un téléphone Android, l'envoi de nombreuses photos peut prendre plusieurs minutes. Pour une création plus rapide et plus confortable, nous vous conseillons d'utiliser un ordinateur, ou le bouton « Depuis Google Photos » ci-dessous, qui transfère vos photos directement sans passer par votre téléphone."
+    "androidTip": "Conseil : depuis un téléphone Android, l'envoi de nombreuses photos peut prendre plusieurs minutes. Pour une création plus rapide et plus confortable, nous vous conseillons d'utiliser un ordinateur, ou le bouton « Depuis Google Photos » ci-dessous, qui transfère vos photos directement sans passer par votre téléphone.",
+    "addMoreWhileSending": "Vous pouvez déjà choisir d'autres photos : elles partiront juste après.",
+    "queued_one": "{{count}} photo de plus partira juste après les autres.",
+    "queued_other": "{{count}} photos de plus partiront juste après les autres.",
+    "allReceived_one": "✓ {{count}} photo bien reçue.",
+    "allReceived_other": "✓ Les {{count}} photos sont bien reçues.",
+    "someReceived_one": "✓ {{count}} photo bien reçue.",
+    "someReceived_other": "✓ {{count}} photos bien reçues."
   },
   "googlePhotos": {
     "accessDenied": "L'accès à Google Photos n'a pas été accordé",
@@ -1156,13 +1163,14 @@
     "added_one": "{{count}} photo ajoutée — vous pouvez en ajouter d'autres ou fermer cette page.",
     "added_other": "{{count}} photos ajoutées — vous pouvez en ajouter d'autres ou fermer cette page.",
     "progress": "{{done}} / {{total}} photos envoyées",
-    "keepOpen": "Gardez cette page ouverte jusqu'à la fin. Si la connexion coupe, l'envoi reprend tout seul.",
+    "keepOpen": "Gardez cette page ouverte, écran allumé, jusqu'à la fin. Si la connexion coupe, l'envoi reprend tout seul.",
     "failed_one": "{{count}} photo n'a pas pu être envoyée à cause de la connexion.",
     "failed_other": "{{count}} photos n'ont pas pu être envoyées à cause de la connexion.",
     "resend_one": "Renvoyer la photo manquante",
     "resend_other": "Renvoyer les {{count}} photos manquantes",
     "unreadable_one": "{{count}} photo n'a pas pu être lue et a été ignorée.",
-    "unreadable_other": "{{count}} photos n'ont pas pu être lues et ont été ignorées."
+    "unreadable_other": "{{count}} photos n'ont pas pu être lues et ont été ignorées.",
+    "addMore": "Choisir d'autres photos"
   },
   "tour": {
     "help": "Guide",
