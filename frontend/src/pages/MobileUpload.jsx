@@ -9,6 +9,7 @@ import { postBatch } from "@/lib/uploadBatches";
 import { useUploadQueue } from "@/lib/useUploadQueue";
 import { isImageFile } from "@/lib/imageFiles";
 import { preparePhoto } from "@/lib/preparePhoto";
+import { isSvgFile, svgToPng } from "@/lib/svgToPng";
 
 export default function MobileUpload() {
   const { token } = useParams();
@@ -24,8 +25,9 @@ export default function MobileUpload() {
     beforeStart: () => setNotices([]),
     send: async (batch, { onSent }) => {
       const form = new FormData();
-      // Heavy photos are made lighter first (see preparePhoto).
-      (await Promise.all(batch.map(preparePhoto))).forEach((f) => form.append("files", f));
+      // Heavy photos are made lighter first (see preparePhoto); an SVG for
+      // the cover goes as a large PNG (see svgToPng).
+      (await Promise.all(batch.map((f) => (isSvgFile(f) ? svgToPng(f) : preparePhoto(f))))).forEach((f) => form.append("files", f));
       // Plain axios: the phone isn't signed in, the link's token is the key.
       const { data } = await postBatch(axios, `${API}/mobile-upload/${token}/photos`, form, { onSent });
       return { uploaded: data?.uploaded || 0, limitReached: data?.limit_reached };
@@ -121,7 +123,7 @@ export default function MobileUpload() {
   }, [sending, info, token]);
 
   const handleFiles = (fileList) => {
-    let files = Array.from(fileList).filter(isImageFile);
+    let files = Array.from(fileList).filter((f) => isImageFile(f) || (forCover && isSvgFile(f)));
     if (files.length === 0) return;
     if (forCover) files = files.slice(0, 1);
     // Chosen while others are being sent: they follow right after.
@@ -187,7 +189,7 @@ export default function MobileUpload() {
           // The formats the server reads (the iPhone's HEIC included): listed
           // like this, an iPhone hands over its photos as they are, instead
           // of converting each one to JPEG first (slow with many photos).
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept={forCover ? "image/jpeg,image/png,image/webp,image/heic,image/heif,image/svg+xml" : "image/jpeg,image/png,image/webp,image/heic,image/heif"}
           multiple={!forCover}
           className="hidden"
           onChange={(e) => {

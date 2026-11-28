@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, Monitor, Smartphone, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { isImageFile } from "@/lib/imageFiles";
+import { isSvgFile } from "@/lib/svgToPng";
 import { isMobileDevice } from "@/lib/device";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 
@@ -14,8 +15,8 @@ import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
 // on Windows for one; the file name is checked after). On a phone, the
 // formats the server reads are listed: an iPhone then hands its photo over
 // as it is.
-const COMPUTER_ACCEPT = "image/*,.heic,.heif";
-const PHONE_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif";
+const COMPUTER_ACCEPT = "image/*,.heic,.heif,.svg";
+const PHONE_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,image/svg+xml";
 
 const optionClass =
   "w-full inline-flex items-center gap-3 border border-ink/30 py-3 px-4 text-left hover:border-[color:var(--ink)] transition-colors disabled:opacity-60";
@@ -116,7 +117,7 @@ export default function CoverImagePicker({ albumId, onPick, onClose }) {
                 const f = e.target.files?.[0];
                 e.target.value = "";
                 if (!f) return;
-                if (!isImageFile(f)) {
+                if (!isImageFile(f) && !isSvgFile(f)) {
                   toast.error(t("coverPicker.notAnImage"));
                   return;
                 }
