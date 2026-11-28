@@ -20,16 +20,17 @@ import {
 } from "@/lib/themeAssets";
 
 // Spine logos, files in public/cover-art (see coverAssets.js).
-const RINGS_LOGO_URL = "/cover-art/rings-logo-v1.webp";
-const HEART_LOGO_URL = "/cover-art/heart-logo-v1.webp";
-const MOM_HEART_LOGO_URL = "/cover-art/mom-heart-logo-v1.webp";
-const DAD_COMPASS_LOGO_URL = "/cover-art/dad-compass-logo-v1.webp";
-const OURYEAR_RINGS_LOGO_URL = "/cover-art/ouryear-rings-logo-v1.webp";
+const RINGS_LOGO_URL = "/cover-art/rings-logo-v2.svg";
+const HEART_LOGO_URL = "/cover-art/heart-logo-v2.svg";
+const MOM_HEART_LOGO_URL = "/cover-art/mom-heart-logo-v2.svg";
+const DAD_COMPASS_LOGO_URL = "/cover-art/dad-compass-logo-v2.svg";
+const OURYEAR_RINGS_LOGO_URL = "/cover-art/ouryear-rings-logo-v2.svg";
 
-// Spine logos were first shipped as small PNGs (58–103 px), blurry once
-// enlarged or printed; the ones above are the same images upscaled 4x
-// (Real-ESRGAN). Albums keep a copy of their template's logo in their
-// cover, so the old copies are swapped for the new ones when shown.
+// Spine logos were first shipped as small PNGs (58–103 px), then as the same
+// images upscaled (v1 .webp, about 300 px): both blurry once enlarged or
+// printed. The ones above are redrawn as vector drawings. Albums keep a copy
+// of their template's logo in their cover, so the old copies are swapped
+// for the new ones when shown.
 const LEGACY_SPINE_LOGOS = [
   ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGcAAABMCAYAAABwKqkMAABYGUlEQVR42k39e5RdZ3kmiD/ffe999rnU/aqqkqpkCSQQicDqxg", HEART_LOGO_URL],
   ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADoAAAA4CAYAAACsc+sjAAAf+UlEQVR42j276Y4cWZqe+ZzVNt9iZwS3JJNLbrV0t9SNqdbM/B", MOM_HEART_LOGO_URL],
@@ -39,8 +40,18 @@ const LEGACY_SPINE_LOGOS = [
   ["data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cpath%20transform%3D%22rotate(84", MOM_HEART_LOGO_URL],
 ];
 
+// The upscaled pictures (v1) → their vector drawing.
+const REDRAWN_LOGOS = {
+  "/cover-art/rings-logo-v1.webp": RINGS_LOGO_URL,
+  "/cover-art/heart-logo-v1.webp": HEART_LOGO_URL,
+  "/cover-art/mom-heart-logo-v1.webp": MOM_HEART_LOGO_URL,
+  "/cover-art/dad-compass-logo-v1.webp": DAD_COMPASS_LOGO_URL,
+  "/cover-art/ouryear-rings-logo-v1.webp": OURYEAR_RINGS_LOGO_URL,
+};
+
 export function spineLogoSource(src) {
   if (typeof src !== "string") return src;
+  if (REDRAWN_LOGOS[src]) return REDRAWN_LOGOS[src];
   const legacy = LEGACY_SPINE_LOGOS.find(([prefix]) => src.startsWith(prefix));
   return legacy ? legacy[1] : src;
 }

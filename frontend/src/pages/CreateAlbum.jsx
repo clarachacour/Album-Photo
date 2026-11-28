@@ -151,7 +151,7 @@ export default function CreateAlbum() {
   useDeselectOutside(step === 1 && !!coverSel, clearCoverSel);
 
   const template = getTemplate();
-  const { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone } =
+  const { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, addCoverDrawing, removeCoverItem, clearSpineZone } =
     makeCoverEditingActions({ setAlbum, albumId: album?.id, coverSel, setCoverSel });
 
   // Same clipboard used by AlbumEditor.jsx's cover editing (Ctrl+C/Ctrl+V
@@ -394,6 +394,7 @@ export default function CreateAlbum() {
             addCoverText={addCoverText}
             addCoverShape={addCoverShape}
             addCoverImage={addCoverImage}
+            addCoverDrawing={addCoverDrawing}
             removeCoverItem={removeCoverItem}
             history={albumHistory}
           />
@@ -610,6 +611,7 @@ function StepEdit({
   addCoverText,
   addCoverShape,
   addCoverImage,
+  addCoverDrawing,
   removeCoverItem,
   history,
 }) {
@@ -710,6 +712,7 @@ function StepEdit({
               addCoverText={addCoverText}
               addCoverShape={addCoverShape}
               addCoverImage={addCoverImage}
+              addCoverDrawing={addCoverDrawing}
               removeCoverItem={removeCoverItem}
               updateAlbumTitle={updateAlbumTitle}
               addSpineText={addSpineText}

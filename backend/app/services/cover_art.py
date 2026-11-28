@@ -41,8 +41,16 @@ _BY_PREFIX = [
 # that looked pixelated in a zoomed PDF; v2 has the same drawing in smooth
 # curves. A file is never changed in place (browsers keep it for a year).
 _REDRAWN = {
-    f"/cover-art/travel-{name}-v1.svg": f"/cover-art/travel-{name}-v2.svg"
-    for name in ("sicily", "hawaii", "thailand", "paros", "morocco", "barcelona")
+    **{
+        f"/cover-art/travel-{name}-v1.svg": f"/cover-art/travel-{name}-v2.svg"
+        for name in ("sicily", "hawaii", "thailand", "paros", "morocco", "barcelona")
+    },
+    # The logos were small pictures (about 300 px, blurry enlarged or
+    # printed): v2 is each one redrawn as a vector drawing.
+    **{
+        f"/cover-art/{name}-v1.webp": f"/cover-art/{name}-v2.svg"
+        for name in ("rings-logo", "heart-logo", "mom-heart-logo", "dad-compass-logo", "ouryear-rings-logo", "coral-logo")
+    },
 }
 
 

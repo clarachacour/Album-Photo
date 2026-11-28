@@ -33,14 +33,14 @@ def test_every_address_points_to_an_existing_file():
     source = "\n".join(p.read_text() for p in (FRONTEND / "src" / "lib").glob("*.js"))
     urls = set(re.findall(r'"(/cover-art/[^"]+)"', source)) | set(re.findall(r'"(/cover-art/[^"]+)"', (Path(__file__).resolve().parents[1] / "app/services/cover_art.py").read_text()))
     urls = {u for u in urls if "{" not in u}  # the v1 → v2 table is built from names
-    assert len(urls) == 25  # with Beirut, Dubai, Cairo, Cyprus, wedding rings, baptism dove
+    assert len(urls) == 33  # with the drawings bank and the logos redrawn as vectors (v2)
     for url in urls:
         assert (FRONTEND / "public" / url.lstrip("/")).is_file(), url
 
 
 def test_old_small_spine_logo_is_recognised():
     old_mom = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADoAAAA4CAYAAACsc+sjAAAf+UlEQVR42j276Y4cWZqe+ZzVNt9iZwS3JJNLbrV0t9SNqdbM/BAwA93CYPRHlyDdQOuSNAIESQ2NegR0t4RqVWdVZW"
-    assert slim_image(old_mom) == "/cover-art/mom-heart-logo-v1.webp"
+    assert slim_image(old_mom) == "/cover-art/mom-heart-logo-v2.svg"  # its vector drawing
     assert slim_image("data:image/png;base64,AAAA") == "data:image/png;base64,AAAA"  # someone's own image
     assert slim_image("https://example.com/x.png") == "https://example.com/x.png"
 
@@ -92,16 +92,17 @@ def test_older_albums_lose_their_embedded_logos_when_read(client, db, monkeypatc
     asyncio.run(db.albums.update_one({"id": album_id}, {"$set": {"cover": old_cover, "updated_at": "2026-01-01T00:00:00+00:00"}}))
 
     got = client.get(f"/api/albums/{album_id}", headers=headers).json()
-    assert got["cover"]["extra_items"][0]["image_url"] == coral
-    assert got["cover"]["spine_logo_image"] == heart
+    # Each logo's latest drawing (the v1 pictures were redrawn as vectors).
+    assert got["cover"]["extra_items"][0]["image_url"] == "/cover-art/coral-logo-v2.svg"
+    assert got["cover"]["spine_logo_image"] == "/cover-art/heart-logo-v2.svg"
     stored = asyncio.run(db.albums.find_one({"id": album_id}))
-    assert stored["cover"]["extra_items"][0]["image_url"] == coral
+    assert stored["cover"]["extra_items"][0]["image_url"] == "/cover-art/coral-logo-v2.svg"
     assert stored["updated_at"] == "2026-01-01T00:00:00+00:00"  # not an edit
 
     # A save from a page still showing the old copy is slimmed too.
     client.patch(f"/api/albums/{album_id}", json={"cover": old_cover}, headers=headers)
     stored = asyncio.run(db.albums.find_one({"id": album_id}))
-    assert stored["cover"]["spine_logo_image"] == heart
+    assert stored["cover"]["spine_logo_image"] == "/cover-art/heart-logo-v2.svg"
 
 
 def test_older_albums_get_the_redrawn_travel_icon_when_read(client, db):
@@ -128,3 +129,10 @@ def test_oldest_albums_get_the_vector_icon_from_its_tag():
     assert [i["image_url"] for i in slim["extra_items"]] == [
         "/cover-art/travel-sicily-v2.svg", "/cover-art/travel-australia-v1.svg", old_png,
     ]
+
+
+def test_albums_holding_an_upscaled_logo_get_its_vector_drawing():
+    for name in ("rings-logo", "heart-logo", "mom-heart-logo", "dad-compass-logo", "ouryear-rings-logo", "coral-logo"):
+        new = slim_image(f"/cover-art/{name}-v1.webp")
+        assert new == f"/cover-art/{name}-v2.svg"
+        assert (FRONTEND / "public" / new.lstrip("/")).is_file()

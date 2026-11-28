@@ -1,7 +1,10 @@
 import { api, coverAssetUrl } from "@/lib/api";
+import { isSvgFile, svgToPng } from "@/lib/svgToPng";
 import { toast } from "sonner";
 import { DEFAULT_TITLE_BOX, NEW_ITEM_BOX } from "@/lib/coverDefaults";
 import i18n from "@/lib/i18n";
+import { drawingBox } from "@/lib/coverDrawings";
+import { pageAspect } from "@/lib/photoFit";
 
 export function cryptoRandom() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -267,7 +270,8 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       let data = source;
       if (typeof Blob !== "undefined" && source instanceof Blob) {
         const form = new FormData();
-        form.append("file", source);
+        // An SVG goes as a large PNG (see svgToPng).
+        form.append("file", isSvgFile(source) ? await svgToPng(source) : source);
         ({ data } = await api.post(`/albums/${albumId}/cover-assets`, form, {
           headers: { "Content-Type": "multipart/form-data" },
         }));
@@ -303,6 +307,19 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     } catch (err) {
       toast.error(err?.response?.data?.detail || i18n.t("coverPanel.imageUploadFailed"));
     }
+  };
+
+  // A drawing from the bank (COVER_DRAWINGS), centred on the cover.
+  const addCoverDrawing = (drawing, side = coverSel?.side || "front") => {
+    const key = side === "back" ? "back_extra_items" : "extra_items";
+    const id = cryptoRandom();
+    setAlbum((prev) => {
+      const cover = prev.cover || {};
+      const newItem = { id, type: "image", image_url: drawing.url, asset: `drawing-${drawing.key}`, ...drawingBox(drawing.aspect, pageAspect(prev.orientation)) };
+      return { ...prev, cover: { ...cover, [key]: [...(cover[key] || []), newItem] } };
+    });
+    setCoverSel({ mode: "item", side, itemId: id });
+    toast.success(i18n.t("coverPanel.toast.drawingAdded"));
   };
 
   const removeCoverItem = (itemId, side = coverSel?.side || "front") => {
@@ -362,5 +379,5 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     setCoverSel(null);
   };
 
-  return { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, duplicateCoverItem, reorderCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, removeCoverItem, clearSpineZone };
+  return { updateCover, updateCoverTitle, updateAlbumTitle, updateCoverItem, duplicateCoverItem, reorderCoverItem, addCoverText, addSpineText, addCoverShape, addCoverImage, addCoverDrawing, removeCoverItem, clearSpineZone };
 }

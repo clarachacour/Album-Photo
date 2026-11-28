@@ -5,8 +5,13 @@ const templates = COVER_THEMES.flatMap((t) => t.templates);
 const logoOf = (id) => templates.find((t) => t.id === id).cover.spine_logo_image;
 
 describe("spine logo", () => {
-  it("the upscaled logos are the ones templates use", () => {
-    for (const id of ["family-mom", "family-dad"]) expect(logoOf(id)).toMatch(/^\/cover-art\/.+\.webp$/);
+  it("the redrawn vector logos are the ones templates use", () => {
+    for (const id of ["family-mom", "family-dad"]) expect(logoOf(id)).toMatch(/^\/cover-art\/.+-v2\.svg$/);
+  });
+
+  it("albums holding an upscaled picture get its vector drawing", () => {
+    expect(spineLogoSource("/cover-art/mom-heart-logo-v1.webp")).toBe(logoOf("family-mom"));
+    expect(spineLogoSource("/cover-art/dad-compass-logo-v1.webp")).toBe(logoOf("family-dad"));
   });
 
   it("albums holding an old small logo get the upscaled one", () => {
@@ -16,8 +21,8 @@ describe("spine logo", () => {
       "family-dad": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEwAAABLCAYAAADakmGTAAA3jklEQVR42lW8Z49lV5qd+Wxz/PXh00dGpCOTSSZdsYqsYjk5SEJL6mkBg/kz8zNmMB8GM0KrBfSHlhqYaT+qUjWLpu",
     };
     for (const [id, png] of Object.entries(old)) expect(spineLogoSource(png + "AAAA")).toBe(logoOf(id));
-    expect(spineLogoSource("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGcAAABMCAYAAABwKqkMAABYGUlEQVR42k39e5RdZ3kmiD/ffe999rnU/aqqkqpkCSQQicDqxg0O+BerGye4g7uhY4idkLQhToasITPMNL1C95CErM")).toMatch(/^\/cover-art\/.+\.webp$/);
-    expect(spineLogoSource("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEkAAAA6CAYAAAD8xXSzAAAg5UlEQVR42m2caZMjuXaenwMgFyb3YlX1NiNbEQ7JEf7/f0SydMMOy9Lc6e7ppTZuuQI4/gCQVXPlmWBMs7lkEjjbu2")).toMatch(/^\/cover-art\/.+\.webp$/);
+    expect(spineLogoSource("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGcAAABMCAYAAABwKqkMAABYGUlEQVR42k39e5RdZ3kmiD/ffe999rnU/aqqkqpkCSQQicDqxg0O+BerGye4g7uhY4idkLQhToasITPMNL1C95CErM")).toMatch(/^\/cover-art\/.+\.svg$/);
+    expect(spineLogoSource("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEkAAAA6CAYAAAD8xXSzAAAg5UlEQVR42m2caZMjuXaenwMgFyb3YlX1NiNbEQ7JEf7/f0SydMMOy9Lc6e7ppTZuuQI4/gCQVXPlmWBMs7lkEjjbu2")).toMatch(/^\/cover-art\/.+\.svg$/);
   });
 
   it("albums holding the redrawn vector heart get the original heart back", () => {

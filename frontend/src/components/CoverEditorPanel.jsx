@@ -7,10 +7,12 @@ import { deletePatch } from "@/lib/coverEditing";
 import { DegreesInput } from "@/components/DegreesInput";
 import { FontPicker } from "@/components/FontPicker";
 import CoverImagePicker from "@/components/CoverImagePicker";
+import CoverDrawingPicker from "@/components/CoverDrawingPicker";
 import { useFittedSize } from "@/lib/coverTextFit";
 import {
   Bold,
   Image as ImageIcon,
+  Flower2,
   Type,
   Trash2,
   X as XIcon,
@@ -53,6 +55,7 @@ export function CoverEditorPanel({
   updateCover,
   updateCoverItem,
   addCoverImage,
+  addCoverDrawing,
   removeCoverItem,
   updateAlbumTitle,
   addCoverText,
@@ -87,6 +90,7 @@ export function CoverEditorPanel({
   // The image window (computer, phone, Google Photos, album photos):
   // { replaceId } — null adds a new image, an id replaces that one.
   const [imagePicker, setImagePicker] = useState(null);
+  const [drawingPicker, setDrawingPicker] = useState(false);
 
   const zoneLabel = side === "back" ? t("coverPanel.back") : t("coverPanel.front");
 
@@ -474,6 +478,7 @@ export function CoverEditorPanel({
             <>
               {textButtons && <AddButton icon={<Type size={14} />} label={t("coverPanel.text")} onClick={() => addCoverText(undefined, side)} tid="cover-add-text" />}
               <AddButton icon={<ImageIcon size={14} />} label={t("coverPanel.image")} onClick={() => setImagePicker({ replaceId: null })} tid="cover-add-image" />
+              {addCoverDrawing && <AddButton icon={<Flower2 size={14} />} label={t("coverPanel.drawing")} onClick={() => setDrawingPicker(true)} tid="cover-add-drawing" />}
             </>
           )}
           {textButtons && addSpineText && (
@@ -501,6 +506,7 @@ export function CoverEditorPanel({
         )}
       </div>
       )}
+      {drawingPicker && <CoverDrawingPicker onPick={(d) => addCoverDrawing(d, side)} onClose={() => setDrawingPicker(false)} />}
       {imagePicker && (
         <CoverImagePicker
           albumId={album.id}

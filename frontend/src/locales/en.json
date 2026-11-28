@@ -1073,11 +1073,17 @@
       "textAdded": "Text added to the cover",
       "shapeAdded": "Shape added",
       "imageReplaced": "Image replaced",
-      "imageAdded": "Image added to the cover"
+      "imageAdded": "Image added to the cover",
+      "drawingAdded": "Drawing added"
     },
     "newText": "New text",
     "yourText": "Your text",
-    "imageUploadFailed": "Image upload failed"
+    "imageUploadFailed": "Image upload failed",
+    "drawing": "Drawing",
+    "drawings": {
+      "title": "Add a drawing",
+      "intro": "Click a drawing to put it on the cover: you can then move it and resize it."
+    }
   },
   "checkout": {
     "loadError": "Failed to load this album",
@@ -1553,7 +1559,7 @@
     "fromComputer": "From this computer",
     "fromThisPhone": "From this phone",
     "preparing": "Preparing the image…",
-    "notAnImage": "This file isn't an image (JPEG, PNG, WebP or HEIC).",
+    "notAnImage": "This file isn't an image (JPEG, PNG, WebP, HEIC or SVG).",
     "phoneInstructions": "Scan the code with your phone's camera, then choose a photo: it will appear here on the cover.",
     "phoneWaiting": "Waiting for the photo from your phone… This link stays active for 1 hour.",
     "phoneSending": "The photo is on its way…"
