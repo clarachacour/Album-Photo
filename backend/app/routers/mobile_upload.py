@@ -1,16 +1,17 @@
 """Upload from a phone via a QR code (no login on the phone)."""
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.config import FRONTEND_URL
 from app.core.auth import get_current_user
 from app.db import db
-from app.schemas import GooglePhotosImportInput, MobileUploadSessionOut, MobileUploadStatusInput
+from app.schemas import GooglePhotosImportInput, MobileUploadSessionInput, MobileUploadSessionOut, MobileUploadStatusInput
 from app.services.albums import reject_if_ordered
-from app.services.google_photos import import_google_photos_items
+from app.services.cover_assets import store_cover_asset
+from app.services.google_photos import download_google_item, import_google_photos_items
 from app.services.photos import store_many_photos
 from app.services.processing import add_photos_to_layout
 
@@ -35,7 +36,7 @@ MOBILE_UPLOAD_SESSION_HOURS = 1
 PHONE_STATUS_STALE_SECONDS = 60
 
 @router.post("/albums/{album_id}/mobile-upload-session", response_model=MobileUploadSessionOut)
-async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_current_user)):
+async def create_mobile_upload_session(album_id: str, data: Optional[MobileUploadSessionInput] = None, user: dict = Depends(get_current_user)):
     album = await db.albums.find_one({"id": album_id, "user_id": user["id"]})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
@@ -47,6 +48,8 @@ async def create_mobile_upload_session(album_id: str, user: dict = Depends(get_c
         "album_id": album_id,
         "user_id": user["id"],
         "expires": expires,
+        # "cover": an image for the cover (see _add_cover_asset), not photos for the album.
+        "purpose": (data.purpose if data else "photos"),
     })
     return MobileUploadSessionOut(
         token=token,
@@ -84,7 +87,8 @@ async def mobile_upload_session_status(album_id: str, token: str, user: dict = D
         raise HTTPException(status_code=404, detail="Upload session not found")
     status_at = session.get("phone_status_at")
     fresh = status_at is not None and datetime.now(timezone.utc) - _aware(status_at) < timedelta(seconds=PHONE_STATUS_STALE_SECONDS)
-    return {"uploading": bool(session.get("phone_uploading")) and fresh}
+    # The images the phone sent for the cover, for the computer to place.
+    return {"uploading": bool(session.get("phone_uploading")) and fresh, "cover_assets": session.get("cover_assets", [])}
 
 @router.post("/mobile-upload/{token}/status")
 async def mobile_upload_status(token: str, data: MobileUploadStatusInput):
@@ -100,11 +104,26 @@ async def mobile_upload_status(token: str, data: MobileUploadStatusInput):
 async def mobile_upload_info(token: str):
     session = await _get_mobile_session(token)
     album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "title": 1})
-    return {"album_id": session["album_id"], "album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat()}
+    return {"album_id": session["album_id"], "album_title": (album or {}).get("title", "Album"), "expires_at": session["expires"].isoformat(), "purpose": session.get("purpose", "photos")}
+
+async def _add_cover_asset(session: dict, filename: str, content_type: str, data: bytes) -> dict:
+    """An image sent from the phone for the cover: stored like one added from
+    the computer, and kept on the session for the computer to place."""
+    album = await db.albums.find_one({"id": session["album_id"]}, {"_id": 0, "id": 1, "user_id": 1})
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+    await reject_if_ordered(album["id"])
+    asset = {"id": str(uuid.uuid4()), **await store_cover_asset(album, filename, content_type, data)}
+    await db.mobile_sessions.update_one({"token": session["token"]}, {"$push": {"cover_assets": asset}})
+    return asset
 
 @router.post("/mobile-upload/{token}/photos")
 async def mobile_upload_photos(token: str, files: List[UploadFile] = File(...)):
     session = await _get_mobile_session(token)
+    if session.get("purpose") == "cover":
+        # One image for the cover: the first one chosen.
+        await _add_cover_asset(session, files[0].filename, files[0].content_type, await files[0].read())
+        return {"uploaded": 1, "failed": 0, "limit_reached": False}
     uploaded, limit_reached = await store_many_photos(session["album_id"], session["user_id"], files)
 
     if uploaded:
@@ -134,6 +153,10 @@ async def mobile_import_google_photos(token: str, data: GooglePhotosImportInput)
     generic OS file-source integration with the Google Photos app doesn't
     offer) instead of only their camera roll."""
     session = await _get_mobile_session(token)
+    if session.get("purpose") == "cover":
+        filename, content_type, content = await download_google_item(data.items, data.access_token)
+        await _add_cover_asset(session, filename, content_type, content)
+        return {"uploaded": 1, "failed": 0, "limit_reached": False}
     album_id = session["album_id"]
     uploaded, limit_reached = await import_google_photos_items(album_id, session["user_id"], data.items, data.access_token)
 

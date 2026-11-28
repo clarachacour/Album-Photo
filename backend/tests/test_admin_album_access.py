@@ -47,10 +47,10 @@ def test_another_customer_still_cannot_see_it(client, people):
 
 
 def test_an_image_the_admin_adds_to_the_cover_is_kept_with_the_customers_files(client, people, monkeypatch):
-    from app.routers import covers
+    from app.services import cover_assets
 
     stored = {}
-    monkeypatch.setattr(covers, "store_image_with_thumbnail", lambda path, data, ctype: (stored.setdefault("path", {"path": path}), None, 10, 10))
+    monkeypatch.setattr(cover_assets, "store_image_with_thumbnail", lambda path, data, ctype: (stored.setdefault("path", {"path": path}), None, 10, 10))
     res = client.post(
         f"/api/albums/{people['album_id']}/cover-assets",
         files={"file": ("logo.png", b"\x89PNG fake", "image/png")},

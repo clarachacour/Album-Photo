@@ -11,7 +11,10 @@ from app.core.auth import album_scope, decode_token_for_album, get_current_user,
 from app.core.executors import run_blocking
 from app.db import db
 from app.services.albums import reject_if_ordered
-from app.services.photos import ALLOWED_MIME, cover_asset_medium, cover_photo_quality, store_image_with_thumbnail
+from app.schemas import CoverAssetFromPhotoInput, GooglePhotosImportInput
+from app.services.cover_assets import store_cover_asset
+from app.services.google_photos import download_google_item
+from app.services.photos import ALLOWED_MIME, cover_asset_medium, store_image_with_thumbnail
 from app.services.storage import get_object
 
 router = APIRouter()
@@ -88,31 +91,34 @@ async def get_cover_image(album_id: str, auth: str = Query(None), authorization:
 # ---------- Cover element assets (logo / added images on the cover) ----------
 @router.post("/albums/{album_id}/cover-assets")
 async def upload_cover_asset(album_id: str, file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    album = await _cover_album(album_id, user)
+    return await store_cover_asset(album, file.filename, file.content_type, await file.read())
+
+async def _cover_album(album_id: str, user: dict) -> dict:
     album = await db.albums.find_one({"id": album_id, **album_scope(user)})
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id, user=user)
-    content_type = file.content_type or "image/png"
-    if content_type not in ALLOWED_MIME:
-        raise HTTPException(status_code=400, detail="Unsupported image format")
-    data = await file.read()
-    if len(data) == 0:
-        raise HTTPException(status_code=400, detail="Empty file")
-    ext = (file.filename or "asset.png").rsplit(".", 1)[-1].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "png"
-    asset_id = str(uuid.uuid4())
-    # Kept with the album owner's files (the admin may be adding it to a
-    # customer's cover): the print page, which opens the album as its owner,
-    # can then read it.
-    path = f"{APP_NAME}/users/{album['user_id']}/albums/{album_id}/cover-assets/{asset_id}.{ext}"
-    loop = asyncio.get_event_loop()
-    result, thumb_path, _, _ = await loop.run_in_executor(None, store_image_with_thumbnail, path, data, content_type)
-    # Its size in pixels and how light it is, kept on the cover item: the
-    # editor and the order page warn when it may print blurry or dark, as
-    # for the photos inside the album.
-    quality = await loop.run_in_executor(None, cover_photo_quality, data)
-    return {"storage_path": result["path"], "thumbnail_path": thumb_path, **quality}
+    return album
+
+@router.post("/albums/{album_id}/cover-assets/from-photo")
+async def cover_asset_from_photo(album_id: str, data: CoverAssetFromPhotoInput, user: dict = Depends(get_current_user)):
+    """One of the album's own photos, put on the cover: copied as a cover
+    image, so that deleting it from the album later leaves the cover as it is."""
+    album = await _cover_album(album_id, user)
+    photo = await db.photos.find_one({"id": data.photo_id, "album_id": album_id, "is_deleted": False}, {"_id": 0})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    content, _ = await run_blocking(get_object, photo["storage_path"])
+    return await store_cover_asset(album, photo.get("filename") or photo["storage_path"], photo.get("content_type"), content)
+
+@router.post("/albums/{album_id}/cover-assets/google-photos")
+async def cover_asset_from_google_photos(album_id: str, data: GooglePhotosImportInput, user: dict = Depends(get_current_user)):
+    """The photo chosen in Google Photos' picker, put on the cover (the
+    first one, if several were chosen)."""
+    album = await _cover_album(album_id, user)
+    filename, content_type, content = await download_google_item(data.items, data.access_token)
+    return await store_cover_asset(album, filename, content_type, content)
 
 @router.get("/cover-assets/image")
 async def get_cover_asset_image(path: str = Query(...), auth: str = Query(None), authorization: str = Header(None), variant: str = Query("thumb")):

@@ -40,6 +40,8 @@ export default function MobileUpload() {
     },
   });
   const { uploading, progress, failedFiles } = queue;
+  // A QR code made for the cover: one image, placed on the cover on the computer.
+  const forCover = info?.purpose === "cover";
   const fileInput = useRef();
 
   useEffect(() => {
@@ -119,8 +121,9 @@ export default function MobileUpload() {
   }, [sending, info, token]);
 
   const handleFiles = (fileList) => {
-    const files = Array.from(fileList).filter(isImageFile);
+    let files = Array.from(fileList).filter(isImageFile);
     if (files.length === 0) return;
+    if (forCover) files = files.slice(0, 1);
     // Chosen while others are being sent: they follow right after.
     queue.add(files);
   };
@@ -150,19 +153,19 @@ export default function MobileUpload() {
         <div className="eyebrow mb-3 text-[color:var(--muted)]">
           {info ? info.album_title : t("mobileUpload.loading")}
         </div>
-        <h1 className="font-serif-display text-4xl tracking-tight mb-3">{t("mobileUpload.title")}</h1>
+        <h1 className="font-serif-display text-4xl tracking-tight mb-3">{t(forCover ? "mobileUpload.coverTitle" : "mobileUpload.title")}</h1>
         <p className="text-ink/70 mb-10">
-          {t("mobileUpload.intro")}
+          {t(forCover ? "mobileUpload.coverIntro" : "mobileUpload.intro")}
         </p>
 
         <button
           onClick={() => fileInput.current?.click()}
-          disabled={googleImporting || !info}
+          disabled={googleImporting || !info || (forCover && uploading)}
           className="w-full inline-flex flex-col items-center justify-center gap-3 border-2 border-dashed border-ink/30 py-12 hover:border-ink/60 transition-colors disabled:opacity-60"
         >
           {uploading ? <Loader2 size={28} className="animate-spin" /> : <Upload size={28} />}
           <span className="text-sm font-semibold tracking-widest uppercase">
-            {uploading ? t("mobileUpload.addMore") : t("mobileUpload.choose")}
+            {uploading ? (forCover ? t("mobileUpload.uploading") : t("mobileUpload.addMore")) : forCover ? t("mobileUpload.chooseCover") : t("mobileUpload.choose")}
           </span>
         </button>
         {progress && (
@@ -185,7 +188,7 @@ export default function MobileUpload() {
           // like this, an iPhone hands over its photos as they are, instead
           // of converting each one to JPEG first (slow with many photos).
           accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-          multiple
+          multiple={!forCover}
           className="hidden"
           onChange={(e) => {
             handleFiles(e.target.files);
@@ -226,7 +229,7 @@ export default function MobileUpload() {
         {addedCount > 0 && (
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-ink/80">
             <Check size={16} className="text-green-600" />
-            {t("mobileUpload.added", { count: addedCount })}
+            {forCover ? t("mobileUpload.coverSent") : t("mobileUpload.added", { count: addedCount })}
           </div>
         )}
       </div>

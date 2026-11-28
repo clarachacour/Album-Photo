@@ -224,6 +224,13 @@ class MobileUploadSessionOut(BaseModel):
 class MobileUploadStatusInput(BaseModel):
     uploading: bool
 
+class MobileUploadSessionInput(BaseModel):
+    # "cover": the phone sends one image for the cover, not photos for the album.
+    purpose: Literal["photos", "cover"] = "photos"
+
+class CoverAssetFromPhotoInput(BaseModel):
+    photo_id: str = Field(max_length=64)
+
 # ---------- Google Photos import (Photos Picker API) ----------
 class GooglePhotosImportInput(BaseModel):
     access_token: Token

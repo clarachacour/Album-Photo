@@ -277,7 +277,12 @@ export default function PhotoUploadMethods({ albumId, mode = "wizard", photos, o
           data-testid={TID.photoInput}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          // On a computer every image file shows in the file window (Windows
+          // greys out an iPhone HEIC whose type it doesn't know): the file
+          // name is checked after (isImageFile). On a phone, the formats the
+          // server reads are listed: an iPhone then hands its photos over as
+          // they are, without converting each one first.
+          accept={onPhone ? "image/jpeg,image/png,image/webp,image/heic,image/heif" : "image/*,.heic,.heif"}
           className="hidden"
           onChange={(e) => {
             handleFiles(e.target.files);

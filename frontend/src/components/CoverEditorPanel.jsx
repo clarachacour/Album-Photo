@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { defaultItemBox, defaultSpineBox, defaultTitleBox } from "@/lib/coverDefaults";
 import { coverItemImageSrc } from "@/lib/api";
@@ -6,6 +6,7 @@ import { DEFAULT_COVER } from "@/lib/coverTemplates";
 import { deletePatch } from "@/lib/coverEditing";
 import { DegreesInput } from "@/components/DegreesInput";
 import { FontPicker } from "@/components/FontPicker";
+import CoverImagePicker from "@/components/CoverImagePicker";
 import {
   Bold,
   Image as ImageIcon,
@@ -77,8 +78,9 @@ export function CoverEditorPanel({
     onDismiss();
   };
 
-  const addImageInput = useRef(null);
-  const replaceImageInput = useRef(null);
+  // The image window (computer, phone, Google Photos, album photos):
+  // { replaceId } — null adds a new image, an id replaces that one.
+  const [imagePicker, setImagePicker] = useState(null);
 
   const zoneLabel = side === "back" ? t("coverPanel.back") : t("coverPanel.front");
 
@@ -437,23 +439,12 @@ export function CoverEditorPanel({
               />
               <button
                 data-testid="cover-item-replace-image"
-                onClick={() => replaceImageInput.current?.click()}
+                onClick={() => setImagePicker({ replaceId: selectedItem.id })}
                 className="flex-1 inline-flex items-center justify-center gap-2 border border-ink/30 py-1.5 hover:border-[color:var(--ink)] transition-colors"
               >
                 <ImageIcon size={14} />
                 <span className="text-xs font-semibold tracking-wider uppercase">{t("coverPanel.replaceImage")}</span>
               </button>
-              <input
-                ref={replaceImageInput}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) addCoverImage(f, selectedItem.id, side);
-                  e.target.value = "";
-                }}
-              />
             </div>
           )}
 
@@ -476,7 +467,7 @@ export function CoverEditorPanel({
           {!onSpine && (
             <>
               {textButtons && <AddButton icon={<Type size={14} />} label={t("coverPanel.text")} onClick={() => addCoverText(undefined, side)} tid="cover-add-text" />}
-              <AddButton icon={<ImageIcon size={14} />} label={t("coverPanel.image")} onClick={() => addImageInput.current?.click()} tid="cover-add-image" />
+              <AddButton icon={<ImageIcon size={14} />} label={t("coverPanel.image")} onClick={() => setImagePicker({ replaceId: null })} tid="cover-add-image" />
             </>
           )}
           {textButtons && addSpineText && (
@@ -490,19 +481,6 @@ export function CoverEditorPanel({
             />
           )}
         </div>
-        {!onSpine && (
-          <input
-            ref={addImageInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) addCoverImage(f, null, side);
-              e.target.value = "";
-            }}
-          />
-        )}
         {!onSpine && side === "front" && cover.title_hidden && (
           <RestoreButton label={t("coverPanel.restoreTitle")} onClick={() => updateCover({ title_hidden: false })} tid="cover-restore-title" />
         )}
@@ -516,6 +494,13 @@ export function CoverEditorPanel({
           <RestoreButton label={t("coverPanel.restoreDivider")} onClick={() => updateCover({ spine_divider_hidden: false })} tid="spine-restore-divider" />
         )}
       </div>
+      )}
+      {imagePicker && (
+        <CoverImagePicker
+          albumId={album.id}
+          onPick={(source) => addCoverImage(source, imagePicker.replaceId, side)}
+          onClose={() => setImagePicker(null)}
+        />
       )}
     </div>
   );

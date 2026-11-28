@@ -257,15 +257,21 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
     toast.success(i18n.t("coverPanel.toast.shapeAdded"));
   };
 
-  const addCoverImage = async (file, replaceItemId = null, side = coverSel?.side || "front") => {
-    if (!file || !albumId) return;
+  // `source`: a file chosen on this device, or an image already stored for
+  // the cover (sent from the phone, Google Photos, an album photo — see
+  // CoverImagePicker), as the server returned it.
+  const addCoverImage = async (source, replaceItemId = null, side = coverSel?.side || "front") => {
+    if (!source || !albumId) return;
     const key = side === "back" ? "back_extra_items" : "extra_items";
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const { data } = await api.post(`/albums/${albumId}/cover-assets`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      let data = source;
+      if (typeof Blob !== "undefined" && source instanceof Blob) {
+        const form = new FormData();
+        form.append("file", source);
+        ({ data } = await api.post(`/albums/${albumId}/cover-assets`, form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }));
+      }
       // Stored permanently on the cover item and reused later by the PDF
       // export — must stay full resolution, unlike normal on-screen photo
       // display which defaults to the thumbnail.

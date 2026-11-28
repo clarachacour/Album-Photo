@@ -1170,7 +1170,11 @@
     "resend_other": "Send the {{count}} missing photos again",
     "unreadable_one": "{{count}} photo couldn't be read and was skipped.",
     "unreadable_other": "{{count}} photos couldn't be read and were skipped.",
-    "addMore": "Choose more photos"
+    "addMore": "Choose more photos",
+    "coverTitle": "A photo for the cover.",
+    "coverIntro": "Choose a photo on your phone: it will appear on the cover, on your computer.",
+    "chooseCover": "Choose a photo",
+    "coverSent": "Photo sent: it's now on the cover. You can close this page."
   },
   "tour": {
     "help": "Guide",
@@ -1543,5 +1547,18 @@
     "slowBodyCard": "The bank hasn't confirmed your payment yet. We keep checking on our side: if it went through, your order will appear in your orders and you'll get an email.",
     "toOrders": "See my orders",
     "toCart": "Back to my cart"
+  },
+  "coverPicker": {
+    "title": "Add an image",
+    "back": "Back",
+    "fromComputer": "From this computer",
+    "fromThisPhone": "From this phone",
+    "fromAlbum": "From the album's photos",
+    "preparing": "Preparing the image…",
+    "notAnImage": "This file isn't an image (JPEG, PNG, WebP or HEIC).",
+    "phoneInstructions": "Scan the code with your phone's camera, then choose a photo: it will appear here on the cover.",
+    "phoneWaiting": "Waiting for the photo from your phone… This link stays active for 1 hour.",
+    "phoneSending": "The photo is on its way…",
+    "noAlbumPhotos": "There are no photos in this album yet."
   }
 }

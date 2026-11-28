@@ -47,6 +47,32 @@ def _download(url: str, headers: dict, max_redirects: int = 3):
     raise ValueError("too many redirects")
 
 
+async def download_google_item(items: list, access_token: str) -> tuple:
+    """Downloads the first photo chosen in the picker (a cover takes one):
+    (filename, content_type, bytes). Retried like the album imports."""
+    item = items[0] if items else {}
+    media_file = item.get("mediaFile", {}) if isinstance(item, dict) else {}
+    base_url = media_file.get("baseUrl")
+    filename = media_file.get("filename", "photo.jpg")
+    if not base_url or not is_google_photos_url(base_url):
+        raise HTTPException(status_code=400, detail="No photo to import")
+    headers = {"Authorization": f"Bearer {access_token}"}
+    loop = asyncio.get_event_loop()
+    last_error = None
+    for attempt in range(3):
+        try:
+            resp = await loop.run_in_executor(None, lambda: _download(f"{base_url}=d", headers))
+            if resp.status_code == 200:
+                return filename, resp.headers.get("Content-Type", "image/jpeg"), resp.content
+            last_error = f"HTTP {resp.status_code}"
+        except Exception as e:
+            last_error = e
+        if attempt < 2:
+            await asyncio.sleep(1.5 * (attempt + 1))
+    logger.error(f"Échec du téléchargement d'une photo Google Photos pour une couverture ({filename}) : {last_error}")
+    raise HTTPException(status_code=502, detail="Google Photos didn't send the photo — please try again")
+
+
 async def import_google_photos_items(album_id: str, user_id: str, items: list, access_token: str) -> tuple:
     """Downloads and stores each Google Photos item chosen in the picker
     session. Shared by both the regular (logged-in) import endpoint and the

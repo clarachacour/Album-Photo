@@ -49,7 +49,10 @@ function loadScript(src, id) {
  * its own (which ran with throttled CPU once the response had been sent,
  * making large imports far slower than they needed to be).
  */
-export default function GooglePhotosImportButton({ albumId, mobileToken, onImported, disabled, onBusyChange }) {
+/* onPicked(items, accessToken): instead of importing the photos into the
+ * album, hands the choice over (the cover takes one photo, see
+ * CoverImagePicker). */
+export default function GooglePhotosImportButton({ albumId, mobileToken, onImported, onPicked, disabled, onBusyChange, className, label }) {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const [busy, setBusyState] = useState(false);
@@ -173,6 +176,10 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
           toast.error(t("googlePhotos.noneSelected"));
           return;
         }
+        if (onPicked) {
+          await onPicked(items.slice(0, 1), accessToken);
+          return;
+        }
 
         const batches = [];
         for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -250,11 +257,11 @@ export default function GooglePhotosImportButton({ albumId, mobileToken, onImpor
       onClick={startImport}
       disabled={busy || disabled}
       data-testid="google-photos-import-button"
-      className="inline-flex items-center justify-center gap-2 border border-ink/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"
+      className={className || "inline-flex items-center justify-center gap-2 border border-ink/30 py-3 px-5 hover:border-[color:var(--ink)] transition-colors disabled:opacity-60"}
     >
       {busy ? <Loader2 size={16} className="animate-spin" /> : <ImageDown size={16} />}
       <span className="text-sm font-semibold tracking-widest uppercase">
-        {busy ? t("googlePhotos.importingLabel") : t("googlePhotos.buttonLabel")}
+        {busy ? t("googlePhotos.importingLabel") : label || t("googlePhotos.buttonLabel")}
       </span>
     </button>
   );

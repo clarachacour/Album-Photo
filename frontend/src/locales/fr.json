@@ -1170,7 +1170,11 @@
     "resend_other": "Renvoyer les {{count}} photos manquantes",
     "unreadable_one": "{{count}} photo n'a pas pu être lue et a été ignorée.",
     "unreadable_other": "{{count}} photos n'ont pas pu être lues et ont été ignorées.",
-    "addMore": "Choisir d'autres photos"
+    "addMore": "Choisir d'autres photos",
+    "coverTitle": "Une photo pour la couverture.",
+    "coverIntro": "Choisissez une photo sur votre téléphone : elle apparaîtra sur la couverture, sur l'ordinateur.",
+    "chooseCover": "Choisir une photo",
+    "coverSent": "Photo envoyée : elle apparaît sur la couverture. Vous pouvez fermer cette page."
   },
   "tour": {
     "help": "Guide",
@@ -1543,5 +1547,18 @@
     "slowBodyCard": "La banque n'a pas encore confirmé votre paiement. Nous continuons à vérifier de notre côté : s'il est passé, votre commande apparaîtra dans vos commandes et vous recevrez un e-mail.",
     "toOrders": "Voir mes commandes",
     "toCart": "Retour au panier"
+  },
+  "coverPicker": {
+    "title": "Ajouter une image",
+    "back": "Retour",
+    "fromComputer": "Depuis l'ordinateur",
+    "fromThisPhone": "Depuis ce téléphone",
+    "fromAlbum": "Parmi les photos de l'album",
+    "preparing": "Préparation de l'image…",
+    "notAnImage": "Ce fichier n'est pas une image (JPEG, PNG, WebP ou HEIC).",
+    "phoneInstructions": "Scannez le code avec l'appareil photo de votre téléphone, puis choisissez une photo : elle apparaîtra ici sur la couverture.",
+    "phoneWaiting": "En attente de la photo du téléphone… Ce lien reste actif pendant 1 heure.",
+    "phoneSending": "La photo arrive…",
+    "noAlbumPhotos": "Il n'y a pas encore de photos dans cet album."
   }
 }
