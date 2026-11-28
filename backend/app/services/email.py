@@ -5,7 +5,7 @@ import smtplib
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formatdate, make_msgid, parseaddr
+from email.utils import formataddr, formatdate, make_msgid, parseaddr
 
 from app.config import (
     ADMIN_EMAIL,
@@ -32,6 +32,15 @@ def _h(value) -> str:
     """Text typed by a customer (name, album title, address…), made safe to
     put in an HTML email: shown as text, never read as a link or markup."""
     return html.escape(str(value if value is not None else ""))
+
+
+def sender() -> tuple:
+    """(From header, address): the customer sees "Everbook" as the sender's
+    name, whatever SMTP_FROM holds (an address alone showed its first part,
+    "orders", in mail apps). A name written in SMTP_FROM itself
+    ("Everbook <orders@…>") is kept."""
+    name, address = parseaddr(SMTP_FROM)
+    return formataddr((name or "Everbook", address)), address
 
 
 def send_email(to_email: str, subject: str, body: str, html_body: str = None, reply_to: str = None, attachments: list = None):
@@ -65,12 +74,13 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None, re
         # Album titles and contact subjects end up here: a line break would
         # start a new header line.
         msg["Subject"] = " ".join(str(subject).split())
-        msg["From"] = SMTP_FROM
+        from_header, from_address = sender()
+        msg["From"] = from_header
         msg["To"] = to_email
         # Standard headers Python doesn't add on its own: spam filters
         # (Outlook especially) mark down an email without them.
         msg["Date"] = formatdate(localtime=False)
-        sender_domain = parseaddr(SMTP_FROM)[1].rpartition("@")[2] or None
+        sender_domain = from_address.rpartition("@")[2] or None
         msg["Message-ID"] = make_msgid(domain=sender_domain)
         if reply_to:
             # "Reply" in the mail app then writes to this address (the
@@ -79,7 +89,7 @@ def send_email(to_email: str, subject: str, body: str, html_body: str = None, re
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
             server.starttls()
             server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+            server.sendmail(from_address, [to_email], msg.as_string())
     except Exception as e:
         logger.error(f"Échec de l'envoi de l'email à {to_email} : {e}")
 
