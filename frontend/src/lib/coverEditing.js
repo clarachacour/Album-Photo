@@ -1,5 +1,4 @@
 import { api, coverAssetUrl } from "@/lib/api";
-import { isSvgFile, svgToPng } from "@/lib/svgToPng";
 import { toast } from "sonner";
 import { DEFAULT_TITLE_BOX, NEW_ITEM_BOX } from "@/lib/coverDefaults";
 import i18n from "@/lib/i18n";
@@ -270,8 +269,7 @@ export function makeCoverEditingActions({ setAlbum, albumId, coverSel, setCoverS
       let data = source;
       if (typeof Blob !== "undefined" && source instanceof Blob) {
         const form = new FormData();
-        // An SVG goes as a large PNG (see svgToPng).
-        form.append("file", isSvgFile(source) ? await svgToPng(source) : source);
+        form.append("file", source);
         ({ data } = await api.post(`/albums/${albumId}/cover-assets`, form, {
           headers: { "Content-Type": "multipart/form-data" },
         }));
