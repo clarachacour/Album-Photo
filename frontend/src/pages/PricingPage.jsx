@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import LocalLink from "@/components/LocalLink";
 import { SignupLink } from "@/components/SignupLink";
-import { DIGITAL_PRICE, MAX_ALBUM_PAGES, ONLINE_PAYMENT, OVERAGE_FROM, OVERAGE_PER_PAGE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
+import { DIGITAL_PRICE, MAX_ALBUM_PAGES, OVERAGE_FROM, OVERAGE_PER_PAGE, PAGE_TIERS, PRICE_TABLE, SHIPPING_PRICE } from "@/lib/pricing";
 
 const SIZES = ["A5", "A4"];
 
@@ -58,11 +58,11 @@ export default function PricingPage() {
           </div>
           <div>
             <h2 className="font-serif-display text-xl text-[color:var(--ink)] mb-2">{t("pricing.pdfTitle")}</h2>
-            <p>{t(ONLINE_PAYMENT ? "pricing.pdfBody" : "pricing.pdfSoon", { price: DIGITAL_PRICE })}</p>
+            <p>{t("pricing.pdfBody", { price: DIGITAL_PRICE })}</p>
           </div>
           <div>
             <h2 className="font-serif-display text-xl text-[color:var(--ink)] mb-2">{t("pricing.paymentTitle")}</h2>
-            <p>{t(ONLINE_PAYMENT ? "pricing.paymentOnline" : "pricing.paymentCash")}</p>
+            <p>{t("pricing.paymentOnline")}</p>
           </div>
         </div>
 

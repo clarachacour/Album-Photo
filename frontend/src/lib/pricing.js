@@ -109,15 +109,6 @@ export const PRICE_TEXT = {
   ship: SHIPPING_PRICE,
 };
 
-// Whish Pay (card payment: coming soon). On where the site is built with
-// REACT_APP_ONLINE_PAYMENT=true (on Vercel, per environment: the dev site
-// first, with Whish's Sandbox keys on its server). The server takes online
-// payments only once its Whish keys are set (ONLINE_PAYMENT in
-// backend/app/services/payments.py), whatever this says. Until then printed
-// albums are paid cash on delivery, and the PDF and gift cards can't be
-// ordered.
-export const ONLINE_PAYMENT = import.meta.env.REACT_APP_ONLINE_PAYMENT === "true";
-
 // Version of the terms of sale shown on the site (their "last updated"
 // date). Sent with an order when the customer ticks "I accept"; must match
 // TERMS_VERSION in backend/app/services/pricing.py.

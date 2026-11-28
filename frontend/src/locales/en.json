@@ -43,7 +43,7 @@
         },
         {
           "title": "We print and deliver",
-          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? The PDF to download is coming soon."
+          "body": "Made in ~3 days, delivered in 2 to 3 days to your door in Lebanon. Prefer it digital? It also comes as a PDF to download."
         }
       ]
     },
@@ -421,7 +421,7 @@
       "pagesCount_one": "{{count}} page",
       "pagesCount_other": "{{count}} pages",
       "perCopy": "per copy",
-      "pdfPrice": "or ${{price}} as a PDF to download (coming soon)",
+      "pdfPrice": "or ${{price}} as a PDF to download",
       "gift": {
         "offered": "Your gift card: a {{pages}}-page {{size}} album",
         "offered_from": "Your gift from {{from}}: a {{pages}}-page {{size}} album",
@@ -1142,7 +1142,6 @@
     "areaPlaceholder": "E.g. Hamra, Achrafieh, Jounieh…",
     "areaNoMatch": "No area matches — check the spelling, or pick the nearest one.",
     "areaFromList": "Pick your area from the list, so the courier can find your address.",
-    "kindDigitalSoon": "Coming soon, with Whish Pay and card payment.",
     "coverBlurry": "The photo on your cover may print blurry (marked ⚠ in the editor): it's small for the size of its frame. Make the frame smaller or choose a sharper photo. If you keep it, you accept that risk.",
     "coverDark": "The photo on your cover may print dark (marked ⚠ in the editor). Choose a lighter photo if you can. If you keep it, you accept that risk.",
     "coverBlurryAndDark": "The photo on your cover may print blurry and dark (marked ⚠ in the editor). Choose a sharper, lighter photo if you can. If you keep it, you accept that risk.",
@@ -1342,7 +1341,7 @@
     "problem": {
       "already_ordered": "Already ordered in this version: please remove it.",
       "no_pages": "This album has no pages yet: please finish it or remove it.",
-      "payment_soon": "Coming soon, with Whish Pay and card payment — remove it to place your order."
+      "payment_soon": "Online payment is unavailable right now: try again in a moment, or remove it to place your order."
     },
     "payment": {
       "title": "Payment",
@@ -1352,7 +1351,7 @@
       "codHint": "You pay the courier in cash when your album arrives.",
       "whish": "Whish Pay",
       "card": "Card payment",
-      "soon": "Coming soon",
+      "soon": "Unavailable right now",
       "whishHint": "Pay now in the Whish app: scan a QR code or type a 6-digit code. Nothing to pay on delivery.",
       "whishNote": "You'll be taken to Whish's page to pay with the Whish app (QR code or 6-digit code). Your order is placed as soon as the payment is confirmed.",
       "payWithWhish": "Pay with Whish",
@@ -1431,12 +1430,11 @@
         "not_paid": "This gift card can't be used yet.",
         "other": "This code can't be used. Please try again."
       }
-    },
-    "soon": "Gift cards are coming soon, with Whish Pay and card payment."
+    }
   },
   "occasions": {
     "howTitle": "How it works",
-    "giftLine": "Making it for someone else? Gift cards are coming soon:",
+    "giftLine": "Making it for someone else? Give a gift card:",
     "moreLabel": "Other albums",
     "travel": {
       "eyebrow": "Travel photo book",
@@ -1456,7 +1454,7 @@
         },
         {
           "title": "Printed, or as a PDF",
-          "text": "A hardcover book in A5 or A4, delivered to your door, or, soon, the same album as a PDF to keep and share."
+          "text": "A hardcover book in A5 or A4, delivered to your door, or the same album as a PDF to keep and share."
         }
       ]
     },
@@ -1521,9 +1519,7 @@
     "deliveryLink": "Delivery times and areas",
     "pdfTitle": "PDF album",
     "pdfBody": "${{price}}, whatever its format and number of pages, with no delivery cost.",
-    "pdfSoon": "${{price}}, whatever its format and number of pages — coming soon.",
     "paymentTitle": "Payment",
-    "paymentCash": "Cash on delivery, to the courier. Whish Pay and card payment are coming soon.",
     "paymentOnline": "Online, when you order: with Whish Pay or by card (Visa, Mastercard). Nothing to pay on delivery.",
     "faqLink": "Questions? See the FAQ",
     "price": "${{price}}"

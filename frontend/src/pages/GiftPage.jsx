@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { rememberAfterLogin } from "@/lib/afterLogin";
-import { ONLINE_PAYMENT, PAGE_TIERS, SHIPPING_PRICE, computeUnitPrice } from "@/lib/pricing";
+import { PAGE_TIERS, SHIPPING_PRICE, computeUnitPrice } from "@/lib/pricing";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 // The form, kept for the tab while the visitor signs in to add it to the cart.
@@ -107,11 +107,6 @@ export default function GiftPage() {
           <div className="eyebrow mb-3">{t("gift.eyebrow")}</div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <h1 className="font-serif-display text-4xl md:text-6xl tracking-tight">{t("gift.title")}</h1>
-            {!ONLINE_PAYMENT && (
-              <span style={{ fontFamily: "'Manrope', sans-serif" }} className="text-[11px] md:text-xs font-semibold tracking-widest uppercase text-[color:var(--coral-text)] border border-[color:var(--coral-text)] px-2.5 py-1 rounded-full" data-testid="gift-coming-soon">
-                {t("cart.payment.soon")}
-              </span>
-            )}
           </div>
           <p className="text-ink/70">{t("gift.subtitle")}</p>
           <a href="#redeem" className="inline-block mt-4 text-sm underline text-ink/80 hover:text-[color:var(--coral)]">{t("gift.haveCode")}</a>
@@ -160,20 +155,18 @@ export default function GiftPage() {
               <span className="font-medium">{t("gift.cardPrice")}</span>
               <span className="text-xl font-medium" data-testid="gift-price">${giftValue(gift.size, gift.page_tier).toFixed(2)}</span>
             </div>
-            {/* Bought online only: until Whish Pay / card (ONLINE_PAYMENT),
-                "coming soon" — a card already received can still be used below. */}
             <button
               type="button"
               onClick={addToCart}
-              disabled={adding || !ONLINE_PAYMENT}
+              disabled={adding}
               className="w-full inline-flex items-center justify-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] py-4 hover:bg-[color:var(--coral)] transition-colors text-sm font-semibold tracking-widest uppercase disabled:opacity-60 disabled:hover:bg-[color:var(--ink)] disabled:cursor-not-allowed"
               data-testid="gift-add-btn"
             >
               {adding && <Loader2 size={14} className="animate-spin" />}
-              {ONLINE_PAYMENT ? t("cart.add") : t("cart.payment.soon")}
+              {t("cart.add")}
             </button>
-            <p className={`text-xs mt-3 ${ONLINE_PAYMENT ? "text-[color:var(--muted)]" : "text-[color:var(--coral-text)]"}`} data-testid="gift-soon">
-              {ONLINE_PAYMENT ? t("gift.pdfNote") : t("gift.soon")}
+            <p className="text-xs mt-3 text-[color:var(--muted)]" data-testid="gift-pdf-note">
+              {t("gift.pdfNote")}
             </p>
           </div>
 
