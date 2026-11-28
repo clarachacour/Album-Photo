@@ -577,7 +577,7 @@
       "title": "Change total page count",
       "newTotal": "New total pages",
       "rebuildAfter": "Rebuild pages after Double-page #",
-      "explanation": "Everything up to and including this double-page stays exactly as you left it. Only what comes after gets rebuilt — same photos, automatically re-arranged into a fresh layout, so any manual edits on those later pages are lost. You'll mainly need this when <1>lowering</1> the page count (less room means something has to be redistributed), or if you'd like a section of the album redone from scratch on purpose. Just adding pages doesn't need this — leave it as is and new blank pages are added at the end, nothing existing is touched.",
+      "explanation": "Everything up to and including this double-page stays exactly as you left it. Only what comes after gets rebuilt — same photos, automatically re-arranged into a fresh layout, so any manual edits on those later pages are lost. You'll mainly need this when <1>lowering</1> the page count (less room means something has to be redistributed), or if you'd like a section of the album redone from scratch on purpose. To only add pages, don't change this number (it's already set to the last double-page): the new blank pages are added at the end and nothing in your album changes.",
       "rebuilding": "Rebuilding…",
       "apply": "Apply"
     },

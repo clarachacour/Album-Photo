@@ -577,7 +577,7 @@
       "title": "Modifier le nombre total de pages",
       "newTotal": "Nouveau nombre total de pages",
       "rebuildAfter": "Reconstruire les pages après la double page n°",
-      "explanation": "Tout ce qui précède, y compris cette double page, reste exactement tel que vous l'avez laissé. Seul ce qui suit est reconstruit — mêmes photos, réarrangées automatiquement dans une nouvelle mise en page, donc toute modification manuelle sur ces pages ultérieures est perdue. Vous en aurez surtout besoin en <1>diminuant</1> le nombre de pages (moins de place signifie qu'il faut redistribuer quelque chose), ou si vous souhaitez qu'une section de l'album soit refaite volontairement depuis le début. Ajouter des pages n'en a pas besoin — laissez tel quel, les nouvelles pages vides sont ajoutées à la fin, rien d'existant n'est touché.",
+      "explanation": "Tout ce qui précède, y compris cette double page, reste exactement tel que vous l'avez laissé. Seul ce qui suit est reconstruit — mêmes photos, réarrangées automatiquement dans une nouvelle mise en page, donc toute modification manuelle sur ces pages ultérieures est perdue. Vous en aurez surtout besoin en <1>diminuant</1> le nombre de pages (moins de place signifie qu'il faut redistribuer quelque chose), ou si vous souhaitez qu'une section de l'album soit refaite volontairement depuis le début. Pour seulement ajouter des pages, ne changez pas ce numéro (il indique déjà la dernière double page) : les nouvelles pages vides s'ajoutent à la fin et rien ne change dans votre album.",
       "rebuilding": "Reconstruction…",
       "apply": "Appliquer"
     },
