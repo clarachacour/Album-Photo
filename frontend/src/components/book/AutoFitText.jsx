@@ -17,10 +17,31 @@ import { REFERENCE_PAGE_PX } from "@/components/book/textMeasure";
  * prediction — it's the actual measurement of what's actually on screen,
  * whatever font metrics or loading timing produced it.
  */
-export function AutoFitText({ baseFontSize, content, letterSpacing }) {
+/*
+ * fitKey: changes when the box or the asked size changes (resized, Size
+ *   slider): the text then starts again from the asked size, so it grows
+ *   back when there's room again (it used to stay shrunk for good).
+ * onFitted(scale): the share of the asked size the text is drawn at, once
+ *   it fits (the editor shows the real size on its Size slider).
+ * onGrow(factor): asked when a bigger asked size makes the text too tall
+ *   for its box: the box can grow (taller by factor) instead of the text
+ *   shrinking; returns false when it can't.
+ */
+export function AutoFitText({ baseFontSize, content, letterSpacing, fitKey, onFitted, onGrow }) {
   const ref = useRef(null);
   const [scale, setScale] = useState(1);
   const attemptsRef = useRef(0);
+  const lastFitKeyRef = useRef(fitKey);
+  const lastBaseRef = useRef(baseFontSize);
+  const growRef = useRef(false);
+  const reportedRef = useRef(null);
+  const report = (value) => {
+    const key = `${baseFontSize}:${value}`;
+    if (onFitted && reportedRef.current !== key) {
+      reportedRef.current = key;
+      onFitted(value);
+    }
+  };
   // Registers itself as "still possibly correcting" on window while it
   // might need another overflow-correction pass, and un-registers once a
   // render finds no overflow (or gives up at the attempt cap). This is
@@ -49,6 +70,18 @@ export function AutoFitText({ baseFontSize, content, letterSpacing }) {
   // that at 6, so it can't go on forever.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
+    if (fitKey !== lastFitKeyRef.current) {
+      lastFitKeyRef.current = fitKey;
+      attemptsRef.current = 0;
+      // A bigger asked size: the box may grow to hold it.
+      growRef.current = baseFontSize > lastBaseRef.current;
+      lastBaseRef.current = baseFontSize;
+      if (scale !== 1) {
+        markPending();
+        setScale(1); // measured again at the asked size, next render
+        return;
+      }
+    }
     const el = ref.current;
     if (!el || !el.clientWidth || !el.clientHeight) {
       markSettled();
@@ -64,11 +97,17 @@ export function AutoFitText({ baseFontSize, content, letterSpacing }) {
     const overflowX = el.scrollWidth / el.clientWidth;
     const overflowY = el.scrollHeight / el.clientHeight;
     const overflow = Math.max(overflowX, overflowY);
+    if (growRef.current && onGrow && overflowY > 1.02 && overflowX <= 1.02) {
+      growRef.current = false;
+      if (onGrow(overflowY * 1.04)) return; // drawn again in its taller box
+    }
     if (overflow > 1.02 && scale > 0.3) {
       markPending();
       attemptsRef.current += 1;
       setScale((s) => Math.max(0.3, (s / overflow) * 0.97));
     } else {
+      growRef.current = false;
+      report(scale);
       markSettled();
     }
   });

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { AutoFitText } from "@/components/book/AutoFitText";
+import { setFittedSize } from "@/lib/coverTextFit";
 import { CenterGuides } from "@/components/book/CenterGuides";
 import { DraggableItem } from "@/components/book/DraggableItem";
 import { ShapeInner, shapeStyle } from "@/components/book/CoverShape";
@@ -431,7 +432,28 @@ export function CoverFrontPage({
                   data-testid={`cover-extra-input-${item.id}`}
                 />
               ) : (
-                <AutoFitText key={`${item.id}-${item.content}`} baseFontSize={renderItem.font_size || 20} content={item.content} letterSpacing={item.letter_spacing} />
+                <AutoFitText
+                  key={`${item.id}-${item.content}`}
+                  baseFontSize={renderItem.font_size || 20}
+                  content={item.content}
+                  letterSpacing={item.letter_spacing}
+                  // Box or asked size changed: fitted again from the asked size.
+                  fitKey={`${renderItem.w}|${renderItem.h}|${renderItem.font_size}|${item.font}|${item.font_weight}|${item.font_style}|${item.letter_spacing}`}
+                  // In the editor, the Size slider shows the size really drawn,
+                  // and a size made bigger makes the box taller (not for the
+                  // subtitle, sized from the title).
+                  onFitted={editable && item.role !== "subtitle" ? (scale) => setFittedSize(item.id, Math.round((item.font_size || 20) * scale)) : undefined}
+                  onGrow={
+                    editable && onUpdateItem && item.role !== "subtitle"
+                      ? (factor) => {
+                          const h = Math.min(item.h * factor, 1 - item.y);
+                          if (h <= item.h * 1.005) return false;
+                          onUpdateItem(item.id, { h });
+                          return true;
+                        }
+                      : undefined
+                  }
+                />
               )}
             </DraggableItem>
           );

@@ -7,6 +7,7 @@ import { deletePatch } from "@/lib/coverEditing";
 import { DegreesInput } from "@/components/DegreesInput";
 import { FontPicker } from "@/components/FontPicker";
 import CoverImagePicker from "@/components/CoverImagePicker";
+import { useFittedSize } from "@/lib/coverTextFit";
 import {
   Bold,
   Image as ImageIcon,
@@ -67,6 +68,11 @@ export function CoverEditorPanel({
   const extras = side === "back" ? cover.back_extra_items || [] : cover.extra_items || [];
   const selectedItem =
     coverSel.mode === "item" ? extras.find((it) => it.id === coverSel.itemId) : null;
+  // The size the selected text is really drawn at (smaller than asked when
+  // its box is too small for it, see AutoFitText): what the Size slider shows.
+  const askedSize = selectedItem?.font_size || selectedItem?.fontSize || 22;
+  const fittedSize = useFittedSize(selectedItem?.type === "text" && side === "front" ? selectedItem.id : null);
+  const shownSize = fittedSize ? Math.min(askedSize, fittedSize) : askedSize;
   const spineZone = spineZoneInfo(coverSel.mode);
   const onSpine = coverSel.mode?.startsWith("spine-");
   // The selected built-in piece (title, spine texts, logo, divider) is
@@ -400,7 +406,7 @@ export function CoverEditorPanel({
                       type="range"
                       min={10}
                       max={200}
-                      value={selectedItem.font_size || selectedItem.fontSize || 22}
+                      value={shownSize}
                       onChange={(e) =>
                         updateCoverItem(
                           selectedItem.id,
@@ -412,7 +418,7 @@ export function CoverEditorPanel({
                       data-testid="cover-item-size"
                     />
                     <span className="text-xs w-9 text-right font-mono">
-                      {selectedItem.font_size || selectedItem.fontSize || 22}px
+                      {shownSize}px
                     </span>
                   </>
                 )}
