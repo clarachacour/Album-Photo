@@ -1,7 +1,7 @@
 """Images added to a cover (a photo frame, a logo replaced by a photo).
 
-They can come from the computer, from the phone that scanned the QR code,
-from Google Photos or from the album's own photos: all are stored the same
+They can come from the computer, from the phone that scanned the QR code
+or from Google Photos: all are stored the same
 way, with the album owner's files, at print quality."""
 import uuid
 

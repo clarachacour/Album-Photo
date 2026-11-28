@@ -1553,12 +1553,10 @@
     "back": "Back",
     "fromComputer": "From this computer",
     "fromThisPhone": "From this phone",
-    "fromAlbum": "From the album's photos",
     "preparing": "Preparing the image…",
     "notAnImage": "This file isn't an image (JPEG, PNG, WebP or HEIC).",
     "phoneInstructions": "Scan the code with your phone's camera, then choose a photo: it will appear here on the cover.",
     "phoneWaiting": "Waiting for the photo from your phone… This link stays active for 1 hour.",
-    "phoneSending": "The photo is on its way…",
-    "noAlbumPhotos": "There are no photos in this album yet."
+    "phoneSending": "The photo is on its way…"
   }
 }

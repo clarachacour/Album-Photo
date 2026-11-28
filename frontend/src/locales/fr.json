@@ -1553,12 +1553,10 @@
     "back": "Retour",
     "fromComputer": "Depuis l'ordinateur",
     "fromThisPhone": "Depuis ce téléphone",
-    "fromAlbum": "Parmi les photos de l'album",
     "preparing": "Préparation de l'image…",
     "notAnImage": "Ce fichier n'est pas une image (JPEG, PNG, WebP ou HEIC).",
     "phoneInstructions": "Scannez le code avec l'appareil photo de votre téléphone, puis choisissez une photo : elle apparaîtra ici sur la couverture.",
     "phoneWaiting": "En attente de la photo du téléphone… Ce lien reste actif pendant 1 heure.",
-    "phoneSending": "La photo arrive…",
-    "noAlbumPhotos": "Il n'y a pas encore de photos dans cet album."
+    "phoneSending": "La photo arrive…"
   }
 }

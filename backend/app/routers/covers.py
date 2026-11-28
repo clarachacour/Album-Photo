@@ -11,7 +11,7 @@ from app.core.auth import album_scope, decode_token_for_album, get_current_user,
 from app.core.executors import run_blocking
 from app.db import db
 from app.services.albums import reject_if_ordered
-from app.schemas import CoverAssetFromPhotoInput, GooglePhotosImportInput
+from app.schemas import GooglePhotosImportInput
 from app.services.cover_assets import store_cover_asset
 from app.services.google_photos import download_google_item
 from app.services.photos import ALLOWED_MIME, cover_asset_medium, store_image_with_thumbnail
@@ -100,17 +100,6 @@ async def _cover_album(album_id: str, user: dict) -> dict:
         raise HTTPException(status_code=404, detail="Album not found")
     await reject_if_ordered(album_id, user=user)
     return album
-
-@router.post("/albums/{album_id}/cover-assets/from-photo")
-async def cover_asset_from_photo(album_id: str, data: CoverAssetFromPhotoInput, user: dict = Depends(get_current_user)):
-    """One of the album's own photos, put on the cover: copied as a cover
-    image, so that deleting it from the album later leaves the cover as it is."""
-    album = await _cover_album(album_id, user)
-    photo = await db.photos.find_one({"id": data.photo_id, "album_id": album_id, "is_deleted": False}, {"_id": 0})
-    if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
-    content, _ = await run_blocking(get_object, photo["storage_path"])
-    return await store_cover_asset(album, photo.get("filename") or photo["storage_path"], photo.get("content_type"), content)
 
 @router.post("/albums/{album_id}/cover-assets/google-photos")
 async def cover_asset_from_google_photos(album_id: str, data: GooglePhotosImportInput, user: dict = Depends(get_current_user)):

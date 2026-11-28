@@ -1,5 +1,5 @@
 """An image for the cover can come from the computer, the phone that scanned
-the QR code, Google Photos or the album's own photos: each is stored as a
+the QR code or Google Photos: each is stored as a
 cover image, and none adds photos or pages to the album."""
 import asyncio
 import types
@@ -63,25 +63,6 @@ def test_an_image_without_a_type_is_read_from_its_name(client, db, store):
 
     refused = client.post(f"/api/albums/{album_id}/cover-assets", files={"file": ("notes.txt", b"hello", "text/plain")}, headers=headers)
     assert refused.status_code == 400
-
-
-def test_one_of_the_album_photos_is_copied_onto_the_cover(client, db, store):
-    album_id, headers = _album(client, db)
-    photo_id = f"cover-src-{album_id}"
-    store["everbook/photo.jpg"] = (_jpeg((1000, 1500)), "image/jpeg")
-    asyncio.run(db.photos.insert_one({"id": photo_id, "album_id": album_id, "user_id": "x", "storage_path": "everbook/photo.jpg", "content_type": "image/jpeg", "filename": "photo.jpg", "is_deleted": False}))
-
-    res = client.post(f"/api/albums/{album_id}/cover-assets/from-photo", json={"photo_id": photo_id}, headers=headers)
-    assert res.status_code == 200, res.text
-    body = res.json()
-    assert "/cover-assets/" in body["storage_path"] and body["storage_path"] in store
-    assert (body["photo_width"], body["photo_height"]) == (1000, 1500)
-    assert _photo_count(db, album_id) == 1  # nothing added to the album
-
-    # Another person's album, or a photo from elsewhere: no.
-    _, other = _signup(client, db=db)
-    assert client.post(f"/api/albums/{album_id}/cover-assets/from-photo", json={"photo_id": photo_id}, headers=other).status_code == 404
-    assert client.post(f"/api/albums/{album_id}/cover-assets/from-photo", json={"photo_id": "nope"}, headers=headers).status_code == 404
 
 
 def test_a_google_photo_goes_onto_the_cover(client, db, store, monkeypatch):

@@ -3,8 +3,8 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { ArrowLeft, Images, Loader2, Monitor, Smartphone, X } from "lucide-react";
-import { api, photoImageUrl } from "@/lib/api";
+import { ArrowLeft, Loader2, Monitor, Smartphone, X } from "lucide-react";
+import { api } from "@/lib/api";
 import { isImageFile } from "@/lib/imageFiles";
 import { isMobileDevice } from "@/lib/device";
 import GooglePhotosImportButton from "@/components/GooglePhotosImportButton";
@@ -22,8 +22,8 @@ const optionClass =
 
 /**
  * Where the image for the cover comes from — the same ways as the photos
- * of the album: this device, the phone (QR code), Google Photos, or one of
- * the photos already in the album. Nothing is added to the album's photos.
+ * of the album: this device, the phone (QR code) or Google Photos. Nothing
+ * is added to the album's photos.
  *
  * onPick(source): a File chosen on this device, or an image already stored
  * for the cover (see addCoverImage).
@@ -32,7 +32,7 @@ export default function CoverImagePicker({ albumId, onPick, onClose }) {
   const { t } = useTranslation();
   const onPhone = useRef(isMobileDevice()).current;
   const fileInput = useRef(null);
-  const [view, setView] = useState("menu"); // menu | phone | album
+  const [view, setView] = useState("menu"); // menu | phone
   const [busy, setBusy] = useState(false);
 
   const pick = (source) => {
@@ -40,7 +40,7 @@ export default function CoverImagePicker({ albumId, onPick, onClose }) {
     onClose();
   };
 
-  // A copy made on the server (Google Photos, an album photo).
+  // A copy made on the server (Google Photos).
   const pickFromServer = async (request) => {
     setBusy(true);
     try {
@@ -101,10 +101,6 @@ export default function CoverImagePicker({ albumId, onPick, onClose }) {
               className={optionClass}
               onPicked={(items, accessToken) => pickFromServer(() => api.post(`/albums/${albumId}/cover-assets/google-photos`, { access_token: accessToken, items }))}
             />
-            <button type="button" className={optionClass} onClick={() => setView("album")} disabled={busy} data-testid="cover-picker-album">
-              <Images size={18} className="shrink-0" />
-              <span className="text-sm font-semibold tracking-widest uppercase">{t("coverPicker.fromAlbum")}</span>
-            </button>
             {busy && (
               <p className="text-sm text-[color:var(--muted)] inline-flex items-center gap-2 mt-1">
                 <Loader2 size={14} className="animate-spin" /> {t("coverPicker.preparing")}
@@ -131,13 +127,6 @@ export default function CoverImagePicker({ albumId, onPick, onClose }) {
         )}
 
         {view === "phone" && <PhoneView albumId={albumId} onAsset={pick} />}
-        {view === "album" && (
-          <AlbumPhotosView
-            albumId={albumId}
-            busy={busy}
-            onChoose={(photoId) => pickFromServer(() => api.post(`/albums/${albumId}/cover-assets/from-photo`, { photo_id: photoId }))}
-          />
-        )}
       </div>
     </div>,
     document.body
@@ -214,48 +203,5 @@ function PhoneView({ albumId, onAsset }) {
         {sending ? t("coverPicker.phoneSending") : t("coverPicker.phoneWaiting")}
       </p>
     </div>
-  );
-}
-
-/** The photos already in the album (sent from this computer, the phone or Google Photos). */
-function AlbumPhotosView({ albumId, busy, onChoose }) {
-  const { t } = useTranslation();
-  const [photos, setPhotos] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .get(`/albums/${albumId}`)
-      .then(({ data }) => active && setPhotos((data.photos || []).filter((p) => !p.derived_from)))
-      .catch(() => active && setPhotos([]));
-    return () => {
-      active = false;
-    };
-  }, [albumId]);
-
-  if (photos === null) return <Loader2 size={22} className="mx-auto animate-spin text-[color:var(--muted)]" />;
-  if (!photos.length) return <p className="text-sm text-ink/70">{t("coverPicker.noAlbumPhotos")}</p>;
-  return (
-    <>
-      {busy && (
-        <p className="text-sm text-[color:var(--muted)] inline-flex items-center gap-2 mb-3">
-          <Loader2 size={14} className="animate-spin" /> {t("coverPicker.preparing")}
-        </p>
-      )}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5" data-testid="cover-picker-album-photos">
-        {photos.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            disabled={busy}
-            onClick={() => onChoose(p.id)}
-            className="relative aspect-square overflow-hidden bg-[color:var(--editor-canvas)] hover:outline hover:outline-2 hover:outline-[color:var(--coral)] disabled:opacity-60"
-            data-testid={`cover-picker-photo-${p.id}`}
-          >
-            <img src={photoImageUrl(p.id)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
-          </button>
-        ))}
-      </div>
-    </>
   );
 }
