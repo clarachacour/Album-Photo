@@ -1074,15 +1074,15 @@
       "shapeAdded": "Forme ajoutée",
       "imageReplaced": "Image remplacée",
       "imageAdded": "Image ajoutée à la couverture",
-      "drawingAdded": "Dessin ajouté"
+      "drawingAdded": "Icône ajoutée"
     },
     "newText": "Nouveau texte",
     "yourText": "Votre texte",
     "imageUploadFailed": "L'envoi de l'image a échoué",
-    "drawing": "Dessin",
+    "drawing": "Icônes",
     "drawings": {
-      "title": "Ajouter un dessin",
-      "intro": "Cliquez sur un dessin pour le poser sur la couverture : vous pourrez ensuite le déplacer et l'agrandir."
+      "title": "Ajouter une icône",
+      "intro": "Cliquez sur une icône pour la poser sur la couverture : vous pourrez ensuite la déplacer et l'agrandir."
     }
   },
   "checkout": {

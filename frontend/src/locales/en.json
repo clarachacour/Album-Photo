@@ -1074,15 +1074,15 @@
       "shapeAdded": "Shape added",
       "imageReplaced": "Image replaced",
       "imageAdded": "Image added to the cover",
-      "drawingAdded": "Drawing added"
+      "drawingAdded": "Icon added"
     },
     "newText": "New text",
     "yourText": "Your text",
     "imageUploadFailed": "Image upload failed",
-    "drawing": "Drawing",
+    "drawing": "Icons",
     "drawings": {
-      "title": "Add a drawing",
-      "intro": "Click a drawing to put it on the cover: you can then move it and resize it."
+      "title": "Add an icon",
+      "intro": "Click an icon to put it on the cover: you can then move it and resize it."
     }
   },
   "checkout": {
