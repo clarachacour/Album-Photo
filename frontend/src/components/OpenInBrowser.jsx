@@ -22,10 +22,36 @@ function OpenButtons({ platform, className = "" }) {
     if (ok) toast.success(t("inApp.copied"));
     else toast.error(t("inApp.copyFailed"));
   };
+  // Instagram on iPhone sometimes refuses to hand the page to Safari: the
+  // button then does nothing. Still here a moment later → the link is copied
+  // and the person is told how to leave by hand.
+  const open = (e) => {
+    e.preventDefault();
+    const target = externalBrowserUrl(window.location.href, platform);
+    let left = false;
+    const onHide = () => {
+      if (document.visibilityState === "hidden") left = true;
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    window.location.href = target;
+    setTimeout(async () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+      if (left || document.visibilityState === "hidden") return;
+      const ok = await copyText(window.location.href);
+      toast.message(t("inApp.blocked"), {
+        description: t(ok ? "inApp.blockedCopied" : "inApp.blockedHow", { how: t(platform === "ios" ? "inApp.howIos" : "inApp.howAndroid") }),
+        duration: 15000,
+      });
+    }, 1500);
+  };
   return (
     <div className={`flex flex-wrap gap-2 ${className}`}>
       <a
         href={externalBrowserUrl(window.location.href, platform)}
+        onClick={open}
+        data-testid="in-app-open"
         className="inline-flex items-center gap-2 bg-[color:var(--ink)] text-[color:var(--paper)] px-4 py-2 text-xs font-semibold tracking-widest uppercase"
       >
         <ExternalLink className="w-3.5 h-3.5" />
