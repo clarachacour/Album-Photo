@@ -15,6 +15,7 @@ export const COVER_DRAWINGS = [
   { key: "sicily", url: "/cover-art/travel-sicily-v2.svg", aspect: 372 / 677, name: "Lemon" },
   { key: "thailand", url: "/cover-art/travel-thailand-v2.svg", aspect: 765 / 699, name: "Thai temple" },
   { key: "australia", url: "/cover-art/travel-australia-v1.svg", aspect: 714 / 481, name: "Kangaroo" },
+  { key: "globe", url: "/cover-art/globe-v1.svg", aspect: 420 / 440, name: "Globe" },
   { key: "van", url: "/cover-art/van-v2.svg", aspect: 600 / 420, name: "Camper van" },
   { key: "pasta", url: "/cover-art/pasta-v3.svg", aspect: 520 / 315, name: "Plate of pasta" },
   { key: "coral", url: "/cover-art/coral-logo-v2.svg", aspect: 1732 / 1946, name: "Coral" },
