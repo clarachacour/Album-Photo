@@ -1,16 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 40 420 440" width="420" height="440">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 76 308 308" width="308" height="308">
 <defs>
 <radialGradient id="sea" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#B9D3D2"/><stop offset=".6" stop-color="#8FB3B5"/><stop offset="1" stop-color="#6E9497"/></radialGradient>
 <radialGradient id="shade" cx=".36" cy=".3" r=".85"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1E2A2A" stop-opacity=".28"/></radialGradient>
 <linearGradient id="br" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E2C38E"/><stop offset=".5" stop-color="#C59A5B"/><stop offset="1" stop-color="#9C7740"/></linearGradient>
 <clipPath id="g"><circle cx="250" cy="230" r="150"/></clipPath>
 </defs>
-<ellipse cx="250" cy="462" rx="110" ry="10" fill="#2E2B27" opacity=".16"/>
-<!-- stand -->
-<path d="M303 392 Q290 420 252 428" stroke="url(#br)" stroke-width="13" fill="none" stroke-linecap="round"/>
-<path d="M176 452 Q250 418 324 452 Q330 462 318 464 L182 464 Q170 462 176 452Z" fill="url(#br)"/>
-<ellipse cx="250" cy="430" rx="26" ry="8" fill="#9C7740"/>
-<!-- globe -->
+
 <g transform="rotate(-18 250 230)">
 <circle cx="250" cy="230" r="150" fill="url(#sea)"/>
 <g clip-path="url(#g)">
@@ -19,9 +14,5 @@
 <circle cx="250" cy="230" r="150" fill="url(#shade)"/>
 <ellipse cx="195" cy="160" rx="42" ry="22" fill="#FFFFFF" opacity=".22" transform="rotate(-30 195 160)"/>
 </g>
-<!-- meridian ring -->
-<path d="M250 58 A172 172 0 1 1 250 402" fill="none" stroke="url(#br)" stroke-width="12"/>
-<circle cx="250" cy="58" r="8" fill="#9C7740"/><circle cx="250" cy="402" r="8" fill="#9C7740"/>
-<circle cx="250" cy="76" r="5" fill="#E2C38E"/>
 </g>
 </svg>
