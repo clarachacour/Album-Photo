@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 600 420" width="600" height="420">
+<ellipse cx="320" cy="392" rx="255" ry="16" fill="#2E2B27" opacity=".18"/>
+<!-- surfboard on the roof -->
+<rect x="150" y="72" width="8" height="26" rx="3" fill="#3A3A33"/><rect x="452" y="72" width="8" height="26" rx="3" fill="#3A3A33"/>
+<rect x="132" y="90" width="350" height="8" rx="4" fill="#3A3A33"/>
+<path d="M110 74 Q300 40 520 66 Q536 70 520 76 Q300 92 110 82 Q98 78 110 74Z" fill="#D9714E"/>
+<path d="M120 77 Q300 60 515 70" stroke="#F3C9B4" stroke-width="3" fill="none" stroke-linecap="round"/>
+<!-- body -->
+<path id="body" d="M70 150 Q72 98 130 98 L470 98 Q540 98 568 170 L586 250 Q590 330 560 338 L90 338 Q66 338 66 312 Z" fill="#F1E7D0"/>
+<clipPath id="bodyclip"><path d="M70 150 Q72 98 130 98 L470 98 Q540 98 568 170 L586 250 Q590 330 560 338 L90 338 Q66 338 66 312 Z"/></clipPath>
+<g clip-path="url(#bodyclip)">
+  <path d="M40 222 L470 222 Q530 222 560 196 L640 150 L640 400 L40 400Z" fill="#7F9171"/>
+  <path d="M40 222 L470 222 Q530 222 560 196 L640 150" stroke="#E3D5B6" stroke-width="6" fill="none"/>
+  <path d="M40 318 L640 318 L640 400 L40 400Z" fill="#677A5B"/>
+  <rect x="40" y="98" width="600" height="10" fill="#FFFFFF" opacity=".35"/>
+</g>
+<!-- V front swoosh -->
+<path d="M560 196 Q552 250 586 290" stroke="#E3D5B6" stroke-width="6" fill="none"/>
+<!-- windows -->
+<rect x="96" y="122" width="88" height="74" rx="14" fill="#A9C3C4"/>
+<rect x="200" y="122" width="88" height="74" rx="14" fill="#A9C3C4"/>
+<rect x="304" y="122" width="88" height="74" rx="14" fill="#A9C3C4"/>
+<path d="M410 122 L478 122 Q520 124 540 176 L546 196 L410 196 Z" fill="#A9C3C4"/>
+<path d="M104 182 L150 128 L170 128 L118 190 Z M208 182 L254 128 L274 128 L222 190Z M312 182 L358 128 L378 128 L326 190Z M418 182 L466 128 L486 128 L434 190Z" fill="#D3E3E1" opacity=".8"/>
+<!-- doors -->
+<path d="M400 112 L400 318" stroke="#E3D5B6" stroke-width="3"/>
+<rect x="384" y="240" width="22" height="6" rx="3" fill="#F1E7D0"/>
+<!-- headlight + indicator -->
+<circle cx="572" cy="252" r="15" fill="#F1E7D0" stroke="#E3D5B6" stroke-width="4"/><circle cx="569" cy="249" r="5" fill="#FFFFFF"/>
+<rect x="560" y="286" width="22" height="9" rx="4" fill="#E9A23B"/>
+<!-- bumpers -->
+<rect x="54" y="322" width="64" height="16" rx="8" fill="#E3D5B6"/>
+<rect x="520" y="322" width="80" height="16" rx="8" fill="#E3D5B6"/>
+<!-- wheel arches -->
+<path d="M120 338 A62 62 0 0 1 244 338Z" fill="#3E4A36"/>
+<path d="M418 338 A62 62 0 0 1 542 338Z" fill="#3E4A36"/>
+<circle cx="182" cy="338" r="50" fill="#2E2B27"/><circle cx="182" cy="338" r="28" fill="#E9DEC6"/><circle cx="182" cy="338" r="10" fill="#C9B994"/><circle cx="200.0" cy="338.0" r="2.6" fill="#B5A47E"/><circle cx="187.6" cy="355.1" r="2.6" fill="#B5A47E"/><circle cx="167.4" cy="348.6" r="2.6" fill="#B5A47E"/><circle cx="167.4" cy="327.4" r="2.6" fill="#B5A47E"/><circle cx="187.6" cy="320.9" r="2.6" fill="#B5A47E"/><circle cx="480" cy="338" r="50" fill="#2E2B27"/><circle cx="480" cy="338" r="28" fill="#E9DEC6"/><circle cx="480" cy="338" r="10" fill="#C9B994"/><circle cx="498.0" cy="338.0" r="2.6" fill="#B5A47E"/><circle cx="485.6" cy="355.1" r="2.6" fill="#B5A47E"/><circle cx="465.4" cy="348.6" r="2.6" fill="#B5A47E"/><circle cx="465.4" cy="327.4" r="2.6" fill="#B5A47E"/><circle cx="485.6" cy="320.9" r="2.6" fill="#B5A47E"/></svg>
